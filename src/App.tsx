@@ -7,9 +7,11 @@ import NotFound from "./pages/NotFound";
 import ClientsPage from "./pages/Clients";
 import ClientDetailPage from "./pages/ClientDetail";
 import DevisPage from "./pages/Devis";
+import NouveauDevisPage from "./pages/NouveauDevis";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
 import FacturesPage from "./pages/Factures";
+import NouvelleFacturePage from "./pages/NouvelleFacture";
 import AnnulationsPage from "./pages/Annulations";
 import CaissePage from "./pages/Caisse";
 import BanquePage from "./pages/Banque";
@@ -38,9 +40,11 @@ const App = () => (
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/clients/:id" element={<ClientDetailPage />} />
           <Route path="/devis" element={<DevisPage />} />
+          <Route path="/devis/nouveau" element={<NouveauDevisPage />} />
           <Route path="/ordres" element={<OrdresTravailPage />} />
           <Route path="/ordres/nouveau" element={<NouvelOrdrePage />} />
           <Route path="/factures" element={<FacturesPage />} />
+          <Route path="/factures/nouvelle" element={<NouvelleFacturePage />} />
           <Route path="/annulations" element={<AnnulationsPage />} />
           <Route path="/caisse" element={<CaissePage />} />
           <Route path="/banque" element={<BanquePage />} />

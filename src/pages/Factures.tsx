@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +22,11 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search, Eye, Wallet, Mail, FileText, XCircle } from "lucide-react";
 import { factures, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
-import { FactureForm } from "@/components/forms/FactureForm";
 
 export default function FacturesPage() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
-  const [formOpen, setFormOpen] = useState(false);
 
   const filteredFactures = factures.filter(f => {
     const client = clients.find(c => c.id === f.clientId);
@@ -124,7 +124,7 @@ export default function FacturesPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2" onClick={() => setFormOpen(true)}>
+          <Button className="gap-2" onClick={() => navigate("/factures/nouvelle")}>
             <Plus className="h-4 w-4" />
             Nouvelle facture
           </Button>
@@ -204,8 +204,6 @@ export default function FacturesPage() {
             </Table>
           </CardContent>
         </Card>
-
-        <FactureForm open={formOpen} onOpenChange={setFormOpen} />
       </div>
     </MainLayout>
   );
