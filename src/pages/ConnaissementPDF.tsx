@@ -1,7 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Printer, Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { ordresTravail, clients, formatMontant, formatDate } from "@/data/mockData";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import logoLojistiga from "@/assets/lojistiga-logo.png";
@@ -12,6 +14,20 @@ export default function ConnaissementPDFPage() {
 
   const ordre = ordresTravail.find((o) => o.id === id);
   const client = ordre ? clients.find((c) => c.id === ordre.clientId) : null;
+
+  const { contentRef, downloadPdf } = usePdfDownload({ 
+    filename: `Connaissement_${ordre?.numero || 'unknown'}` 
+  });
+
+  // Téléchargement automatique au chargement
+  useEffect(() => {
+    if (ordre) {
+      const timer = setTimeout(() => {
+        downloadPdf();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [ordre, downloadPdf]);
 
   if (!ordre) {
     return (
@@ -24,16 +40,31 @@ export default function ConnaissementPDFPage() {
     );
   }
 
-  const { contentRef, downloadPdf } = usePdfDownload({ 
-    filename: `Connaissement_${ordre.numero}` 
-  });
-
   const handlePrint = () => {
     window.print();
   };
 
   // Calcul du total
   const total = ordre.lignes.reduce((acc, ligne) => acc + ligne.montantHT, 0);
+  
+  // Numéro BL fixe basé sur l'ID
+  const numBL = `${259989547 + parseInt(id || '0')}`;
+  
+  // URL pour le QR code
+  const documentUrl = `${window.location.origin}/ordres/${id}`;
+  
+  // Données encodées dans le QR code
+  const qrData = JSON.stringify({
+    type: "CONNAISSEMENT",
+    numero: ordre.numero,
+    numBL: numBL,
+    date: ordre.dateCreation,
+    client: client?.nom,
+    destination: client?.ville,
+    nombreTC: ordre.lignes.length,
+    total: total,
+    url: documentUrl
+  });
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -76,7 +107,7 @@ export default function ConnaissementPDFPage() {
             <div className="text-right text-xs">
               <p className="mb-1">Libreville le: {formatDate(ordre.dateCreation)}</p>
               <p className="font-semibold">Connaissement : {ordre.numero}</p>
-              <p className="font-semibold mt-1">Num BL : {Math.floor(Math.random() * 900000000) + 100000000}</p>
+              <p className="font-semibold mt-1">Num BL : {numBL}</p>
             </div>
           </div>
 
@@ -116,11 +147,9 @@ export default function ConnaissementPDFPage() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-center items-start">
-              {/* QR Code placeholder */}
-              <div className="w-20 h-20 border-2 border-gray-300 flex items-center justify-center">
-                <span className="text-[8px] text-gray-400 text-center">QR Code</span>
-              </div>
+            <div className="flex flex-col items-center">
+              <QRCodeSVG value={qrData} size={70} level="M" />
+              <p className="text-[8px] text-muted-foreground mt-1">Scannez pour vérifier</p>
             </div>
           </div>
 
