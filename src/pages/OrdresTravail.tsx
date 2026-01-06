@@ -30,8 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Copy } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PaiementModal } from "@/components/PaiementModal";
+import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
+import { ExportModal } from "@/components/ExportModal";
 import { ordresTravail, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 
 export default function OrdresTravailPage() {
@@ -41,12 +44,21 @@ export default function OrdresTravailPage() {
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   
-  // États pour les modales de confirmation
+  // États pour les modales
   const [confirmAction, setConfirmAction] = useState<{
     type: 'annuler' | 'supprimer' | 'facturer' | null;
     id: string;
     numero: string;
   }>({ type: null, id: '', numero: '' });
+
+  const [paiementModal, setPaiementModal] = useState<{
+    open: boolean;
+    numero: string;
+    montantRestant: number;
+  }>({ open: false, numero: '', montantRestant: 0 });
+
+  const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const confirmAnnuler = () => {
     if (confirmAction.type === 'annuler') {
@@ -78,20 +90,6 @@ export default function OrdresTravailPage() {
       setConfirmAction({ type: null, id: '', numero: '' });
       navigate("/factures/nouvelle");
     }
-  };
-
-  const handleDupliquer = (id: string, numero: string) => {
-    toast({
-      title: "Ordre dupliqué",
-      description: `Une copie de l'ordre ${numero} a été créée.`,
-    });
-  };
-
-  const handlePaiement = (id: string, numero: string) => {
-    toast({
-      title: "Paiement",
-      description: `Enregistrement du paiement pour l'ordre ${numero}.`,
-    });
   };
 
   const filteredOrdres = ordresTravail.filter(o => {
@@ -216,10 +214,20 @@ export default function OrdresTravailPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2" onClick={() => navigate("/ordres/nouveau")}>
-            <Plus className="h-4 w-4" />
-            Nouvel ordre
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setPaiementGlobalOpen(true)}>
+              <CreditCard className="h-4 w-4" />
+              Paiement global
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+            <Button className="gap-2" onClick={() => navigate("/ordres/nouveau")}>
+              <Plus className="h-4 w-4" />
+              Nouvel ordre
+            </Button>
+          </div>
         </div>
 
         {/* Table */}
@@ -244,7 +252,12 @@ export default function OrdresTravailPage() {
                   const resteAPayer = ordre.montantTTC - ordre.montantPaye;
                   return (
                     <TableRow key={ordre.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="font-medium">{ordre.numero}</TableCell>
+                      <TableCell 
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                        onClick={() => navigate(`/ordres/${ordre.id}`)}
+                      >
+                        {ordre.numero}
+                      </TableCell>
                       <TableCell>{client?.nom}</TableCell>
                       <TableCell>{formatDate(ordre.dateCreation)}</TableCell>
                       <TableCell>{getTypeBadge(ordre.typeOperation)}</TableCell>
@@ -262,45 +275,56 @@ export default function OrdresTravailPage() {
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Voir"
+                            onClick={() => navigate(`/ordres/${ordre.id}`)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button variant="ghost" size="icon" title="Modifier">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Modifier"
+                              onClick={() => navigate(`/ordres/${ordre.id}/modifier`)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
+                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Paiement" 
+                              className="text-green-600"
+                              onClick={() => setPaiementModal({
+                                open: true,
+                                numero: ordre.numero,
+                                montantRestant: resteAPayer
+                              })}
+                            >
+                              <Wallet className="h-4 w-4" />
+                            </Button>
+                          )}
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                title="Paiement" 
-                                className="text-green-600"
-                                onClick={() => handlePaiement(ordre.id, ordre.numero)}
-                              >
-                                <Wallet className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                title="Facturer" 
-                                className="text-primary"
-                                onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
-                              >
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Facturer" 
+                              className="text-primary"
+                              onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
                           )}
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            title="Dupliquer"
-                            onClick={() => handleDupliquer(ordre.id, ordre.numero)}
+                            title="PDF"
+                            onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')}
                           >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="PDF">
                             <FileText className="h-4 w-4" />
                           </Button>
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
@@ -399,6 +423,27 @@ export default function OrdresTravailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Paiement */}
+      <PaiementModal
+        open={paiementModal.open}
+        onOpenChange={(open) => setPaiementModal({ ...paiementModal, open })}
+        documentType="ordre"
+        documentNumero={paiementModal.numero}
+        montantRestant={paiementModal.montantRestant}
+      />
+
+      {/* Modal Paiement Global */}
+      <PaiementGlobalModal
+        open={paiementGlobalOpen}
+        onOpenChange={setPaiementGlobalOpen}
+      />
+
+      {/* Modal Export */}
+      <ExportModal
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+      />
     </MainLayout>
   );
 }
