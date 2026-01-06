@@ -125,6 +125,106 @@ export default function ReportingPage() {
     }));
   }, []);
 
+  // Labels types d'opérations
+  const typesOperationsLabels: Record<string, string> = {
+    conteneurs: "Conteneurs",
+    conventionnel: "Conventionnel",
+    location: "Location",
+    transport: "Transport",
+    manutention: "Manutention",
+    stockage: "Stockage"
+  };
+
+  // Données détaillées par type d'opération
+  const dataDetailParType = useMemo(() => {
+    const allTypes = ['conteneurs', 'conventionnel', 'location', 'transport', 'manutention', 'stockage'];
+    
+    return allTypes.map(type => {
+      const ordresType = ordresTravail.filter(o => o.typeOperation === type);
+      const facturesType = factures.filter(f => {
+        const ordre = ordresTravail.find(o => o.id === f.ordreId);
+        return ordre?.typeOperation === type;
+      });
+      
+      const totalOrdres = ordresType.length;
+      const montantOrdres = ordresType.reduce((sum, o) => sum + o.montantTTC, 0);
+      const ordresTermines = ordresType.filter(o => ['termine', 'facture'].includes(o.statut)).length;
+      const ordresEnCours = ordresType.filter(o => o.statut === 'en_cours').length;
+      
+      const totalFactures = facturesType.length;
+      const montantFactures = facturesType.reduce((sum, f) => sum + f.montantTTC, 0);
+      const montantPaye = facturesType.reduce((sum, f) => sum + f.montantPaye, 0);
+      const montantImpaye = montantFactures - montantPaye;
+      const tauxRecouvrement = montantFactures > 0 ? Math.round((montantPaye / montantFactures) * 100) : 0;
+      
+      // Clients uniques pour ce type
+      const clientsIds = [...new Set(ordresType.map(o => o.clientId))];
+      const nbClients = clientsIds.length;
+      
+      // Top clients par type
+      const topClientsType = clientsIds.map(clientId => {
+        const client = clients.find(c => c.id === clientId);
+        const ordresClient = ordresType.filter(o => o.clientId === clientId);
+        const montant = ordresClient.reduce((sum, o) => sum + o.montantTTC, 0);
+        return { nom: client?.nom || 'Inconnu', montant, nbOrdres: ordresClient.length };
+      }).sort((a, b) => b.montant - a.montant).slice(0, 5);
+      
+      return {
+        type,
+        label: typesOperationsLabels[type],
+        totalOrdres,
+        montantOrdres,
+        ordresTermines,
+        ordresEnCours,
+        totalFactures,
+        montantFactures,
+        montantPaye,
+        montantImpaye,
+        tauxRecouvrement,
+        nbClients,
+        topClientsType
+      };
+    });
+  }, []);
+
+  // Évolution mensuelle par type d'opération
+  const dataEvolutionParType = useMemo(() => {
+    const allTypes = ['conteneurs', 'conventionnel', 'location', 'transport', 'manutention', 'stockage'];
+    
+    return moisLabels.map((mois, index) => {
+      const result: Record<string, string | number> = { mois };
+      
+      allTypes.forEach(type => {
+        const ordresMoisType = ordresTravail.filter(o => {
+          const { month, year } = getMonthYear(o.dateCreation);
+          return month === index && year === parseInt(anneeSelectionnee) && o.typeOperation === type;
+        });
+        result[type] = ordresMoisType.reduce((sum, o) => sum + o.montantTTC, 0);
+      });
+      
+      return result;
+    });
+  }, [anneeSelectionnee]);
+
+  // Comparaison annuelle par type
+  const dataComparaisonAnnuelle = useMemo(() => {
+    const allTypes = ['conteneurs', 'conventionnel', 'location', 'transport', 'manutention', 'stockage'];
+    
+    return allTypes.map(type => {
+      const ordresType = ordresTravail.filter(o => o.typeOperation === type);
+      const montantTotal = ordresType.reduce((sum, o) => sum + o.montantTTC, 0);
+      const nbOrdres = ordresType.length;
+      const moyennePrix = nbOrdres > 0 ? Math.round(montantTotal / nbOrdres) : 0;
+      
+      return {
+        name: typesOperationsLabels[type],
+        montant: montantTotal,
+        nbOrdres,
+        moyennePrix
+      };
+    });
+  }, []);
+
   // Top clients par CA
   const topClients = useMemo(() => {
     const clientsCA = clients.map(client => {
@@ -365,6 +465,7 @@ export default function ReportingPage() {
             <TabsTrigger value="factures">Factures</TabsTrigger>
             <TabsTrigger value="devis">Devis</TabsTrigger>
             <TabsTrigger value="ordres">Ordres Travail</TabsTrigger>
+            <TabsTrigger value="operations">Par Type Opération</TabsTrigger>
             <TabsTrigger value="clients">Clients</TabsTrigger>
             <TabsTrigger value="paiements">Paiements</TabsTrigger>
             <TabsTrigger value="tresorerie">Trésorerie</TabsTrigger>
@@ -590,6 +691,187 @@ export default function ReportingPage() {
                     })}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB PAR TYPE OPERATION */}
+          <TabsContent value="operations" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Rapport par Type d'Opération - {anneeSelectionnee}</h3>
+              <ExportButtons type="Types Opérations" />
+            </div>
+
+            {/* KPIs par type */}
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+              {dataDetailParType.map((d, i) => (
+                <Card key={i}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs text-muted-foreground">{d.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold">{formatMontant(d.montantOrdres)}</div>
+                    <p className="text-xs text-muted-foreground">{d.totalOrdres} ordres</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Graphiques */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader><CardTitle className="text-sm">CA par type d'opération</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dataComparaisonAnnuelle}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis />
+                      <Tooltip formatter={(v) => formatMontant(v as number)} />
+                      <Bar dataKey="montant" name="CA" fill="#E63946" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Répartition du CA</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie 
+                        data={dataComparaisonAnnuelle} 
+                        cx="50%" cy="50%" 
+                        outerRadius={100} 
+                        dataKey="montant" 
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {dataComparaisonAnnuelle.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v) => formatMontant(v as number)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Évolution mensuelle par type */}
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Évolution mensuelle par type d'opération</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <AreaChart data={dataEvolutionParType}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="mois" />
+                    <YAxis />
+                    <Tooltip formatter={(v) => formatMontant(v as number)} />
+                    <Legend />
+                    <Area type="monotone" dataKey="conteneurs" name="Conteneurs" stackId="1" fill="#E63946" stroke="#E63946" />
+                    <Area type="monotone" dataKey="transport" name="Transport" stackId="1" fill="#4A4A4A" stroke="#4A4A4A" />
+                    <Area type="monotone" dataKey="manutention" name="Manutention" stackId="1" fill="#F4A261" stroke="#F4A261" />
+                    <Area type="monotone" dataKey="stockage" name="Stockage" stackId="1" fill="#2A9D8F" stroke="#2A9D8F" />
+                    <Area type="monotone" dataKey="location" name="Location" stackId="1" fill="#264653" stroke="#264653" />
+                    <Area type="monotone" dataKey="conventionnel" name="Conventionnel" stackId="1" fill="#8338EC" stroke="#8338EC" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Tableau détaillé par type */}
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Analyse détaillée par type</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Ordres</TableHead>
+                      <TableHead className="text-right">Terminés</TableHead>
+                      <TableHead className="text-right">En cours</TableHead>
+                      <TableHead className="text-right">CA Ordres</TableHead>
+                      <TableHead className="text-right">Facturé</TableHead>
+                      <TableHead className="text-right">Payé</TableHead>
+                      <TableHead className="text-right">Impayé</TableHead>
+                      <TableHead className="text-right">Recouvrement</TableHead>
+                      <TableHead className="text-right">Clients</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dataDetailParType.map((d, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{d.label}</TableCell>
+                        <TableCell className="text-right">{d.totalOrdres}</TableCell>
+                        <TableCell className="text-right text-green-600">{d.ordresTermines}</TableCell>
+                        <TableCell className="text-right text-amber-600">{d.ordresEnCours}</TableCell>
+                        <TableCell className="text-right">{formatMontant(d.montantOrdres)}</TableCell>
+                        <TableCell className="text-right">{formatMontant(d.montantFactures)}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatMontant(d.montantPaye)}</TableCell>
+                        <TableCell className="text-right text-destructive">{formatMontant(d.montantImpaye)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={d.tauxRecouvrement >= 80 ? "default" : d.tauxRecouvrement >= 50 ? "secondary" : "destructive"}>
+                            {d.tauxRecouvrement}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{d.nbClients}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Prix moyen par type */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Nombre d'ordres par type</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dataComparaisonAnnuelle}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="nbOrdres" name="Ordres" fill="#264653" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Prix moyen par type</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dataComparaisonAnnuelle}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis />
+                      <Tooltip formatter={(v) => formatMontant(v as number)} />
+                      <Bar dataKey="moyennePrix" name="Prix moyen" fill="#2A9D8F" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top clients par type */}
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Top clients par type d'opération</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {dataDetailParType.filter(d => d.topClientsType.length > 0).map((d, i) => (
+                    <div key={i} className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                        <Badge>{d.label}</Badge>
+                      </h4>
+                      <div className="space-y-2">
+                        {d.topClientsType.map((client, j) => (
+                          <div key={j} className="flex justify-between text-sm">
+                            <span className="truncate">{client.nom}</span>
+                            <span className="font-medium">{formatMontant(client.montant)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
