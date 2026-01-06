@@ -64,6 +64,26 @@ const typesOperationConteneur: Record<TypeOperationConteneur, { label: string; p
   manutention: { label: "Manutention", prixDefaut: 30000 },
 };
 
+// Mock data pour armateurs, transitaires et représentants
+const armateurs = [
+  { id: "arm1", nom: "MSC" },
+  { id: "arm2", nom: "MAERSK" },
+  { id: "arm3", nom: "CMA CGM" },
+  { id: "arm4", nom: "HAPAG-LLOYD" },
+];
+
+const transitaires = [
+  { id: "trans1", nom: "Transit Express" },
+  { id: "trans2", nom: "Global Transit" },
+  { id: "trans3", nom: "Africa Logistics" },
+];
+
+const representants = [
+  { id: "rep1", nom: "Jean Dupont" },
+  { id: "rep2", nom: "Marie Koumba" },
+  { id: "rep3", nom: "Paul Mbongo" },
+];
+
 const categoriesLabels: Record<CategorieOrdre, { label: string; description: string; icon: React.ReactNode }> = {
   conteneurs: {
     label: "Conteneurs",
@@ -101,6 +121,11 @@ export default function NouvelOrdrePage() {
   // Infos BL (pour conteneurs/conventionnel)
   const [typeOperation, setTypeOperation] = useState<TypeOperation | "">("");
   const [numeroBL, setNumeroBL] = useState("");
+  const [armateurId, setArmateurId] = useState("");
+  const [transitaireId, setTransitaireId] = useState("");
+  const [representantId, setRepresentantId] = useState("");
+  const [primeTransitaire, setPrimeTransitaire] = useState<number>(0);
+  const [primeRepresentant, setPrimeRepresentant] = useState<number>(0);
   
   // Conteneurs
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([
@@ -195,7 +220,6 @@ export default function NouvelOrdrePage() {
           operations: c.operations.map(op => {
             if (op.id === operationId) {
               const updated = { ...op, [field]: value };
-              // Update prix par défaut si on change le type
               if (field === "type") {
                 const typeOp = value as TypeOperationConteneur;
                 updated.prixUnitaire = typesOperationConteneur[typeOp]?.prixDefaut || 0;
@@ -244,7 +268,6 @@ export default function NouvelOrdrePage() {
   // Calcul des totaux
   const calculateTotal = (): number => {
     if (categorie === "conteneurs") {
-      // Total des prix conteneurs + total des opérations
       const totalConteneurs = conteneurs.reduce((sum, c) => sum + (c.prixUnitaire || 0), 0);
       const totalOperations = conteneurs.reduce((sum, c) => 
         sum + c.operations.reduce((opSum, op) => opSum + op.prixTotal, 0), 0
@@ -298,6 +321,11 @@ export default function NouvelOrdrePage() {
       categorie,
       typeOperation: categorie === "operations_independantes" ? typeOperationIndep : typeOperation,
       numeroBL,
+      armateurId,
+      transitaireId,
+      representantId,
+      primeTransitaire,
+      primeRepresentant,
       conteneurs: categorie === "conteneurs" ? conteneurs : [],
       prestations: categorie !== "conteneurs" ? prestations : [],
       montantHT,
@@ -330,7 +358,7 @@ export default function NouvelOrdrePage() {
                 Nouvel ordre de travail
               </h1>
               <p className="text-muted-foreground text-sm">
-                Numéro: <span className="font-medium">{generateNumero()}</span>
+                Créez un ordre de travail pour l'exploitation
               </p>
             </div>
           </div>
@@ -425,11 +453,12 @@ export default function NouvelOrdrePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-primary" />
-                    Informations BL
+                    Type d'opération et informations
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CardContent className="space-y-4">
+                  {/* Première ligne: Type, BL, Armateur */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Type d'opération *</Label>
                       <Select value={typeOperation} onValueChange={(v) => setTypeOperation(v as TypeOperation)}>
@@ -449,6 +478,77 @@ export default function NouvelOrdrePage() {
                         value={numeroBL}
                         onChange={(e) => setNumeroBL(e.target.value.toUpperCase())}
                         className="font-mono"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Armateur *</Label>
+                      <Select value={armateurId} onValueChange={setArmateurId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {armateurs.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.nom}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Deuxième ligne: Transitaire, Représentant */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-amber-600">Transitaire</Label>
+                      <Select value={transitaireId} onValueChange={setTransitaireId}>
+                        <SelectTrigger className="border-amber-200">
+                          <SelectValue placeholder="Sélectionner (optionnel)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {transitaires.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.nom}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-amber-600">Représentant</Label>
+                      <Select value={representantId} onValueChange={setRepresentantId}>
+                        <SelectTrigger className="border-amber-200">
+                          <SelectValue placeholder="Sélectionner (optionnel)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {representants.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.nom}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Troisième ligne: Primes */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Prime transitaire (FCFA)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={primeTransitaire || ""}
+                        onChange={(e) => setPrimeTransitaire(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prime représentant (FCFA)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={primeRepresentant || ""}
+                        onChange={(e) => setPrimeRepresentant(parseFloat(e.target.value) || 0)}
                       />
                     </div>
                   </div>
@@ -471,7 +571,7 @@ export default function NouvelOrdrePage() {
                 <CardContent>
                   <div className="space-y-6">
                     {conteneurs.map((conteneur, index) => (
-                      <div key={conteneur.id} className="p-4 bg-muted/30 rounded-lg space-y-4">
+                      <div key={conteneur.id} className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-sm text-muted-foreground">Conteneur {index + 1}</span>
                           {conteneurs.length > 1 && (
@@ -492,10 +592,18 @@ export default function NouvelOrdrePage() {
                           <div className="space-y-2">
                             <Label>N° Conteneur</Label>
                             <Input
-                              placeholder="MSKU1234567"
+                              placeholder="Ex: MSCU1234567"
                               value={conteneur.numero}
                               onChange={(e) => handleConteneurChange(conteneur.id, 'numero', e.target.value.toUpperCase())}
                               className="font-mono"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Input
+                              placeholder="Description de la marchandise"
+                              value={conteneur.description}
+                              onChange={(e) => handleConteneurChange(conteneur.id, 'description', e.target.value)}
                             />
                           </div>
                           <div className="space-y-2">
@@ -514,48 +622,52 @@ export default function NouvelOrdrePage() {
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Input
-                              placeholder="Description..."
-                              value={conteneur.description}
-                              onChange={(e) => handleConteneurChange(conteneur.id, 'description', e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Prix conteneur (XAF)</Label>
+                            <Label>Prix (FCFA)</Label>
                             <Input
                               type="number"
                               placeholder="0"
                               value={conteneur.prixUnitaire || ""}
                               onChange={(e) => handleConteneurChange(conteneur.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                              className="text-right"
                             />
                           </div>
                         </div>
 
                         {/* Section opérations du conteneur */}
-                        <div className="border-t pt-4 mt-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <Label className="text-sm font-medium">Opérations liées</Label>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddOperationConteneur(conteneur.id)}
-                              className="gap-1 text-xs"
-                            >
-                              <Plus className="h-3 w-3" />
-                              Nouvelle opération
-                            </Button>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium">Opérations</Label>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 text-xs"
+                                disabled
+                              >
+                                Associer existante
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddOperationConteneur(conteneur.id)}
+                                className="gap-1 text-xs"
+                              >
+                                <Plus className="h-3 w-3" />
+                                Nouvelle opération
+                              </Button>
+                            </div>
                           </div>
 
                           {conteneur.operations.length === 0 ? (
                             <p className="text-sm text-muted-foreground italic">
-                              Aucune opération ajoutée. Cliquez sur "Nouvelle opération" pour en ajouter.
+                              Aucune opération ajoutée. Cliquez sur "Nouvelle opération" ou "Associer existante".
                             </p>
                           ) : (
                             <div className="space-y-3">
                               {conteneur.operations.map((op, opIndex) => (
-                                <div key={op.id} className="p-3 border rounded-lg bg-background space-y-3">
+                                <div key={op.id} className="p-3 border rounded-lg bg-muted/30 space-y-3">
                                   <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground font-medium">
                                       Opération {opIndex + 1}
@@ -605,7 +717,7 @@ export default function NouvelOrdrePage() {
                                       />
                                     </div>
                                     <div className="space-y-1">
-                                      <Label className="text-xs">Prix unit. (XAF)</Label>
+                                      <Label className="text-xs">Prix unit. (FCFA)</Label>
                                       <Input
                                         type="number"
                                         min="0"
@@ -630,21 +742,24 @@ export default function NouvelOrdrePage() {
                               ))}
                             </div>
                           )}
-
-                          {/* Sous-total conteneur */}
-                          {conteneur.operations.length > 0 && (
-                            <div className="flex justify-end mt-3">
-                              <span className="text-sm">
-                                <span className="text-muted-foreground">Sous-total opérations: </span>
-                                <span className="font-semibold">
-                                  {formatMontant(conteneur.operations.reduce((acc, op) => acc + op.prixTotal, 0))}
-                                </span>
-                              </span>
-                            </div>
-                          )}
                         </div>
+
+                        {/* Séparateur entre conteneurs */}
+                        {index < conteneurs.length - 1 && (
+                          <div className="border-b my-4" />
+                        )}
                       </div>
                     ))}
+                  </div>
+
+                  {/* Total général */}
+                  <div className="flex justify-end pt-4 border-t mt-6">
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground">Total: </span>
+                      <span className="text-xl font-bold text-primary">
+                        {formatMontant(montantHT)}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -862,24 +977,7 @@ export default function NouvelOrdrePage() {
             </>
           )}
 
-          {/* Récapitulatif */}
-          {categorie && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Récapitulatif</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TotauxDocument
-                  montantHT={montantHT}
-                  tva={tva}
-                  css={css}
-                  montantTTC={montantTTC}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Notes */}
+          {/* Observations */}
           {categorie && (
             <Card>
               <CardHeader>
@@ -889,7 +987,7 @@ export default function NouvelOrdrePage() {
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Notes ou observations..."
+                  placeholder="Remarques ou instructions particulières..."
                   rows={4}
                 />
               </CardContent>
