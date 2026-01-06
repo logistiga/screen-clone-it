@@ -20,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Send, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { devis, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -29,20 +39,33 @@ export default function DevisPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  
+  // États pour les modales de confirmation
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'annuler' | 'supprimer' | null;
+    id: string;
+    numero: string;
+  }>({ type: null, id: '', numero: '' });
 
-  const handleAnnuler = (id: string, numero: string) => {
-    toast({
-      title: "Devis annulé",
-      description: `Le devis ${numero} a été annulé.`,
-    });
+  const confirmAnnuler = () => {
+    if (confirmAction.type === 'annuler') {
+      toast({
+        title: "Devis annulé",
+        description: `Le devis ${confirmAction.numero} a été annulé.`,
+      });
+      setConfirmAction({ type: null, id: '', numero: '' });
+    }
   };
 
-  const handleSupprimer = (id: string, numero: string) => {
-    toast({
-      title: "Devis supprimé",
-      description: `Le devis ${numero} a été supprimé.`,
-      variant: "destructive",
-    });
+  const confirmSupprimer = () => {
+    if (confirmAction.type === 'supprimer') {
+      toast({
+        title: "Devis supprimé",
+        description: `Le devis ${confirmAction.numero} a été supprimé.`,
+        variant: "destructive",
+      });
+      setConfirmAction({ type: null, id: '', numero: '' });
+    }
   };
 
   const handleEnvoyer = (id: string, numero: string) => {
@@ -251,7 +274,7 @@ export default function DevisPage() {
                               size="icon" 
                               title="Annuler"
                               className="text-orange-600"
-                              onClick={() => handleAnnuler(d.id, d.numero)}
+                              onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}
                             >
                               <Ban className="h-4 w-4" />
                             </Button>
@@ -261,7 +284,7 @@ export default function DevisPage() {
                             size="icon" 
                             title="Supprimer"
                             className="text-destructive"
-                            onClick={() => handleSupprimer(d.id, d.numero)}
+                            onClick={() => setConfirmAction({ type: 'supprimer', id: d.id, numero: d.numero })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -275,6 +298,50 @@ export default function DevisPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de confirmation pour annulation */}
+      <AlertDialog 
+        open={confirmAction.type === 'annuler'} 
+        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir annuler le devis <strong>{confirmAction.numero}</strong> ? 
+              Cette action changera le statut du devis.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAnnuler} className="bg-orange-600 hover:bg-orange-700">
+              Oui, annuler
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de confirmation pour suppression */}
+      <AlertDialog 
+        open={confirmAction.type === 'supprimer'} 
+        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le devis <strong>{confirmAction.numero}</strong> ? 
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSupprimer} className="bg-destructive hover:bg-destructive/90">
+              Oui, supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
