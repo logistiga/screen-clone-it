@@ -161,6 +161,49 @@ export interface ActionAudit {
   ip?: string;
 }
 
+// Interface pour les crédits bancaires
+export interface CreditBancaire {
+  id: string;
+  numero: string;
+  banqueId: string;
+  banque?: Banque;
+  montantEmprunte: number;
+  tauxInteret: number; // en pourcentage annuel
+  dureeEnMois: number;
+  dateDebut: string;
+  dateFin: string;
+  mensualite: number;
+  totalInterets: number;
+  montantRembourse: number;
+  statut: 'actif' | 'termine' | 'en_retard';
+  objet: string;
+  notes?: string;
+}
+
+export interface EcheanceCredit {
+  id: string;
+  creditId: string;
+  numero: number;
+  dateEcheance: string;
+  montantCapital: number;
+  montantInteret: number;
+  montantTotal: number;
+  montantPaye: number;
+  datePaiement?: string;
+  statut: 'a_payer' | 'payee' | 'en_retard';
+}
+
+export interface RemboursementCredit {
+  id: string;
+  creditId: string;
+  echeanceId: string;
+  montant: number;
+  date: string;
+  banqueId: string;
+  reference?: string;
+  notes?: string;
+}
+
 // Données mock
 export const clients: Client[] = [
   {
@@ -502,36 +545,44 @@ export const mouvementsCaisse: MouvementCaisse[] = [
     type: 'entree',
     montant: 500000,
     date: '2026-01-04',
-    description: 'Paiement ordre OT-2026-0002',
+    description: 'Paiement espèces - SETRAG',
     paiementId: '3',
     source: 'caisse'
   },
   {
     id: '2',
+    type: 'sortie',
+    montant: 150000,
+    date: '2026-01-04',
+    description: 'Achat carburant',
+    source: 'caisse'
+  },
+  {
+    id: '3',
     type: 'entree',
     montant: 1249500,
     date: '2026-01-05',
-    description: 'Paiement facture FAC-2026-0001',
+    description: 'Virement - TOTAL GABON',
     paiementId: '1',
     source: 'banque',
     banqueId: '1'
   },
   {
-    id: '3',
+    id: '4',
     type: 'entree',
     montant: 500000,
     date: '2026-01-06',
-    description: 'Paiement partiel facture FAC-2026-0002',
+    description: 'Chèque - COMILOG',
     paiementId: '2',
     source: 'banque',
     banqueId: '2'
   },
   {
-    id: '4',
+    id: '5',
     type: 'sortie',
-    montant: 150000,
+    montant: 75000,
     date: '2026-01-05',
-    description: 'Achat fournitures bureau',
+    description: 'Frais de fonctionnement',
     source: 'caisse'
   }
 ];
@@ -539,9 +590,9 @@ export const mouvementsCaisse: MouvementCaisse[] = [
 export const utilisateurs: Utilisateur[] = [
   {
     id: '1',
-    nom: 'Jean-Pierre Moussavou',
-    email: 'jp.moussavou@lojistiga.ga',
-    telephone: '+241 077 00 00 01',
+    nom: 'Jean-Pierre Mbongo',
+    email: 'jp.mbongo@lojistiga.ga',
+    telephone: '+241 77 12 34 56',
     roleId: '1',
     actif: true,
     dateCreation: '2024-01-01',
@@ -549,9 +600,9 @@ export const utilisateurs: Utilisateur[] = [
   },
   {
     id: '2',
-    nom: 'Marie-Claire Obiang',
-    email: 'mc.obiang@lojistiga.ga',
-    telephone: '+241 077 00 00 02',
+    nom: 'Marie Ndong',
+    email: 'm.ndong@lojistiga.ga',
+    telephone: '+241 66 98 76 54',
     roleId: '2',
     actif: true,
     dateCreation: '2024-02-15',
@@ -559,9 +610,9 @@ export const utilisateurs: Utilisateur[] = [
   },
   {
     id: '3',
-    nom: 'Patrick Ndong',
-    email: 'p.ndong@lojistiga.ga',
-    telephone: '+241 077 00 00 03',
+    nom: 'Paul Obame',
+    email: 'p.obame@lojistiga.ga',
+    telephone: '+241 77 45 67 89',
     roleId: '3',
     actif: true,
     dateCreation: '2024-03-20',
@@ -569,12 +620,11 @@ export const utilisateurs: Utilisateur[] = [
   },
   {
     id: '4',
-    nom: 'Sandrine Ella',
-    email: 's.ella@lojistiga.ga',
-    telephone: '+241 077 00 00 04',
-    roleId: '4',
+    nom: 'Sophie Essono',
+    email: 's.essono@lojistiga.ga',
+    roleId: '2',
     actif: false,
-    dateCreation: '2024-05-10'
+    dateCreation: '2024-04-10'
   }
 ];
 
@@ -584,31 +634,16 @@ export const roles: Role[] = [
     nom: 'Administrateur',
     description: 'Accès complet à toutes les fonctionnalités',
     permissions: [
-      { module: 'clients', action: 'voir', autorise: true },
-      { module: 'clients', action: 'creer', autorise: true },
-      { module: 'clients', action: 'modifier', autorise: true },
-      { module: 'clients', action: 'supprimer', autorise: true },
-      { module: 'devis', action: 'voir', autorise: true },
-      { module: 'devis', action: 'creer', autorise: true },
-      { module: 'devis', action: 'modifier', autorise: true },
-      { module: 'devis', action: 'convertir', autorise: true },
-      { module: 'devis', action: 'annuler', autorise: true },
-      { module: 'ordres', action: 'voir', autorise: true },
-      { module: 'ordres', action: 'creer', autorise: true },
-      { module: 'ordres', action: 'modifier', autorise: true },
-      { module: 'ordres', action: 'valider', autorise: true },
-      { module: 'ordres', action: 'annuler', autorise: true },
-      { module: 'factures', action: 'voir', autorise: true },
-      { module: 'factures', action: 'creer', autorise: true },
-      { module: 'factures', action: 'paiement', autorise: true },
-      { module: 'factures', action: 'annuler', autorise: true },
-      { module: 'caisse', action: 'voir', autorise: true },
-      { module: 'caisse', action: 'entree_sortie', autorise: true },
-      { module: 'banque', action: 'voir', autorise: true },
-      { module: 'banque', action: 'gerer', autorise: true },
-      { module: 'reporting', action: 'voir', autorise: true },
-      { module: 'reporting', action: 'exporter', autorise: true },
-      { module: 'parametrage', action: 'acces_complet', autorise: true }
+      { module: 'clients', action: 'lecture', autorise: true },
+      { module: 'clients', action: 'ecriture', autorise: true },
+      { module: 'clients', action: 'suppression', autorise: true },
+      { module: 'factures', action: 'lecture', autorise: true },
+      { module: 'factures', action: 'ecriture', autorise: true },
+      { module: 'factures', action: 'suppression', autorise: true },
+      { module: 'caisse', action: 'lecture', autorise: true },
+      { module: 'caisse', action: 'ecriture', autorise: true },
+      { module: 'parametres', action: 'lecture', autorise: true },
+      { module: 'parametres', action: 'ecriture', autorise: true }
     ]
   },
   {
@@ -616,21 +651,16 @@ export const roles: Role[] = [
     nom: 'Comptable',
     description: 'Gestion des factures et de la comptabilité',
     permissions: [
-      { module: 'clients', action: 'voir', autorise: true },
-      { module: 'clients', action: 'creer', autorise: false },
-      { module: 'clients', action: 'modifier', autorise: false },
-      { module: 'clients', action: 'supprimer', autorise: false },
-      { module: 'devis', action: 'voir', autorise: true },
-      { module: 'devis', action: 'creer', autorise: false },
-      { module: 'factures', action: 'voir', autorise: true },
-      { module: 'factures', action: 'creer', autorise: true },
-      { module: 'factures', action: 'paiement', autorise: true },
-      { module: 'caisse', action: 'voir', autorise: true },
-      { module: 'caisse', action: 'entree_sortie', autorise: true },
-      { module: 'banque', action: 'voir', autorise: true },
-      { module: 'banque', action: 'gerer', autorise: true },
-      { module: 'reporting', action: 'voir', autorise: true },
-      { module: 'reporting', action: 'exporter', autorise: true }
+      { module: 'clients', action: 'lecture', autorise: true },
+      { module: 'clients', action: 'ecriture', autorise: true },
+      { module: 'clients', action: 'suppression', autorise: false },
+      { module: 'factures', action: 'lecture', autorise: true },
+      { module: 'factures', action: 'ecriture', autorise: true },
+      { module: 'factures', action: 'suppression', autorise: false },
+      { module: 'caisse', action: 'lecture', autorise: true },
+      { module: 'caisse', action: 'ecriture', autorise: true },
+      { module: 'parametres', action: 'lecture', autorise: false },
+      { module: 'parametres', action: 'ecriture', autorise: false }
     ]
   },
   {
@@ -638,27 +668,16 @@ export const roles: Role[] = [
     nom: 'Commercial',
     description: 'Gestion des clients et des devis',
     permissions: [
-      { module: 'clients', action: 'voir', autorise: true },
-      { module: 'clients', action: 'creer', autorise: true },
-      { module: 'clients', action: 'modifier', autorise: true },
-      { module: 'devis', action: 'voir', autorise: true },
-      { module: 'devis', action: 'creer', autorise: true },
-      { module: 'devis', action: 'modifier', autorise: true },
-      { module: 'devis', action: 'convertir', autorise: true },
-      { module: 'ordres', action: 'voir', autorise: true },
-      { module: 'ordres', action: 'creer', autorise: true },
-      { module: 'factures', action: 'voir', autorise: true }
-    ]
-  },
-  {
-    id: '4',
-    nom: 'Opérateur',
-    description: 'Gestion des ordres de travail',
-    permissions: [
-      { module: 'clients', action: 'voir', autorise: true },
-      { module: 'ordres', action: 'voir', autorise: true },
-      { module: 'ordres', action: 'creer', autorise: true },
-      { module: 'ordres', action: 'modifier', autorise: true }
+      { module: 'clients', action: 'lecture', autorise: true },
+      { module: 'clients', action: 'ecriture', autorise: true },
+      { module: 'clients', action: 'suppression', autorise: false },
+      { module: 'factures', action: 'lecture', autorise: true },
+      { module: 'factures', action: 'ecriture', autorise: false },
+      { module: 'factures', action: 'suppression', autorise: false },
+      { module: 'caisse', action: 'lecture', autorise: false },
+      { module: 'caisse', action: 'ecriture', autorise: false },
+      { module: 'parametres', action: 'lecture', autorise: false },
+      { module: 'parametres', action: 'ecriture', autorise: false }
     ]
   }
 ];
@@ -673,7 +692,8 @@ export const actionsAudit: ActionAudit[] = [
     documentId: '1',
     documentNumero: 'FAC-2026-0001',
     details: 'Création de la facture FAC-2026-0001 pour TOTAL GABON',
-    date: '2026-01-03T10:30:00'
+    date: '2026-01-03 09:15:00',
+    ip: '192.168.1.100'
   },
   {
     id: '2',
@@ -683,11 +703,23 @@ export const actionsAudit: ActionAudit[] = [
     documentType: 'facture',
     documentId: '1',
     documentNumero: 'FAC-2026-0001',
-    details: 'Enregistrement paiement de 1 249 500 XAF par virement',
-    date: '2026-01-05T14:15:00'
+    details: 'Enregistrement du paiement de 1 249 500 FCFA par virement',
+    date: '2026-01-05 14:30:00',
+    ip: '192.168.1.101'
   },
   {
     id: '3',
+    utilisateurId: '1',
+    action: 'modification',
+    module: 'clients',
+    documentType: 'client',
+    documentId: '2',
+    details: 'Mise à jour des coordonnées de COMILOG',
+    date: '2026-01-05 16:45:00',
+    ip: '192.168.1.100'
+  },
+  {
+    id: '4',
     utilisateurId: '3',
     action: 'creation',
     module: 'devis',
@@ -695,109 +727,131 @@ export const actionsAudit: ActionAudit[] = [
     documentId: '3',
     documentNumero: 'DEV-2026-0003',
     details: 'Création du devis DEV-2026-0003 pour MAUREL & PROM',
-    date: '2026-01-04T09:00:00'
-  },
-  {
-    id: '4',
-    utilisateurId: '1',
-    action: 'modification',
-    module: 'clients',
-    documentType: 'client',
-    documentId: '2',
-    details: 'Mise à jour des informations de contact de COMILOG',
-    date: '2026-01-05T11:45:00'
+    date: '2026-01-04 11:20:00',
+    ip: '192.168.1.102'
   },
   {
     id: '5',
     utilisateurId: '2',
-    action: 'sortie',
+    action: 'sortie_caisse',
     module: 'caisse',
-    details: 'Sortie de caisse: 150 000 XAF - Achat fournitures bureau',
-    date: '2026-01-05T16:30:00'
+    details: 'Sortie de caisse de 150 000 FCFA pour achat carburant',
+    date: '2026-01-04 10:00:00',
+    ip: '192.168.1.101'
   }
 ];
 
-// Configuration de numérotation
-export interface ConfigurationNumerotation {
-  prefixeDevis: string;
-  prefixeOrdre: string;
-  prefixeFacture: string;
-  prefixeAvoir: string;
-  formatAnnee: boolean;
-  prochainNumeroDevis: number;
-  prochainNumeroOrdre: number;
-  prochainNumeroFacture: number;
-  prochainNumeroAvoir: number;
-}
+export const annulations: Annulation[] = [
+  {
+    id: '1',
+    numero: 'ANN-2026-0001',
+    type: 'facture',
+    documentId: '4',
+    documentNumero: 'FAC-2025-0089',
+    clientId: '3',
+    montant: 750000,
+    date: '2026-01-02',
+    motif: 'Erreur de facturation - double saisie',
+    avoirGenere: true
+  }
+];
 
-export const configurationNumerotation: ConfigurationNumerotation = {
-  prefixeDevis: 'DEV',
-  prefixeOrdre: 'OT',
-  prefixeFacture: 'FAC',
-  prefixeAvoir: 'AV',
-  formatAnnee: true,
-  prochainNumeroDevis: 4,
-  prochainNumeroOrdre: 5,
-  prochainNumeroFacture: 4,
-  prochainNumeroAvoir: 1
-};
+// Données mock pour les crédits bancaires
+export const creditsBancaires: CreditBancaire[] = [
+  {
+    id: '1',
+    numero: 'CRED-2025-0001',
+    banqueId: '1',
+    montantEmprunte: 50000000,
+    tauxInteret: 8.5,
+    dureeEnMois: 36,
+    dateDebut: '2025-03-01',
+    dateFin: '2028-02-29',
+    mensualite: 1577083,
+    totalInterets: 6775000,
+    montantRembourse: 15770830,
+    statut: 'actif',
+    objet: 'Acquisition véhicules de transport',
+    notes: 'Crédit pour l\'achat de 3 camions plateau'
+  },
+  {
+    id: '2',
+    numero: 'CRED-2025-0002',
+    banqueId: '2',
+    montantEmprunte: 25000000,
+    tauxInteret: 7.5,
+    dureeEnMois: 24,
+    dateDebut: '2025-06-01',
+    dateFin: '2027-05-31',
+    mensualite: 1126563,
+    totalInterets: 2037500,
+    montantRembourse: 7886941,
+    statut: 'actif',
+    objet: 'Équipement manutention',
+    notes: 'Achat chariot élévateur et grue mobile'
+  },
+  {
+    id: '3',
+    numero: 'CRED-2024-0001',
+    banqueId: '3',
+    montantEmprunte: 15000000,
+    tauxInteret: 9.0,
+    dureeEnMois: 12,
+    dateDebut: '2024-06-01',
+    dateFin: '2025-05-31',
+    mensualite: 1312500,
+    totalInterets: 750000,
+    montantRembourse: 15750000,
+    statut: 'termine',
+    objet: 'Fonds de roulement',
+    notes: 'Crédit court terme pour trésorerie'
+  }
+];
 
-// Configuration des taxes
-export interface ConfigurationTaxes {
-  tvaRate: number;
-  cssRate: number;
-}
+export const echeancesCredits: EcheanceCredit[] = [
+  // Échéances du crédit 1 (BGFI Bank - 50M)
+  { id: 'ech-1-1', creditId: '1', numero: 1, dateEcheance: '2025-04-01', montantCapital: 1388889, montantInteret: 354167, montantTotal: 1743056, montantPaye: 1743056, datePaiement: '2025-04-01', statut: 'payee' },
+  { id: 'ech-1-2', creditId: '1', numero: 2, dateEcheance: '2025-05-01', montantCapital: 1388889, montantInteret: 344271, montantTotal: 1733160, montantPaye: 1733160, datePaiement: '2025-05-02', statut: 'payee' },
+  { id: 'ech-1-3', creditId: '1', numero: 3, dateEcheance: '2025-06-01', montantCapital: 1388889, montantInteret: 334375, montantTotal: 1723264, montantPaye: 1723264, datePaiement: '2025-06-01', statut: 'payee' },
+  { id: 'ech-1-4', creditId: '1', numero: 4, dateEcheance: '2025-07-01', montantCapital: 1388889, montantInteret: 324479, montantTotal: 1713368, montantPaye: 1713368, datePaiement: '2025-07-01', statut: 'payee' },
+  { id: 'ech-1-5', creditId: '1', numero: 5, dateEcheance: '2025-08-01', montantCapital: 1388889, montantInteret: 314583, montantTotal: 1703472, montantPaye: 1703472, datePaiement: '2025-08-01', statut: 'payee' },
+  { id: 'ech-1-6', creditId: '1', numero: 6, dateEcheance: '2025-09-01', montantCapital: 1388889, montantInteret: 304688, montantTotal: 1693577, montantPaye: 1693577, datePaiement: '2025-09-02', statut: 'payee' },
+  { id: 'ech-1-7', creditId: '1', numero: 7, dateEcheance: '2025-10-01', montantCapital: 1388889, montantInteret: 294792, montantTotal: 1683681, montantPaye: 1683681, datePaiement: '2025-10-01', statut: 'payee' },
+  { id: 'ech-1-8', creditId: '1', numero: 8, dateEcheance: '2025-11-01', montantCapital: 1388889, montantInteret: 284896, montantTotal: 1673785, montantPaye: 1673785, datePaiement: '2025-11-01', statut: 'payee' },
+  { id: 'ech-1-9', creditId: '1', numero: 9, dateEcheance: '2025-12-01', montantCapital: 1388889, montantInteret: 275000, montantTotal: 1663889, montantPaye: 1663889, datePaiement: '2025-12-01', statut: 'payee' },
+  { id: 'ech-1-10', creditId: '1', numero: 10, dateEcheance: '2026-01-01', montantCapital: 1388889, montantInteret: 265104, montantTotal: 1653993, montantPaye: 1653993, datePaiement: '2026-01-02', statut: 'payee' },
+  { id: 'ech-1-11', creditId: '1', numero: 11, dateEcheance: '2026-02-01', montantCapital: 1388889, montantInteret: 255208, montantTotal: 1644097, montantPaye: 0, statut: 'a_payer' },
+  { id: 'ech-1-12', creditId: '1', numero: 12, dateEcheance: '2026-03-01', montantCapital: 1388889, montantInteret: 245313, montantTotal: 1634202, montantPaye: 0, statut: 'a_payer' },
+  // Plus d'échéances futures...
 
-export const configurationTaxes: ConfigurationTaxes = {
-  tvaRate: 18,
-  cssRate: 1
-};
+  // Échéances du crédit 2 (UGB - 25M)
+  { id: 'ech-2-1', creditId: '2', numero: 1, dateEcheance: '2025-07-01', montantCapital: 1041667, montantInteret: 156250, montantTotal: 1197917, montantPaye: 1197917, datePaiement: '2025-07-01', statut: 'payee' },
+  { id: 'ech-2-2', creditId: '2', numero: 2, dateEcheance: '2025-08-01', montantCapital: 1041667, montantInteret: 149740, montantTotal: 1191407, montantPaye: 1191407, datePaiement: '2025-08-02', statut: 'payee' },
+  { id: 'ech-2-3', creditId: '2', numero: 3, dateEcheance: '2025-09-01', montantCapital: 1041667, montantInteret: 143229, montantTotal: 1184896, montantPaye: 1184896, datePaiement: '2025-09-01', statut: 'payee' },
+  { id: 'ech-2-4', creditId: '2', numero: 4, dateEcheance: '2025-10-01', montantCapital: 1041667, montantInteret: 136719, montantTotal: 1178386, montantPaye: 1178386, datePaiement: '2025-10-01', statut: 'payee' },
+  { id: 'ech-2-5', creditId: '2', numero: 5, dateEcheance: '2025-11-01', montantCapital: 1041667, montantInteret: 130208, montantTotal: 1171875, montantPaye: 1171875, datePaiement: '2025-11-01', statut: 'payee' },
+  { id: 'ech-2-6', creditId: '2', numero: 6, dateEcheance: '2025-12-01', montantCapital: 1041667, montantInteret: 123698, montantTotal: 1165365, montantPaye: 1165365, datePaiement: '2025-12-01', statut: 'payee' },
+  { id: 'ech-2-7', creditId: '2', numero: 7, dateEcheance: '2026-01-01', montantCapital: 1041667, montantInteret: 117188, montantTotal: 1158855, montantPaye: 1158855, datePaiement: '2026-01-02', statut: 'payee' },
+  { id: 'ech-2-8', creditId: '2', numero: 8, dateEcheance: '2026-02-01', montantCapital: 1041667, montantInteret: 110677, montantTotal: 1152344, montantPaye: 0, statut: 'a_payer' },
+  { id: 'ech-2-9', creditId: '2', numero: 9, dateEcheance: '2026-03-01', montantCapital: 1041667, montantInteret: 104167, montantTotal: 1145834, montantPaye: 0, statut: 'a_payer' }
+];
 
-// Taux de taxes pour calculs
-export const TAUX_TVA = 0.18;
-export const TAUX_CSS = 0.01;
-
-// Helpers
-export const formatMontant = (montant: number): string => {
-  return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
-};
-
-export const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('fr-FR');
-};
-
-export const getClientById = (id: string): Client | undefined => {
-  return clients.find(c => c.id === id);
-};
-
-export const getStatutLabel = (statut: string): string => {
-  const labels: Record<string, string> = {
-    brouillon: 'Brouillon',
-    envoye: 'Envoyé',
-    accepte: 'Accepté',
-    refuse: 'Refusé',
-    expire: 'Expiré',
-    en_cours: 'En cours',
-    termine: 'Terminé',
-    facture: 'Facturé',
-    annule: 'Annulé',
-    emise: 'Émise',
-    payee: 'Payée',
-    partielle: 'Partielle',
-    impayee: 'Impayée',
-    annulee: 'Annulée'
-  };
-  return labels[statut] || statut;
-};
-
-export const getTypeOperationLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    conteneurs: 'Conteneurs',
-    conventionnel: 'Conventionnel',
-    location: 'Location véhicule',
-    transport: 'Transport',
-    manutention: 'Manutention',
-    stockage: 'Stockage'
-  };
-  return labels[type] || type;
-};
+export const remboursementsCredits: RemboursementCredit[] = [
+  { id: 'remb-1', creditId: '1', echeanceId: 'ech-1-1', montant: 1743056, date: '2025-04-01', banqueId: '1', reference: 'VIR-CRED-001' },
+  { id: 'remb-2', creditId: '1', echeanceId: 'ech-1-2', montant: 1733160, date: '2025-05-02', banqueId: '1', reference: 'VIR-CRED-002' },
+  { id: 'remb-3', creditId: '1', echeanceId: 'ech-1-3', montant: 1723264, date: '2025-06-01', banqueId: '1', reference: 'VIR-CRED-003' },
+  { id: 'remb-4', creditId: '1', echeanceId: 'ech-1-4', montant: 1713368, date: '2025-07-01', banqueId: '1', reference: 'VIR-CRED-004' },
+  { id: 'remb-5', creditId: '1', echeanceId: 'ech-1-5', montant: 1703472, date: '2025-08-01', banqueId: '1', reference: 'VIR-CRED-005' },
+  { id: 'remb-6', creditId: '1', echeanceId: 'ech-1-6', montant: 1693577, date: '2025-09-02', banqueId: '1', reference: 'VIR-CRED-006' },
+  { id: 'remb-7', creditId: '1', echeanceId: 'ech-1-7', montant: 1683681, date: '2025-10-01', banqueId: '1', reference: 'VIR-CRED-007' },
+  { id: 'remb-8', creditId: '1', echeanceId: 'ech-1-8', montant: 1673785, date: '2025-11-01', banqueId: '1', reference: 'VIR-CRED-008' },
+  { id: 'remb-9', creditId: '1', echeanceId: 'ech-1-9', montant: 1663889, date: '2025-12-01', banqueId: '1', reference: 'VIR-CRED-009' },
+  { id: 'remb-10', creditId: '1', echeanceId: 'ech-1-10', montant: 1653993, date: '2026-01-02', banqueId: '1', reference: 'VIR-CRED-010' },
+  { id: 'remb-11', creditId: '2', echeanceId: 'ech-2-1', montant: 1197917, date: '2025-07-01', banqueId: '2', reference: 'VIR-CRED-011' },
+  { id: 'remb-12', creditId: '2', echeanceId: 'ech-2-2', montant: 1191407, date: '2025-08-02', banqueId: '2', reference: 'VIR-CRED-012' },
+  { id: 'remb-13', creditId: '2', echeanceId: 'ech-2-3', montant: 1184896, date: '2025-09-01', banqueId: '2', reference: 'VIR-CRED-013' },
+  { id: 'remb-14', creditId: '2', echeanceId: 'ech-2-4', montant: 1178386, date: '2025-10-01', banqueId: '2', reference: 'VIR-CRED-014' },
+  { id: 'remb-15', creditId: '2', echeanceId: 'ech-2-5', montant: 1171875, date: '2025-11-01', banqueId: '2', reference: 'VIR-CRED-015' },
+  { id: 'remb-16', creditId: '2', echeanceId: 'ech-2-6', montant: 1165365, date: '2025-12-01', banqueId: '2', reference: 'VIR-CRED-016' },
+  { id: 'remb-17', creditId: '2', echeanceId: 'ech-2-7', montant: 1158855, date: '2026-01-02', banqueId: '2', reference: 'VIR-CRED-017' }
+];
