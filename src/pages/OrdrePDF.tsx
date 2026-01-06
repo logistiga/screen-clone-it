@@ -70,9 +70,13 @@ export default function OrdrePDFPage() {
         </div>
       </div>
 
-      {/* PDF Content */}
+      {/* PDF Content - A4 Format */}
       <div className="container py-8 print:py-0">
-        <Card ref={contentRef} className="max-w-4xl mx-auto p-6 print:shadow-none print:border-none relative bg-white">
+        <Card 
+          ref={contentRef} 
+          className="mx-auto bg-white print:shadow-none print:border-none relative"
+          style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
+        >
           {/* Watermark si annulé */}
           {isAnnule && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -106,24 +110,36 @@ export default function OrdrePDFPage() {
           </div>
 
           {/* Tableau des lignes */}
-          <table className="w-full mb-4 text-sm">
+          <table className="w-full mb-4 text-sm border-collapse">
             <thead>
               <tr className="border-b-2 border-primary">
-                <th className="text-left py-2 font-semibold text-xs">Description</th>
-                <th className="text-center py-2 font-semibold w-16 text-xs">Qté</th>
-                <th className="text-right py-2 font-semibold w-28 text-xs">Prix unit.</th>
-                <th className="text-right py-2 font-semibold w-32 text-xs">Montant HT</th>
+                <th className="text-left py-2 px-2 font-semibold text-xs w-10 border-r">N°</th>
+                <th className="text-left py-2 px-2 font-semibold text-xs border-r">Description</th>
+                <th className="text-center py-2 px-2 font-semibold w-16 text-xs border-r">Qté</th>
+                <th className="text-right py-2 px-2 font-semibold w-28 text-xs border-r">Prix unit.</th>
+                <th className="text-right py-2 px-2 font-semibold w-32 text-xs">Montant HT</th>
               </tr>
             </thead>
             <tbody>
               {ordre.lignes.map((ligne, index) => (
-                <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-1.5 px-1 text-xs">{ligne.description}</td>
-                  <td className="text-center py-1.5 text-xs">{ligne.quantite}</td>
-                  <td className="text-right py-1.5 text-xs">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-1.5 font-medium text-xs">
+                <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20 border-b" : "border-b"}>
+                  <td className="py-1.5 px-2 text-xs border-r">{index + 1}</td>
+                  <td className="py-1.5 px-2 text-xs border-r">{ligne.description}</td>
+                  <td className="text-center py-1.5 px-2 text-xs border-r">{ligne.quantite}</td>
+                  <td className="text-right py-1.5 px-2 text-xs border-r">{formatMontant(ligne.prixUnitaire)}</td>
+                  <td className="text-right py-1.5 px-2 font-medium text-xs">
                     {formatMontant(ligne.montantHT)}
                   </td>
+                </tr>
+              ))}
+              {/* Lignes vides pour remplir (min 10 lignes) */}
+              {Array.from({ length: Math.max(0, 10 - ordre.lignes.length) }).map((_, i) => (
+                <tr key={`empty-${i}`} className="border-b h-6">
+                  <td className="py-1.5 px-2 border-r">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r">&nbsp;</td>
+                  <td className="py-1.5 px-2">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
@@ -131,7 +147,7 @@ export default function OrdrePDFPage() {
 
           {/* Totaux */}
           <div className="flex justify-end mb-4">
-            <div className="w-56 space-y-1 text-xs">
+            <div className="w-56 space-y-1 text-xs border p-3">
               <div className="flex justify-between py-0.5">
                 <span className="text-muted-foreground">Total HT</span>
                 <span className="font-medium">{formatMontant(ordre.montantHT)}</span>
@@ -186,6 +202,10 @@ export default function OrdrePDFPage() {
           .print\\:shadow-none { box-shadow: none !important; }
           .print\\:border-none { border: none !important; }
           .print\\:py-0 { padding-top: 0 !important; padding-bottom: 0 !important; }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
         }
       `}</style>
     </div>

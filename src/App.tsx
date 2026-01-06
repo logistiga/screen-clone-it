@@ -17,6 +17,7 @@ import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
 import OrdreDetailPage from "./pages/OrdreDetail";
 import OrdrePDFPage from "./pages/OrdrePDF";
+import ConnaissementPDFPage from "./pages/ConnaissementPDF";
 import ModifierOrdrePage from "./pages/ModifierOrdre";
 import FacturesPage from "./pages/Factures";
 import NouvelleFacturePage from "./pages/NouvelleFacture";
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/ordres/nouveau" element={<NouvelOrdrePage />} />
             <Route path="/ordres/:id" element={<OrdreDetailPage />} />
             <Route path="/ordres/:id/pdf" element={<OrdrePDFPage />} />
+            <Route path="/ordres/:id/connaissement" element={<ConnaissementPDFPage />} />
             <Route path="/ordres/:id/modifier" element={<ModifierOrdrePage />} />
             <Route path="/factures" element={<FacturesPage />} />
             <Route path="/factures/nouvelle" element={<NouvelleFacturePage />} />
