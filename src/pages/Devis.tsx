@@ -30,8 +30,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Send, Copy } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { EmailModal } from "@/components/EmailModal";
 import { devis, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 
 export default function DevisPage() {
@@ -40,12 +41,19 @@ export default function DevisPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   
-  // États pour les modales de confirmation
+  // États pour les modales
   const [confirmAction, setConfirmAction] = useState<{
     type: 'annuler' | 'supprimer' | 'convertir' | null;
     id: string;
     numero: string;
   }>({ type: null, id: '', numero: '' });
+
+  const [emailModal, setEmailModal] = useState<{
+    open: boolean;
+    numero: string;
+    clientEmail: string;
+    clientNom: string;
+  }>({ open: false, numero: '', clientEmail: '', clientNom: '' });
 
   const confirmAnnuler = () => {
     if (confirmAction.type === 'annuler') {
@@ -77,20 +85,6 @@ export default function DevisPage() {
       setConfirmAction({ type: null, id: '', numero: '' });
       navigate("/ordres/nouveau");
     }
-  };
-
-  const handleEnvoyer = (id: string, numero: string) => {
-    toast({
-      title: "Devis envoyé",
-      description: `Le devis ${numero} a été envoyé au client.`,
-    });
-  };
-
-  const handleDupliquer = (id: string, numero: string) => {
-    toast({
-      title: "Devis dupliqué",
-      description: `Une copie du devis ${numero} a été créée.`,
-    });
   };
 
   const filteredDevis = devis.filter(d => {
@@ -219,7 +213,12 @@ export default function DevisPage() {
                   const client = clients.find(c => c.id === d.clientId);
                   return (
                     <TableRow key={d.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="font-medium">{d.numero}</TableCell>
+                      <TableCell 
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                        onClick={() => navigate(`/devis/${d.id}`)}
+                      >
+                        {d.numero}
+                      </TableCell>
                       <TableCell>{client?.nom}</TableCell>
                       <TableCell>{formatDate(d.dateCreation)}</TableCell>
                       <TableCell>{formatDate(d.dateValidite)}</TableCell>
@@ -230,25 +229,46 @@ export default function DevisPage() {
                       <TableCell>{getStatutBadge(d.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Voir"
+                            onClick={() => navigate(`/devis/${d.id}`)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           {d.statut !== 'refuse' && d.statut !== 'expire' && (
-                            <Button variant="ghost" size="icon" title="Modifier">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {d.statut === 'brouillon' && (
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              title="Envoyer"
-                              className="text-blue-600"
-                              onClick={() => handleEnvoyer(d.id, d.numero)}
+                              title="Modifier"
+                              onClick={() => navigate(`/devis/${d.id}/modifier`)}
                             >
-                              <Send className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="PDF"
+                            onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Envoyer par email"
+                            className="text-blue-600"
+                            onClick={() => setEmailModal({
+                              open: true,
+                              numero: d.numero,
+                              clientEmail: client?.email || '',
+                              clientNom: client?.nom || ''
+                            })}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
                           {d.statut === 'accepte' && (
                             <Button 
                               variant="ghost" 
@@ -260,17 +280,6 @@ export default function DevisPage() {
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Dupliquer"
-                            onClick={() => handleDupliquer(d.id, d.numero)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="PDF">
-                            <FileText className="h-4 w-4" />
-                          </Button>
                           {d.statut !== 'refuse' && d.statut !== 'expire' && (
                             <Button 
                               variant="ghost" 
@@ -367,6 +376,16 @@ export default function DevisPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Email */}
+      <EmailModal
+        open={emailModal.open}
+        onOpenChange={(open) => setEmailModal({ ...emailModal, open })}
+        documentType="devis"
+        documentNumero={emailModal.numero}
+        clientEmail={emailModal.clientEmail}
+        clientNom={emailModal.clientNom}
+      />
     </MainLayout>
   );
 }
