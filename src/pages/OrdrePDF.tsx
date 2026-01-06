@@ -61,12 +61,9 @@ export default function OrdrePDFPage() {
     return labels[type] || type;
   };
   
-  // URL pour le QR code
-  const documentUrl = `${window.location.origin}/ordres/${id}`;
-  
-  // Données encodées dans le QR code
-  const qrData = JSON.stringify({
-    type: "ORDRE_TRAVAIL",
+  // Données encodées dans le QR code (URL de vérification)
+  const qrPayload = {
+    type: "CONNAISSEMENT",
     numero: ordre.numero,
     date: ordre.dateCreation,
     client: client?.nom,
@@ -75,8 +72,10 @@ export default function OrdrePDFPage() {
     montantPaye: ordre.montantPaye,
     reste: resteAPayer,
     statut: ordre.statut,
-    url: documentUrl
-  });
+    url: `${window.location.origin}/ordres/${id}`
+  };
+  
+  const qrData = `${window.location.origin}/verification?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -117,26 +116,26 @@ export default function OrdrePDFPage() {
           )}
 
           {/* Header avec logo et QR code */}
-          <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
+          <div className="flex justify-between items-start mb-3 border-b-2 border-primary pb-2">
             <div className="flex items-center gap-3">
-              <img src={logoLojistiga} alt="LOGISTIGA" className="h-14 w-auto" />
+              <img src={logoLojistiga} alt="LOGISTIGA" className="h-12 w-auto" />
               <div>
-                <p className="text-xs text-primary font-semibold">TRANSPORT-STOCKAGE</p>
-                <p className="text-xs text-primary font-semibold">-MANUTENTION</p>
+                <p className="text-[10px] text-primary font-semibold">TRANSPORT-STOCKAGE</p>
+                <p className="text-[10px] text-primary font-semibold">-MANUTENTION</p>
               </div>
             </div>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-primary">ORDRE DE TRAVAIL</h1>
-              <p className="text-sm font-semibold">{ordre.numero}</p>
+              <h1 className="text-lg font-bold text-primary">CONNAISSEMENT</h1>
+              <p className="text-xs font-semibold">{ordre.numero}</p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <QRCodeSVG value={qrData} size={60} level="M" />
-              <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
+              <QRCodeSVG value={qrData} size={50} level="M" />
+              <p className="text-[7px] text-muted-foreground">Scannez pour vérifier</p>
             </div>
           </div>
 
           {/* Infos document */}
-          <div className="flex justify-between text-xs mb-4">
+          <div className="flex justify-between text-[10px] mb-3">
             <div>
               <p><span className="font-semibold">Date:</span> {formatDate(ordre.dateCreation)}</p>
               <p><span className="font-semibold">Type:</span> {getTypeOperationLabel(ordre.typeOperation)}</p>
@@ -144,75 +143,75 @@ export default function OrdrePDFPage() {
           </div>
 
           {/* Client */}
-          <div className="mb-4 border p-3 rounded">
-            <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
-            <p className="font-semibold text-sm">{client?.nom}</p>
-            <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="mb-3 border p-2 rounded">
+            <h3 className="text-[10px] font-bold text-primary mb-0.5">CLIENT</h3>
+            <p className="font-semibold text-xs">{client?.nom}</p>
+            <p className="text-[10px] text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+            <p className="text-[10px] text-muted-foreground">
               Tél: {client?.telephone} | Email: {client?.email}
             </p>
           </div>
 
           {/* Tableau des lignes */}
-          <table className="w-full mb-4 text-xs border-collapse border">
+          <table className="w-full mb-3 text-[10px] border-collapse border">
             <thead>
               <tr className="bg-primary text-primary-foreground">
-                <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
-                <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
-                <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
-                <th className="text-right py-2 px-2 font-semibold w-28">Montant HT</th>
+                <th className="text-left py-1.5 px-2 font-semibold w-8 border-r">N°</th>
+                <th className="text-left py-1.5 px-2 font-semibold border-r">Description</th>
+                <th className="text-center py-1.5 px-2 font-semibold w-12 border-r">Qté</th>
+                <th className="text-right py-1.5 px-2 font-semibold w-20 border-r">Prix unit.</th>
+                <th className="text-right py-1.5 px-2 font-semibold w-24">Montant HT</th>
               </tr>
             </thead>
             <tbody>
               {ordre.lignes.map((ligne, index) => (
                 <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
-                  <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
-                  <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
-                  <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-1.5 px-2 font-medium border-b">
+                  <td className="py-1 px-2 border-r border-b">{index + 1}</td>
+                  <td className="py-1 px-2 border-r border-b">{ligne.description}</td>
+                  <td className="text-center py-1 px-2 border-r border-b">{ligne.quantite}</td>
+                  <td className="text-right py-1 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
+                  <td className="text-right py-1 px-2 font-medium border-b">
                     {formatMontant(ligne.montantHT)}
                   </td>
                 </tr>
               ))}
-              {/* Lignes vides pour remplir (min 10 lignes) */}
-              {Array.from({ length: Math.max(0, 10 - ordre.lignes.length) }).map((_, i) => (
-                <tr key={`empty-${i}`} className="h-6">
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-b">&nbsp;</td>
+              {/* Lignes vides pour remplir (min 8 lignes) */}
+              {Array.from({ length: Math.max(0, 8 - ordre.lignes.length) }).map((_, i) => (
+                <tr key={`empty-${i}`} className="h-5">
+                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
+                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
+                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
+                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
+                  <td className="py-1 px-2 border-b">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           {/* Totaux */}
-          <div className="flex justify-end mb-4">
-            <div className="w-56 border text-xs">
-              <div className="flex justify-between py-1 px-3 border-b">
+          <div className="flex justify-end mb-3">
+            <div className="w-48 border text-[10px]">
+              <div className="flex justify-between py-0.5 px-2 border-b">
                 <span>Total HT</span>
                 <span className="font-medium">{formatMontant(ordre.montantHT)}</span>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
+              <div className="flex justify-between py-0.5 px-2 border-b">
                 <span>TVA (18%)</span>
                 <span>{formatMontant(ordre.tva)}</span>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
+              <div className="flex justify-between py-0.5 px-2 border-b">
                 <span>CSS (1%)</span>
                 <span>{formatMontant(ordre.css)}</span>
               </div>
-              <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold border-b">
+              <div className="flex justify-between py-1 px-2 bg-primary text-primary-foreground font-bold border-b">
                 <span>Total TTC</span>
                 <span>{formatMontant(ordre.montantTTC)}</span>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
+              <div className="flex justify-between py-0.5 px-2 border-b">
                 <span>Payé</span>
                 <span className="text-green-600 font-medium">{formatMontant(ordre.montantPaye)}</span>
               </div>
-              <div className="flex justify-between py-1.5 px-3 font-bold">
+              <div className="flex justify-between py-1 px-2 font-bold">
                 <span>Reste à payer</span>
                 <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
                   {formatMontant(resteAPayer)}
@@ -221,11 +220,46 @@ export default function OrdrePDFPage() {
             </div>
           </div>
 
+          {/* DECLARATION CLIENT & CONDITIONS DE TRANSPORT */}
+          <div className="border mb-2">
+            <div className="grid grid-cols-2">
+              {/* Déclaration Client */}
+              <div className="border-r p-2">
+                <h4 className="font-bold text-[9px] border-b pb-1 mb-1">DECLARATION CLIENT</h4>
+                <p className="text-[7px] leading-tight text-justify">
+                  JE DECLARE QUE le contenu de cette expédition est complètement et correctement décrit ci-dessus avec la 
+                  désignation officielle de transport, qu'il est classé et empaqueté correctement, que les indications de danger 
+                  pour les produits dangereux sont correctement appliquées ou affichées, et qu'il est, à tous les égards, en bon état pour 
+                  être transporté selon les Règlements sur le transport des marchandises dangereuses. I HEREBY DECLARE that the 
+                  contents of this consignment are fully and accurately described above by the proper shipping name, are properly 
+                  classified and packaged, have dangerous goods safety marks properly affixed or displayed on them, and are in all 
+                  respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
+                  to have accepted the conditions of transport
+                </p>
+                <p className="text-[8px] font-semibold mt-2">Signature et cachet :</p>
+              </div>
+              
+              {/* Conditions de Transport */}
+              <div className="p-2">
+                <h4 className="font-bold text-[9px] border-b pb-1 mb-1">CONDITIONS DE TRANSPORT</h4>
+                <p className="text-[7px] leading-tight text-justify">
+                  En acceptant le présent document, vous acceptez, sans limitation, les conditions juridiques suivantes : à tout moment et sans préavis, 
+                  LOGISTIGA peut modifier les présents termes et conditions juridiques. Logistiga n'est pas responsable de "Surtaxes et Détentions aux quais des Installations 
+                  Portuaires" ni de "Surestaries de Détention à l'Import ou à l'Export". Logistiga n'est pas responsable de détention en cas de grève dans la zone 
+                  portuaire/Logistiga N'EST PAS RESPONSABLE de la marchandise en cas d'émeute ou mouvements populaires ou les catastrophes naturelles. Logistiga 
+                  n'est pas responsable de tout dommage que le conteneur en cas de sinistre déclaré pendant le transport ou le stockage. Logistiga a une assurance de 
+                  transport plafonnée à 50 millions XAF par voyage. Une déclaration est obligatoire en cas de dépassement. Le client est le seul responsable de la 
+                  marchandise et du matériel lié à la livraison à l'un des lieux inaccessibles. Le client est le responsable du matériel en cas de dégât.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Notes */}
           {ordre.notes && (
-            <div className="mb-3 border p-2 rounded">
-              <h3 className="text-xs font-bold mb-1">NOTES</h3>
-              <p className="text-xs">{ordre.notes}</p>
+            <div className="mb-2 border p-2 rounded">
+              <h3 className="text-[9px] font-bold mb-0.5">NOTES</h3>
+              <p className="text-[8px]">{ordre.notes}</p>
             </div>
           )}
 

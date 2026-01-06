@@ -48,19 +48,20 @@ export default function DevisPDFPage() {
 
   const isAnnule = devisData.statut === "refuse" || devisData.statut === "expire";
   
-  // URL pour le QR code - lien vers le détail du document
-  const documentUrl = `${window.location.origin}/devis/${id}`;
-  
-  // Données encodées dans le QR code
-  const qrData = JSON.stringify({
+  // Données pour le QR code de vérification
+  const qrPayload = {
     type: "DEVIS",
     numero: devisData.numero,
     date: devisData.dateCreation,
     client: client?.nom,
     montantTTC: devisData.montantTTC,
+    montantPaye: 0,
+    reste: devisData.montantTTC,
     statut: devisData.statut,
-    url: documentUrl
-  });
+    url: `${window.location.origin}/devis/${id}`
+  };
+  
+  const qrData = `${window.location.origin}/verification?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
   return (
     <div className="min-h-screen bg-muted/30">

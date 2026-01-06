@@ -49,11 +49,8 @@ export default function FacturePDFPage() {
   const isAnnulee = facture.statut === "annulee";
   const resteAPayer = facture.montantTTC - facture.montantPaye;
   
-  // URL pour le QR code
-  const documentUrl = `${window.location.origin}/factures/${id}`;
-  
-  // Données encodées dans le QR code
-  const qrData = JSON.stringify({
+  // Données pour le QR code de vérification
+  const qrPayload = {
     type: "FACTURE",
     numero: facture.numero,
     date: facture.dateCreation,
@@ -62,8 +59,10 @@ export default function FacturePDFPage() {
     montantPaye: facture.montantPaye,
     reste: resteAPayer,
     statut: facture.statut,
-    url: documentUrl
-  });
+    url: `${window.location.origin}/factures/${id}`
+  };
+  
+  const qrData = `${window.location.origin}/verification?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
   return (
     <div className="min-h-screen bg-muted/30">
