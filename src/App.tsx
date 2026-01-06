@@ -10,6 +10,7 @@ import DevisPage from "./pages/Devis";
 import NouveauDevisPage from "./pages/NouveauDevis";
 import DevisDetailPage from "./pages/DevisDetail";
 import DevisPDFPage from "./pages/DevisPDF";
+import ModifierDevisPage from "./pages/ModifierDevis";
 import NouveauClientPage from "./pages/NouveauClient";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
@@ -62,7 +63,7 @@ const App = () => (
           <Route path="/devis/nouveau" element={<NouveauDevisPage />} />
           <Route path="/devis/:id" element={<DevisDetailPage />} />
           <Route path="/devis/:id/pdf" element={<DevisPDFPage />} />
-          <Route path="/devis/:id/modifier" element={<NouveauDevisPage />} />
+          <Route path="/devis/:id/modifier" element={<ModifierDevisPage />} />
           <Route path="/ordres" element={<OrdresTravailPage />} />
           <Route path="/ordres/nouveau" element={<NouvelOrdrePage />} />
           <Route path="/ordres/:id" element={<OrdreDetailPage />} />
