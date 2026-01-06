@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Printer, Download } from "lucide-react";
 import { factures, clients, formatMontant, formatDate } from "@/data/mockData";
-import logoLojistiga from "@/assets/lojistiga-logo.png";
+import { DocumentHeader, DocumentFooter, DocumentBankDetails } from "@/components/documents/DocumentLayout";
 
 export default function FacturePDFPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,31 +65,14 @@ export default function FacturePDFPage() {
             </div>
           )}
 
-          {/* Header */}
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <img src={logoLojistiga} alt="Lojistiga" className="h-12 mb-4" />
-              <p className="text-sm text-muted-foreground">
-                Zone Industrielle Oloumi
-                <br />
-                BP 12345, Libreville, Gabon
-                <br />
-                Tél: +241 01 44 00 00
-                <br />
-                Email: contact@lojistiga.ga
-              </p>
-            </div>
-            <div className="text-right">
-              <h1 className="text-3xl font-bold text-primary mb-2">FACTURE</h1>
-              <p className="text-xl font-semibold">{facture.numero}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Date: {formatDate(facture.dateCreation)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Échéance: {formatDate(facture.dateEcheance)}
-              </p>
-            </div>
-          </div>
+          {/* Header avec logo centré */}
+          <DocumentHeader
+            title="FACTURE"
+            numero={facture.numero}
+            date={formatDate(facture.dateCreation)}
+            secondaryLabel="Échéance"
+            secondaryValue={formatDate(facture.dateEcheance)}
+          />
 
           <Separator className="my-6" />
 
@@ -182,21 +165,7 @@ export default function FacturePDFPage() {
           </div>
 
           {/* Coordonnées bancaires */}
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">COORDONNÉES BANCAIRES</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="font-medium">BGFI Bank Gabon</p>
-                <p className="text-muted-foreground">IBAN: GA21 4000 1000 0112 3456 7890 123</p>
-                <p className="text-muted-foreground">SWIFT: BGFIGALX</p>
-              </div>
-              <div>
-                <p className="font-medium">UGB</p>
-                <p className="text-muted-foreground">IBAN: GA21 3000 2000 0198 7654 3210 145</p>
-                <p className="text-muted-foreground">SWIFT: UGBGGALX</p>
-              </div>
-            </div>
-          </div>
+          <DocumentBankDetails />
 
           {/* Notes */}
           {facture.notes && (
@@ -206,17 +175,8 @@ export default function FacturePDFPage() {
             </div>
           )}
 
-          {/* Footer */}
-          <div className="mt-8 pt-4 border-t text-center text-xs text-muted-foreground">
-            <p>
-              LOJISTIGA SARL - Capital: 10.000.000 FCFA - RCCM: LBV-2020-B-00001 - NIF:
-              123456789
-            </p>
-            <p className="mt-1">
-              Zone Industrielle Oloumi, Libreville, Gabon - Tél: +241 01 44 00 00 - Email:
-              contact@lojistiga.ga
-            </p>
-          </div>
+          {/* Footer standardisé */}
+          <DocumentFooter />
         </Card>
       </div>
 

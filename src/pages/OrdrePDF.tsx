@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Printer, Download } from "lucide-react";
-import { ordresTravail, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
-import logoLojistiga from "@/assets/lojistiga-logo.png";
+import { ordresTravail, clients, formatMontant, formatDate } from "@/data/mockData";
+import { DocumentHeader, DocumentFooter } from "@/components/documents/DocumentLayout";
 
 export default function OrdrePDFPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +30,18 @@ export default function OrdrePDFPage() {
 
   const isAnnule = ordre.statut === "annule";
   const resteAPayer = ordre.montantTTC - ordre.montantPaye;
+
+  const getTypeOperationLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      conteneurs: "Conteneurs",
+      conventionnel: "Conventionnel",
+      location: "Location",
+      transport: "Transport",
+      manutention: "Manutention",
+      stockage: "Stockage"
+    };
+    return labels[type] || type;
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -65,31 +77,14 @@ export default function OrdrePDFPage() {
             </div>
           )}
 
-          {/* Header */}
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <img src={logoLojistiga} alt="Lojistiga" className="h-12 mb-4" />
-              <p className="text-sm text-muted-foreground">
-                Zone Industrielle Oloumi
-                <br />
-                BP 12345, Libreville, Gabon
-                <br />
-                Tél: +241 01 44 00 00
-                <br />
-                Email: contact@lojistiga.ga
-              </p>
-            </div>
-            <div className="text-right">
-              <h1 className="text-3xl font-bold text-primary mb-2">ORDRE DE TRAVAIL</h1>
-              <p className="text-xl font-semibold">{ordre.numero}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Date: {formatDate(ordre.dateCreation)}
-              </p>
-              <p className="text-sm mt-1">
-                Type: <span className="capitalize font-medium">{ordre.typeOperation}</span>
-              </p>
-            </div>
-          </div>
+          {/* Header avec logo centré */}
+          <DocumentHeader
+            title="ORDRE DE TRAVAIL"
+            numero={ordre.numero}
+            date={formatDate(ordre.dateCreation)}
+            secondaryLabel="Type"
+            secondaryValue={getTypeOperationLabel(ordre.typeOperation)}
+          />
 
           <Separator className="my-6" />
 
@@ -174,17 +169,8 @@ export default function OrdrePDFPage() {
             </div>
           )}
 
-          {/* Footer */}
-          <div className="mt-8 pt-4 border-t text-center text-xs text-muted-foreground">
-            <p>
-              LOJISTIGA SARL - Capital: 10.000.000 FCFA - RCCM: LBV-2020-B-00001 - NIF:
-              123456789
-            </p>
-            <p className="mt-1">
-              Zone Industrielle Oloumi, Libreville, Gabon - Tél: +241 01 44 00 00 - Email:
-              contact@lojistiga.ga
-            </p>
-          </div>
+          {/* Footer standardisé */}
+          <DocumentFooter />
         </Card>
       </div>
 
