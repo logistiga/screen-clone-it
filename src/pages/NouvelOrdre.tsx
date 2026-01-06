@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TotauxDocument } from "@/components/forms/TotauxDocument";
+
 import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
 
