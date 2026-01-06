@@ -13,6 +13,8 @@ import DevisPDFPage from "./pages/DevisPDF";
 import NouveauClientPage from "./pages/NouveauClient";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
+import OrdreDetailPage from "./pages/OrdreDetail";
+import OrdrePDFPage from "./pages/OrdrePDF";
 import FacturesPage from "./pages/Factures";
 import NouvelleFacturePage from "./pages/NouvelleFacture";
 import AnnulationsPage from "./pages/Annulations";
@@ -51,6 +53,9 @@ const App = () => (
           <Route path="/devis/:id/modifier" element={<NouveauDevisPage />} />
           <Route path="/ordres" element={<OrdresTravailPage />} />
           <Route path="/ordres/nouveau" element={<NouvelOrdrePage />} />
+          <Route path="/ordres/:id" element={<OrdreDetailPage />} />
+          <Route path="/ordres/:id/pdf" element={<OrdrePDFPage />} />
+          <Route path="/ordres/:id/modifier" element={<NouvelOrdrePage />} />
           <Route path="/factures" element={<FacturesPage />} />
           <Route path="/factures/nouvelle" element={<NouvelleFacturePage />} />
           <Route path="/annulations" element={<AnnulationsPage />} />
