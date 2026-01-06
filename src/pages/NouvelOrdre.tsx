@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Ship, Container, Package, Truck, Forklift, Warehouse, Users, FileText, Plus, Trash2, Save, MapPin } from "lucide-react";
+import { ArrowLeft, Ship, Container, Package, Truck, Forklift, Warehouse, Users, FileText, Plus, Trash2, Save, MapPin, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ type CategorieOrdre = "conteneurs" | "conventionnel" | "operations_independantes
 
 // Types d'opérations
 type TypeOperation = "import" | "export";
-type TypeOperationIndep = "location" | "transport" | "manutention" | "stockage";
+type TypeOperationIndep = "location" | "transport" | "manutention" | "double_relevage" | "stockage";
 
 // Types d'opérations disponibles pour conteneurs
 type TypeOperationConteneur = "arrivee" | "stockage" | "depotage" | "double_relevage" | "sortie" | "transport" | "manutention";
@@ -112,10 +112,11 @@ const categoriesLabels: Record<CategorieOrdre, { label: string; description: str
 };
 
 const operationsIndepLabels: Record<TypeOperationIndep, { label: string; icon: React.ReactNode }> = {
-  location: { label: "Location véhicule/équipement", icon: <Truck className="h-5 w-5" /> },
-  transport: { label: "Transport", icon: <Truck className="h-5 w-5" /> },
-  manutention: { label: "Manutention", icon: <Forklift className="h-5 w-5" /> },
-  stockage: { label: "Stockage", icon: <Warehouse className="h-5 w-5" /> },
+  location: { label: "Location véhicule/équipement", icon: <Truck className="h-6 w-6" /> },
+  transport: { label: "Transport", icon: <Truck className="h-6 w-6" /> },
+  manutention: { label: "Manutention", icon: <Forklift className="h-6 w-6" /> },
+  double_relevage: { label: "Double relevage", icon: <ArrowLeftRight className="h-6 w-6" /> },
+  stockage: { label: "Stockage seul", icon: <Warehouse className="h-6 w-6" /> },
 };
 
 export default function NouvelOrdrePage() {
@@ -976,10 +977,10 @@ export default function NouvelOrdrePage() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Type d'opération</CardTitle>
+                  <CardTitle className="text-lg">Type d'opération indépendante</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
                       const op = operationsIndepLabels[key];
                       const isSelected = typeOperationIndep === key;
@@ -988,7 +989,7 @@ export default function NouvelOrdrePage() {
                           key={key}
                           type="button"
                           onClick={() => setTypeOperationIndep(key)}
-                          className={`p-3 rounded-lg border-2 text-left transition-all flex items-center gap-2 ${
+                          className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 text-center ${
                             isSelected
                               ? "border-primary bg-primary/10"
                               : "border-border hover:border-primary/50"
