@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Ship, Container, Package, Truck, Forklift, Warehouse, Users, FileText, Plus, Trash2, Save } from "lucide-react";
+import { ArrowLeft, Ship, Container, Package, Truck, Forklift, Warehouse, Users, FileText, Plus, Trash2, Save, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +52,15 @@ interface LignePrestation {
   quantite: number;
   prixUnitaire: number;
   montantHT: number;
+}
+
+interface LigneLot {
+  id: string;
+  numeroLot: string;
+  description: string;
+  quantite: number;
+  prixUnitaire: number;
+  prixTotal: number;
 }
 
 const typesOperationConteneur: Record<TypeOperationConteneur, { label: string; prixDefaut: number }> = {
@@ -132,7 +141,16 @@ export default function NouvelOrdrePage() {
     { id: "1", numero: "", taille: "", description: "", prixUnitaire: 0, operations: [] }
   ]);
   
-  // Prestations (conventionnel et opérations indépendantes)
+  // Lots (pour conventionnel)
+  const [lots, setLots] = useState<LigneLot[]>([
+    { id: "1", numeroLot: "", description: "", quantite: 1, prixUnitaire: 0, prixTotal: 0 }
+  ]);
+  
+  // Lieux (pour conventionnel)
+  const [lieuChargement, setLieuChargement] = useState("");
+  const [lieuDechargement, setLieuDechargement] = useState("");
+  
+  // Prestations (opérations indépendantes)
   const [prestations, setPrestations] = useState<LignePrestation[]>([
     { id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }
   ]);
@@ -238,6 +256,33 @@ export default function NouvelOrdrePage() {
     }));
   };
 
+  // Gestion des lots
+  const handleAddLot = () => {
+    setLots([
+      ...lots,
+      { id: String(Date.now()), numeroLot: "", description: "", quantite: 1, prixUnitaire: 0, prixTotal: 0 }
+    ]);
+  };
+
+  const handleRemoveLot = (id: string) => {
+    if (lots.length > 1) {
+      setLots(lots.filter(l => l.id !== id));
+    }
+  };
+
+  const handleLotChange = (id: string, field: keyof LigneLot, value: string | number) => {
+    setLots(lots.map(l => {
+      if (l.id === id) {
+        const updated = { ...l, [field]: value };
+        if (field === 'quantite' || field === 'prixUnitaire') {
+          updated.prixTotal = updated.quantite * updated.prixUnitaire;
+        }
+        return updated;
+      }
+      return l;
+    }));
+  };
+
   // Gestion des prestations
   const handleAddPrestation = () => {
     setPrestations([
@@ -274,6 +319,9 @@ export default function NouvelOrdrePage() {
       );
       return totalConteneurs + totalOperations;
     }
+    if (categorie === "conventionnel") {
+      return lots.reduce((sum, l) => sum + l.prixTotal, 0);
+    }
     return prestations.reduce((sum, p) => sum + p.montantHT, 0);
   };
 
@@ -288,7 +336,10 @@ export default function NouvelOrdrePage() {
     setTypeOperation("");
     setTypeOperationIndep("");
     setConteneurs([{ id: "1", numero: "", taille: "", description: "", prixUnitaire: 0, operations: [] }]);
+    setLots([{ id: "1", numeroLot: "", description: "", quantite: 1, prixUnitaire: 0, prixTotal: 0 }]);
     setPrestations([{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]);
+    setLieuChargement("");
+    setLieuDechargement("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -773,18 +824,43 @@ export default function NouvelOrdrePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-primary" />
-                    Informations BL
+                    Informations du lot
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="max-w-md space-y-2">
-                    <Label>Numéro BL *</Label>
+                    <Label className="text-amber-600">Numéro BL *</Label>
                     <Input
-                      placeholder="Ex: CONV2026001"
+                      placeholder="Ex: MSCUAB123456"
                       value={numeroBL}
                       onChange={(e) => setNumeroBL(e.target.value.toUpperCase())}
                       className="font-mono"
                     />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-amber-600">
+                        <MapPin className="h-4 w-4" />
+                        Lieu de chargement *
+                      </Label>
+                      <Input
+                        placeholder="Ex: Port d'Owendo"
+                        value={lieuChargement}
+                        onChange={(e) => setLieuChargement(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-amber-600">
+                        <MapPin className="h-4 w-4" />
+                        Lieu de déchargement *
+                      </Label>
+                      <Input
+                        placeholder="Ex: Entrepôt client"
+                        value={lieuDechargement}
+                        onChange={(e) => setLieuDechargement(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -794,70 +870,101 @@ export default function NouvelOrdrePage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Package className="h-5 w-5 text-primary" />
-                      Prestations
+                      Lots
                     </CardTitle>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddPrestation} className="gap-1">
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddLot} className="gap-1">
                       <Plus className="h-4 w-4" />
-                      Ajouter
+                      Ajouter lot
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
-                      <div className="col-span-5">Description</div>
-                      <div className="col-span-2">Quantité</div>
-                      <div className="col-span-2">Prix unitaire</div>
-                      <div className="col-span-2">Montant HT</div>
-                      <div className="col-span-1"></div>
-                    </div>
-                    {prestations.map((prestation) => (
-                      <div key={prestation.id} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-5">
-                          <Input
-                            placeholder="Description..."
-                            value={prestation.description}
-                            onChange={(e) => handlePrestationChange(prestation.id, 'description', e.target.value)}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="1"
-                            value={prestation.quantite}
-                            onChange={(e) => handlePrestationChange(prestation.id, 'quantite', parseInt(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={prestation.prixUnitaire || ""}
-                            onChange={(e) => handlePrestationChange(prestation.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            value={formatMontant(prestation.montantHT)}
-                            disabled
-                            className="bg-muted"
-                          />
-                        </div>
-                        <div className="col-span-1">
-                          {prestations.length > 1 && (
+                  <div className="space-y-6">
+                    {lots.map((lot, index) => (
+                      <div key={lot.id} className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm text-muted-foreground">Lot {index + 1}</span>
+                          {lots.length > 1 && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleRemovePrestation(prestation.id)}
-                              className="text-destructive"
+                              onClick={() => handleRemoveLot(lot.id)}
+                              className="text-destructive h-8 w-8"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
+                        
+                        {/* Première ligne: N° Lot et Description */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>N° Lot</Label>
+                            <Input
+                              placeholder="Ex: LOT-2024-001"
+                              value={lot.numeroLot}
+                              onChange={(e) => handleLotChange(lot.id, 'numeroLot', e.target.value.toUpperCase())}
+                              className="font-mono"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Input
+                              placeholder="Description de la marchandise"
+                              value={lot.description}
+                              onChange={(e) => handleLotChange(lot.id, 'description', e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Deuxième ligne: Quantité, Prix unitaire, Prix total */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>Quantité</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={lot.quantite}
+                              onChange={(e) => handleLotChange(lot.id, 'quantite', parseInt(e.target.value) || 0)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Prix unitaire (FCFA)</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={lot.prixUnitaire || ""}
+                              onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Prix total (FCFA)</Label>
+                            <Input
+                              value={lot.prixTotal}
+                              disabled
+                              className="bg-muted font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Séparateur entre lots */}
+                        {index < lots.length - 1 && (
+                          <div className="border-b my-4" />
+                        )}
                       </div>
                     ))}
+                  </div>
+
+                  {/* Total général */}
+                  <div className="flex justify-end pt-4 border-t mt-6">
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground">Total: </span>
+                      <span className="text-xl font-bold text-primary">
+                        {formatMontant(montantHT)}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
