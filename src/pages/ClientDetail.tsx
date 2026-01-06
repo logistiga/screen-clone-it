@@ -13,17 +13,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Users, User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { 
   clients, devis, ordresTravail, factures, paiements,
   formatMontant, formatDate, getStatutLabel 
 } from "@/data/mockData";
 
+// Mock contacts pour la démo
+const getClientContacts = (clientId: string) => [
+  { id: "1", prenom: "Jean", nom: "DUPONT", email: "j.dupont@total-gabon.ga", telephone: "+241 07 12 34 56", fonction: "Responsable logistique" },
+  { id: "2", prenom: "Marie", nom: "NZENG", email: "m.nzeng@total-gabon.ga", telephone: "+241 06 98 76 54", fonction: "Assistante commerciale" },
+];
+
 export default function ClientDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   
   const client = clients.find(c => c.id === id);
+  const contacts = id ? getClientContacts(id) : [];
   
   if (!client) {
     return (
@@ -45,6 +65,19 @@ export default function ClientDetailPage() {
 
   const totalFacture = clientFactures.reduce((sum, f) => sum + f.montantTTC, 0);
   const totalPaye = clientPaiements.reduce((sum, p) => sum + p.montant, 0);
+
+  // Mock pour plafond et délai
+  const plafondCredit = 50000000;
+  const delaiPaiement = 30;
+
+  const handleDelete = () => {
+    toast({
+      title: "Client supprimé",
+      description: `Le client ${client.nom} a été supprimé.`,
+      variant: "destructive",
+    });
+    navigate("/clients");
+  };
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -69,24 +102,40 @@ export default function ClientDetailPage() {
   return (
     <MainLayout title={client.nom}>
       <div className="space-y-6">
-        {/* Back button */}
-        <Button variant="ghost" onClick={() => navigate("/clients")} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Retour aux clients
-        </Button>
+        {/* Header with actions */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="ghost" onClick={() => navigate("/clients")} className="gap-2 w-fit">
+            <ArrowLeft className="h-4 w-4" />
+            Retour aux clients
+          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => navigate(`/clients/${id}/modifier`)}
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+            <Button 
+              variant="destructive" 
+              className="gap-2"
+              onClick={() => setDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </Button>
+          </div>
+        </div>
 
         {/* Client Info + Stats */}
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Informations du client</CardTitle>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Edit className="h-4 w-4" />
-                Modifier
-              </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
@@ -114,6 +163,14 @@ export default function ClientDetailPage() {
                       <span>NIF: {client.nif}</span>
                     </div>
                   )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <span>Plafond: {formatMontant(plafondCredit)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>Délai paiement: {delaiPaiement} jours</span>
+                  </div>
                   <div className="text-sm text-muted-foreground">
                     Client depuis le {formatDate(client.dateCreation)}
                   </div>
@@ -157,8 +214,12 @@ export default function ClientDetailPage() {
         </div>
 
         {/* Tabs with documents */}
-        <Tabs defaultValue="factures" className="w-full">
+        <Tabs defaultValue="contacts" className="w-full">
           <TabsList>
+            <TabsTrigger value="contacts" className="gap-2">
+              <Users className="h-4 w-4" />
+              Contacts ({contacts.length})
+            </TabsTrigger>
             <TabsTrigger value="factures">
               Factures ({clientFactures.length})
             </TabsTrigger>
@@ -172,6 +233,53 @@ export default function ClientDetailPage() {
               Paiements ({clientPaiements.length})
             </TabsTrigger>
           </TabsList>
+
+          {/* Contacts Tab */}
+          <TabsContent value="contacts" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Interlocuteurs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {contacts.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {contacts.map((contact) => (
+                      <div key={contact.id} className="p-4 border rounded-lg bg-muted/30">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">{contact.prenom} {contact.nom}</p>
+                            <p className="text-sm text-muted-foreground">{contact.fonction}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
+                              {contact.email}
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            <span>{contact.telephone}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Aucun contact enregistré
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="factures" className="mt-4">
             <Card>
@@ -320,6 +428,25 @@ export default function ClientDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal de confirmation suppression */}
+      <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le client <strong>{client.nom}</strong> ? 
+              Cette action supprimera également tous les documents associés et est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Oui, supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
