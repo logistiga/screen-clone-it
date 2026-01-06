@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
+import { PageTransition } from "./PageTransition";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,7 +17,9 @@ export function MainLayout({ children, title }: MainLayoutProps) {
         <SidebarInset className="flex flex-1 flex-col">
           <AppHeader title={title} />
           <main className="flex-1 overflow-auto bg-muted/30 p-4 lg:p-6">
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </main>
         </SidebarInset>
       </div>

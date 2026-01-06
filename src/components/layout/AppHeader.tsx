@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, LogOut, KeyRound, Settings } from "lucide-react";
+import { User, LogOut, KeyRound, Settings, Moon, Sun, Bell } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -12,6 +12,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { utilisateurs, roles } from "@/data/mockData";
+import { ThemeToggle } from "./ThemeToggle";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
 interface AppHeaderProps {
   title: string;
@@ -29,43 +31,52 @@ export function AppHeader({ title }: AppHeaderProps) {
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex items-center gap-2 px-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={currentUser.photo} alt={currentUser.nom} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {currentUser.nom.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden text-left md:block">
-              <p className="text-sm font-medium">{currentUser.nom}</p>
-              <p className="text-xs text-muted-foreground">{userRole?.nom}</p>
-            </div>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            <span>Mon profil</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <KeyRound className="mr-2 h-4 w-4" />
-            <span>Changer le mot de passe</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Paramètres</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Déconnexion</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-2">
+        {/* Notifications */}
+        <NotificationCenter />
+        
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
+        {/* User Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-2 px-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser.photo} alt={currentUser.nom} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  {currentUser.nom.split(' ').map(n => n[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden text-left md:block">
+                <p className="text-sm font-medium">{currentUser.nom}</p>
+                <p className="text-xs text-muted-foreground">{userRole?.nom}</p>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Mon profil</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <KeyRound className="mr-2 h-4 w-4" />
+              <span>Changer le mot de passe</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Paramètres</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Déconnexion</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }
