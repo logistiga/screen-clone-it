@@ -47,6 +47,9 @@ import NouvelleNoteReparationPage from "./pages/NouvelleNoteReparation";
 import NoteDebutDetailPage from "./pages/NoteDebutDetail";
 import ModifierNoteDebutPage from "./pages/ModifierNoteDebut";
 import VerificationDocumentPage from "./pages/VerificationDocument";
+import PartenairesPage from "./pages/Partenaires";
+import TransitaireDetailPage from "./pages/TransitaireDetail";
+import RepresentantDetailPage from "./pages/RepresentantDetail";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +105,9 @@ const App = () => (
             <Route path="/banques" element={<BanquesPage />} />
             <Route path="/numerotation" element={<NumerotationPage />} />
             <Route path="/verification" element={<VerificationDocumentPage />} />
+            <Route path="/partenaires" element={<PartenairesPage />} />
+            <Route path="/partenaires/transitaires/:id" element={<TransitaireDetailPage />} />
+            <Route path="/partenaires/representants/:id" element={<RepresentantDetailPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
