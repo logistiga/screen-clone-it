@@ -26,6 +26,7 @@ import CaisseGlobalePage from "./pages/CaisseGlobale";
 import ReportingPage from "./pages/Reporting";
 import PrevisionsPage from "./pages/Previsions";
 import CreditsPage from "./pages/Credits";
+import CreditDetailPage from "./pages/CreditDetail";
 import UtilisateursPage from "./pages/Utilisateurs";
 import RolesPage from "./pages/Roles";
 import TracabilitePage from "./pages/Tracabilite";
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/reporting" element={<ReportingPage />} />
           <Route path="/previsions" element={<PrevisionsPage />} />
           <Route path="/credits" element={<CreditsPage />} />
+          <Route path="/credits/:id" element={<CreditDetailPage />} />
           <Route path="/utilisateurs" element={<UtilisateursPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/tracabilite" element={<TracabilitePage />} />

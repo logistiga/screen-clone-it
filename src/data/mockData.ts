@@ -855,3 +855,59 @@ export const remboursementsCredits: RemboursementCredit[] = [
   { id: 'remb-16', creditId: '2', echeanceId: 'ech-2-6', montant: 1165365, date: '2025-12-01', banqueId: '2', reference: 'VIR-CRED-016' },
   { id: 'remb-17', creditId: '2', echeanceId: 'ech-2-7', montant: 1158855, date: '2026-01-02', banqueId: '2', reference: 'VIR-CRED-017' }
 ];
+
+// Configuration des taux
+export const TAUX_TVA = 0.18; // 18%
+export const TAUX_CSS = 0.01; // 1%
+
+// Configuration de la numérotation
+export const configurationNumerotation = {
+  prefixeDevis: 'DEV',
+  prefixeOrdre: 'OT',
+  prefixeFacture: 'FAC',
+  prefixeAvoir: 'AV',
+  formatAnnee: true,
+  prochainNumeroDevis: 4,
+  prochainNumeroOrdre: 5,
+  prochainNumeroFacture: 6,
+  prochainNumeroAvoir: 1
+};
+
+// Configuration des taxes
+export const configurationTaxes = {
+  tvaRate: 18,
+  cssRate: 1,
+  tva: { nom: 'TVA', taux: 18, actif: true },
+  css: { nom: 'CSS', taux: 1, actif: true }
+};
+
+// Fonctions utilitaires
+export const formatMontant = (montant: number): string => {
+  return montant.toLocaleString('fr-FR') + ' FCFA';
+};
+
+export const formatDate = (date: string): string => {
+  return new Date(date).toLocaleDateString('fr-FR');
+};
+
+export const getStatutLabel = (statut: string): string => {
+  const labels: Record<string, string> = {
+    brouillon: 'Brouillon',
+    envoye: 'Envoyé',
+    accepte: 'Accepté',
+    refuse: 'Refusé',
+    expire: 'Expiré',
+    en_cours: 'En cours',
+    termine: 'Terminé',
+    facture: 'Facturé',
+    annule: 'Annulé',
+    emise: 'Émise',
+    payee: 'Payée',
+    partielle: 'Partielle',
+    impayee: 'Impayée',
+    annulee: 'Annulée',
+    actif: 'Actif',
+    inactif: 'Inactif'
+  };
+  return labels[statut] || statut;
+};
