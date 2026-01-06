@@ -59,11 +59,11 @@ export default function DevisPDFPage() {
 
       {/* PDF Content */}
       <div className="container py-8 print:py-0">
-        <Card ref={contentRef} className="max-w-4xl mx-auto p-8 print:shadow-none print:border-none relative bg-white">
+        <Card ref={contentRef} className="max-w-4xl mx-auto p-6 print:shadow-none print:border-none relative bg-white">
           {/* Watermark si annulé */}
           {isAnnule && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="text-destructive/20 text-8xl font-bold rotate-[-30deg] border-8 border-destructive/20 px-8 py-4">
+              <div className="text-destructive/20 text-6xl font-bold rotate-[-30deg] border-4 border-destructive/20 px-6 py-3">
                 ANNULÉ
               </div>
             </div>
@@ -78,46 +78,39 @@ export default function DevisPDFPage() {
             secondaryValue={formatDate(devisData.dateValidite)}
           />
 
-          <Separator className="my-6" />
+          <Separator className="my-3" />
 
           {/* Client */}
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">CLIENT</h3>
-            <div className="bg-muted/30 p-4 rounded-lg">
-              <p className="font-semibold text-lg">{client?.nom}</p>
-              <p className="text-sm text-muted-foreground">{client?.adresse}</p>
-              <p className="text-sm text-muted-foreground">{client?.ville}, Gabon</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Tél: {client?.telephone}
-                <br />
-                Email: {client?.email}
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-1">CLIENT</h3>
+            <div className="bg-muted/30 p-3 rounded text-sm">
+              <p className="font-semibold">{client?.nom}</p>
+              <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+              <p className="text-xs text-muted-foreground">
+                Tél: {client?.telephone} | Email: {client?.email}
+                {client?.nif && ` | NIF: ${client.nif}`}
+                {client?.rccm && ` | RCCM: ${client.rccm}`}
               </p>
-              {client?.nif && (
-                <p className="text-sm text-muted-foreground mt-2">NIF: {client.nif}</p>
-              )}
-              {client?.rccm && (
-                <p className="text-sm text-muted-foreground">RCCM: {client.rccm}</p>
-              )}
             </div>
           </div>
 
           {/* Tableau des lignes */}
-          <table className="w-full mb-8">
+          <table className="w-full mb-4 text-sm">
             <thead>
               <tr className="border-b-2 border-primary">
-                <th className="text-left py-3 font-semibold">Description</th>
-                <th className="text-center py-3 font-semibold w-20">Qté</th>
-                <th className="text-right py-3 font-semibold w-32">Prix unit.</th>
-                <th className="text-right py-3 font-semibold w-36">Montant HT</th>
+                <th className="text-left py-2 font-semibold text-xs">Description</th>
+                <th className="text-center py-2 font-semibold w-16 text-xs">Qté</th>
+                <th className="text-right py-2 font-semibold w-28 text-xs">Prix unit.</th>
+                <th className="text-right py-2 font-semibold w-32 text-xs">Montant HT</th>
               </tr>
             </thead>
             <tbody>
               {devisData.lignes.map((ligne, index) => (
                 <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-3 px-2">{ligne.description}</td>
-                  <td className="text-center py-3">{ligne.quantite}</td>
-                  <td className="text-right py-3">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-3 font-medium">
+                  <td className="py-1.5 px-1 text-xs">{ligne.description}</td>
+                  <td className="text-center py-1.5 text-xs">{ligne.quantite}</td>
+                  <td className="text-right py-1.5 text-xs">{formatMontant(ligne.prixUnitaire)}</td>
+                  <td className="text-right py-1.5 font-medium text-xs">
                     {formatMontant(ligne.montantHT)}
                   </td>
                 </tr>
@@ -126,22 +119,22 @@ export default function DevisPDFPage() {
           </table>
 
           {/* Totaux */}
-          <div className="flex justify-end mb-8">
-            <div className="w-72 space-y-2">
-              <div className="flex justify-between py-1">
+          <div className="flex justify-end mb-4">
+            <div className="w-56 space-y-1 text-xs">
+              <div className="flex justify-between py-0.5">
                 <span className="text-muted-foreground">Total HT</span>
                 <span className="font-medium">{formatMontant(devisData.montantHT)}</span>
               </div>
-              <div className="flex justify-between py-1">
+              <div className="flex justify-between py-0.5">
                 <span className="text-muted-foreground">TVA (18%)</span>
                 <span>{formatMontant(devisData.tva)}</span>
               </div>
-              <div className="flex justify-between py-1">
+              <div className="flex justify-between py-0.5">
                 <span className="text-muted-foreground">CSS (1%)</span>
                 <span>{formatMontant(devisData.css)}</span>
               </div>
-              <Separator />
-              <div className="flex justify-between py-2 text-lg font-bold">
+              <Separator className="my-1" />
+              <div className="flex justify-between py-1 text-sm font-bold">
                 <span>Total TTC</span>
                 <span className="text-primary">{formatMontant(devisData.montantTTC)}</span>
               </div>
@@ -150,17 +143,17 @@ export default function DevisPDFPage() {
 
           {/* Notes */}
           {devisData.notes && (
-            <div className="mb-8">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">NOTES</h3>
-              <p className="text-sm bg-muted/30 p-4 rounded-lg">{devisData.notes}</p>
+            <div className="mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-1">NOTES</h3>
+              <p className="text-xs bg-muted/30 p-2 rounded">{devisData.notes}</p>
             </div>
           )}
 
           {/* Conditions */}
-          <div className="border-t pt-6 text-sm text-muted-foreground mb-6">
-            <h3 className="font-semibold mb-2">Conditions</h3>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Ce devis est valable jusqu'au {formatDate(devisData.dateValidite)}</li>
+          <div className="border-t pt-3 text-xs text-muted-foreground mb-3">
+            <h3 className="font-semibold mb-1">Conditions</h3>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>Ce devis est valable jusqu&apos;au {formatDate(devisData.dateValidite)}</li>
               <li>Paiement: 50% à la commande, 50% à la livraison</li>
               <li>Délai de réalisation: selon disponibilité</li>
             </ul>
