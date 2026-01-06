@@ -20,13 +20,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Eye, Edit, ArrowRight, FileText } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Send, Copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { devis, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 
 export default function DevisPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+
+  const handleAnnuler = (id: string, numero: string) => {
+    toast({
+      title: "Devis annulé",
+      description: `Le devis ${numero} a été annulé.`,
+    });
+  };
+
+  const handleSupprimer = (id: string, numero: string) => {
+    toast({
+      title: "Devis supprimé",
+      description: `Le devis ${numero} a été supprimé.`,
+      variant: "destructive",
+    });
+  };
+
+  const handleEnvoyer = (id: string, numero: string) => {
+    toast({
+      title: "Devis envoyé",
+      description: `Le devis ${numero} a été envoyé au client.`,
+    });
+  };
+
+  const handleDupliquer = (id: string, numero: string) => {
+    toast({
+      title: "Devis dupliqué",
+      description: `Une copie du devis ${numero} a été créée.`,
+    });
+  };
+
+  const handleConvertir = (id: string, numero: string) => {
+    toast({
+      title: "Conversion en ordre",
+      description: `Le devis ${numero} a été converti en ordre de travail.`,
+    });
+    navigate("/ordres/nouveau");
+  };
 
   const filteredDevis = devis.filter(d => {
     const client = clients.find(c => c.id === d.clientId);
@@ -168,16 +207,63 @@ export default function DevisPage() {
                           <Button variant="ghost" size="icon" title="Voir">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Modifier">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {d.statut !== 'refuse' && d.statut !== 'expire' && (
+                            <Button variant="ghost" size="icon" title="Modifier">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {d.statut === 'brouillon' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Envoyer"
+                              className="text-blue-600"
+                              onClick={() => handleEnvoyer(d.id, d.numero)}
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          )}
                           {d.statut === 'accepte' && (
-                            <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Convertir en ordre" 
+                              className="text-primary"
+                              onClick={() => handleConvertir(d.id, d.numero)}
+                            >
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Dupliquer"
+                            onClick={() => handleDupliquer(d.id, d.numero)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" title="PDF">
                             <FileText className="h-4 w-4" />
+                          </Button>
+                          {d.statut !== 'refuse' && d.statut !== 'expire' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Annuler"
+                              className="text-orange-600"
+                              onClick={() => handleAnnuler(d.id, d.numero)}
+                            >
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Supprimer"
+                            className="text-destructive"
+                            onClick={() => handleSupprimer(d.id, d.numero)}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
