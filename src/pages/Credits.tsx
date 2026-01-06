@@ -17,15 +17,20 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  FileText
+  FileText,
+  History,
+  Download
 } from "lucide-react";
 import { 
   creditsBancaires, 
   echeancesCredits, 
+  remboursementsCredits,
   banques,
   CreditBancaire,
   EcheanceCredit
 } from "@/data/mockData";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import { format, differenceInDays, addMonths, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouveauCreditModal } from "@/components/NouveauCreditModal";
@@ -49,10 +54,15 @@ export default function CreditsPage() {
 
   // Calculs globaux
   const creditsActifs = creditsEnrichis.filter(c => c.statut === 'actif');
+  const creditsTermines = creditsEnrichis.filter(c => c.statut === 'termine');
   const totalEmprunte = creditsActifs.reduce((sum, c) => sum + c.montantEmprunte, 0);
   const totalRembourse = creditsActifs.reduce((sum, c) => sum + c.montantRembourse, 0);
   const totalRestant = totalEmprunte - totalRembourse;
   const totalInterets = creditsActifs.reduce((sum, c) => sum + c.totalInterets, 0);
+  
+  // Stats des crédits terminés
+  const totalEmpruteHistorique = creditsTermines.reduce((sum, c) => sum + c.montantEmprunte, 0);
+  const totalInteretsPayesHistorique = creditsTermines.reduce((sum, c) => sum + c.totalInterets, 0);
 
   // Prochaines échéances
   const today = new Date();
@@ -213,8 +223,12 @@ export default function CreditsPage() {
 
       <Tabs defaultValue="credits" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="credits">Crédits ({creditsFiltres.length})</TabsTrigger>
+          <TabsTrigger value="credits">Crédits actifs ({creditsActifs.length})</TabsTrigger>
           <TabsTrigger value="echeances">Échéancier</TabsTrigger>
+          <TabsTrigger value="historique">
+            <History className="h-4 w-4 mr-1" />
+            Historique ({creditsTermines.length})
+          </TabsTrigger>
           <TabsTrigger value="alertes">Alertes</TabsTrigger>
         </TabsList>
 
@@ -484,6 +498,205 @@ export default function CreditsPage() {
                 )}
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        {/* Onglet Historique */}
+        <TabsContent value="historique">
+          <div className="space-y-6">
+            {/* Résumé historique */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-green-100">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Crédits soldés</p>
+                      <p className="text-2xl font-bold">{creditsTermines.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-blue-100">
+                      <CreditCard className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total emprunté (historique)</p>
+                      <p className="text-2xl font-bold">{totalEmpruteHistorique.toLocaleString('fr-FR')}</p>
+                      <p className="text-xs text-muted-foreground">FCFA</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-orange-100">
+                      <TrendingDown className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total intérêts payés</p>
+                      <p className="text-2xl font-bold">{totalInteretsPayesHistorique.toLocaleString('fr-FR')}</p>
+                      <p className="text-xs text-muted-foreground">FCFA</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Liste des crédits terminés */}
+            {creditsTermines.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Crédits terminés - Historique complet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>N° Crédit</TableHead>
+                        <TableHead>Banque</TableHead>
+                        <TableHead>Objet</TableHead>
+                        <TableHead>Période</TableHead>
+                        <TableHead className="text-right">Montant emprunté</TableHead>
+                        <TableHead className="text-right">Intérêts payés</TableHead>
+                        <TableHead className="text-right">Total remboursé</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {creditsTermines.map(credit => (
+                        <TableRow key={credit.id}>
+                          <TableCell className="font-medium">{credit.numero}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              {credit.banque?.nom}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">{credit.objet}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <p>{format(new Date(credit.dateDebut), 'MMM yyyy', { locale: fr })}</p>
+                              <p className="text-muted-foreground">→ {format(new Date(credit.dateFin), 'MMM yyyy', { locale: fr })}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">{credit.montantEmprunte.toLocaleString('fr-FR')}</TableCell>
+                          <TableCell className="text-right text-orange-600">{credit.totalInterets.toLocaleString('fr-FR')}</TableCell>
+                          <TableCell className="text-right font-semibold text-green-600">
+                            {(credit.montantEmprunte + credit.totalInterets).toLocaleString('fr-FR')}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/credits/${credit.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Détails
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun crédit terminé</h3>
+                  <p className="text-muted-foreground">Les crédits soldés apparaîtront ici pour consultation historique.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Traçabilité des remboursements */}
+            {creditsTermines.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Traçabilité des remboursements
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => toast.success("Export en cours...")}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Exporter
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {creditsTermines.map(credit => {
+                    const remboursements = remboursementsCredits.filter(r => r.creditId === credit.id);
+                    const echeances = echeancesCredits.filter(e => e.creditId === credit.id);
+                    
+                    if (remboursements.length === 0) return null;
+
+                    return (
+                      <div key={credit.id} className="mb-6 last:mb-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Soldé
+                          </Badge>
+                          <h4 className="font-semibold">{credit.numero}</h4>
+                          <span className="text-sm text-muted-foreground">- {credit.objet}</span>
+                        </div>
+                        
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead>Date</TableHead>
+                                <TableHead>Échéance</TableHead>
+                                <TableHead className="text-right">Capital</TableHead>
+                                <TableHead className="text-right">Intérêts</TableHead>
+                                <TableHead className="text-right">Total payé</TableHead>
+                                <TableHead>Référence</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {remboursements.map(remb => {
+                                const echeance = echeances.find(e => e.id === remb.echeanceId);
+                                return (
+                                  <TableRow key={remb.id}>
+                                    <TableCell>{format(new Date(remb.date), 'dd/MM/yyyy')}</TableCell>
+                                    <TableCell>N°{echeance?.numero || '-'}</TableCell>
+                                    <TableCell className="text-right">{echeance?.montantCapital.toLocaleString('fr-FR') || '-'}</TableCell>
+                                    <TableCell className="text-right text-orange-600">{echeance?.montantInteret.toLocaleString('fr-FR') || '-'}</TableCell>
+                                    <TableCell className="text-right font-semibold">{remb.montant.toLocaleString('fr-FR')}</TableCell>
+                                    <TableCell className="text-muted-foreground">{remb.reference || '-'}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        
+                        <div className="flex justify-end mt-2 text-sm">
+                          <span className="text-muted-foreground mr-2">Total remboursé:</span>
+                          <span className="font-semibold text-green-600">
+                            {remboursements.reduce((sum, r) => sum + r.montant, 0).toLocaleString('fr-FR')} FCFA
+                          </span>
+                        </div>
+                        
+                        <Separator className="mt-4" />
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>
