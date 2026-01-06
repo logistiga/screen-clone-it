@@ -19,6 +19,7 @@ import FacturesPage from "./pages/Factures";
 import NouvelleFacturePage from "./pages/NouvelleFacture";
 import FactureDetailPage from "./pages/FactureDetail";
 import FacturePDFPage from "./pages/FacturePDF";
+import ModifierFacturePage from "./pages/ModifierFacture";
 import AnnulationsPage from "./pages/Annulations";
 import CaissePage from "./pages/Caisse";
 import BanquePage from "./pages/Banque";
@@ -70,7 +71,7 @@ const App = () => (
           <Route path="/factures/nouvelle" element={<NouvelleFacturePage />} />
           <Route path="/factures/:id" element={<FactureDetailPage />} />
           <Route path="/factures/:id/pdf" element={<FacturePDFPage />} />
-          <Route path="/factures/:id/modifier" element={<NouvelleFacturePage />} />
+          <Route path="/factures/:id/modifier" element={<ModifierFacturePage />} />
           <Route path="/annulations" element={<AnnulationsPage />} />
           <Route path="/notes-debut" element={<NotesDebutPage />} />
           <Route path="/notes-debut/nouvelle" element={<NouvelleNoteDebutPage />} />
