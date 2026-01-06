@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +11,7 @@ import {
   Building2,
   Calendar,
   TrendingDown,
+  TrendingUp,
   Wallet,
   Eye,
   CreditCard,
@@ -19,23 +20,37 @@ import {
   Clock,
   FileText,
   History,
-  Download
+  Download,
+  Edit,
+  BarChart3,
+  Target,
+  Bell,
+  File,
+  Lightbulb,
+  ArrowUpRight,
+  RotateCcw
 } from "lucide-react";
 import { 
   creditsBancaires, 
   echeancesCredits, 
   remboursementsCredits,
+  modificationsCredits,
+  previsionsInvestissements,
+  documentsCredits,
+  alertesCredits,
   banques,
+  utilisateurs,
   CreditBancaire,
   EcheanceCredit
 } from "@/data/mockData";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { format, differenceInDays, addMonths, parseISO } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouveauCreditModal } from "@/components/NouveauCreditModal";
 import { RemboursementCreditModal } from "@/components/RemboursementCreditModal";
 import { useNavigate } from "react-router-dom";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area } from "recharts";
 
 export default function CreditsPage() {
   const navigate = useNavigate();
@@ -64,6 +79,10 @@ export default function CreditsPage() {
   const totalEmpruteHistorique = creditsTermines.reduce((sum, c) => sum + c.montantEmprunte, 0);
   const totalInteretsPayesHistorique = creditsTermines.reduce((sum, c) => sum + c.totalInterets, 0);
 
+  // Stats prévisions
+  const totalPrevisions = previsionsInvestissements.reduce((sum, p) => sum + p.montantEstime, 0);
+  const previsionsEnCours = previsionsInvestissements.filter(p => p.statut === 'en_cours').length;
+
   // Prochaines échéances
   const today = new Date();
   const echeancesAPayer = echeancesCredits
@@ -71,6 +90,43 @@ export default function CreditsPage() {
     .sort((a, b) => new Date(a.dateEcheance).getTime() - new Date(b.dateEcheance).getTime());
 
   const prochaineMensualite = echeancesAPayer.length > 0 ? echeancesAPayer[0] : null;
+
+  // Alertes non lues
+  const alertesNonLues = alertesCredits.filter(a => !a.lu).length;
+
+  // Données pour graphiques
+  const dataRemboursementsMensuels = [
+    { mois: 'Avr 25', capital: 2430556, interets: 510417, total: 2940973 },
+    { mois: 'Mai 25', capital: 2430556, interets: 494011, total: 2924567 },
+    { mois: 'Jun 25', capital: 2430556, interets: 477604, total: 2908160 },
+    { mois: 'Jul 25', capital: 2430556, interets: 461198, total: 2891754 },
+    { mois: 'Aoû 25', capital: 2430556, interets: 444792, total: 2875348 },
+    { mois: 'Sep 25', capital: 2430556, interets: 428385, total: 2858941 },
+    { mois: 'Oct 25', capital: 2430556, interets: 411979, total: 2842535 },
+    { mois: 'Nov 25', capital: 2430556, interets: 395573, total: 2826129 },
+    { mois: 'Déc 25', capital: 2430556, interets: 379167, total: 2809723 },
+    { mois: 'Jan 26', capital: 2430556, interets: 362760, total: 2793316 }
+  ];
+
+  const dataRepartitionBanques = [
+    { name: 'BGFI Bank', value: 50000000, color: '#3b82f6' },
+    { name: 'UGB', value: 25000000, color: '#10b981' },
+    { name: 'Orabank', value: 15000000, color: '#f59e0b' }
+  ];
+
+  const dataEvolutionSolde = [
+    { mois: 'Mar 25', solde: 75000000 },
+    { mois: 'Avr 25', solde: 72569444 },
+    { mois: 'Mai 25', solde: 70138889 },
+    { mois: 'Jun 25', solde: 67708333 },
+    { mois: 'Jul 25', solde: 65277778 },
+    { mois: 'Aoû 25', solde: 62847222 },
+    { mois: 'Sep 25', solde: 60416667 },
+    { mois: 'Oct 25', solde: 57986111 },
+    { mois: 'Nov 25', solde: 55555556 },
+    { mois: 'Déc 25', solde: 53125000 },
+    { mois: 'Jan 26', solde: 50694444 }
+  ];
 
   // Filtrage
   const creditsFiltres = creditsEnrichis.filter(credit => {
@@ -105,6 +161,47 @@ export default function CreditsPage() {
     }
   };
 
+  const getPrioriteBadge = (priorite: string) => {
+    switch (priorite) {
+      case 'haute':
+        return <Badge variant="destructive">Haute</Badge>;
+      case 'moyenne':
+        return <Badge variant="outline" className="border-orange-500 text-orange-600">Moyenne</Badge>;
+      case 'basse':
+        return <Badge variant="secondary">Basse</Badge>;
+      default:
+        return <Badge variant="outline">{priorite}</Badge>;
+    }
+  };
+
+  const getStatutPrevisionBadge = (statut: string) => {
+    switch (statut) {
+      case 'en_attente':
+        return <Badge variant="outline"><Clock className="h-3 w-3 mr-1" />En attente</Badge>;
+      case 'en_cours':
+        return <Badge variant="default" className="bg-blue-600"><TrendingUp className="h-3 w-3 mr-1" />En cours</Badge>;
+      case 'approuve':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Approuvé</Badge>;
+      case 'refuse':
+        return <Badge variant="destructive">Refusé</Badge>;
+      case 'realise':
+        return <Badge variant="secondary" className="bg-purple-100 text-purple-800">Réalisé</Badge>;
+      default:
+        return <Badge variant="outline">{statut}</Badge>;
+    }
+  };
+
+  const getTypeModificationLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      'taux': 'Modification de taux',
+      'echeance': 'Modification échéance',
+      'report': 'Report échéance',
+      'renegociation': 'Renégociation',
+      'cloture_anticipee': 'Clôture anticipée'
+    };
+    return labels[type] || type;
+  };
+
   const handleRemboursement = (credit: CreditBancaire, echeance?: EcheanceCredit) => {
     setSelectedCredit(credit);
     setSelectedEcheance(echeance);
@@ -118,10 +215,12 @@ export default function CreditsPage() {
     return "bg-red-500";
   };
 
+  const formatMontant = (montant: number) => (montant / 1000000).toFixed(1) + 'M';
+
   return (
     <MainLayout title="Crédits Bancaires">
-      {/* Résumé */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* Dashboard KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -130,8 +229,8 @@ export default function CreditsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total emprunté</p>
-                <p className="text-2xl font-bold">{totalEmprunte.toLocaleString('fr-FR')}</p>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-2xl font-bold">{(totalEmprunte / 1000000).toFixed(0)}M</p>
+                <p className="text-xs text-muted-foreground">FCFA actifs</p>
               </div>
             </div>
           </CardContent>
@@ -145,8 +244,8 @@ export default function CreditsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total remboursé</p>
-                <p className="text-2xl font-bold">{totalRembourse.toLocaleString('fr-FR')}</p>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-2xl font-bold">{(totalRembourse / 1000000).toFixed(1)}M</p>
+                <p className="text-xs text-green-600">+{((totalRembourse / totalEmprunte) * 100).toFixed(0)}%</p>
               </div>
             </div>
           </CardContent>
@@ -159,9 +258,24 @@ export default function CreditsPage() {
                 <Wallet className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Reste à rembourser</p>
-                <p className="text-2xl font-bold">{totalRestant.toLocaleString('fr-FR')}</p>
+                <p className="text-sm text-muted-foreground">Reste à payer</p>
+                <p className="text-2xl font-bold">{(totalRestant / 1000000).toFixed(1)}M</p>
                 <p className="text-xs text-muted-foreground">FCFA</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-purple-100">
+                <Target className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Prévisions</p>
+                <p className="text-2xl font-bold">{(totalPrevisions / 1000000).toFixed(0)}M</p>
+                <p className="text-xs text-purple-600">{previsionsEnCours} en cours</p>
               </div>
             </div>
           </CardContent>
@@ -177,7 +291,7 @@ export default function CreditsPage() {
                 <p className="text-sm text-muted-foreground">Prochaine échéance</p>
                 {prochaineMensualite ? (
                   <>
-                    <p className="text-2xl font-bold">{prochaineMensualite.montantTotal.toLocaleString('fr-FR')}</p>
+                    <p className="text-2xl font-bold">{(prochaineMensualite.montantTotal / 1000000).toFixed(2)}M</p>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(prochaineMensualite.dateEcheance), 'dd/MM/yyyy')}
                     </p>
@@ -215,26 +329,140 @@ export default function CreditsPage() {
             <option value="en_retard">En retard</option>
           </select>
         </div>
-        <Button onClick={() => setShowNouveauModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau crédit
-        </Button>
+        <div className="flex gap-2">
+          {alertesNonLues > 0 && (
+            <Button variant="outline" size="sm">
+              <Bell className="h-4 w-4 mr-2" />
+              {alertesNonLues} alertes
+            </Button>
+          )}
+          <Button onClick={() => setShowNouveauModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau crédit
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="credits" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="dashboard" className="space-y-4">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="dashboard">
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Dashboard
+          </TabsTrigger>
           <TabsTrigger value="credits">Crédits actifs ({creditsActifs.length})</TabsTrigger>
           <TabsTrigger value="echeances">Échéancier</TabsTrigger>
+          <TabsTrigger value="revisions">
+            <Edit className="h-4 w-4 mr-1" />
+            Révisions
+          </TabsTrigger>
+          <TabsTrigger value="previsions">
+            <Lightbulb className="h-4 w-4 mr-1" />
+            Prévisions
+          </TabsTrigger>
           <TabsTrigger value="historique">
             <History className="h-4 w-4 mr-1" />
             Historique ({creditsTermines.length})
           </TabsTrigger>
-          <TabsTrigger value="alertes">Alertes</TabsTrigger>
+          <TabsTrigger value="alertes">
+            Alertes
+            {alertesNonLues > 0 && (
+              <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5">{alertesNonLues}</span>
+            )}
+          </TabsTrigger>
         </TabsList>
+
+        {/* Onglet Dashboard */}
+        <TabsContent value="dashboard" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Graphique remboursements mensuels */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Remboursements mensuels
+                </CardTitle>
+                <CardDescription>Capital vs Intérêts par mois</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dataRemboursementsMensuels}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="mois" fontSize={12} />
+                      <YAxis tickFormatter={(v) => formatMontant(v)} fontSize={12} />
+                      <Tooltip formatter={(value: number) => value.toLocaleString('fr-FR') + ' FCFA'} />
+                      <Legend />
+                      <Bar dataKey="capital" name="Capital" fill="#3b82f6" stackId="a" />
+                      <Bar dataKey="interets" name="Intérêts" fill="#f59e0b" stackId="a" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Graphique répartition par banque */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Répartition par banque
+                </CardTitle>
+                <CardDescription>Encours total par établissement</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={dataRepartitionBanques}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {dataRepartitionBanques.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => value.toLocaleString('fr-FR') + ' FCFA'} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Graphique évolution solde */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingDown className="h-5 w-5" />
+                Évolution du solde restant
+              </CardTitle>
+              <CardDescription>Projection des encours sur les prochains mois</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dataEvolutionSolde}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="mois" fontSize={12} />
+                    <YAxis tickFormatter={(v) => formatMontant(v)} fontSize={12} />
+                    <Tooltip formatter={(value: number) => value.toLocaleString('fr-FR') + ' FCFA'} />
+                    <Area type="monotone" dataKey="solde" name="Solde restant" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Onglet Crédits */}
         <TabsContent value="credits" className="space-y-4">
-          {creditsFiltres.map(credit => {
+          {creditsFiltres.filter(c => c.statut === 'actif').map(credit => {
             const echeancesCredit = echeancesCredits.filter(e => e.creditId === credit.id);
             const echeancesPayees = echeancesCredit.filter(e => e.statut === 'payee').length;
             const pourcentageRembourse = (credit.montantRembourse / (credit.montantEmprunte + credit.totalInterets)) * 100;
@@ -404,100 +632,308 @@ export default function CreditsPage() {
           </Card>
         </TabsContent>
 
-        {/* Onglet Alertes */}
-        <TabsContent value="alertes">
-          <div className="space-y-4">
-            {/* Échéances à venir (7 jours) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-500" />
-                  Échéances à venir (7 prochains jours)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {echeancesAPayer.filter(e => {
-                  const jours = differenceInDays(new Date(e.dateEcheance), today);
-                  return jours >= 0 && jours <= 7;
-                }).length > 0 ? (
-                  <div className="space-y-3">
-                    {echeancesAPayer.filter(e => {
-                      const jours = differenceInDays(new Date(e.dateEcheance), today);
-                      return jours >= 0 && jours <= 7;
-                    }).map(echeance => {
-                      const credit = creditsEnrichis.find(c => c.id === echeance.creditId);
-                      const jours = differenceInDays(new Date(echeance.dateEcheance), today);
-                      return (
-                        <div key={echeance.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                          <div>
-                            <p className="font-medium">{credit?.numero} - Échéance n°{echeance.numero}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(echeance.dateEcheance), 'dd MMMM yyyy', { locale: fr })}
-                              {jours === 0 && <span className="text-red-600 font-semibold ml-2">Aujourd'hui !</span>}
-                              {jours === 1 && <span className="text-orange-600 font-semibold ml-2">Demain</span>}
-                              {jours > 1 && <span className="ml-2">dans {jours} jours</span>}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-semibold">{echeance.montantTotal.toLocaleString('fr-FR')} FCFA</span>
-                            {credit && (
-                              <Button size="sm" onClick={() => handleRemboursement(credit, echeance)}>
-                                Payer
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">Aucune échéance dans les 7 prochains jours</p>
-                )}
-              </CardContent>
-            </Card>
+        {/* Onglet Révisions */}
+        <TabsContent value="revisions" className="space-y-6">
+          {/* Historique des modifications */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <RotateCcw className="h-5 w-5" />
+                    Historique des modifications
+                  </CardTitle>
+                  <CardDescription>Toutes les révisions et renégociations de contrats</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => toast.success("Export en cours...")}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Crédit</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Ancienne valeur</TableHead>
+                    <TableHead>Nouvelle valeur</TableHead>
+                    <TableHead>Motif</TableHead>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Document</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {modificationsCredits.map(mod => {
+                    const credit = creditsEnrichis.find(c => c.id === mod.creditId);
+                    const utilisateur = utilisateurs.find(u => u.id === mod.utilisateurId);
+                    return (
+                      <TableRow key={mod.id}>
+                        <TableCell>{format(new Date(mod.dateModification), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-medium">{credit?.numero}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getTypeModificationLabel(mod.type)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{mod.ancienneValeur}</TableCell>
+                        <TableCell className="font-medium">{mod.nouvelleValeur}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{mod.motif}</TableCell>
+                        <TableCell>{utilisateur?.nom || '-'}</TableCell>
+                        <TableCell>
+                          {mod.documentRef ? (
+                            <Button variant="ghost" size="sm">
+                              <FileText className="h-4 w-4 mr-1" />
+                              {mod.documentRef}
+                            </Button>
+                          ) : '-'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-            {/* Échéances en retard */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  Échéances en retard
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {echeancesCredits.filter(e => e.statut === 'en_retard').length > 0 ? (
-                  <div className="space-y-3">
-                    {echeancesCredits.filter(e => e.statut === 'en_retard').map(echeance => {
-                      const credit = creditsEnrichis.find(c => c.id === echeance.creditId);
-                      const joursRetard = differenceInDays(today, new Date(echeance.dateEcheance));
-                      return (
-                        <div key={echeance.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <div>
-                            <p className="font-medium">{credit?.numero} - Échéance n°{echeance.numero}</p>
-                            <p className="text-sm text-red-600">
-                              En retard de {joursRetard} jours
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-semibold text-red-600">{echeance.montantTotal.toLocaleString('fr-FR')} FCFA</span>
-                            {credit && (
-                              <Button size="sm" variant="destructive" onClick={() => handleRemboursement(credit, echeance)}>
-                                Régulariser
-                              </Button>
-                            )}
-                          </div>
+          {/* Documents versionnés */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <File className="h-5 w-5" />
+                    Documents versionnés
+                  </CardTitle>
+                  <CardDescription>Contrats, avenants et courriers archivés</CardDescription>
+                </div>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter document
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Crédit</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Nom du document</TableHead>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Taille</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {documentsCredits.map(doc => {
+                    const credit = creditsEnrichis.find(c => c.id === doc.creditId);
+                    return (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">{credit?.numero}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{doc.type}</Badge>
+                        </TableCell>
+                        <TableCell>{doc.nom}</TableCell>
+                        <TableCell>v{doc.version}</TableCell>
+                        <TableCell>{format(new Date(doc.dateUpload), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="text-muted-foreground">{doc.taille}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Alertes et rappels */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Alertes et rappels
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {alertesCredits.map(alerte => (
+                  <div 
+                    key={alerte.id} 
+                    className={`p-4 rounded-lg border ${alerte.lu ? 'bg-muted/50' : 'bg-background'} ${
+                      alerte.priorite === 'haute' ? 'border-red-200' : 
+                      alerte.priorite === 'moyenne' ? 'border-orange-200' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-full ${
+                          alerte.priorite === 'haute' ? 'bg-red-100' : 
+                          alerte.priorite === 'moyenne' ? 'bg-orange-100' : 'bg-muted'
+                        }`}>
+                          <Bell className={`h-4 w-4 ${
+                            alerte.priorite === 'haute' ? 'text-red-600' : 
+                            alerte.priorite === 'moyenne' ? 'text-orange-600' : 'text-muted-foreground'
+                          }`} />
                         </div>
-                      );
-                    })}
+                        <div>
+                          <p className="font-medium">{alerte.titre}</p>
+                          <p className="text-sm text-muted-foreground">{alerte.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(alerte.dateCreation), 'dd MMM yyyy', { locale: fr })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getPrioriteBadge(alerte.priorite)}
+                        {!alerte.lu && (
+                          <Button variant="ghost" size="sm" onClick={() => toast.success("Marqué comme lu")}>
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                    <p className="text-muted-foreground">Aucune échéance en retard</p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Onglet Prévisions */}
+        <TabsContent value="previsions" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Prévisions d'investissement</h2>
+              <p className="text-muted-foreground">Projets en attente de financement</p>
+            </div>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle prévision
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-blue-100">
+                    <Target className="h-6 w-6 text-blue-600" />
                   </div>
-                )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total prévisions</p>
+                    <p className="text-2xl font-bold">{(totalPrevisions / 1000000).toFixed(0)}M</p>
+                    <p className="text-xs text-muted-foreground">FCFA</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-green-100">
+                    <TrendingUp className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">En cours de traitement</p>
+                    <p className="text-2xl font-bold">{previsionsEnCours}</p>
+                    <p className="text-xs text-muted-foreground">dossiers</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-orange-100">
+                    <Clock className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">En attente</p>
+                    <p className="text-2xl font-bold">{previsionsInvestissements.filter(p => p.statut === 'en_attente').length}</p>
+                    <p className="text-xs text-muted-foreground">projets</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4">
+            {previsionsInvestissements.map(prevision => (
+              <Card key={prevision.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Lightbulb className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {prevision.titre}
+                          {getStatutPrevisionBadge(prevision.statut)}
+                          {getPrioriteBadge(prevision.priorite)}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Créé le {format(new Date(prevision.dateCreation), 'dd MMM yyyy', { locale: fr })}
+                          {prevision.dateObjectif && (
+                            <> • Objectif: {format(new Date(prevision.dateObjectif), 'dd MMM yyyy', { locale: fr })}</>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-1" />
+                        Modifier
+                      </Button>
+                      <Button size="sm">
+                        <ArrowUpRight className="h-4 w-4 mr-1" />
+                        Convertir en crédit
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm mb-4">{prevision.description}</p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Montant estimé</span>
+                      <p className="font-semibold text-lg">{prevision.montantEstime.toLocaleString('fr-FR')} FCFA</p>
+                    </div>
+                    {prevision.banqueEnvisagee && (
+                      <div>
+                        <span className="text-muted-foreground">Banque envisagée</span>
+                        <p className="font-semibold">{prevision.banqueEnvisagee}</p>
+                      </div>
+                    )}
+                    {prevision.tauxEstime && (
+                      <div>
+                        <span className="text-muted-foreground">Taux estimé</span>
+                        <p className="font-semibold">{prevision.tauxEstime}% / an</p>
+                      </div>
+                    )}
+                    {prevision.dureeEstimee && (
+                      <div>
+                        <span className="text-muted-foreground">Durée estimée</span>
+                        <p className="font-semibold">{prevision.dureeEstimee} mois</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {prevision.notes && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">{prevision.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </TabsContent>
 
@@ -697,6 +1133,103 @@ export default function CreditsPage() {
                 </CardContent>
               </Card>
             )}
+          </div>
+        </TabsContent>
+
+        {/* Onglet Alertes */}
+        <TabsContent value="alertes">
+          <div className="space-y-4">
+            {/* Échéances à venir (7 jours) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  Échéances à venir (7 prochains jours)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {echeancesAPayer.filter(e => {
+                  const jours = differenceInDays(new Date(e.dateEcheance), today);
+                  return jours >= 0 && jours <= 7;
+                }).length > 0 ? (
+                  <div className="space-y-3">
+                    {echeancesAPayer.filter(e => {
+                      const jours = differenceInDays(new Date(e.dateEcheance), today);
+                      return jours >= 0 && jours <= 7;
+                    }).map(echeance => {
+                      const credit = creditsEnrichis.find(c => c.id === echeance.creditId);
+                      const jours = differenceInDays(new Date(echeance.dateEcheance), today);
+                      return (
+                        <div key={echeance.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                          <div>
+                            <p className="font-medium">{credit?.numero} - Échéance n°{echeance.numero}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(echeance.dateEcheance), 'dd MMMM yyyy', { locale: fr })}
+                              {jours === 0 && <span className="text-red-600 font-semibold ml-2">Aujourd'hui !</span>}
+                              {jours === 1 && <span className="text-orange-600 font-semibold ml-2">Demain</span>}
+                              {jours > 1 && <span className="ml-2">dans {jours} jours</span>}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold">{echeance.montantTotal.toLocaleString('fr-FR')} FCFA</span>
+                            {credit && (
+                              <Button size="sm" onClick={() => handleRemboursement(credit, echeance)}>
+                                Payer
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">Aucune échéance dans les 7 prochains jours</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Échéances en retard */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  Échéances en retard
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {echeancesCredits.filter(e => e.statut === 'en_retard').length > 0 ? (
+                  <div className="space-y-3">
+                    {echeancesCredits.filter(e => e.statut === 'en_retard').map(echeance => {
+                      const credit = creditsEnrichis.find(c => c.id === echeance.creditId);
+                      const joursRetard = differenceInDays(today, new Date(echeance.dateEcheance));
+                      return (
+                        <div key={echeance.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div>
+                            <p className="font-medium">{credit?.numero} - Échéance n°{echeance.numero}</p>
+                            <p className="text-sm text-red-600">
+                              En retard de {joursRetard} jours
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold text-red-600">{echeance.montantTotal.toLocaleString('fr-FR')} FCFA</span>
+                            {credit && (
+                              <Button size="sm" variant="destructive" onClick={() => handleRemboursement(credit, echeance)}>
+                                Régulariser
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-muted-foreground">Aucune échéance en retard</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>

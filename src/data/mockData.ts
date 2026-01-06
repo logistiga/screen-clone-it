@@ -204,6 +204,60 @@ export interface RemboursementCredit {
   notes?: string;
 }
 
+// Interface pour les modifications/révisions de crédit
+export interface ModificationCredit {
+  id: string;
+  creditId: string;
+  type: 'taux' | 'echeance' | 'report' | 'renegociation' | 'cloture_anticipee';
+  dateModification: string;
+  ancienneValeur: string;
+  nouvelleValeur: string;
+  motif: string;
+  utilisateurId: string;
+  documentRef?: string;
+}
+
+// Interface pour les prévisions d'investissement
+export interface PrevisionInvestissement {
+  id: string;
+  titre: string;
+  description: string;
+  montantEstime: number;
+  banqueEnvisagee?: string;
+  tauxEstime?: number;
+  dureeEstimee?: number;
+  dateCreation: string;
+  dateObjectif?: string;
+  priorite: 'haute' | 'moyenne' | 'basse';
+  statut: 'en_attente' | 'en_cours' | 'approuve' | 'refuse' | 'realise';
+  notes?: string;
+}
+
+// Interface pour les documents versionnés
+export interface DocumentCredit {
+  id: string;
+  creditId: string;
+  type: 'contrat' | 'avenant' | 'courrier' | 'echeancier' | 'autre';
+  nom: string;
+  version: number;
+  dateUpload: string;
+  utilisateurId: string;
+  taille?: string;
+}
+
+// Interface pour les alertes crédit
+export interface AlerteCredit {
+  id: string;
+  creditId?: string;
+  type: 'echeance' | 'retard' | 'modification' | 'document' | 'rappel';
+  titre: string;
+  message: string;
+  dateCreation: string;
+  dateLue?: string;
+  priorite: 'haute' | 'moyenne' | 'basse';
+  lu: boolean;
+}
+
 // Données mock
 export const clients: Client[] = [
   {
@@ -853,7 +907,119 @@ export const remboursementsCredits: RemboursementCredit[] = [
   { id: 'remb-14', creditId: '2', echeanceId: 'ech-2-4', montant: 1178386, date: '2025-10-01', banqueId: '2', reference: 'VIR-CRED-014' },
   { id: 'remb-15', creditId: '2', echeanceId: 'ech-2-5', montant: 1171875, date: '2025-11-01', banqueId: '2', reference: 'VIR-CRED-015' },
   { id: 'remb-16', creditId: '2', echeanceId: 'ech-2-6', montant: 1165365, date: '2025-12-01', banqueId: '2', reference: 'VIR-CRED-016' },
-  { id: 'remb-17', creditId: '2', echeanceId: 'ech-2-7', montant: 1158855, date: '2026-01-02', banqueId: '2', reference: 'VIR-CRED-017' }
+  { id: 'remb-17', creditId: '2', echeanceId: 'ech-2-7', montant: 1158855, date: '2026-01-02', banqueId: '2', reference: 'VIR-CRED-017' },
+  // Remboursements crédit terminé (CRED-2024-0001)
+  { id: 'remb-18', creditId: '3', echeanceId: 'ech-3-1', montant: 1312500, date: '2024-07-01', banqueId: '3', reference: 'VIR-CRED-018' },
+  { id: 'remb-19', creditId: '3', echeanceId: 'ech-3-2', montant: 1312500, date: '2024-08-01', banqueId: '3', reference: 'VIR-CRED-019' },
+  { id: 'remb-20', creditId: '3', echeanceId: 'ech-3-3', montant: 1312500, date: '2024-09-01', banqueId: '3', reference: 'VIR-CRED-020' },
+  { id: 'remb-21', creditId: '3', echeanceId: 'ech-3-4', montant: 1312500, date: '2024-10-01', banqueId: '3', reference: 'VIR-CRED-021' },
+  { id: 'remb-22', creditId: '3', echeanceId: 'ech-3-5', montant: 1312500, date: '2024-11-01', banqueId: '3', reference: 'VIR-CRED-022' },
+  { id: 'remb-23', creditId: '3', echeanceId: 'ech-3-6', montant: 1312500, date: '2024-12-01', banqueId: '3', reference: 'VIR-CRED-023' },
+  { id: 'remb-24', creditId: '3', echeanceId: 'ech-3-7', montant: 1312500, date: '2025-01-01', banqueId: '3', reference: 'VIR-CRED-024' },
+  { id: 'remb-25', creditId: '3', echeanceId: 'ech-3-8', montant: 1312500, date: '2025-02-01', banqueId: '3', reference: 'VIR-CRED-025' },
+  { id: 'remb-26', creditId: '3', echeanceId: 'ech-3-9', montant: 1312500, date: '2025-03-01', banqueId: '3', reference: 'VIR-CRED-026' },
+  { id: 'remb-27', creditId: '3', echeanceId: 'ech-3-10', montant: 1312500, date: '2025-04-01', banqueId: '3', reference: 'VIR-CRED-027' },
+  { id: 'remb-28', creditId: '3', echeanceId: 'ech-3-11', montant: 1312500, date: '2025-05-01', banqueId: '3', reference: 'VIR-CRED-028' },
+  { id: 'remb-29', creditId: '3', echeanceId: 'ech-3-12', montant: 1312500, date: '2025-05-31', banqueId: '3', reference: 'VIR-CRED-029' }
+];
+
+// Modifications de crédit (historique des révisions)
+export const modificationsCredits: ModificationCredit[] = [
+  {
+    id: 'mod-1',
+    creditId: '1',
+    type: 'report',
+    dateModification: '2025-08-15',
+    ancienneValeur: 'Échéance 6 au 01/09/2025',
+    nouvelleValeur: 'Échéance 6 reportée au 02/09/2025',
+    motif: 'Jour férié - report automatique',
+    utilisateurId: '1',
+    documentRef: 'AVE-2025-001'
+  },
+  {
+    id: 'mod-2',
+    creditId: '2',
+    type: 'renegociation',
+    dateModification: '2025-09-10',
+    ancienneValeur: 'Taux 8.0%',
+    nouvelleValeur: 'Taux 7.5%',
+    motif: 'Renégociation suite fidélité client',
+    utilisateurId: '1',
+    documentRef: 'AVE-2025-002'
+  },
+  {
+    id: 'mod-3',
+    creditId: '3',
+    type: 'cloture_anticipee',
+    dateModification: '2025-05-31',
+    ancienneValeur: 'Fin prévue: 31/05/2025',
+    nouvelleValeur: 'Crédit soldé le 31/05/2025',
+    motif: 'Remboursement anticipé complet',
+    utilisateurId: '2'
+  }
+];
+
+// Prévisions d'investissement / projets en attente
+export const previsionsInvestissements: PrevisionInvestissement[] = [
+  {
+    id: 'prev-1',
+    titre: 'Extension parc camions',
+    description: 'Acquisition de 5 nouveaux camions pour répondre à la demande croissante',
+    montantEstime: 150000000,
+    banqueEnvisagee: 'BGFI Bank',
+    tauxEstime: 7.5,
+    dureeEstimee: 48,
+    dateCreation: '2025-11-15',
+    dateObjectif: '2026-06-01',
+    priorite: 'haute',
+    statut: 'en_cours',
+    notes: 'Dossier en cours de montage'
+  },
+  {
+    id: 'prev-2',
+    titre: 'Nouvel entrepôt Owendo',
+    description: 'Construction d\'un entrepôt de 2000m² pour stockage sécurisé',
+    montantEstime: 250000000,
+    banqueEnvisagee: 'UGB',
+    tauxEstime: 8.0,
+    dureeEstimee: 60,
+    dateCreation: '2025-12-01',
+    dateObjectif: '2026-09-01',
+    priorite: 'moyenne',
+    statut: 'en_attente',
+    notes: 'Étude de faisabilité en cours'
+  },
+  {
+    id: 'prev-3',
+    titre: 'Digitalisation opérations',
+    description: 'Système de tracking GPS et logiciel de gestion intégré',
+    montantEstime: 35000000,
+    banqueEnvisagee: 'Orabank',
+    tauxEstime: 9.0,
+    dureeEstimee: 24,
+    dateCreation: '2026-01-02',
+    priorite: 'basse',
+    statut: 'en_attente',
+    notes: 'Projet IT - besoin d\'évaluation technique'
+  }
+];
+
+// Documents versionnés des crédits
+export const documentsCredits: DocumentCredit[] = [
+  { id: 'doc-1', creditId: '1', type: 'contrat', nom: 'Contrat de prêt BGFI-2025', version: 1, dateUpload: '2025-03-01', utilisateurId: '1', taille: '2.4 MB' },
+  { id: 'doc-2', creditId: '1', type: 'echeancier', nom: 'Tableau amortissement initial', version: 1, dateUpload: '2025-03-01', utilisateurId: '1', taille: '156 KB' },
+  { id: 'doc-3', creditId: '1', type: 'avenant', nom: 'Avenant report échéance', version: 1, dateUpload: '2025-08-15', utilisateurId: '1', taille: '890 KB' },
+  { id: 'doc-4', creditId: '2', type: 'contrat', nom: 'Contrat de prêt UGB-2025', version: 1, dateUpload: '2025-06-01', utilisateurId: '1', taille: '2.1 MB' },
+  { id: 'doc-5', creditId: '2', type: 'avenant', nom: 'Avenant renégociation taux', version: 1, dateUpload: '2025-09-10', utilisateurId: '1', taille: '1.2 MB' },
+  { id: 'doc-6', creditId: '3', type: 'contrat', nom: 'Contrat de prêt Orabank-2024', version: 1, dateUpload: '2024-06-01', utilisateurId: '1', taille: '1.8 MB' },
+  { id: 'doc-7', creditId: '3', type: 'courrier', nom: 'Attestation de solde', version: 1, dateUpload: '2025-05-31', utilisateurId: '2', taille: '450 KB' }
+];
+
+// Alertes crédit
+export const alertesCredits: AlerteCredit[] = [
+  { id: 'alerte-1', creditId: '1', type: 'echeance', titre: 'Échéance proche', message: 'Échéance n°11 du crédit CRED-2025-0001 dans 26 jours', dateCreation: '2026-01-06', priorite: 'moyenne', lu: false },
+  { id: 'alerte-2', creditId: '2', type: 'echeance', titre: 'Échéance proche', message: 'Échéance n°8 du crédit CRED-2025-0002 dans 26 jours', dateCreation: '2026-01-06', priorite: 'moyenne', lu: false },
+  { id: 'alerte-3', type: 'rappel', titre: 'Dossier prévision', message: 'Rappel: Finaliser dossier Extension parc camions avant le 15/01', dateCreation: '2026-01-05', priorite: 'haute', lu: true }
 ];
 
 // Configuration des taux
