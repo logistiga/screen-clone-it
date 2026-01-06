@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TotauxDocument } from "@/components/forms/TotauxDocument";
-import { clients, LigneDocument, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
+import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
 
 // Types de catégories principales
@@ -25,12 +25,25 @@ type CategorieOrdre = "conteneurs" | "conventionnel" | "operations_independantes
 type TypeOperation = "import" | "export";
 type TypeOperationIndep = "location" | "transport" | "manutention" | "stockage";
 
+// Types d'opérations disponibles pour conteneurs
+type TypeOperationConteneur = "arrivee" | "stockage" | "depotage" | "double_relevage" | "sortie" | "transport" | "manutention";
+
+interface OperationConteneur {
+  id: string;
+  type: TypeOperationConteneur;
+  description: string;
+  quantite: number;
+  prixUnitaire: number;
+  prixTotal: number;
+}
+
 interface LigneConteneur {
   id: string;
   numero: string;
   taille: "20'" | "40'" | "";
   description: string;
   prixUnitaire: number;
+  operations: OperationConteneur[];
 }
 
 interface LignePrestation {
@@ -40,6 +53,16 @@ interface LignePrestation {
   prixUnitaire: number;
   montantHT: number;
 }
+
+const typesOperationConteneur: Record<TypeOperationConteneur, { label: string; prixDefaut: number }> = {
+  arrivee: { label: "Arrivée", prixDefaut: 50000 },
+  stockage: { label: "Stockage", prixDefaut: 25000 },
+  depotage: { label: "Dépotage", prixDefaut: 75000 },
+  double_relevage: { label: "Double relevage", prixDefaut: 35000 },
+  sortie: { label: "Sortie", prixDefaut: 40000 },
+  transport: { label: "Transport", prixDefaut: 150000 },
+  manutention: { label: "Manutention", prixDefaut: 30000 },
+};
 
 const categoriesLabels: Record<CategorieOrdre, { label: string; description: string; icon: React.ReactNode }> = {
   conteneurs: {
@@ -81,7 +104,7 @@ export default function NouvelOrdrePage() {
   
   // Conteneurs
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([
-    { id: "1", numero: "", taille: "", description: "", prixUnitaire: 0 }
+    { id: "1", numero: "", taille: "", description: "", prixUnitaire: 0, operations: [] }
   ]);
   
   // Prestations (conventionnel et opérations indépendantes)
@@ -106,7 +129,7 @@ export default function NouvelOrdrePage() {
   const handleAddConteneur = () => {
     setConteneurs([
       ...conteneurs,
-      { id: String(Date.now()), numero: "", taille: "", description: "", prixUnitaire: 0 }
+      { id: String(Date.now()), numero: "", taille: "", description: "", prixUnitaire: 0, operations: [] }
     ]);
   };
 
@@ -116,10 +139,79 @@ export default function NouvelOrdrePage() {
     }
   };
 
-  const handleConteneurChange = (id: string, field: keyof LigneConteneur, value: string | number) => {
+  const handleConteneurChange = (id: string, field: keyof Omit<LigneConteneur, 'operations'>, value: string | number) => {
     setConteneurs(conteneurs.map(c => 
       c.id === id ? { ...c, [field]: value } : c
     ));
+  };
+
+  // Gestion des opérations de conteneur
+  const handleAddOperationConteneur = (conteneurId: string) => {
+    setConteneurs(conteneurs.map(c => {
+      if (c.id === conteneurId) {
+        const defaultType: TypeOperationConteneur = "arrivee";
+        const defaultPrix = typesOperationConteneur[defaultType].prixDefaut;
+        return {
+          ...c,
+          operations: [
+            ...c.operations,
+            { 
+              id: String(Date.now()), 
+              type: defaultType, 
+              description: "", 
+              quantite: 1, 
+              prixUnitaire: defaultPrix, 
+              prixTotal: defaultPrix 
+            }
+          ]
+        };
+      }
+      return c;
+    }));
+  };
+
+  const handleRemoveOperationConteneur = (conteneurId: string, operationId: string) => {
+    setConteneurs(conteneurs.map(c => {
+      if (c.id === conteneurId) {
+        return {
+          ...c,
+          operations: c.operations.filter(op => op.id !== operationId)
+        };
+      }
+      return c;
+    }));
+  };
+
+  const handleOperationConteneurChange = (
+    conteneurId: string,
+    operationId: string,
+    field: keyof OperationConteneur,
+    value: string | number
+  ) => {
+    setConteneurs(conteneurs.map(c => {
+      if (c.id === conteneurId) {
+        return {
+          ...c,
+          operations: c.operations.map(op => {
+            if (op.id === operationId) {
+              const updated = { ...op, [field]: value };
+              // Update prix par défaut si on change le type
+              if (field === "type") {
+                const typeOp = value as TypeOperationConteneur;
+                updated.prixUnitaire = typesOperationConteneur[typeOp]?.prixDefaut || 0;
+                updated.prixTotal = updated.quantite * updated.prixUnitaire;
+              }
+              if (field === "quantite" || field === "prixUnitaire") {
+                updated.prixTotal = updated.quantite * updated.prixUnitaire;
+              }
+              return updated;
+            }
+            return op;
+          })
+        };
+      }
+      return c;
+    }));
   };
 
   // Gestion des prestations
@@ -152,7 +244,12 @@ export default function NouvelOrdrePage() {
   // Calcul des totaux
   const calculateTotal = (): number => {
     if (categorie === "conteneurs") {
-      return conteneurs.reduce((sum, c) => sum + (c.prixUnitaire || 0), 0);
+      // Total des prix conteneurs + total des opérations
+      const totalConteneurs = conteneurs.reduce((sum, c) => sum + (c.prixUnitaire || 0), 0);
+      const totalOperations = conteneurs.reduce((sum, c) => 
+        sum + c.operations.reduce((opSum, op) => opSum + op.prixTotal, 0), 0
+      );
+      return totalConteneurs + totalOperations;
     }
     return prestations.reduce((sum, p) => sum + p.montantHT, 0);
   };
@@ -167,7 +264,7 @@ export default function NouvelOrdrePage() {
     setCategorie(value);
     setTypeOperation("");
     setTypeOperationIndep("");
-    setConteneurs([{ id: "1", numero: "", taille: "", description: "", prixUnitaire: 0 }]);
+    setConteneurs([{ id: "1", numero: "", taille: "", description: "", prixUnitaire: 0, operations: [] }]);
     setPrestations([{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]);
   };
 
@@ -367,31 +464,33 @@ export default function NouvelOrdrePage() {
                     </CardTitle>
                     <Button type="button" variant="outline" size="sm" onClick={handleAddConteneur} className="gap-1">
                       <Plus className="h-4 w-4" />
-                      Ajouter
+                      Ajouter conteneur
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {conteneurs.map((conteneur, index) => (
-                      <div key={conteneur.id} className="p-4 border rounded-lg space-y-4">
+                      <div key={conteneur.id} className="p-4 bg-muted/30 rounded-lg space-y-4">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">Conteneur {index + 1}</span>
+                          <span className="font-medium text-sm text-muted-foreground">Conteneur {index + 1}</span>
                           {conteneurs.length > 1 && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
                               onClick={() => handleRemoveConteneur(conteneur.id)}
-                              className="text-destructive"
+                              className="text-destructive h-8 w-8"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
+                        
+                        {/* Ligne conteneur */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div className="space-y-2">
-                            <Label>Numéro conteneur</Label>
+                            <Label>N° Conteneur</Label>
                             <Input
                               placeholder="MSKU1234567"
                               value={conteneur.numero}
@@ -423,7 +522,7 @@ export default function NouvelOrdrePage() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Prix (XAF)</Label>
+                            <Label>Prix conteneur (XAF)</Label>
                             <Input
                               type="number"
                               placeholder="0"
@@ -431,6 +530,118 @@ export default function NouvelOrdrePage() {
                               onChange={(e) => handleConteneurChange(conteneur.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
                             />
                           </div>
+                        </div>
+
+                        {/* Section opérations du conteneur */}
+                        <div className="border-t pt-4 mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label className="text-sm font-medium">Opérations liées</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddOperationConteneur(conteneur.id)}
+                              className="gap-1 text-xs"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Nouvelle opération
+                            </Button>
+                          </div>
+
+                          {conteneur.operations.length === 0 ? (
+                            <p className="text-sm text-muted-foreground italic">
+                              Aucune opération ajoutée. Cliquez sur "Nouvelle opération" pour en ajouter.
+                            </p>
+                          ) : (
+                            <div className="space-y-3">
+                              {conteneur.operations.map((op, opIndex) => (
+                                <div key={op.id} className="p-3 border rounded-lg bg-background space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground font-medium">
+                                      Opération {opIndex + 1}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemoveOperationConteneur(conteneur.id, op.id)}
+                                      className="text-destructive h-6 w-6"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                    <div className="space-y-1 col-span-2">
+                                      <Label className="text-xs">Type d'opération</Label>
+                                      <Select
+                                        value={op.type}
+                                        onValueChange={(value) => 
+                                          handleOperationConteneurChange(conteneur.id, op.id, "type", value)
+                                        }
+                                      >
+                                        <SelectTrigger className="h-9">
+                                          <SelectValue placeholder="Sélectionner" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(Object.keys(typesOperationConteneur) as TypeOperationConteneur[]).map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                              {typesOperationConteneur[type].label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Quantité</Label>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        className="h-9"
+                                        value={op.quantite}
+                                        onChange={(e) => 
+                                          handleOperationConteneurChange(conteneur.id, op.id, "quantite", parseInt(e.target.value) || 0)
+                                        }
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Prix unit. (XAF)</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        className="h-9"
+                                        value={op.prixUnitaire}
+                                        onChange={(e) => 
+                                          handleOperationConteneurChange(conteneur.id, op.id, "prixUnitaire", parseInt(e.target.value) || 0)
+                                        }
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Prix total</Label>
+                                      <Input
+                                        type="number"
+                                        className="h-9 bg-muted font-medium"
+                                        value={op.prixTotal}
+                                        readOnly
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Sous-total conteneur */}
+                          {conteneur.operations.length > 0 && (
+                            <div className="flex justify-end mt-3">
+                              <span className="text-sm">
+                                <span className="text-muted-foreground">Sous-total opérations: </span>
+                                <span className="font-semibold">
+                                  {formatMontant(conteneur.operations.reduce((acc, op) => acc + op.prixTotal, 0))}
+                                </span>
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
