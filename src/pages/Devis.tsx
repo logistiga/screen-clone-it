@@ -42,7 +42,7 @@ export default function DevisPage() {
   
   // États pour les modales de confirmation
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'annuler' | 'supprimer' | null;
+    type: 'annuler' | 'supprimer' | 'convertir' | null;
     id: string;
     numero: string;
   }>({ type: null, id: '', numero: '' });
@@ -68,6 +68,17 @@ export default function DevisPage() {
     }
   };
 
+  const confirmConvertir = () => {
+    if (confirmAction.type === 'convertir') {
+      toast({
+        title: "Conversion réussie",
+        description: `Le devis ${confirmAction.numero} a été converti en ordre de travail.`,
+      });
+      setConfirmAction({ type: null, id: '', numero: '' });
+      navigate("/ordres/nouveau");
+    }
+  };
+
   const handleEnvoyer = (id: string, numero: string) => {
     toast({
       title: "Devis envoyé",
@@ -80,14 +91,6 @@ export default function DevisPage() {
       title: "Devis dupliqué",
       description: `Une copie du devis ${numero} a été créée.`,
     });
-  };
-
-  const handleConvertir = (id: string, numero: string) => {
-    toast({
-      title: "Conversion en ordre",
-      description: `Le devis ${numero} a été converti en ordre de travail.`,
-    });
-    navigate("/ordres/nouveau");
   };
 
   const filteredDevis = devis.filter(d => {
@@ -252,7 +255,7 @@ export default function DevisPage() {
                               size="icon" 
                               title="Convertir en ordre" 
                               className="text-primary"
-                              onClick={() => handleConvertir(d.id, d.numero)}
+                              onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}
                             >
                               <ArrowRight className="h-4 w-4" />
                             </Button>
@@ -338,6 +341,28 @@ export default function DevisPage() {
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSupprimer} className="bg-destructive hover:bg-destructive/90">
               Oui, supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de confirmation pour conversion */}
+      <AlertDialog 
+        open={confirmAction.type === 'convertir'} 
+        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convertir en ordre de travail</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous convertir le devis <strong>{confirmAction.numero}</strong> en ordre de travail ? 
+              Les données du devis seront utilisées pour créer l'ordre.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmConvertir}>
+              Convertir en ordre
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
