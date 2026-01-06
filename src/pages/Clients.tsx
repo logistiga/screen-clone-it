@@ -12,13 +12,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import { clients, formatMontant } from "@/data/mockData";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nom: string } | null>(null);
 
   const filteredClients = clients.filter(client =>
     client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,6 +39,17 @@ export default function ClientsPage() {
   );
 
   const totalSolde = clients.reduce((sum, c) => sum + c.solde, 0);
+
+  const handleDelete = () => {
+    if (deleteConfirm) {
+      toast({
+        title: "Client supprimé",
+        description: `Le client ${deleteConfirm.nom} a été supprimé.`,
+        variant: "destructive",
+      });
+      setDeleteConfirm(null);
+    }
+  };
 
   return (
     <MainLayout title="Clients">
@@ -75,7 +99,7 @@ export default function ClientsPage() {
               className="pl-9"
             />
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => navigate("/clients/nouveau")}>
             <Plus className="h-4 w-4" />
             Nouveau client
           </Button>
@@ -99,9 +123,13 @@ export default function ClientsPage() {
                   <TableRow 
                     key={client.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/clients/${client.id}`)}
                   >
-                    <TableCell className="font-medium">{client.nom}</TableCell>
+                    <TableCell 
+                      className="font-medium text-primary hover:underline cursor-pointer"
+                      onClick={() => navigate(`/clients/${client.id}`)}
+                    >
+                      {client.nom}
+                    </TableCell>
                     <TableCell>
                       <div className="text-sm">{client.email}</div>
                       <div className="text-xs text-muted-foreground">{client.telephone}</div>
@@ -115,14 +143,30 @@ export default function ClientsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/clients/${client.id}`)}>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Voir"
+                          onClick={() => navigate(`/clients/${client.id}`)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          title="Modifier"
+                          onClick={() => navigate(`/clients/${client.id}/modifier`)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive"
+                          title="Supprimer"
+                          onClick={() => setDeleteConfirm({ id: client.id, nom: client.nom })}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -134,6 +178,28 @@ export default function ClientsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de confirmation suppression */}
+      <AlertDialog 
+        open={!!deleteConfirm} 
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le client <strong>{deleteConfirm?.nom}</strong> ? 
+              Cette action supprimera également tous les documents associés et est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Oui, supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

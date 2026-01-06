@@ -10,6 +10,7 @@ import DevisPage from "./pages/Devis";
 import NouveauDevisPage from "./pages/NouveauDevis";
 import DevisDetailPage from "./pages/DevisDetail";
 import DevisPDFPage from "./pages/DevisPDF";
+import NouveauClientPage from "./pages/NouveauClient";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
 import FacturesPage from "./pages/Factures";
@@ -40,7 +41,9 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/ordres" replace />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/clients/nouveau" element={<NouveauClientPage />} />
           <Route path="/clients/:id" element={<ClientDetailPage />} />
+          <Route path="/clients/:id/modifier" element={<NouveauClientPage />} />
           <Route path="/devis" element={<DevisPage />} />
           <Route path="/devis/nouveau" element={<NouveauDevisPage />} />
           <Route path="/devis/:id" element={<DevisDetailPage />} />
