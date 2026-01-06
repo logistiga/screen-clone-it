@@ -34,6 +34,11 @@ import EmailsPage from "./pages/Emails";
 import TaxesPage from "./pages/Taxes";
 import BanquesPage from "./pages/Banques";
 import NumerotationPage from "./pages/Numerotation";
+import NotesDebutPage from "./pages/NotesDebut";
+import NouvelleNoteDebutPage from "./pages/NouvelleNoteDebut";
+import NouvelleNoteOuverturePortPage from "./pages/NouvelleNoteOuverturePort";
+import NouvelleNoteDetentionPage from "./pages/NouvelleNoteDetention";
+import NouvelleNoteReparationPage from "./pages/NouvelleNoteReparation";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +70,11 @@ const App = () => (
           <Route path="/factures/:id/pdf" element={<FacturePDFPage />} />
           <Route path="/factures/:id/modifier" element={<NouvelleFacturePage />} />
           <Route path="/annulations" element={<AnnulationsPage />} />
+          <Route path="/notes-debut" element={<NotesDebutPage />} />
+          <Route path="/notes-debut/nouvelle" element={<NouvelleNoteDebutPage />} />
+          <Route path="/notes-debut/ouverture-port" element={<NouvelleNoteOuverturePortPage />} />
+          <Route path="/notes-debut/detention" element={<NouvelleNoteDetentionPage />} />
+          <Route path="/notes-debut/reparation" element={<NouvelleNoteReparationPage />} />
           <Route path="/caisse" element={<CaissePage />} />
           <Route path="/banque" element={<BanquePage />} />
           <Route path="/caisse-globale" element={<CaisseGlobalePage />} />

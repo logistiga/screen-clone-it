@@ -1,0 +1,328 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Plus, Trash2, Save, Calendar, Search } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { PageTransition } from "@/components/layout/PageTransition";
+
+interface NoteDebutFormProps {
+  noteType: "ouverture_port" | "detention" | "reparation";
+  title: string;
+  subtitle: string;
+}
+
+interface LigneNote {
+  id: string;
+  ordreTravail: string;
+  containerNumber: string;
+  blNumber: string;
+  dateDebut: string;
+  dateFin: string;
+  tarifJournalier: number;
+}
+
+const mockClients = [
+  { id: "1", nom: "MAERSK LINE" },
+  { id: "2", nom: "MSC" },
+  { id: "3", nom: "CMA CGM" },
+  { id: "4", nom: "HAPAG LLOYD" },
+];
+
+const mockOrdresTravail = [
+  { id: "OT-001", numero: "OT-2024-001", client: "MAERSK LINE" },
+  { id: "OT-002", numero: "OT-2024-002", client: "MSC" },
+  { id: "OT-003", numero: "OT-2024-003", client: "CMA CGM" },
+];
+
+export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps) {
+  const navigate = useNavigate();
+  const [clientId, setClientId] = useState("");
+  const [description, setDescription] = useState("");
+  const [lignes, setLignes] = useState<LigneNote[]>([
+    {
+      id: "1",
+      ordreTravail: "",
+      containerNumber: "",
+      blNumber: "",
+      dateDebut: "",
+      dateFin: "",
+      tarifJournalier: 0,
+    },
+  ]);
+
+  const ajouterLigne = () => {
+    setLignes([
+      ...lignes,
+      {
+        id: String(Date.now()),
+        ordreTravail: "",
+        containerNumber: "",
+        blNumber: "",
+        dateDebut: "",
+        dateFin: "",
+        tarifJournalier: 0,
+      },
+    ]);
+  };
+
+  const supprimerLigne = (id: string) => {
+    if (lignes.length > 1) {
+      setLignes(lignes.filter((l) => l.id !== id));
+    }
+  };
+
+  const updateLigne = (id: string, field: keyof LigneNote, value: string | number) => {
+    setLignes(
+      lignes.map((l) =>
+        l.id === id ? { ...l, [field]: value } : l
+      )
+    );
+  };
+
+  const calculerJours = (dateDebut: string, dateFin: string) => {
+    if (!dateDebut || !dateFin) return 0;
+    const debut = new Date(dateDebut);
+    const fin = new Date(dateFin);
+    const diff = Math.ceil((fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 0;
+  };
+
+  const calculerMontantLigne = (ligne: LigneNote) => {
+    const jours = calculerJours(ligne.dateDebut, ligne.dateFin);
+    return jours * ligne.tarifJournalier;
+  };
+
+  const montantTotal = lignes.reduce((acc, l) => acc + calculerMontantLigne(l), 0);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("fr-GA", {
+      style: "decimal",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const handleSubmit = () => {
+    if (!clientId) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un client",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const lignesValides = lignes.filter(
+      (l) => l.containerNumber && l.dateDebut && l.dateFin && l.tarifJournalier > 0
+    );
+
+    if (lignesValides.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir au moins une ligne valide",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Note créée",
+      description: `La note de ${noteType === "ouverture_port" ? "ouverture de port" : noteType === "detention" ? "détention" : "réparation"} a été créée avec succès.`,
+    });
+
+    navigate("/notes-debut");
+  };
+
+  return (
+    <PageTransition>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/notes-debut/nouvelle")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              {title}
+            </h1>
+            <p className="text-muted-foreground mt-1">{subtitle}</p>
+          </div>
+        </div>
+
+        {/* Informations générales */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations générales</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Client *</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Description de la note..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lignes de note */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Lignes de note</CardTitle>
+            <Button onClick={ajouterLigne} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter une ligne
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {lignes.map((ligne, index) => (
+              <div
+                key={ligne.id}
+                className="border rounded-lg p-4 space-y-4 bg-muted/30"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Ligne {index + 1}</span>
+                  {lignes.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => supprimerLigne(ligne.id)}
+                      className="text-destructive hover:text-destructive/80"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ordre de travail</Label>
+                    <Select
+                      value={ligne.ordreTravail}
+                      onValueChange={(v) => updateLigne(ligne.id, "ordreTravail", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un OT" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mockOrdresTravail.map((ot) => (
+                          <SelectItem key={ot.id} value={ot.id}>
+                            {ot.numero} - {ot.client}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>N° Conteneur *</Label>
+                    <Input
+                      placeholder="MSKU1234567"
+                      value={ligne.containerNumber}
+                      onChange={(e) =>
+                        updateLigne(ligne.id, "containerNumber", e.target.value.toUpperCase())
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>N° BL</Label>
+                    <Input
+                      placeholder="BL-2024-001"
+                      value={ligne.blNumber}
+                      onChange={(e) => updateLigne(ligne.id, "blNumber", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>Date début *</Label>
+                    <Input
+                      type="date"
+                      value={ligne.dateDebut}
+                      onChange={(e) => updateLigne(ligne.id, "dateDebut", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date fin *</Label>
+                    <Input
+                      type="date"
+                      value={ligne.dateFin}
+                      onChange={(e) => updateLigne(ligne.id, "dateFin", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tarif journalier (FCFA) *</Label>
+                    <Input
+                      type="number"
+                      placeholder="25000"
+                      value={ligne.tarifJournalier || ""}
+                      onChange={(e) =>
+                        updateLigne(ligne.id, "tarifJournalier", Number(e.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Montant</Label>
+                    <div className="h-10 px-3 py-2 bg-muted rounded-md flex items-center font-semibold">
+                      {formatCurrency(calculerMontantLigne(ligne))} FCFA
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({calculerJours(ligne.dateDebut, ligne.dateFin)} jours)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Total */}
+            <div className="flex justify-end pt-4 border-t">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Montant total</p>
+                <p className="text-2xl font-bold">{formatCurrency(montantTotal)} FCFA</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-4">
+          <Button variant="outline" onClick={() => navigate("/notes-debut")}>
+            Annuler
+          </Button>
+          <Button onClick={handleSubmit}>
+            <Save className="h-4 w-4 mr-2" />
+            Enregistrer la note
+          </Button>
+        </div>
+      </div>
+    </PageTransition>
+  );
+}
