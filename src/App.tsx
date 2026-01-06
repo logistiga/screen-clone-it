@@ -40,6 +40,7 @@ import NouvelleNoteOuverturePortPage from "./pages/NouvelleNoteOuverturePort";
 import NouvelleNoteDetentionPage from "./pages/NouvelleNoteDetention";
 import NouvelleNoteReparationPage from "./pages/NouvelleNoteReparation";
 import NoteDebutDetailPage from "./pages/NoteDebutDetail";
+import ModifierNoteDebutPage from "./pages/ModifierNoteDebut";
 
 const queryClient = new QueryClient();
 
@@ -77,7 +78,7 @@ const App = () => (
           <Route path="/notes-debut/detention" element={<NouvelleNoteDetentionPage />} />
           <Route path="/notes-debut/reparation" element={<NouvelleNoteReparationPage />} />
           <Route path="/notes-debut/:id" element={<NoteDebutDetailPage />} />
-          <Route path="/notes-debut/:id/modifier" element={<NouvelleNoteDebutPage />} />
+          <Route path="/notes-debut/:id/modifier" element={<ModifierNoteDebutPage />} />
           <Route path="/caisse" element={<CaissePage />} />
           <Route path="/banque" element={<BanquePage />} />
           <Route path="/caisse-globale" element={<CaisseGlobalePage />} />
