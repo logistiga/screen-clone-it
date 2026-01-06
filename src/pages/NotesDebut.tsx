@@ -37,13 +37,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { PaiementNoteModal } from "@/components/notes/PaiementNoteModal";
+import { EmailNoteModal } from "@/components/notes/EmailNoteModal";
 
 interface NoteDebut {
   id: string;
   number: string;
   client: string;
   clientId: string;
+  clientEmail: string;
   type: "ouverture_port" | "detention" | "reparation";
   ordresTravail: string[];
   blNumber: string;
@@ -59,12 +72,13 @@ interface NoteDebut {
   description: string;
 }
 
-const mockNotes: NoteDebut[] = [
+const initialMockNotes: NoteDebut[] = [
   {
     id: "1",
     number: "ND-2024-001",
     client: "MAERSK LINE",
     clientId: "1",
+    clientEmail: "contact@maersk.com",
     type: "ouverture_port",
     ordresTravail: ["OT-001"],
     blNumber: "BL-2024-001",
@@ -84,6 +98,7 @@ const mockNotes: NoteDebut[] = [
     number: "ND-2024-002",
     client: "MSC",
     clientId: "2",
+    clientEmail: "contact@msc.com",
     type: "detention",
     ordresTravail: ["OT-002"],
     blNumber: "BL-2024-002",
@@ -103,6 +118,7 @@ const mockNotes: NoteDebut[] = [
     number: "ND-2024-003",
     client: "CMA CGM",
     clientId: "3",
+    clientEmail: "contact@cmacgm.com",
     type: "reparation",
     ordresTravail: ["OT-003"],
     blNumber: "BL-2024-003",
@@ -138,26 +154,11 @@ const typeConfig = {
 };
 
 const statusConfig = {
-  pending: {
-    label: "En attente",
-    class: "bg-warning/20 text-warning",
-  },
-  invoiced: {
-    label: "Facturée",
-    class: "bg-primary/20 text-primary",
-  },
-  paid: {
-    label: "Payée",
-    class: "bg-success/20 text-success",
-  },
-  cancelled: {
-    label: "Annulée",
-    class: "bg-muted text-muted-foreground",
-  },
-  partial: {
-    label: "Partielle",
-    class: "bg-cyan-500/20 text-cyan-600",
-  },
+  pending: { label: "En attente", class: "bg-warning/20 text-warning" },
+  invoiced: { label: "Facturée", class: "bg-primary/20 text-primary" },
+  paid: { label: "Payée", class: "bg-success/20 text-success" },
+  cancelled: { label: "Annulée", class: "bg-muted text-muted-foreground" },
+  partial: { label: "Partielle", class: "bg-cyan-500/20 text-cyan-600" },
 };
 
 const itemVariants = {
@@ -167,11 +168,17 @@ const itemVariants = {
 
 export default function NotesDebut() {
   const navigate = useNavigate();
-  const [notes] = useState<NoteDebut[]>(mockNotes);
+  const [notes, setNotes] = useState<NoteDebut[]>(initialMockNotes);
   const [isLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Modal states
+  const [showPaiementModal, setShowPaiementModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<NoteDebut | null>(null);
 
   const filteredNotes = notes.filter((note) => {
     const matchesSearch =
@@ -233,9 +240,67 @@ export default function NotesDebut() {
     });
   };
 
+  const handleViewDetail = (note: NoteDebut) => {
+    navigate(`/notes-debut/${note.id}`);
+  };
+
+  const handleEdit = (note: NoteDebut) => {
+    navigate(`/notes-debut/${note.id}/modifier`);
+  };
+
+  const handleDownloadPDF = (note: NoteDebut) => {
+    toast({
+      title: "Téléchargement PDF",
+      description: `Le PDF de la note ${note.number} est en cours de génération...`,
+    });
+  };
+
+  const handleEmail = (note: NoteDebut) => {
+    setSelectedNote(note);
+    setShowEmailModal(true);
+  };
+
+  const handlePayment = (note: NoteDebut) => {
+    setSelectedNote(note);
+    setShowPaiementModal(true);
+  };
+
+  const handleDelete = (note: NoteDebut) => {
+    setSelectedNote(note);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedNote) {
+      setNotes((prev) => prev.filter((n) => n.id !== selectedNote.id));
+      toast({
+        title: "Note supprimée",
+        description: `La note ${selectedNote.number} a été supprimée.`,
+      });
+    }
+    setShowDeleteDialog(false);
+    setSelectedNote(null);
+  };
+
+  const handlePaiementSuccess = (montant: number) => {
+    if (selectedNote) {
+      setNotes((prev) =>
+        prev.map((n) => {
+          if (n.id === selectedNote.id) {
+            const newPaid = n.paid + montant;
+            const newStatus = newPaid + n.advance >= n.montantTotal ? "paid" : "partial";
+            return { ...n, paid: newPaid, status: newStatus as NoteDebut["status"] };
+          }
+          return n;
+        })
+      );
+    }
+    setSelectedNote(null);
+  };
+
   const stats = [
     { label: "Total notes", value: notes.length, unit: "notes" },
-    { label: "En attente", value: notes.filter(n => n.status === "pending").length, unit: "notes" },
+    { label: "En attente", value: notes.filter((n) => n.status === "pending").length, unit: "notes" },
     { label: "Montant total", value: formatCurrency(notes.reduce((acc, n) => acc + n.montantTotal, 0)), unit: "FCFA" },
   ];
 
@@ -392,8 +457,9 @@ export default function NotesDebut() {
                         animate="visible"
                         transition={{ delay: index * 0.05 }}
                         className={`group hover:bg-muted/50 cursor-pointer ${isSelected ? "bg-primary/5" : ""}`}
+                        onClick={() => handleViewDetail(note)}
                       >
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => handleSelectOne(note.id)}
@@ -437,25 +503,63 @@ export default function NotesDebut() {
                         <TableCell>
                           <Badge className={status.class}>{status.label}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Voir détails">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Voir détails"
+                              onClick={() => handleViewDetail(note)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Modifier"
+                              onClick={() => handleEdit(note)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Télécharger PDF">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Télécharger PDF"
+                              onClick={() => handleDownloadPDF(note)}
+                            >
                               <Download className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Envoyer par email">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Envoyer par email"
+                              onClick={() => handleEmail(note)}
+                            >
                               <Mail className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Paiement">
-                              <CreditCard className="h-4 w-4" />
-                            </Button>
+                            {remaining > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Paiement"
+                                onClick={() => handlePayment(note)}
+                              >
+                                <CreditCard className="h-4 w-4" />
+                              </Button>
+                            )}
                             {note.paid === 0 && note.advance === 0 && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/80" title="Supprimer">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive/80"
+                                title="Supprimer"
+                                onClick={() => handleDelete(note)}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
@@ -470,6 +574,45 @@ export default function NotesDebut() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      {selectedNote && (
+        <>
+          <PaiementNoteModal
+            open={showPaiementModal}
+            onOpenChange={setShowPaiementModal}
+            noteNumero={selectedNote.number}
+            montantRestant={selectedNote.montantTotal - selectedNote.paid - selectedNote.advance}
+            onSuccess={handlePaiementSuccess}
+          />
+
+          <EmailNoteModal
+            open={showEmailModal}
+            onOpenChange={setShowEmailModal}
+            noteNumero={selectedNote.number}
+            clientEmail={selectedNote.clientEmail}
+            clientNom={selectedNote.client}
+            noteType={typeConfig[selectedNote.type].label}
+          />
+        </>
+      )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette note ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. La note {selectedNote?.number} sera définitivement supprimée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
