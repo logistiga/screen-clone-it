@@ -753,6 +753,10 @@ export const configurationTaxes: ConfigurationTaxes = {
   cssRate: 1
 };
 
+// Taux de taxes pour calculs
+export const TAUX_TVA = 0.18;
+export const TAUX_CSS = 0.01;
+
 // Helpers
 export const formatMontant = (montant: number): string => {
   return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
@@ -784,4 +788,16 @@ export const getStatutLabel = (statut: string): string => {
     annulee: 'Annulée'
   };
   return labels[statut] || statut;
+};
+
+export const getTypeOperationLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    conteneurs: 'Conteneurs',
+    conventionnel: 'Conventionnel',
+    location: 'Location véhicule',
+    transport: 'Transport',
+    manutention: 'Manutention',
+    stockage: 'Stockage'
+  };
+  return labels[type] || type;
 };

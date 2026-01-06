@@ -21,11 +21,13 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText } from "lucide-react";
 import { ordresTravail, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { OrdreForm } from "@/components/forms/OrdreForm";
 
 export default function OrdresTravailPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [formOpen, setFormOpen] = useState(false);
 
   const filteredOrdres = ordresTravail.filter(o => {
     const client = clients.find(c => c.id === o.clientId);
@@ -149,7 +151,7 @@ export default function OrdresTravailPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setFormOpen(true)}>
             <Plus className="h-4 w-4" />
             Nouvel ordre
           </Button>
@@ -223,6 +225,8 @@ export default function OrdresTravailPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <OrdreForm open={formOpen} onOpenChange={setFormOpen} />
       </div>
     </MainLayout>
   );

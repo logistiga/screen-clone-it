@@ -19,12 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Eye, Edit, Wallet, Mail, FileText, XCircle } from "lucide-react";
+import { Plus, Search, Eye, Wallet, Mail, FileText, XCircle } from "lucide-react";
 import { factures, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { FactureForm } from "@/components/forms/FactureForm";
 
 export default function FacturesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  const [formOpen, setFormOpen] = useState(false);
 
   const filteredFactures = factures.filter(f => {
     const client = clients.find(c => c.id === f.clientId);
@@ -122,7 +124,7 @@ export default function FacturesPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setFormOpen(true)}>
             <Plus className="h-4 w-4" />
             Nouvelle facture
           </Button>
@@ -202,6 +204,8 @@ export default function FacturesPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <FactureForm open={formOpen} onOpenChange={setFormOpen} />
       </div>
     </MainLayout>
   );
