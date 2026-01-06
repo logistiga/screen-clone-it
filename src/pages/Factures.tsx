@@ -30,8 +30,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Copy, Edit } from "lucide-react";
+import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { EmailModal } from "@/components/EmailModal";
+import { PaiementModal } from "@/components/PaiementModal";
+import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
+import { ExportModal } from "@/components/ExportModal";
+import { AnnulationModal } from "@/components/AnnulationModal";
 import { factures, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 
 export default function FacturesPage() {
@@ -40,22 +45,37 @@ export default function FacturesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   
-  // États pour les modales de confirmation
+  // États pour les modales
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'annuler' | 'supprimer' | null;
+    type: 'supprimer' | null;
     id: string;
     numero: string;
   }>({ type: null, id: '', numero: '' });
 
-  const confirmAnnuler = () => {
-    if (confirmAction.type === 'annuler') {
-      toast({
-        title: "Facture annulée",
-        description: `La facture ${confirmAction.numero} a été annulée.`,
-      });
-      setConfirmAction({ type: null, id: '', numero: '' });
-    }
-  };
+  const [emailModal, setEmailModal] = useState<{
+    open: boolean;
+    documentType: "devis" | "ordre" | "facture";
+    documentNumero: string;
+    clientEmail: string;
+    clientNom: string;
+  }>({ open: false, documentType: "facture", documentNumero: "", clientEmail: "", clientNom: "" });
+
+  const [paiementModal, setPaiementModal] = useState<{
+    open: boolean;
+    numero: string;
+    montantRestant: number;
+  }>({ open: false, numero: '', montantRestant: 0 });
+
+  const [annulationModal, setAnnulationModal] = useState<{
+    open: boolean;
+    numero: string;
+    montantTTC: number;
+    montantPaye: number;
+    clientNom: string;
+  }>({ open: false, numero: '', montantTTC: 0, montantPaye: 0, clientNom: '' });
+
+  const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const confirmSupprimer = () => {
     if (confirmAction.type === 'supprimer') {
@@ -66,27 +86,6 @@ export default function FacturesPage() {
       });
       setConfirmAction({ type: null, id: '', numero: '' });
     }
-  };
-
-  const handleDupliquer = (id: string, numero: string) => {
-    toast({
-      title: "Facture dupliquée",
-      description: `Une copie de la facture ${numero} a été créée.`,
-    });
-  };
-
-  const handlePaiement = (id: string, numero: string) => {
-    toast({
-      title: "Paiement",
-      description: `Enregistrement du paiement pour la facture ${numero}.`,
-    });
-  };
-
-  const handleEnvoyer = (id: string, numero: string) => {
-    toast({
-      title: "Facture envoyée",
-      description: `La facture ${numero} a été envoyée par email.`,
-    });
   };
 
   const filteredFactures = factures.filter(f => {
@@ -185,10 +184,20 @@ export default function FacturesPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2" onClick={() => navigate("/factures/nouvelle")}>
-            <Plus className="h-4 w-4" />
-            Nouvelle facture
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setPaiementGlobalOpen(true)}>
+              <CreditCard className="h-4 w-4" />
+              Paiement global
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+            <Button className="gap-2" onClick={() => navigate("/factures/nouvelle")}>
+              <Plus className="h-4 w-4" />
+              Nouvelle facture
+            </Button>
+          </div>
         </div>
 
         {/* Table */}
@@ -201,13 +210,10 @@ export default function FacturesPage() {
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Échéance</TableHead>
-                  <TableHead className="text-right">Montant HT</TableHead>
-                  <TableHead className="text-right">TVA (18%)</TableHead>
-                  <TableHead className="text-right">CSS (1%)</TableHead>
                   <TableHead className="text-right">Total TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="w-48">Actions</TableHead>
+                  <TableHead className="w-44">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -216,13 +222,15 @@ export default function FacturesPage() {
                   const resteAPayer = facture.montantTTC - facture.montantPaye;
                   return (
                     <TableRow key={facture.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="font-medium">{facture.numero}</TableCell>
+                      <TableCell 
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                        onClick={() => navigate(`/factures/${facture.id}`)}
+                      >
+                        {facture.numero}
+                      </TableCell>
                       <TableCell>{client?.nom}</TableCell>
                       <TableCell>{formatDate(facture.dateCreation)}</TableCell>
                       <TableCell>{formatDate(facture.dateEcheance)}</TableCell>
-                      <TableCell className="text-right">{formatMontant(facture.montantHT)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatMontant(facture.tva)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatMontant(facture.css)}</TableCell>
                       <TableCell className="text-right font-medium">{formatMontant(facture.montantTTC)}</TableCell>
                       <TableCell className="text-right">
                         <span className={facture.montantPaye > 0 ? "text-green-600" : ""}>
@@ -237,21 +245,35 @@ export default function FacturesPage() {
                       <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Voir"
+                            onClick={() => navigate(`/factures/${facture.id}`)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
-                            <Button variant="ghost" size="icon" title="Modifier">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Modifier"
+                              onClick={() => navigate(`/factures/${facture.id}/modifier`)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
-                          {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
+                          {facture.statut !== 'payee' && facture.statut !== 'annulee' && resteAPayer > 0 && (
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               title="Paiement" 
                               className="text-green-600"
-                              onClick={() => handlePaiement(facture.id, facture.numero)}
+                              onClick={() => setPaiementModal({
+                                open: true,
+                                numero: facture.numero,
+                                montantRestant: resteAPayer
+                              })}
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
@@ -261,28 +283,37 @@ export default function FacturesPage() {
                             size="icon" 
                             title="Envoyer par email"
                             className="text-blue-600"
-                            onClick={() => handleEnvoyer(facture.id, facture.numero)}
+                            onClick={() => setEmailModal({
+                              open: true,
+                              documentType: "facture",
+                              documentNumero: facture.numero,
+                              clientEmail: client?.email || "",
+                              clientNom: client?.nom || ""
+                            })}
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            title="Dupliquer"
-                            onClick={() => handleDupliquer(facture.id, facture.numero)}
+                            title="PDF"
+                            onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}
                           >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="PDF">
                             <FileText className="h-4 w-4" />
                           </Button>
-                          {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
+                          {facture.statut !== 'annulee' && (
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               title="Annuler"
                               className="text-orange-600"
-                              onClick={() => setConfirmAction({ type: 'annuler', id: facture.id, numero: facture.numero })}
+                              onClick={() => setAnnulationModal({
+                                open: true,
+                                numero: facture.numero,
+                                montantTTC: facture.montantTTC,
+                                montantPaye: facture.montantPaye,
+                                clientNom: client?.nom || ''
+                              })}
                             >
                               <Ban className="h-4 w-4" />
                             </Button>
@@ -307,28 +338,6 @@ export default function FacturesPage() {
         </Card>
       </div>
 
-      {/* Modal de confirmation pour annulation */}
-      <AlertDialog 
-        open={confirmAction.type === 'annuler'} 
-        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir annuler la facture <strong>{confirmAction.numero}</strong> ? 
-              Cette action changera le statut de la facture.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmAnnuler} className="bg-orange-600 hover:bg-orange-700">
-              Oui, annuler
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Modal de confirmation pour suppression */}
       <AlertDialog 
         open={confirmAction.type === 'supprimer'} 
@@ -350,6 +359,53 @@ export default function FacturesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Email */}
+      <EmailModal
+        open={emailModal.open}
+        onOpenChange={(open) => setEmailModal(prev => ({ ...prev, open }))}
+        documentType={emailModal.documentType}
+        documentNumero={emailModal.documentNumero}
+        clientEmail={emailModal.clientEmail}
+        clientNom={emailModal.clientNom}
+      />
+
+      {/* Modal Paiement */}
+      <PaiementModal
+        open={paiementModal.open}
+        onOpenChange={(open) => setPaiementModal(prev => ({ ...prev, open }))}
+        documentType="facture"
+        documentNumero={paiementModal.numero}
+        montantRestant={paiementModal.montantRestant}
+      />
+
+      {/* Modal Paiement Global */}
+      <PaiementGlobalModal
+        open={paiementGlobalOpen}
+        onOpenChange={setPaiementGlobalOpen}
+      />
+
+      {/* Modal Export */}
+      <ExportModal
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+      />
+
+      {/* Modal Annulation */}
+      <AnnulationModal
+        open={annulationModal.open}
+        onOpenChange={(open) => setAnnulationModal(prev => ({ ...prev, open }))}
+        documentType="facture"
+        documentNumero={annulationModal.numero}
+        montantTTC={annulationModal.montantTTC}
+        montantPaye={annulationModal.montantPaye}
+        clientNom={annulationModal.clientNom}
+        onSuccess={(avoirGenere) => {
+          if (avoirGenere) {
+            navigate("/annulations");
+          }
+        }}
+      />
     </MainLayout>
   );
 }

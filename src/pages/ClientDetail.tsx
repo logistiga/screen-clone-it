@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Users, User } from "lucide-react";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Users, User, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   clients, devis, ordresTravail, factures, paiements,
@@ -232,6 +232,10 @@ export default function ClientDetailPage() {
             <TabsTrigger value="paiements">
               Paiements ({clientPaiements.length})
             </TabsTrigger>
+            <TabsTrigger value="avoirs" className="gap-2">
+              <Receipt className="h-4 w-4" />
+              Avoirs
+            </TabsTrigger>
           </TabsList>
 
           {/* Contacts Tab */}
@@ -423,6 +427,24 @@ export default function ClientDetailPage() {
                     )}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="avoirs" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  Avoirs disponibles
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Receipt className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Aucun avoir disponible pour ce client</p>
+                  <p className="text-sm mt-1">Les avoirs sont générés lors de l'annulation de documents payés</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
