@@ -43,7 +43,7 @@ export default function OrdresTravailPage() {
   
   // États pour les modales de confirmation
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'annuler' | 'supprimer' | null;
+    type: 'annuler' | 'supprimer' | 'facturer' | null;
     id: string;
     numero: string;
   }>({ type: null, id: '', numero: '' });
@@ -69,19 +69,22 @@ export default function OrdresTravailPage() {
     }
   };
 
+  const confirmFacturer = () => {
+    if (confirmAction.type === 'facturer') {
+      toast({
+        title: "Facturation réussie",
+        description: `L'ordre ${confirmAction.numero} a été converti en facture.`,
+      });
+      setConfirmAction({ type: null, id: '', numero: '' });
+      navigate("/factures/nouvelle");
+    }
+  };
+
   const handleDupliquer = (id: string, numero: string) => {
     toast({
       title: "Ordre dupliqué",
       description: `Une copie de l'ordre ${numero} a été créée.`,
     });
-  };
-
-  const handleFacturer = (id: string, numero: string) => {
-    toast({
-      title: "Facturation",
-      description: `L'ordre ${numero} sera facturé.`,
-    });
-    navigate("/factures/nouvelle");
   };
 
   const handlePaiement = (id: string, numero: string) => {
@@ -283,7 +286,7 @@ export default function OrdresTravailPage() {
                                 size="icon" 
                                 title="Facturer" 
                                 className="text-primary"
-                                onClick={() => handleFacturer(ordre.id, ordre.numero)}
+                                onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
                               >
                                 <ArrowRight className="h-4 w-4" />
                               </Button>
@@ -370,6 +373,28 @@ export default function OrdresTravailPage() {
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSupprimer} className="bg-destructive hover:bg-destructive/90">
               Oui, supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de confirmation pour facturation */}
+      <AlertDialog 
+        open={confirmAction.type === 'facturer'} 
+        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convertir en facture</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous convertir l'ordre <strong>{confirmAction.numero}</strong> en facture ? 
+              Les données de l'ordre seront utilisées pour créer la facture.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmFacturer}>
+              Créer la facture
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

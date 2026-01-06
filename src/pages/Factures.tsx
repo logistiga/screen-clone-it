@@ -20,13 +20,74 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Eye, Wallet, Mail, FileText, XCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Copy, Edit } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { factures, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 
 export default function FacturesPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  
+  // États pour les modales de confirmation
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'annuler' | 'supprimer' | null;
+    id: string;
+    numero: string;
+  }>({ type: null, id: '', numero: '' });
+
+  const confirmAnnuler = () => {
+    if (confirmAction.type === 'annuler') {
+      toast({
+        title: "Facture annulée",
+        description: `La facture ${confirmAction.numero} a été annulée.`,
+      });
+      setConfirmAction({ type: null, id: '', numero: '' });
+    }
+  };
+
+  const confirmSupprimer = () => {
+    if (confirmAction.type === 'supprimer') {
+      toast({
+        title: "Facture supprimée",
+        description: `La facture ${confirmAction.numero} a été supprimée.`,
+        variant: "destructive",
+      });
+      setConfirmAction({ type: null, id: '', numero: '' });
+    }
+  };
+
+  const handleDupliquer = (id: string, numero: string) => {
+    toast({
+      title: "Facture dupliquée",
+      description: `Une copie de la facture ${numero} a été créée.`,
+    });
+  };
+
+  const handlePaiement = (id: string, numero: string) => {
+    toast({
+      title: "Paiement",
+      description: `Enregistrement du paiement pour la facture ${numero}.`,
+    });
+  };
+
+  const handleEnvoyer = (id: string, numero: string) => {
+    toast({
+      title: "Facture envoyée",
+      description: `La facture ${numero} a été envoyée par email.`,
+    });
+  };
 
   const filteredFactures = factures.filter(f => {
     const client = clients.find(c => c.id === f.clientId);
@@ -146,7 +207,7 @@ export default function FacturesPage() {
                   <TableHead className="text-right">Total TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="w-40">Actions</TableHead>
+                  <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -180,21 +241,61 @@ export default function FacturesPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
-                            <Button variant="ghost" size="icon" title="Paiement" className="text-green-600">
+                            <Button variant="ghost" size="icon" title="Modifier">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Paiement" 
+                              className="text-green-600"
+                              onClick={() => handlePaiement(facture.id, facture.numero)}
+                            >
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" title="Envoyer par email">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Envoyer par email"
+                            className="text-blue-600"
+                            onClick={() => handleEnvoyer(facture.id, facture.numero)}
+                          >
                             <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Dupliquer"
+                            onClick={() => handleDupliquer(facture.id, facture.numero)}
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" title="PDF">
                             <FileText className="h-4 w-4" />
                           </Button>
-                          {facture.statut !== 'annulee' && (
-                            <Button variant="ghost" size="icon" title="Annuler" className="text-destructive">
-                              <XCircle className="h-4 w-4" />
+                          {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Annuler"
+                              className="text-orange-600"
+                              onClick={() => setConfirmAction({ type: 'annuler', id: facture.id, numero: facture.numero })}
+                            >
+                              <Ban className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Supprimer"
+                            className="text-destructive"
+                            onClick={() => setConfirmAction({ type: 'supprimer', id: facture.id, numero: facture.numero })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -205,6 +306,50 @@ export default function FacturesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de confirmation pour annulation */}
+      <AlertDialog 
+        open={confirmAction.type === 'annuler'} 
+        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir annuler la facture <strong>{confirmAction.numero}</strong> ? 
+              Cette action changera le statut de la facture.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAnnuler} className="bg-orange-600 hover:bg-orange-700">
+              Oui, annuler
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de confirmation pour suppression */}
+      <AlertDialog 
+        open={confirmAction.type === 'supprimer'} 
+        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer la facture <strong>{confirmAction.numero}</strong> ? 
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSupprimer} className="bg-destructive hover:bg-destructive/90">
+              Oui, supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
