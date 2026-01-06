@@ -49,6 +49,7 @@ import { format, differenceInDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouveauCreditModal } from "@/components/NouveauCreditModal";
 import { RemboursementCreditModal } from "@/components/RemboursementCreditModal";
+import { NouvellePrevisionModal } from "@/components/NouvellePrevisionModal";
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area } from "recharts";
 
@@ -60,6 +61,7 @@ export default function CreditsPage() {
   const [selectedEcheance, setSelectedEcheance] = useState<EcheanceCredit | undefined>(undefined);
   const [filterBanque, setFilterBanque] = useState<string>("all");
   const [filterStatut, setFilterStatut] = useState<string>("all");
+  const [showNouvellePrevisionModal, setShowNouvellePrevisionModal] = useState(false);
 
   // Enrichir les crédits avec les données de banque
   const creditsEnrichis = creditsBancaires.map(credit => ({
@@ -812,7 +814,7 @@ export default function CreditsPage() {
               <h2 className="text-xl font-semibold">Prévisions d'investissement</h2>
               <p className="text-muted-foreground">Projets en attente de financement</p>
             </div>
-            <Button>
+            <Button onClick={() => setShowNouvellePrevisionModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle prévision
             </Button>
@@ -1248,6 +1250,11 @@ export default function CreditsPage() {
           echeance={selectedEcheance}
         />
       )}
+
+      <NouvellePrevisionModal
+        open={showNouvellePrevisionModal}
+        onOpenChange={setShowNouvellePrevisionModal}
+      />
     </MainLayout>
   );
 }
