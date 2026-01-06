@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Printer, Download } from "lucide-react";
 import { ordresTravail, clients, formatMontant, formatDate } from "@/data/mockData";
 import { DocumentHeader, DocumentFooter } from "@/components/documents/DocumentLayout";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
 
 export default function OrdrePDFPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,10 @@ export default function OrdrePDFPage() {
       </div>
     );
   }
+
+  const { contentRef, downloadPdf } = usePdfDownload({ 
+    filename: `Ordre_${ordre.numero}` 
+  });
 
   const handlePrint = () => {
     window.print();
@@ -57,7 +62,7 @@ export default function OrdrePDFPage() {
               <Printer className="h-4 w-4" />
               Imprimer
             </Button>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={downloadPdf}>
               <Download className="h-4 w-4" />
               Télécharger PDF
             </Button>
@@ -67,7 +72,7 @@ export default function OrdrePDFPage() {
 
       {/* PDF Content */}
       <div className="container py-8 print:py-0">
-        <Card className="max-w-4xl mx-auto p-8 print:shadow-none print:border-none relative">
+        <Card ref={contentRef} className="max-w-4xl mx-auto p-8 print:shadow-none print:border-none relative bg-white">
           {/* Watermark si annulé */}
           {isAnnule && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
