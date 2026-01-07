@@ -39,6 +39,7 @@ import {
 import { NouveauTransitaireModal } from "@/components/NouveauTransitaireModal";
 import { NouveauRepresentantModal } from "@/components/NouveauRepresentantModal";
 import { NouvelArmateurModal } from "@/components/NouvelArmateurModal";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function PartenairesPage() {
   const navigate = useNavigate();
@@ -48,6 +49,14 @@ export default function PartenairesPage() {
   const [showTransitaireModal, setShowTransitaireModal] = useState(false);
   const [showRepresentantModal, setShowRepresentantModal] = useState(false);
   const [showArmateurModal, setShowArmateurModal] = useState(false);
+  
+  // Pagination states
+  const [transitairesPage, setTransitairesPage] = useState(1);
+  const [transitairesPageSize, setTransitairesPageSize] = useState(10);
+  const [representantsPage, setRepresentantsPage] = useState(1);
+  const [representantsPageSize, setRepresentantsPageSize] = useState(10);
+  const [armateursPage, setArmateursPage] = useState(1);
+  const [armateursPageSize, setArmateursPageSize] = useState(10);
 
   // Filtrage
   const filteredTransitaires = transitairesData.filter(t =>
@@ -62,6 +71,20 @@ export default function PartenairesPage() {
 
   const filteredArmateurs = armateursData.filter(a =>
     a.nom.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Paginated data
+  const paginatedTransitaires = filteredTransitaires.slice(
+    (transitairesPage - 1) * transitairesPageSize,
+    transitairesPage * transitairesPageSize
+  );
+  const paginatedRepresentants = filteredRepresentants.slice(
+    (representantsPage - 1) * representantsPageSize,
+    representantsPage * representantsPageSize
+  );
+  const paginatedArmateurs = filteredArmateurs.slice(
+    (armateursPage - 1) * armateursPageSize,
+    armateursPage * armateursPageSize
   );
 
   // Stats transitaires
@@ -178,7 +201,7 @@ export default function PartenairesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTransitaires.map((transitaire) => {
+                    {paginatedTransitaires.map((transitaire) => {
                       const primes = getPrimesTransitaire(transitaire.id);
                       const primesDues = getTotalPrimesDues(primes);
                       const primesPayees = getTotalPrimesPayees(primes);
@@ -234,6 +257,14 @@ export default function PartenairesPage() {
                     })}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  currentPage={transitairesPage}
+                  totalPages={Math.ceil(filteredTransitaires.length / transitairesPageSize)}
+                  pageSize={transitairesPageSize}
+                  totalItems={filteredTransitaires.length}
+                  onPageChange={setTransitairesPage}
+                  onPageSizeChange={(size) => { setTransitairesPageSize(size); setTransitairesPage(1); }}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -295,7 +326,7 @@ export default function PartenairesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRepresentants.map((representant) => {
+                    {paginatedRepresentants.map((representant) => {
                       const primes = getPrimesRepresentant(representant.id);
                       const primesDues = getTotalPrimesDues(primes);
                       const primesPayees = getTotalPrimesPayees(primes);
@@ -351,6 +382,14 @@ export default function PartenairesPage() {
                     })}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  currentPage={representantsPage}
+                  totalPages={Math.ceil(filteredRepresentants.length / representantsPageSize)}
+                  pageSize={representantsPageSize}
+                  totalItems={filteredRepresentants.length}
+                  onPageChange={setRepresentantsPage}
+                  onPageSizeChange={(size) => { setRepresentantsPageSize(size); setRepresentantsPage(1); }}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -401,7 +440,7 @@ export default function PartenairesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredArmateurs.map((armateur) => (
+                    {paginatedArmateurs.map((armateur) => (
                       <TableRow key={armateur.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{armateur.nom}</TableCell>
                         <TableCell>
@@ -433,6 +472,14 @@ export default function PartenairesPage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  currentPage={armateursPage}
+                  totalPages={Math.ceil(filteredArmateurs.length / armateursPageSize)}
+                  pageSize={armateursPageSize}
+                  totalItems={filteredArmateurs.length}
+                  onPageChange={setArmateursPage}
+                  onPageSizeChange={(size) => { setArmateursPageSize(size); setArmateursPage(1); }}
+                />
               </CardContent>
             </Card>
           </TabsContent>

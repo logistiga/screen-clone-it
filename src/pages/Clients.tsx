@@ -26,17 +26,36 @@ import { Plus, Search, Eye, Edit, Trash2, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { clients, formatMontant, Client } from "@/data/mockData";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nom: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredClients = clients.filter(client =>
     client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Pagination
+  const totalPages = Math.ceil(filteredClients.length / pageSize);
+  const paginatedClients = filteredClients.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   const totalSolde = clients.reduce((sum, c) => sum + c.solde, 0);
   const clientsAvecSolde = clients.filter(c => c.solde > 0).length;
@@ -129,7 +148,7 @@ export default function ClientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.map((client) => (
+                {paginatedClients.map((client) => (
                   <TableRow key={client.id} className="hover:bg-muted/50">
                     <TableCell 
                       className="font-medium text-primary hover:underline cursor-pointer"
@@ -172,6 +191,14 @@ export default function ClientsPage() {
                 ))}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredClients.length}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
           </CardContent>
         </Card>
       </div>
