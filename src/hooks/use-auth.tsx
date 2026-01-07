@@ -74,9 +74,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     } catch (error: any) {
-      const message = error.response?.data?.message || 
-                      error.response?.data?.errors?.email?.[0] || 
-                      'Erreur de connexion';
+      const status = error.response?.status as number | undefined;
+      const data = error.response?.data;
+
+      const validationEmailError = typeof data === 'object' ? data?.errors?.email?.[0] : undefined;
+      const backendMessage =
+        typeof data === 'object'
+          ? (data?.message as string | undefined) || (data?.error as string | undefined)
+          : undefined;
+
+      const message =
+        validationEmailError ||
+        backendMessage ||
+        (status === 500
+          ? 'Erreur serveur (500). Vérifiez les logs du backend.'
+          : status
+            ? `Erreur (${status}) lors de la connexion.`
+            : 'Erreur de connexion');
+
       return { success: false, error: message };
     }
   };
