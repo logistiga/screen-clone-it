@@ -30,22 +30,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard, ClipboardList } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard, ClipboardList, Loader2 } from "lucide-react";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
-import { clients, formatMontant, formatDate, getStatutLabel, OrdreTravail } from "@/data/mockData";
+import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture, useUpdateOrdre } from "@/hooks/use-commercial";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   
-  // Données en mémoire uniquement
-  const [ordresList, setOrdresList] = useState<OrdreTravail[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  // API hooks
+  const { data: ordresData, isLoading, error } = useOrdres({
+    search: searchTerm || undefined,
+    statut: statutFilter !== "all" ? statutFilter : undefined,
+    page: currentPage,
+    per_page: pageSize,
+  });
+  
+  const deleteOrdreMutation = useDeleteOrdre();
+  const convertMutation = useConvertOrdreToFacture();
+  const updateOrdreMutation = useUpdateOrdre();
   
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
@@ -53,46 +65,38 @@ export default function OrdresTravailPage() {
     id: string;
     numero: string;
   } | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ numero: string; montantRestant: number } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
   // Handlers consolidés
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!confirmAction) return;
     
     if (confirmAction.type === 'annuler') {
-      setOrdresList(prev => prev.map(o => 
-        o.id === confirmAction.id ? { ...o, statut: 'annule' as const } : o
-      ));
-      toast({ title: "Ordre annulé", description: `L'ordre ${confirmAction.numero} a été annulé.` });
+      await updateOrdreMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'annule' } });
     } else if (confirmAction.type === 'supprimer') {
-      setOrdresList(prev => prev.filter(o => o.id !== confirmAction.id));
-      toast({ title: "Ordre supprimé", description: `L'ordre ${confirmAction.numero} a été supprimé.`, variant: "destructive" });
+      await deleteOrdreMutation.mutateAsync(confirmAction.id);
     } else if (confirmAction.type === 'facturer') {
-      setOrdresList(prev => prev.map(o => 
-        o.id === confirmAction.id ? { ...o, statut: 'facture' as const } : o
-      ));
-      toast({ title: "Facturation réussie", description: `L'ordre ${confirmAction.numero} a été converti en facture.` });
-      navigate("/factures/nouvelle");
+      await convertMutation.mutateAsync(confirmAction.id);
+      navigate("/factures");
     }
     setConfirmAction(null);
   };
 
-  // Filtrage
-  const filteredOrdres = ordresList.filter(o => {
-    const client = clients.find(c => c.id === o.clientId);
-    const matchSearch = o.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client?.nom.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatut = statutFilter === "all" || o.statut === statutFilter;
-    const matchType = typeFilter === "all" || o.typeOperation === typeFilter;
-    return matchSearch && matchStatut && matchType;
-  });
+  const ordresList = ordresData?.data || [];
+  const totalPages = ordresData?.meta?.last_page || 1;
+  const totalItems = ordresData?.meta?.total || 0;
+
+  // Filtrage par type (côté client car pas de filtre API)
+  const filteredOrdres = typeFilter === "all" 
+    ? ordresList 
+    : ordresList.filter(o => o.type_operation === typeFilter);
 
   // Statistiques
-  const totalOrdres = ordresList.reduce((sum, o) => sum + o.montantTTC, 0);
-  const totalPaye = ordresList.reduce((sum, o) => sum + o.montantPaye, 0);
-  const ordresEnCours = ordresList.filter(o => o.statut === 'en_cours').length;
+  const totalOrdres = filteredOrdres.reduce((sum, o) => sum + (o.montant_ttc || 0), 0);
+  const totalPaye = filteredOrdres.reduce((sum, o) => sum + (o.montant_paye || 0), 0);
+  const ordresEnCours = filteredOrdres.filter(o => o.statut === 'en_cours').length;
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -116,8 +120,31 @@ export default function OrdresTravailPage() {
     return <Badge className={colors[type] || "bg-gray-100"}>{type}</Badge>;
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout title="Ordres de Travail">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Ordres de Travail">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-destructive">Erreur lors du chargement des ordres</p>
+          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+            Réessayer
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   // État vide
-  if (ordresList.length === 0) {
+  if (ordresList.length === 0 && !searchTerm && statutFilter === "all") {
     return (
       <MainLayout title="Ordres de Travail">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -145,7 +172,7 @@ export default function OrdresTravailPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Ordres</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{ordresList.length}</div>
+              <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
           <Card>
@@ -242,19 +269,18 @@ export default function OrdresTravailPage() {
               </TableHeader>
               <TableBody>
                 {filteredOrdres.map((ordre) => {
-                  const client = clients.find(c => c.id === ordre.clientId);
-                  const resteAPayer = ordre.montantTTC - ordre.montantPaye;
+                  const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
                   return (
                     <TableRow key={ordre.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/ordres/${ordre.id}`)}>
                         {ordre.numero}
                       </TableCell>
-                      <TableCell>{client?.nom}</TableCell>
-                      <TableCell>{formatDate(ordre.dateCreation)}</TableCell>
-                      <TableCell>{getTypeBadge(ordre.typeOperation)}</TableCell>
-                      <TableCell className="text-right">{formatMontant(ordre.montantTTC)}</TableCell>
+                      <TableCell>{ordre.client?.nom}</TableCell>
+                      <TableCell>{formatDate(ordre.date_creation)}</TableCell>
+                      <TableCell>{getTypeBadge(ordre.categorie || ordre.type_operation)}</TableCell>
+                      <TableCell className="text-right">{formatMontant(ordre.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
-                        <span className={ordre.montantPaye > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montantPaye)}</span>
+                        <span className={(ordre.montant_paye || 0) > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montant_paye)}</span>
                         {resteAPayer > 0 && <div className="text-xs text-muted-foreground">Reste: {formatMontant(resteAPayer)}</div>}
                       </TableCell>
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
@@ -270,7 +296,7 @@ export default function OrdresTravailPage() {
                           )}
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
                             <Button variant="ghost" size="icon" title="Paiement" className="text-green-600"
-                              onClick={() => setPaiementModal({ numero: ordre.numero, montantRestant: resteAPayer })}>
+                              onClick={() => setPaiementModal({ id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer })}>
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
@@ -300,6 +326,14 @@ export default function OrdresTravailPage() {
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
           </CardContent>
         </Card>
       </div>
@@ -315,7 +349,9 @@ export default function OrdresTravailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700">Confirmer</AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700" disabled={updateOrdreMutation.isPending}>
+              {updateOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -331,7 +367,9 @@ export default function OrdresTravailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90" disabled={deleteOrdreMutation.isPending}>
+              {deleteOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -347,7 +385,9 @@ export default function OrdresTravailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction}>Créer la facture</AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} disabled={convertMutation.isPending}>
+              {convertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la facture"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
