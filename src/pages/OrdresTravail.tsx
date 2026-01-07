@@ -91,7 +91,7 @@ export default function OrdresTravailPage() {
   // Filtrage par type (côté client car pas de filtre API)
   const filteredOrdres = typeFilter === "all" 
     ? ordresList 
-    : ordresList.filter(o => o.type_operation === typeFilter);
+    : ordresList.filter(o => o.type_document === typeFilter);
 
   // Statistiques
   const totalOrdres = filteredOrdres.reduce((sum, o) => sum + (o.montant_ttc || 0), 0);
@@ -276,8 +276,8 @@ export default function OrdresTravailPage() {
                         {ordre.numero}
                       </TableCell>
                       <TableCell>{ordre.client?.nom}</TableCell>
-                      <TableCell>{formatDate(ordre.date_creation)}</TableCell>
-                      <TableCell>{getTypeBadge(ordre.categorie || ordre.type_operation)}</TableCell>
+                      <TableCell>{formatDate(ordre.date)}</TableCell>
+                      <TableCell>{getTypeBadge(ordre.type_document)}</TableCell>
                       <TableCell className="text-right">{formatMontant(ordre.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
                         <span className={(ordre.montant_paye || 0) > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montant_paye)}</span>

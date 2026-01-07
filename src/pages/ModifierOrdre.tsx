@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Users, FileText, Plus, Trash2, Ship } from "lucide-react";
+import { ArrowLeft, Save, Users, FileText, Plus, Trash2, Ship, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { clients, TAUX_TVA, TAUX_CSS, formatMontant, ordresTravail } from "@/data/mockData";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useOrdreById, useUpdateOrdre, useClients, useConfiguration } from "@/hooks/use-commercial";
+import { formatMontant, formatDate } from "@/data/mockData";
 
 interface LigneOrdre {
   id: string;
@@ -30,23 +31,51 @@ export default function ModifierOrdrePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Trouver l'ordre à modifier
-  const ordreExistant = ordresTravail.find((o) => o.id === id);
+  // API hooks
+  const { data: ordre, isLoading: ordreLoading, error } = useOrdreById(id || "");
+  const { data: clientsData } = useClients();
+  const { data: configData } = useConfiguration();
+  const updateOrdreMutation = useUpdateOrdre();
+  
+  const clients = clientsData?.data || [];
+  
+  // Taux depuis configuration
+  const TAUX_TVA = configData?.tva_taux ? parseFloat(configData.tva_taux) / 100 : 0.18;
+  const TAUX_CSS = configData?.css_taux ? parseFloat(configData.css_taux) / 100 : 0.01;
 
-  const [clientId, setClientId] = useState(ordreExistant?.clientId || "");
-  const [notes, setNotes] = useState(ordreExistant?.notes || "");
-  const [lignes, setLignes] = useState<LigneOrdre[]>(
-    ordreExistant?.lignes.map((l) => ({
-      id: l.id,
-      description: l.description,
-      quantite: l.quantite,
-      prixUnitaire: l.prixUnitaire,
-      montantHT: l.montantHT,
-    })) || [{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [lignes, setLignes] = useState<LigneOrdre[]>([{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]);
 
-  if (!ordreExistant) {
+  // Initialiser le formulaire avec les données de l'ordre
+  useEffect(() => {
+    if (ordre) {
+      setClientId(String(ordre.client_id || ""));
+      setNotes(ordre.notes || "");
+      
+      if (ordre.lignes && ordre.lignes.length > 0) {
+        setLignes(ordre.lignes.map((l: any) => ({
+          id: String(l.id),
+          description: l.description || l.type_operation || "",
+          quantite: l.quantite || 1,
+          prixUnitaire: l.prix_unitaire || 0,
+          montantHT: l.montant_ht || (l.quantite * l.prix_unitaire) || 0,
+        })));
+      }
+    }
+  }, [ordre]);
+
+  if (ordreLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !ordre) {
     return (
       <MainLayout title="Ordre non trouvé">
         <div className="flex flex-col items-center justify-center py-20">
@@ -92,12 +121,9 @@ export default function ModifierOrdrePage() {
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      conteneurs: "bg-blue-100 text-blue-800",
-      conventionnel: "bg-purple-100 text-purple-800",
-      location: "bg-orange-100 text-orange-800",
-      transport: "bg-green-100 text-green-800",
-      manutention: "bg-yellow-100 text-yellow-800",
-      stockage: "bg-gray-100 text-gray-800",
+      Conteneur: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      Lot: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      Independant: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     };
     return <Badge className={colors[type] || "bg-gray-100"}>{type}</Badge>;
   };
@@ -114,18 +140,28 @@ export default function ModifierOrdrePage() {
       return;
     }
 
-    setIsLoading(true);
+    const data = {
+      client_id: clientId,
+      notes,
+      lignes: lignes.map(l => ({
+        type_operation: l.description,
+        description: l.description,
+        quantite: l.quantite,
+        prix_unitaire: l.prixUnitaire,
+      })),
+    };
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    toast.success(`Ordre ${ordreExistant.numero} modifié avec succès`);
-    setIsLoading(false);
-    navigate(`/ordres/${id}`);
+    try {
+      await updateOrdreMutation.mutateAsync({ id: id!, data });
+      toast.success(`Ordre ${ordre.numero} modifié avec succès`);
+      navigate(`/ordres/${id}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Erreur lors de la modification");
+    }
   };
 
   return (
-    <MainLayout title={`Modifier ${ordreExistant.numero}`}>
+    <MainLayout title={`Modifier ${ordre.numero}`}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -142,18 +178,18 @@ export default function ModifierOrdrePage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Ship className="h-6 w-6 text-primary" />
-                  Modifier {ordreExistant.numero}
+                  Modifier {ordre.numero}
                 </h1>
-                {getTypeBadge(ordreExistant.typeOperation)}
+                {getTypeBadge(ordre.type_document)}
               </div>
               <p className="text-muted-foreground text-sm">
-                Créé le {ordreExistant.dateCreation}
+                Créé le {formatDate(ordre.date)}
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            <Save className="h-4 w-4 mr-2" />
-            {isLoading ? "Enregistrement..." : "Enregistrer"}
+          <Button type="submit" disabled={updateOrdreMutation.isPending}>
+            {updateOrdreMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Enregistrer
           </Button>
         </div>
 
@@ -174,7 +210,7 @@ export default function ModifierOrdrePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
+                    <SelectItem key={c.id} value={String(c.id)}>
                       {c.nom}
                     </SelectItem>
                   ))}
@@ -272,11 +308,11 @@ export default function ModifierOrdrePage() {
                 <span className="font-medium">{formatMontant(montantHT)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">TVA (18%)</span>
+                <span className="text-muted-foreground">TVA ({Math.round(TAUX_TVA * 100)}%)</span>
                 <span>{formatMontant(tva)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">CSS (1%)</span>
+                <span className="text-muted-foreground">CSS ({Math.round(TAUX_CSS * 100)}%)</span>
                 <span>{formatMontant(css)}</span>
               </div>
               <div className="border-t pt-3 flex justify-between text-lg font-bold">
