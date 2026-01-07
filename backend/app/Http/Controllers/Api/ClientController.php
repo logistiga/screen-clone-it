@@ -39,7 +39,8 @@ class ClientController extends Controller
     {
         $client = Client::create($request->validated());
 
-        Audit::log('create', 'client', "Client créé: {$client->nom}", $client->id);
+        // Important: passer le modèle (pas l'id) pour éviter "Attempt to read property 'id' on int"
+        Audit::log('create', 'client', "Client créé: {$client->nom}", $client);
 
         return response()->json(new ClientResource($client), 201);
     }
@@ -60,7 +61,7 @@ class ClientController extends Controller
     {
         $client->update($request->validated());
 
-        Audit::log('update', 'client', "Client modifié: {$client->nom}", $client->id);
+        Audit::log('update', 'client', "Client modifié: {$client->nom}", $client);
 
         return response()->json(new ClientResource($client));
     }
@@ -75,7 +76,7 @@ class ClientController extends Controller
             ], 422);
         }
 
-        Audit::log('delete', 'client', "Client supprimé: {$client->nom}", $client->id);
+        Audit::log('delete', 'client', "Client supprimé: {$client->nom}", $client);
 
         $client->delete();
 
