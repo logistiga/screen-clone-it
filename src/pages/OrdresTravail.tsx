@@ -48,7 +48,7 @@ export default function OrdresTravailPage() {
   const [pageSize, setPageSize] = useState(10);
   
   // API hooks
-  const { data: ordresData, isLoading, error } = useOrdres({
+  const { data: ordresData, isLoading, error, refetch } = useOrdres({
     search: searchTerm || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     page: currentPage,
@@ -397,8 +397,10 @@ export default function OrdresTravailPage() {
         open={!!paiementModal}
         onOpenChange={(open) => !open && setPaiementModal(null)}
         documentType="ordre"
+        documentId={paiementModal?.id || ""}
         documentNumero={paiementModal?.numero || ""}
         montantRestant={paiementModal?.montantRestant || 0}
+        onSuccess={() => refetch()}
       />
 
       {/* Modal Paiement Global */}

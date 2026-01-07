@@ -49,7 +49,7 @@ export default function FacturesPage() {
   const [pageSize, setPageSize] = useState(10);
   
   // API hooks
-  const { data: facturesData, isLoading, error } = useFactures({
+  const { data: facturesData, isLoading, error, refetch } = useFactures({
     search: searchTerm || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     page: currentPage,
@@ -386,8 +386,10 @@ export default function FacturesPage() {
         open={!!paiementModal}
         onOpenChange={(open) => !open && setPaiementModal(null)}
         documentType="facture"
+        documentId={paiementModal?.id || ""}
         documentNumero={paiementModal?.numero || ""}
         montantRestant={paiementModal?.montantRestant || 0}
+        onSuccess={() => refetch()}
       />
 
       {/* Modal Paiement Global */}
