@@ -41,8 +41,8 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar avec fond gris Logistiga (#4A4D4E = 200 3% 30%) */
-    --sidebar-background: 200 3% 30%;
+    /* Sidebar avec fond gris Logistiga (extrait du logo #585858 = 0 0% 35%) */
+    --sidebar-background: 0 0% 35%;
     --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 355 79% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
