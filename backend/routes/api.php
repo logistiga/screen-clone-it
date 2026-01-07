@@ -408,11 +408,13 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // REPORTING
     // ============================================
     Route::prefix('reporting')->middleware('permission:reporting.voir')->group(function () {
+        Route::get('/', [ReportingController::class, 'dashboard']);
         Route::get('chiffre-affaires', [ReportingController::class, 'chiffreAffaires']);
         Route::get('creances', [ReportingController::class, 'creances']);
         Route::get('tresorerie', [ReportingController::class, 'tresorerie']);
         Route::get('rentabilite', [ReportingController::class, 'rentabilite']);
         Route::get('activite-clients', [ReportingController::class, 'activiteClients']);
         Route::get('comparatif', [ReportingController::class, 'comparatif']);
+        Route::get('statistiques-documents', [ReportingController::class, 'statistiquesDocuments']);
     });
 });
