@@ -143,9 +143,11 @@ export default function ClientsPage() {
                     </TableCell>
                     <TableCell>{client.ville}</TableCell>
                     <TableCell className="text-right">
-                      <Badge variant={client.solde > 0 ? "destructive" : "secondary"}>
-                        {client.solde > 0 ? formatMontant(client.solde) : "0 XAF"}
-                      </Badge>
+                      {client.solde > 0 ? (
+                        <Badge variant="destructive">{formatMontant(client.solde)}</Badge>
+                      ) : (
+                        <Badge variant="secondary">0 XAF</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
