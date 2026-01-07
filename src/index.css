@@ -41,14 +41,14 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar avec fond gris foncé Lojistiga */
-    --sidebar-background: 0 0% 18%;
+    /* Sidebar avec fond gris Lojistiga (#4A4A4A = 0 0% 29%) */
+    --sidebar-background: 0 0% 29%;
     --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 355 79% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 25%;
+    --sidebar-accent: 0 0% 35%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 25%;
+    --sidebar-border: 0 0% 35%;
     --sidebar-ring: 355 79% 56%;
 
     /* Couleurs additionnelles pour Lojistiga */
