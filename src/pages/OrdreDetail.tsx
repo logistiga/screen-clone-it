@@ -425,15 +425,13 @@ export default function OrdreDetailPage() {
       </div>
 
       {/* Modal paiement */}
-      {paiementModalOpen && (
-        <PaiementModal
-          open={paiementModalOpen}
-          onOpenChange={setPaiementModalOpen}
-          factureId={id || ""}
-          factureNumero={ordre.numero}
-          montantRestant={resteAPayer}
-        />
-      )}
+      <PaiementModal
+        open={paiementModalOpen}
+        onOpenChange={setPaiementModalOpen}
+        documentType="ordre"
+        documentNumero={ordre.numero}
+        montantRestant={resteAPayer}
+      />
     </MainLayout>
   );
 }
