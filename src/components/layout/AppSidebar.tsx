@@ -114,10 +114,10 @@ export function AppSidebar() {
                             <NavLink
                               to={item.url}
                               className={cn(
-                                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200",
                                 isActive 
                                   ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                  : "text-sidebar-foreground hover:bg-white/20 hover:text-white hover:translate-x-1 hover:shadow-md"
                               )}
                             >
                               <item.icon className="h-4 w-4" />
@@ -164,10 +164,10 @@ export function AppSidebar() {
                               <NavLink
                                 to={item.url}
                                 className={cn(
-                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200",
                                   isActive 
                                     ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                    : "text-sidebar-foreground hover:bg-white/20 hover:text-white hover:translate-x-1 hover:shadow-md"
                                 )}
                               >
                                 <item.icon className="h-4 w-4" />
