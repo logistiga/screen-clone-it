@@ -136,15 +136,15 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <div className={cn(
-        "flex h-16 items-center border-b border-sidebar-border px-4 transition-all duration-200",
+        "flex h-20 items-center border-b border-sidebar-border px-4 transition-all duration-200",
         isCollapsed ? "justify-center" : "justify-center"
       )}>
         <img 
           src={logo} 
-          alt="Lojistiga" 
+          alt="Logistiga" 
           className={cn(
             "transition-all duration-200",
-            isCollapsed ? "h-8 w-8 object-contain" : "h-10 w-auto"
+            isCollapsed ? "h-10 w-10 object-contain" : "h-14 w-auto"
           )} 
         />
       </div>
