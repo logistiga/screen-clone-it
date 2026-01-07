@@ -28,7 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import logo from "@/assets/lojistiga-logo.png";
+import logo from "@/assets/logistiga-logo-new.png";
 
 const menuItems = {
   dashboard: {
