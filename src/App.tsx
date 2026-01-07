@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
 import NotFound from "./pages/NotFound";
+import DashboardPage from "./pages/Dashboard";
 import ClientsPage from "./pages/Clients";
 import ClientDetailPage from "./pages/ClientDetail";
 import DevisPage from "./pages/Devis";
@@ -61,7 +62,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/ordres" replace />} />
+            <Route path="/" element={<DashboardPage />} />
             <Route path="/clients" element={<ClientsPage />} />
             <Route path="/clients/nouveau" element={<NouveauClientPage />} />
             <Route path="/clients/:id" element={<ClientDetailPage />} />
