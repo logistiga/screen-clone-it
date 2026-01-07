@@ -7,72 +7,89 @@ use App\Http\Requests\StoreMouvementCaisseRequest;
 use App\Http\Resources\MouvementCaisseResource;
 use App\Models\MouvementCaisse;
 use App\Models\Audit;
+use App\Services\CaisseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class CaisseController extends Controller
 {
+    protected CaisseService $caisseService;
+
+    public function __construct(CaisseService $caisseService)
+    {
+        $this->caisseService = $caisseService;
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $query = MouvementCaisse::with('user');
+        $mouvements = $this->caisseService->getMouvements([
+            'type' => $request->get('type'),
+            'source' => $request->get('source'),
+            'banque_id' => $request->get('banque_id'),
+            'date_debut' => $request->get('date_debut'),
+            'date_fin' => $request->get('date_fin'),
+        ]);
 
         if ($request->has('search')) {
             $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
+            $mouvements->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
                   ->orWhere('categorie', 'like', "%{$search}%");
             });
         }
 
-        if ($request->has('type')) {
-            $query->where('type', $request->get('type'));
-        }
-
         if ($request->has('categorie')) {
-            $query->where('categorie', $request->get('categorie'));
+            $mouvements->where('categorie', $request->get('categorie'));
         }
 
-        if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date_mouvement', [$request->get('date_debut'), $request->get('date_fin')]);
-        }
-
-        $mouvements = $query->orderBy('date_mouvement', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 20));
+        $mouvements = $mouvements->paginate($request->get('per_page', 20));
 
         return response()->json(MouvementCaisseResource::collection($mouvements)->response()->getData(true));
     }
 
     public function store(StoreMouvementCaisseRequest $request): JsonResponse
     {
-        if ($request->type === 'Sortie') {
-            $solde = $this->getSoldeActuel();
-            if ($request->montant > $solde) {
-                return response()->json([
-                    'message' => 'Solde insuffisant',
-                    'solde_actuel' => $solde
-                ], 422);
+        try {
+            if ($request->type === 'Sortie') {
+                $solde = $this->caisseService->getSoldeCaisse();
+                if ($request->montant > $solde) {
+                    return response()->json([
+                        'message' => 'Solde insuffisant',
+                        'solde_actuel' => $solde
+                    ], 422);
+                }
             }
+
+            $mouvement = $request->type === 'Entrée' 
+                ? $this->caisseService->creerEntree([
+                    'montant' => $request->montant,
+                    'date' => now(),
+                    'description' => $request->description,
+                    'categorie' => $request->categorie,
+                    'banque_id' => $request->banque_id,
+                    'beneficiaire' => $request->beneficiaire,
+                ])
+                : $this->caisseService->creerSortie([
+                    'montant' => $request->montant,
+                    'date' => now(),
+                    'description' => $request->description,
+                    'categorie' => $request->categorie,
+                    'banque_id' => $request->banque_id,
+                    'beneficiaire' => $request->beneficiaire,
+                ]);
+
+            Audit::log('create', 'caisse', "Mouvement caisse: {$request->type} - {$request->montant}", $mouvement->id);
+
+            return response()->json(new MouvementCaisseResource($mouvement), 201);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erreur lors de la création', 'error' => $e->getMessage()], 500);
         }
-
-        $mouvement = MouvementCaisse::create([
-            'type' => $request->type,
-            'categorie' => $request->categorie,
-            'montant' => $request->montant,
-            'description' => $request->description,
-            'beneficiaire' => $request->beneficiaire,
-            'date_mouvement' => now(),
-            'user_id' => auth()->id(),
-        ]);
-
-        Audit::log('create', 'caisse', "Mouvement caisse: {$request->type} - {$request->montant}", $mouvement->id);
-
-        return response()->json(new MouvementCaisseResource($mouvement->load('user')), 201);
     }
 
     public function show(MouvementCaisse $mouvement): JsonResponse
     {
-        $mouvement->load('user');
+        $mouvement->load(['user', 'banque']);
         return response()->json(new MouvementCaisseResource($mouvement));
     }
 
@@ -93,41 +110,23 @@ class CaisseController extends Controller
 
     public function solde(): JsonResponse
     {
-        $solde = $this->getSoldeActuel();
-        
-        $entrees = MouvementCaisse::where('type', 'Entrée')->sum('montant');
-        $sorties = MouvementCaisse::where('type', 'Sortie')->sum('montant');
+        $soldes = $this->caisseService->getSoldeGlobal();
 
         return response()->json([
-            'solde' => $solde,
-            'total_entrees' => $entrees,
-            'total_sorties' => $sorties,
+            'solde' => $soldes['caisse'],
+            'total_entrees' => MouvementCaisse::where('type', 'entree')->sum('montant'),
+            'total_sorties' => MouvementCaisse::where('type', 'sortie')->sum('montant'),
+            'solde_banques' => $soldes['banques'],
+            'solde_total' => $soldes['total'],
         ]);
     }
 
     public function stats(Request $request): JsonResponse
     {
-        $dateDebut = $request->get('date_debut', now()->startOfMonth());
-        $dateFin = $request->get('date_fin', now()->endOfMonth());
-
-        $stats = [
-            'solde_actuel' => $this->getSoldeActuel(),
-            'entrees_periode' => MouvementCaisse::where('type', 'Entrée')
-                ->whereBetween('date_mouvement', [$dateDebut, $dateFin])
-                ->sum('montant'),
-            'sorties_periode' => MouvementCaisse::where('type', 'Sortie')
-                ->whereBetween('date_mouvement', [$dateDebut, $dateFin])
-                ->sum('montant'),
-            'par_categorie' => MouvementCaisse::whereBetween('date_mouvement', [$dateDebut, $dateFin])
-                ->selectRaw('type, categorie, SUM(montant) as total, COUNT(*) as nombre')
-                ->groupBy('type', 'categorie')
-                ->get(),
-            'par_jour' => MouvementCaisse::whereBetween('date_mouvement', [$dateDebut, $dateFin])
-                ->selectRaw('DATE(date_mouvement) as date, type, SUM(montant) as total')
-                ->groupBy('date', 'type')
-                ->orderBy('date')
-                ->get(),
-        ];
+        $stats = $this->caisseService->getStatistiques([
+            'date_debut' => $request->get('date_debut', now()->startOfMonth()),
+            'date_fin' => $request->get('date_fin', now()->endOfMonth()),
+        ]);
 
         return response()->json($stats);
     }
@@ -156,12 +155,5 @@ class CaisseController extends Controller
         ];
 
         return response()->json($categories);
-    }
-
-    private function getSoldeActuel(): float
-    {
-        $entrees = MouvementCaisse::where('type', 'Entrée')->sum('montant');
-        $sorties = MouvementCaisse::where('type', 'Sortie')->sum('montant');
-        return $entrees - $sorties;
     }
 }
