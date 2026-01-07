@@ -36,6 +36,12 @@ class Client extends Model
         return $this->hasMany(OrdreTravail::class);
     }
 
+    // Alias pour la compatibilité avec le controller
+    public function ordresTravail()
+    {
+        return $this->hasMany(OrdreTravail::class);
+    }
+
     public function factures()
     {
         return $this->hasMany(Facture::class);
