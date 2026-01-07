@@ -30,23 +30,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Loader2 } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
 import { AnnulationModal } from "@/components/AnnulationModal";
-import { factures as facturesData, clients, formatMontant, formatDate, getStatutLabel, Facture } from "@/data/mockData";
+import { useFactures, useDeleteFacture } from "@/hooks/use-commercial";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function FacturesPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   
-  // Données en mémoire uniquement
-  const [facturesList, setFacturesList] = useState<Facture[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  // API hooks
+  const { data: facturesData, isLoading, error } = useFactures({
+    search: searchTerm || undefined,
+    statut: statutFilter !== "all" ? statutFilter : undefined,
+    page: currentPage,
+    per_page: pageSize,
+  });
+  
+  const deleteFactureMutation = useDeleteFacture();
   
   // États modales consolidés
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; numero: string } | null>(null);
@@ -56,8 +66,9 @@ export default function FacturesPage() {
     clientEmail: string;
     clientNom: string;
   } | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ numero: string; montantRestant: number } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{
+    id: string;
     numero: string;
     montantTTC: number;
     montantPaye: number;
@@ -67,35 +78,19 @@ export default function FacturesPage() {
   const [exportOpen, setExportOpen] = useState(false);
 
   // Handlers consolidés
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirmDelete) return;
-    setFacturesList(prev => prev.filter(f => f.id !== confirmDelete.id));
-    toast({
-      title: "Facture supprimée",
-      description: `La facture ${confirmDelete.numero} a été supprimée.`,
-      variant: "destructive",
-    });
+    await deleteFactureMutation.mutateAsync(confirmDelete.id);
     setConfirmDelete(null);
   };
 
-  const handleAnnulation = (factureId: string) => {
-    setFacturesList(prev => prev.map(f => 
-      f.id === factureId ? { ...f, statut: 'annulee' as const } : f
-    ));
-  };
-
-  // Filtrage
-  const filteredFactures = facturesList.filter(f => {
-    const client = clients.find(c => c.id === f.clientId);
-    const matchSearch = f.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client?.nom.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatut = statutFilter === "all" || f.statut === statutFilter;
-    return matchSearch && matchStatut;
-  });
+  const facturesList = facturesData?.data || [];
+  const totalPages = facturesData?.meta?.last_page || 1;
+  const totalItems = facturesData?.meta?.total || 0;
 
   // Statistiques
-  const totalFactures = facturesList.reduce((sum, f) => sum + f.montantTTC, 0);
-  const totalPaye = facturesList.reduce((sum, f) => sum + f.montantPaye, 0);
+  const totalFactures = facturesList.reduce((sum, f) => sum + (f.montant_ttc || 0), 0);
+  const totalPaye = facturesList.reduce((sum, f) => sum + (f.montant_paye || 0), 0);
   const totalImpaye = totalFactures - totalPaye;
 
   const getStatutBadge = (statut: string) => {
@@ -109,8 +104,31 @@ export default function FacturesPage() {
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout title="Factures">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Factures">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-destructive">Erreur lors du chargement des factures</p>
+          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+            Réessayer
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   // État vide
-  if (facturesList.length === 0) {
+  if (facturesList.length === 0 && !searchTerm && statutFilter === "all") {
     return (
       <MainLayout title="Factures">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -138,7 +156,7 @@ export default function FacturesPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Factures</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{facturesList.length}</div>
+              <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
           <Card>
@@ -226,9 +244,8 @@ export default function FacturesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredFactures.map((facture) => {
-                  const client = clients.find(c => c.id === facture.clientId);
-                  const resteAPayer = facture.montantTTC - facture.montantPaye;
+                {facturesList.map((facture) => {
+                  const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
                   return (
                     <TableRow key={facture.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell 
@@ -237,13 +254,13 @@ export default function FacturesPage() {
                       >
                         {facture.numero}
                       </TableCell>
-                      <TableCell>{client?.nom}</TableCell>
-                      <TableCell>{formatDate(facture.dateCreation)}</TableCell>
-                      <TableCell>{formatDate(facture.dateEcheance)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatMontant(facture.montantTTC)}</TableCell>
+                      <TableCell>{facture.client?.nom}</TableCell>
+                      <TableCell>{formatDate(facture.date_creation)}</TableCell>
+                      <TableCell>{formatDate(facture.date_echeance)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
-                        <span className={facture.montantPaye > 0 ? "text-green-600" : ""}>
-                          {formatMontant(facture.montantPaye)}
+                        <span className={(facture.montant_paye || 0) > 0 ? "text-green-600" : ""}>
+                          {formatMontant(facture.montant_paye)}
                         </span>
                         {resteAPayer > 0 && facture.statut !== 'payee' && (
                           <div className="text-xs text-destructive">
@@ -268,7 +285,7 @@ export default function FacturesPage() {
                               size="icon" 
                               title="Paiement" 
                               className="text-green-600"
-                              onClick={() => setPaiementModal({ numero: facture.numero, montantRestant: resteAPayer })}
+                              onClick={() => setPaiementModal({ id: facture.id, numero: facture.numero, montantRestant: resteAPayer })}
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
@@ -281,8 +298,8 @@ export default function FacturesPage() {
                             onClick={() => setEmailModal({
                               open: true,
                               documentNumero: facture.numero,
-                              clientEmail: client?.email || "",
-                              clientNom: client?.nom || ""
+                              clientEmail: facture.client?.email || "",
+                              clientNom: facture.client?.nom || ""
                             })}
                           >
                             <Mail className="h-4 w-4" />
@@ -297,10 +314,11 @@ export default function FacturesPage() {
                               title="Annuler"
                               className="text-orange-600"
                               onClick={() => setAnnulationModal({
+                                id: facture.id,
                                 numero: facture.numero,
-                                montantTTC: facture.montantTTC,
-                                montantPaye: facture.montantPaye,
-                                clientNom: client?.nom || ''
+                                montantTTC: facture.montant_ttc,
+                                montantPaye: facture.montant_paye,
+                                clientNom: facture.client?.nom || ''
                               })}
                             >
                               <Ban className="h-4 w-4" />
@@ -322,6 +340,14 @@ export default function FacturesPage() {
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
           </CardContent>
         </Card>
       </div>
@@ -338,8 +364,8 @@ export default function FacturesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Oui, supprimer
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={deleteFactureMutation.isPending}>
+              {deleteFactureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Oui, supprimer"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

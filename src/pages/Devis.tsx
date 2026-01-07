@@ -30,19 +30,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck, Loader2 } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
-import { clients, formatMontant, formatDate, getStatutLabel, Devis } from "@/data/mockData";
+import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function DevisPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   
-  // Données en mémoire uniquement
-  const [devisList, setDevisList] = useState<Devis[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  // API hooks
+  const { data: devisData, isLoading, error } = useDevis({
+    search: searchTerm || undefined,
+    statut: statutFilter !== "all" ? statutFilter : undefined,
+    page: currentPage,
+    per_page: pageSize,
+  });
+  
+  const deleteDevisMutation = useDeleteDevis();
+  const convertMutation = useConvertDevisToOrdre();
+  const updateDevisMutation = useUpdateDevis();
   
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
@@ -57,35 +69,26 @@ export default function DevisPage() {
   } | null>(null);
 
   // Handlers consolidés
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!confirmAction) return;
     
     if (confirmAction.type === 'annuler') {
-      setDevisList(prev => prev.map(d => 
-        d.id === confirmAction.id ? { ...d, statut: 'refuse' as const } : d
-      ));
-      toast({ title: "Devis annulé", description: `Le devis ${confirmAction.numero} a été annulé.` });
+      await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'refuse' } });
     } else if (confirmAction.type === 'supprimer') {
-      setDevisList(prev => prev.filter(d => d.id !== confirmAction.id));
-      toast({ title: "Devis supprimé", description: `Le devis ${confirmAction.numero} a été supprimé.`, variant: "destructive" });
+      await deleteDevisMutation.mutateAsync(confirmAction.id);
     } else if (confirmAction.type === 'convertir') {
-      toast({ title: "Conversion réussie", description: `Le devis ${confirmAction.numero} a été converti en ordre de travail.` });
-      navigate("/ordres/nouveau");
+      await convertMutation.mutateAsync(confirmAction.id);
+      navigate("/ordres");
     }
     setConfirmAction(null);
   };
 
-  // Filtrage
-  const filteredDevis = devisList.filter(d => {
-    const client = clients.find(c => c.id === d.clientId);
-    const matchSearch = d.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client?.nom.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatut = statutFilter === "all" || d.statut === statutFilter;
-    return matchSearch && matchStatut;
-  });
+  const devisList = devisData?.data || [];
+  const totalPages = devisData?.meta?.last_page || 1;
+  const totalItems = devisData?.meta?.total || 0;
 
   // Statistiques
-  const totalDevis = devisList.reduce((sum, d) => sum + d.montantTTC, 0);
+  const totalDevis = devisList.reduce((sum, d) => sum + (d.montant_ttc || 0), 0);
   const devisAcceptes = devisList.filter(d => d.statut === 'accepte').length;
   const devisEnAttente = devisList.filter(d => d.statut === 'envoye').length;
 
@@ -100,8 +103,31 @@ export default function DevisPage() {
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout title="Devis">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Devis">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-destructive">Erreur lors du chargement des devis</p>
+          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+            Réessayer
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   // État vide
-  if (devisList.length === 0) {
+  if (devisList.length === 0 && !searchTerm && statutFilter === "all") {
     return (
       <MainLayout title="Devis">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -129,7 +155,7 @@ export default function DevisPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Devis</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{devisList.length}</div>
+              <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
           <Card>
@@ -204,61 +230,66 @@ export default function DevisPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDevis.map((d) => {
-                  const client = clients.find(c => c.id === d.clientId);
-                  return (
-                    <TableRow key={d.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/devis/${d.id}`)}>
-                        {d.numero}
-                      </TableCell>
-                      <TableCell>{client?.nom}</TableCell>
-                      <TableCell>{formatDate(d.dateCreation)}</TableCell>
-                      <TableCell>{formatDate(d.dateValidite)}</TableCell>
-                      <TableCell className="text-right">{formatMontant(d.montantHT)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatMontant(d.tva)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatMontant(d.css)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatMontant(d.montantTTC)}</TableCell>
-                      <TableCell>{getStatutBadge(d.statut)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/devis/${d.id}`)}>
-                            <Eye className="h-4 w-4" />
+                {devisList.map((d) => (
+                  <TableRow key={d.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/devis/${d.id}`)}>
+                      {d.numero}
+                    </TableCell>
+                    <TableCell>{d.client?.nom}</TableCell>
+                    <TableCell>{formatDate(d.date_creation)}</TableCell>
+                    <TableCell>{formatDate(d.date_validite)}</TableCell>
+                    <TableCell className="text-right">{formatMontant(d.montant_ht)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatMontant(d.tva)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatMontant(d.css)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatMontant(d.montant_ttc)}</TableCell>
+                    <TableCell>{getStatutBadge(d.statut)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/devis/${d.id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {d.statut !== 'refuse' && d.statut !== 'expire' && (
+                          <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          {d.statut !== 'refuse' && d.statut !== 'expire' && (
-                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
-                            <FileText className="h-4 w-4" />
+                        )}
+                        <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Envoyer par email" className="text-blue-600"
+                          onClick={() => setEmailModal({ numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                        {d.statut === 'accepte' && (
+                          <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary"
+                            onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
+                            <ArrowRight className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Envoyer par email" className="text-blue-600"
-                            onClick={() => setEmailModal({ numero: d.numero, clientEmail: client?.email || '', clientNom: client?.nom || '' })}>
-                            <Mail className="h-4 w-4" />
+                        )}
+                        {d.statut !== 'refuse' && d.statut !== 'expire' && (
+                          <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600"
+                            onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}>
+                            <Ban className="h-4 w-4" />
                           </Button>
-                          {d.statut === 'accepte' && (
-                            <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary"
-                              onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {d.statut !== 'refuse' && d.statut !== 'expire' && (
-                            <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600"
-                              onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}>
-                              <Ban className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive"
-                            onClick={() => setConfirmAction({ type: 'supprimer', id: d.id, numero: d.numero })}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        )}
+                        <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive"
+                          onClick={() => setConfirmAction({ type: 'supprimer', id: d.id, numero: d.numero })}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
           </CardContent>
         </Card>
       </div>
@@ -274,7 +305,9 @@ export default function DevisPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700">Confirmer</AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700" disabled={updateDevisMutation.isPending}>
+              {updateDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -290,7 +323,9 @@ export default function DevisPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90" disabled={deleteDevisMutation.isPending}>
+              {deleteDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -306,7 +341,9 @@ export default function DevisPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction}>Convertir</AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} disabled={convertMutation.isPending}>
+              {convertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Convertir"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

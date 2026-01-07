@@ -22,58 +22,66 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, Trash2, Users } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Users, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { clients, formatMontant, Client } from "@/data/mockData";
+import { useClients, useDeleteClient } from "@/hooks/use-commercial";
+import { formatMontant } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nom: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const filteredClients = clients.filter(client =>
-    client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // API hooks
+  const { data: clientsData, isLoading, error } = useClients({
+    search: searchTerm || undefined,
+    page: currentPage,
+    per_page: pageSize,
+  });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredClients.length / pageSize);
-  const paginatedClients = filteredClients.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const deleteClientMutation = useDeleteClient();
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  const clientsList = clientsData?.data || [];
+  const totalPages = clientsData?.meta?.last_page || 1;
+  const totalItems = clientsData?.meta?.total || 0;
 
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  };
-
-  const totalSolde = clients.reduce((sum, c) => sum + c.solde, 0);
-  const clientsAvecSolde = clients.filter(c => c.solde > 0).length;
-
-  const handleDelete = (id: string) => {
-    const index = clients.findIndex(c => c.id === id);
-    if (index > -1) {
-      clients.splice(index, 1);
-      toast({
-        title: "Client supprimé",
-        description: `Le client ${deleteConfirm?.nom} a été supprimé.`,
-        variant: "destructive",
-      });
-    }
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    await deleteClientMutation.mutateAsync(deleteConfirm.id);
     setDeleteConfirm(null);
   };
 
-  if (clients.length === 0) {
+  // Statistiques
+  const totalSolde = clientsList.reduce((sum, c) => sum + (c.solde || 0), 0);
+  const clientsAvecSolde = clientsList.filter(c => (c.solde || 0) > 0).length;
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Clients">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Clients">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-destructive">Erreur lors du chargement des clients</p>
+          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+            Réessayer
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (clientsList.length === 0 && !searchTerm) {
     return (
       <MainLayout title="Clients">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -98,7 +106,7 @@ export default function ClientsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Clients</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{clients.length}</div>
+              <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
           <Card>
@@ -148,7 +156,7 @@ export default function ClientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedClients.map((client) => (
+                {clientsList.map((client) => (
                   <TableRow key={client.id} className="hover:bg-muted/50">
                     <TableCell 
                       className="font-medium text-primary hover:underline cursor-pointer"
@@ -162,7 +170,7 @@ export default function ClientsPage() {
                     </TableCell>
                     <TableCell>{client.ville}</TableCell>
                     <TableCell className="text-right">
-                      {client.solde > 0 ? (
+                      {(client.solde || 0) > 0 ? (
                         <Badge variant="destructive">{formatMontant(client.solde)}</Badge>
                       ) : (
                         <Badge variant="secondary">0 XAF</Badge>
@@ -195,9 +203,9 @@ export default function ClientsPage() {
               currentPage={currentPage}
               totalPages={totalPages}
               pageSize={pageSize}
-              totalItems={filteredClients.length}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
             />
           </CardContent>
         </Card>
@@ -214,8 +222,8 @@ export default function ClientsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteConfirm && handleDelete(deleteConfirm.id)} className="bg-destructive hover:bg-destructive/90">
-              Supprimer
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={deleteClientMutation.isPending}>
+              {deleteClientMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
