@@ -26,7 +26,7 @@ import {
   TypeOperationConteneur,
   LigneConteneur,
   LigneLot,
-  LignePrestation,
+  LignePrestationEtendue,
   typesOperationConteneur,
   armateurs,
   transitaires,
@@ -35,11 +35,12 @@ import {
   getOperationsIndepLabels,
   getInitialConteneur,
   getInitialLot,
-  getInitialPrestation,
+  getInitialPrestationEtendue,
   calculateTotalConteneurs,
   calculateTotalLots,
-  calculateTotalPrestations,
+  calculateDaysBetween,
 } from "@/types/documents";
+import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
 
 export default function NouvelOrdrePage() {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ export default function NouvelOrdrePage() {
   const [lieuDechargement, setLieuDechargement] = useState("");
   
   // Prestations (opérations indépendantes)
-  const [prestations, setPrestations] = useState<LignePrestation[]>([getInitialPrestation()]);
+  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
   
   // Type opération indépendante
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
@@ -187,7 +188,7 @@ export default function NouvelOrdrePage() {
 
   // Gestion des prestations
   const handleAddPrestation = () => {
-    setPrestations([...prestations, { ...getInitialPrestation(), id: String(Date.now()) }]);
+    setPrestations([...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }]);
   };
 
   const handleRemovePrestation = (id: string) => {
@@ -196,10 +197,18 @@ export default function NouvelOrdrePage() {
     }
   };
 
-  const handlePrestationChange = (id: string, field: keyof LignePrestation, value: string | number) => {
+  const handlePrestationChange = (id: string, field: keyof LignePrestationEtendue, value: string | number) => {
     setPrestations(prestations.map(p => {
       if (p.id === id) {
         const updated = { ...p, [field]: value };
+        // Recalculer la quantité si on change les dates
+        if (field === 'dateDebut' || field === 'dateFin') {
+          const dateDebut = field === 'dateDebut' ? String(value) : updated.dateDebut || '';
+          const dateFin = field === 'dateFin' ? String(value) : updated.dateFin || '';
+          if (dateDebut && dateFin) {
+            updated.quantite = calculateDaysBetween(dateDebut, dateFin);
+          }
+        }
         if (field === 'quantite' || field === 'prixUnitaire') {
           updated.montantHT = updated.quantite * updated.prixUnitaire;
         }
@@ -207,6 +216,10 @@ export default function NouvelOrdrePage() {
       }
       return p;
     }));
+  };
+
+  const calculateTotalPrestations = (prestations: LignePrestationEtendue[]): number => {
+    return prestations.reduce((sum, p) => sum + p.montantHT, 0);
   };
 
   // Calcul des totaux
@@ -228,7 +241,7 @@ export default function NouvelOrdrePage() {
     setTypeOperationIndep("");
     setConteneurs([getInitialConteneur()]);
     setLots([getInitialLot()]);
-    setPrestations([getInitialPrestation()]);
+    setPrestations([getInitialPrestationEtendue()]);
     setLieuChargement("");
     setLieuDechargement("");
   };
@@ -764,53 +777,13 @@ export default function NouvelOrdrePage() {
               </Card>
 
               {typeOperationIndep && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        {operationsIndepLabels[typeOperationIndep].icon}
-                        Détail {operationsIndepLabels[typeOperationIndep].label}
-                      </CardTitle>
-                      <Button type="button" variant="outline" size="sm" onClick={handleAddPrestation} className="gap-1">
-                        <Plus className="h-4 w-4" />Ajouter ligne
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
-                        <div className="col-span-5">Description</div>
-                        <div className="col-span-2">Quantité</div>
-                        <div className="col-span-2">Prix unitaire</div>
-                        <div className="col-span-2">Montant HT</div>
-                        <div className="col-span-1"></div>
-                      </div>
-                      {prestations.map((prestation) => (
-                        <div key={prestation.id} className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-5">
-                            <Input placeholder="Description..." value={prestation.description} onChange={(e) => handlePrestationChange(prestation.id, 'description', e.target.value)} />
-                          </div>
-                          <div className="col-span-2">
-                            <Input type="number" min="1" value={prestation.quantite} onChange={(e) => handlePrestationChange(prestation.id, 'quantite', parseInt(e.target.value) || 0)} />
-                          </div>
-                          <div className="col-span-2">
-                            <Input type="number" min="0" value={prestation.prixUnitaire || ""} onChange={(e) => handlePrestationChange(prestation.id, 'prixUnitaire', parseInt(e.target.value) || 0)} />
-                          </div>
-                          <div className="col-span-2">
-                            <Input value={formatMontant(prestation.montantHT)} disabled className="bg-muted" />
-                          </div>
-                          <div className="col-span-1">
-                            {prestations.length > 1 && (
-                              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemovePrestation(prestation.id)} className="text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <OperationsIndependantesForm
+                  typeOperationIndep={typeOperationIndep}
+                  prestations={prestations}
+                  onAddPrestation={handleAddPrestation}
+                  onRemovePrestation={handleRemovePrestation}
+                  onPrestationChange={handlePrestationChange}
+                />
               )}
             </>
           )}

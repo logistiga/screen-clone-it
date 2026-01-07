@@ -100,11 +100,43 @@ export const getCategoriesLabels = (): Record<CategorieDocument, { label: string
 // Labels pour les opérations indépendantes
 export const getOperationsIndepLabels = (): Record<TypeOperationIndep, { label: string; icon: React.ReactNode }> => ({
   location: { label: "Location véhicule/équipement", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
-  transport: { label: "Transport", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
+  transport: { label: "Transport hors Libreville", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
   manutention: { label: "Manutention", icon: React.createElement(Forklift, { className: "h-6 w-6" }) },
   double_relevage: { label: "Double relevage", icon: React.createElement(ArrowLeftRight, { className: "h-6 w-6" }) },
-  stockage: { label: "Stockage seul", icon: React.createElement(Warehouse, { className: "h-6 w-6" }) },
+  stockage: { label: "Stockage", icon: React.createElement(Warehouse, { className: "h-6 w-6" }) },
 });
+
+// Interface pour les prestations avec champs spécifiques
+export interface LignePrestationEtendue extends LignePrestation {
+  // Pour transport hors Libreville
+  lieuDepart?: string;
+  lieuArrivee?: string;
+  // Pour location et stockage
+  dateDebut?: string;
+  dateFin?: string;
+}
+
+export const getInitialPrestationEtendue = (): LignePrestationEtendue => ({
+  id: "1",
+  description: "",
+  quantite: 1,
+  prixUnitaire: 0,
+  montantHT: 0,
+  lieuDepart: "",
+  lieuArrivee: "",
+  dateDebut: "",
+  dateFin: "",
+});
+
+// Calcul du nombre de jours entre deux dates
+export const calculateDaysBetween = (dateDebut: string, dateFin: string): number => {
+  if (!dateDebut || !dateFin) return 1;
+  const debut = new Date(dateDebut);
+  const fin = new Date(dateFin);
+  const diffTime = fin.getTime() - debut.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 1;
+};
 
 // États initiaux
 export const getInitialConteneur = (): LigneConteneur => ({
