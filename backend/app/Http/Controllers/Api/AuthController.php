@@ -3,21 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\UpdatePasswordRequest;
 use App\Models\User;
 use App\Models\Audit;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -42,19 +40,20 @@ class AuthController extends Controller
         ]);
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): JsonResponse
     {
         Audit::log('logout', 'auth', 'Déconnexion');
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Déconnexion réussie']);
     }
 
-    public function user(Request $request)
+    public function user(Request $request): JsonResponse
     {
         return response()->json($request->user()->load('roles', 'permissions'));
     }
 
-    public function updateProfile(Request $request)
+    public function updateProfile(Request $request): JsonResponse
     {
         $request->validate([
             'nom' => 'required|string|max:255',
@@ -64,16 +63,16 @@ class AuthController extends Controller
 
         $request->user()->update($request->only('nom', 'email', 'telephone'));
 
-        return response()->json($request->user());
+        Audit::log('update', 'profil', 'Profil mis à jour');
+
+        return response()->json([
+            'message' => 'Profil mis à jour avec succès',
+            'user' => $request->user()->fresh()->load('roles', 'permissions'),
+        ]);
     }
 
-    public function updatePassword(Request $request)
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
-        $request->validate([
-            'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
-        ]);
-
         if (!Hash::check($request->current_password, $request->user()->password)) {
             throw ValidationException::withMessages([
                 'current_password' => ['Le mot de passe actuel est incorrect.'],
@@ -81,6 +80,8 @@ class AuthController extends Controller
         }
 
         $request->user()->update(['password' => Hash::make($request->password)]);
+
+        Audit::log('update', 'password', 'Mot de passe modifié');
 
         return response()->json(['message' => 'Mot de passe modifié avec succès']);
     }
