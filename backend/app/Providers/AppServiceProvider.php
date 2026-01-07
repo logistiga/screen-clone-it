@@ -12,6 +12,7 @@ use App\Services\CaisseService;
 use App\Services\AnnulationService;
 use App\Services\ReportingService;
 use App\Services\ExportService;
+use App\Services\NotificationService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(CaisseService::class);
         $this->app->singleton(AnnulationService::class);
         $this->app->singleton(ReportingService::class);
+        $this->app->singleton(NotificationService::class);
 
         // PaiementService a des dépendances
         $this->app->singleton(PaiementService::class, function ($app) {

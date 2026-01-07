@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\ConfigurationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReportingController;
 use App\Http\Controllers\Api\ExportController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PrimeController;
 use App\Http\Controllers\Api\NoteDebutController;
 
@@ -434,5 +435,27 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('credits', [ExportController::class, 'credits']);
         Route::get('annulations', [ExportController::class, 'annulations']);
         Route::get('tableau-de-bord', [ExportController::class, 'tableauDeBord']);
+    });
+
+    // ============================================
+    // NOTIFICATIONS EMAIL
+    // ============================================
+    Route::prefix('notifications')->middleware('audit')->group(function () {
+        Route::post('facture/{facture}/envoyer', [NotificationController::class, 'envoyerFacture'])
+            ->middleware('permission:factures.modifier');
+        Route::post('devis/{devis}/envoyer', [NotificationController::class, 'envoyerDevis'])
+            ->middleware('permission:devis.modifier');
+        Route::post('ordre/{ordre}/envoyer', [NotificationController::class, 'envoyerOrdre'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('paiement/{paiement}/confirmation', [NotificationController::class, 'envoyerConfirmationPaiement'])
+            ->middleware('permission:paiements.voir');
+        Route::post('facture/{facture}/rappel', [NotificationController::class, 'envoyerRappel'])
+            ->middleware('permission:factures.modifier');
+        Route::post('rappels-automatiques', [NotificationController::class, 'rappelsAutomatiques'])
+            ->middleware('permission:factures.modifier');
+        Route::post('recapitulatif-quotidien', [NotificationController::class, 'recapitulatifQuotidien'])
+            ->middleware('permission:reporting.voir');
+        Route::post('email-personnalise', [NotificationController::class, 'envoyerEmailPersonnalise'])
+            ->middleware('permission:factures.modifier');
     });
 });

@@ -1,0 +1,412 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Facture;
+use App\Models\Devis;
+use App\Models\Client;
+use App\Models\OrdreTravail;
+use App\Models\Paiement;
+use App\Models\CreditBancaire;
+use App\Models\User;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+
+class NotificationService
+{
+    /**
+     * Envoyer une facture par email
+     */
+    public function envoyerFacture(Facture $facture, ?string $emailDestinataire = null, ?string $message = null): bool
+    {
+        $client = $facture->client;
+        $email = $emailDestinataire ?? $client->email;
+
+        if (!$email) {
+            Log::warning("Impossible d'envoyer la facture {$facture->numero}: pas d'email");
+            return false;
+        }
+
+        try {
+            Mail::send('emails.facture', [
+                'facture' => $facture,
+                'client' => $client,
+                'message_personnalise' => $message,
+            ], function ($mail) use ($email, $facture, $client) {
+                $mail->to($email)
+                    ->subject("Facture N° {$facture->numero}")
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            // Mettre à jour le statut de la facture
+            $facture->update([
+                'statut' => 'envoye',
+                'date_envoi' => now(),
+            ]);
+
+            Log::info("Facture {$facture->numero} envoyée à {$email}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi facture {$facture->numero}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer un devis par email
+     */
+    public function envoyerDevis(Devis $devis, ?string $emailDestinataire = null, ?string $message = null): bool
+    {
+        $client = $devis->client;
+        $email = $emailDestinataire ?? $client->email;
+
+        if (!$email) {
+            Log::warning("Impossible d'envoyer le devis {$devis->numero}: pas d'email");
+            return false;
+        }
+
+        try {
+            Mail::send('emails.devis', [
+                'devis' => $devis,
+                'client' => $client,
+                'message_personnalise' => $message,
+            ], function ($mail) use ($email, $devis) {
+                $mail->to($email)
+                    ->subject("Devis N° {$devis->numero}")
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            $devis->update([
+                'statut' => 'envoye',
+                'date_envoi' => now(),
+            ]);
+
+            Log::info("Devis {$devis->numero} envoyé à {$email}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi devis {$devis->numero}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer un ordre de travail par email
+     */
+    public function envoyerOrdreTravail(OrdreTravail $ordre, ?string $emailDestinataire = null, ?string $message = null): bool
+    {
+        $client = $ordre->client;
+        $email = $emailDestinataire ?? $client->email;
+
+        if (!$email) {
+            Log::warning("Impossible d'envoyer l'ordre {$ordre->numero}: pas d'email");
+            return false;
+        }
+
+        try {
+            Mail::send('emails.ordre-travail', [
+                'ordre' => $ordre,
+                'client' => $client,
+                'message_personnalise' => $message,
+            ], function ($mail) use ($email, $ordre) {
+                $mail->to($email)
+                    ->subject("Ordre de Travail N° {$ordre->numero}")
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            Log::info("Ordre de travail {$ordre->numero} envoyé à {$email}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi ordre {$ordre->numero}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer une confirmation de paiement
+     */
+    public function envoyerConfirmationPaiement(Paiement $paiement, ?string $emailDestinataire = null): bool
+    {
+        $facture = $paiement->facture;
+        $client = $facture->client;
+        $email = $emailDestinataire ?? $client->email;
+
+        if (!$email) {
+            Log::warning("Impossible d'envoyer la confirmation de paiement: pas d'email");
+            return false;
+        }
+
+        try {
+            Mail::send('emails.confirmation-paiement', [
+                'paiement' => $paiement,
+                'facture' => $facture,
+                'client' => $client,
+            ], function ($mail) use ($email, $paiement) {
+                $mail->to($email)
+                    ->subject("Confirmation de paiement - {$paiement->reference}")
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            Log::info("Confirmation de paiement envoyée à {$email}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi confirmation paiement: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer un rappel de facture impayée
+     */
+    public function envoyerRappelFacture(Facture $facture, int $numeroRappel = 1): bool
+    {
+        $client = $facture->client;
+        $email = $client->email;
+
+        if (!$email) {
+            Log::warning("Impossible d'envoyer le rappel pour facture {$facture->numero}: pas d'email");
+            return false;
+        }
+
+        $niveauUrgence = $this->getNiveauUrgence($numeroRappel);
+
+        try {
+            Mail::send('emails.rappel-facture', [
+                'facture' => $facture,
+                'client' => $client,
+                'numero_rappel' => $numeroRappel,
+                'niveau_urgence' => $niveauUrgence,
+            ], function ($mail) use ($email, $facture, $numeroRappel) {
+                $mail->to($email)
+                    ->subject("Rappel N°{$numeroRappel} - Facture {$facture->numero} impayée")
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            // Enregistrer le rappel
+            $facture->increment('nombre_rappels');
+            $facture->update(['date_dernier_rappel' => now()]);
+
+            Log::info("Rappel {$numeroRappel} envoyé pour facture {$facture->numero}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi rappel facture {$facture->numero}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer les rappels automatiques pour les factures en retard
+     */
+    public function envoyerRappelsAutomatiques(): array
+    {
+        $resultats = [
+            'envoyes' => 0,
+            'echecs' => 0,
+            'details' => [],
+        ];
+
+        // Factures impayées depuis plus de 30 jours
+        $facturesEnRetard = Facture::where('statut', '!=', 'paye')
+            ->where('statut', '!=', 'annule')
+            ->where('date_echeance', '<', now())
+            ->where(function ($query) {
+                $query->whereNull('date_dernier_rappel')
+                    ->orWhere('date_dernier_rappel', '<', now()->subDays(7));
+            })
+            ->with('client')
+            ->get();
+
+        foreach ($facturesEnRetard as $facture) {
+            $numeroRappel = ($facture->nombre_rappels ?? 0) + 1;
+            
+            if ($numeroRappel > 3) {
+                continue; // Maximum 3 rappels
+            }
+
+            if ($this->envoyerRappelFacture($facture, $numeroRappel)) {
+                $resultats['envoyes']++;
+                $resultats['details'][] = [
+                    'facture' => $facture->numero,
+                    'client' => $facture->client->raison_sociale ?? $facture->client->nom_complet,
+                    'rappel' => $numeroRappel,
+                    'statut' => 'envoyé',
+                ];
+            } else {
+                $resultats['echecs']++;
+                $resultats['details'][] = [
+                    'facture' => $facture->numero,
+                    'client' => $facture->client->raison_sociale ?? $facture->client->nom_complet,
+                    'rappel' => $numeroRappel,
+                    'statut' => 'échec',
+                ];
+            }
+        }
+
+        return $resultats;
+    }
+
+    /**
+     * Envoyer une alerte d'échéance de crédit
+     */
+    public function envoyerAlerteEcheanceCredit(CreditBancaire $credit, int $joursRestants): bool
+    {
+        $utilisateursAdmin = User::where('role', 'admin')->get();
+
+        if ($utilisateursAdmin->isEmpty()) {
+            Log::warning("Pas d'administrateur pour recevoir l'alerte crédit");
+            return false;
+        }
+
+        try {
+            foreach ($utilisateursAdmin as $admin) {
+                Mail::send('emails.alerte-echeance-credit', [
+                    'credit' => $credit,
+                    'jours_restants' => $joursRestants,
+                ], function ($mail) use ($admin, $credit, $joursRestants) {
+                    $mail->to($admin->email)
+                        ->subject("⚠️ Échéance crédit dans {$joursRestants} jours - {$credit->reference}")
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+                });
+            }
+
+            Log::info("Alerte échéance crédit {$credit->reference} envoyée");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi alerte crédit: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer un récapitulatif quotidien aux administrateurs
+     */
+    public function envoyerRecapitulatifQuotidien(): bool
+    {
+        $utilisateursAdmin = User::where('role', 'admin')->get();
+
+        if ($utilisateursAdmin->isEmpty()) {
+            return false;
+        }
+
+        $stats = $this->getStatistiquesQuotidiennes();
+
+        try {
+            foreach ($utilisateursAdmin as $admin) {
+                Mail::send('emails.recapitulatif-quotidien', [
+                    'stats' => $stats,
+                    'date' => now()->format('d/m/Y'),
+                ], function ($mail) use ($admin) {
+                    $mail->to($admin->email)
+                        ->subject("📊 Récapitulatif quotidien - " . now()->format('d/m/Y'))
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+                });
+            }
+
+            Log::info("Récapitulatif quotidien envoyé");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi récapitulatif: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notifier un nouveau client
+     */
+    public function notifierNouveauClient(Client $client): bool
+    {
+        $email = $client->email;
+
+        if (!$email) {
+            return false;
+        }
+
+        try {
+            Mail::send('emails.bienvenue-client', [
+                'client' => $client,
+            ], function ($mail) use ($email, $client) {
+                $mail->to($email)
+                    ->subject("Bienvenue chez " . config('app.name'))
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            Log::info("Email de bienvenue envoyé à {$email}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi email bienvenue: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer un email personnalisé
+     */
+    public function envoyerEmailPersonnalise(
+        string $destinataire,
+        string $sujet,
+        string $contenu,
+        ?array $pieces_jointes = null
+    ): bool {
+        try {
+            Mail::send('emails.personnalise', [
+                'contenu' => $contenu,
+            ], function ($mail) use ($destinataire, $sujet, $pieces_jointes) {
+                $mail->to($destinataire)
+                    ->subject($sujet)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+
+                if ($pieces_jointes) {
+                    foreach ($pieces_jointes as $piece) {
+                        $mail->attach($piece['path'], [
+                            'as' => $piece['name'] ?? null,
+                            'mime' => $piece['mime'] ?? null,
+                        ]);
+                    }
+                }
+            });
+
+            Log::info("Email personnalisé envoyé à {$destinataire}");
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi email personnalisé: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtenir le niveau d'urgence selon le numéro de rappel
+     */
+    protected function getNiveauUrgence(int $numeroRappel): string
+    {
+        return match ($numeroRappel) {
+            1 => 'normal',
+            2 => 'modere',
+            3 => 'urgent',
+            default => 'critique',
+        };
+    }
+
+    /**
+     * Obtenir les statistiques quotidiennes
+     */
+    protected function getStatistiquesQuotidiennes(): array
+    {
+        $aujourdHui = now()->startOfDay();
+
+        return [
+            'factures_creees' => Facture::whereDate('created_at', $aujourdHui)->count(),
+            'factures_payees' => Facture::whereDate('updated_at', $aujourdHui)
+                ->where('statut', 'paye')
+                ->count(),
+            'montant_encaisse' => Paiement::whereDate('date_paiement', $aujourdHui)->sum('montant'),
+            'devis_crees' => Devis::whereDate('created_at', $aujourdHui)->count(),
+            'ordres_crees' => OrdreTravail::whereDate('created_at', $aujourdHui)->count(),
+            'factures_en_retard' => Facture::where('statut', '!=', 'paye')
+                ->where('statut', '!=', 'annule')
+                ->where('date_echeance', '<', now())
+                ->count(),
+            'total_creances' => Facture::where('statut', '!=', 'paye')
+                ->where('statut', '!=', 'annule')
+                ->sum('reste_a_payer'),
+        ];
+    }
+}
