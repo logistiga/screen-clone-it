@@ -88,7 +88,7 @@ export default function DevisPage() {
   const totalItems = devisData?.meta?.total || 0;
 
   // Statistiques
-  const totalDevis = devisList.reduce((sum, d) => sum + (d.montant_ttc || 0), 0);
+  const totalDevis = devisList.reduce((sum, d) => sum + (d.total_ttc || 0), 0);
   const devisAcceptes = devisList.filter(d => d.statut === 'accepte').length;
   const devisEnAttente = devisList.filter(d => d.statut === 'envoye').length;
 
@@ -236,12 +236,12 @@ export default function DevisPage() {
                       {d.numero}
                     </TableCell>
                     <TableCell>{d.client?.nom}</TableCell>
-                    <TableCell>{formatDate(d.date_creation)}</TableCell>
+                    <TableCell>{formatDate(d.date_devis)}</TableCell>
                     <TableCell>{formatDate(d.date_validite)}</TableCell>
-                    <TableCell className="text-right">{formatMontant(d.montant_ht)}</TableCell>
+                    <TableCell className="text-right">{formatMontant(d.sous_total)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{formatMontant(d.tva)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{formatMontant(d.css)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatMontant(d.montant_ttc)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatMontant(d.total_ttc)}</TableCell>
                     <TableCell>{getStatutBadge(d.statut)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">

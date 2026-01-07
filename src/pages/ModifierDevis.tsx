@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Users, FileText, Plus, Trash2, Calendar } from "lucide-react";
+import { ArrowLeft, Save, Users, FileText, Plus, Trash2, Calendar, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,40 +14,71 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { clients, TAUX_TVA, TAUX_CSS, formatMontant, devis } from "@/data/mockData";
-import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useDevisById, useUpdateDevis, useClients, useConfiguration } from "@/hooks/use-commercial";
 
 interface LigneDevis {
   id: string;
-  description: string;
+  designation: string;
+  unite: string;
   quantite: number;
-  prixUnitaire: number;
-  montantHT: number;
+  prix_unitaire: number;
+  montant: number;
 }
+
+const formatMontant = (montant: number) => {
+  return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
+};
 
 export default function ModifierDevisPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Trouver le devis à modifier
-  const devisExistant = devis.find((d) => d.id === id);
+  // Fetch data
+  const { data: devisData, isLoading: loadingDevis } = useDevisById(id || '');
+  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
+  const { data: config } = useConfiguration();
+  const updateDevisMutation = useUpdateDevis();
 
-  const [clientId, setClientId] = useState(devisExistant?.clientId || "");
-  const [dateValidite, setDateValidite] = useState(devisExistant?.dateValidite || "");
-  const [notes, setNotes] = useState(devisExistant?.notes || "");
-  const [lignes, setLignes] = useState<LigneDevis[]>(
-    devisExistant?.lignes.map((l) => ({
-      id: l.id,
-      description: l.description,
-      quantite: l.quantite,
-      prixUnitaire: l.prixUnitaire,
-      montantHT: l.montantHT,
-    })) || [{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  const clients = clientsData?.data || [];
+  const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
+  const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
 
-  if (!devisExistant) {
+  const [clientId, setClientId] = useState("");
+  const [dateValidite, setDateValidite] = useState("");
+  const [notes, setNotes] = useState("");
+  const [lignes, setLignes] = useState<LigneDevis[]>([]);
+
+  // Populate form when data loads
+  useEffect(() => {
+    if (devisData) {
+      setClientId(String(devisData.client_id || ""));
+      setDateValidite(devisData.date_validite || "");
+      setNotes(devisData.notes || "");
+      setLignes(
+        devisData.lignes?.map((l: any) => ({
+          id: String(l.id),
+          designation: l.designation,
+          unite: l.unite || 'unité',
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire,
+          montant: l.montant || l.quantite * l.prix_unitaire,
+        })) || [{ id: "1", designation: "", unite: "unité", quantite: 1, prix_unitaire: 0, montant: 0 }]
+      );
+    }
+  }, [devisData]);
+
+  if (loadingDevis || loadingClients) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!devisData) {
     return (
       <MainLayout title="Devis non trouvé">
         <div className="flex flex-col items-center justify-center py-20">
@@ -61,7 +92,7 @@ export default function ModifierDevisPage() {
   const handleAddLigne = () => {
     setLignes([
       ...lignes,
-      { id: String(Date.now()), description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 },
+      { id: String(Date.now()), designation: "", unite: "unité", quantite: 1, prix_unitaire: 0, montant: 0 },
     ]);
   };
 
@@ -76,8 +107,8 @@ export default function ModifierDevisPage() {
       lignes.map((l) => {
         if (l.id === ligneId) {
           const updated = { ...l, [field]: value };
-          if (field === "quantite" || field === "prixUnitaire") {
-            updated.montantHT = updated.quantite * updated.prixUnitaire;
+          if (field === "quantite" || field === "prix_unitaire") {
+            updated.montant = updated.quantite * updated.prix_unitaire;
           }
           return updated;
         }
@@ -86,7 +117,7 @@ export default function ModifierDevisPage() {
     );
   };
 
-  const montantHT = lignes.reduce((sum, l) => sum + l.montantHT, 0);
+  const montantHT = lignes.reduce((sum, l) => sum + l.montant, 0);
   const tva = Math.round(montantHT * TAUX_TVA);
   const css = Math.round(montantHT * TAUX_CSS);
   const montantTTC = montantHT + tva + css;
@@ -98,6 +129,7 @@ export default function ModifierDevisPage() {
       accepte: "Accepté",
       refuse: "Refusé",
       expire: "Expiré",
+      converti: "Converti",
     };
     const colors: Record<string, string> = {
       brouillon: "bg-gray-100 text-gray-800",
@@ -105,6 +137,7 @@ export default function ModifierDevisPage() {
       accepte: "bg-green-100 text-green-800",
       refuse: "bg-red-100 text-red-800",
       expire: "bg-orange-100 text-orange-800",
+      converti: "bg-purple-100 text-purple-800",
     };
     return <Badge className={colors[statut] || "bg-gray-100"}>{labels[statut] || statut}</Badge>;
   };
@@ -113,26 +146,34 @@ export default function ModifierDevisPage() {
     e.preventDefault();
 
     if (!clientId) {
-      toast.error("Veuillez sélectionner un client");
       return;
     }
-    if (lignes.some((l) => !l.description)) {
-      toast.error("Veuillez remplir toutes les descriptions");
+    if (lignes.some((l) => !l.designation)) {
       return;
     }
 
-    setIsLoading(true);
+    const data = {
+      client_id: parseInt(clientId),
+      date_validite: dateValidite,
+      notes: notes || null,
+      lignes: lignes.map(l => ({
+        designation: l.designation,
+        unite: l.unite,
+        quantite: l.quantite,
+        prix_unitaire: l.prix_unitaire,
+      })),
+    };
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    toast.success(`Devis ${devisExistant.numero} modifié avec succès`);
-    setIsLoading(false);
-    navigate(`/devis/${id}`);
+    try {
+      await updateDevisMutation.mutateAsync({ id: id!, data });
+      navigate(`/devis/${id}`);
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
   return (
-    <MainLayout title={`Modifier ${devisExistant.numero}`}>
+    <MainLayout title={`Modifier ${devisData.numero}`}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -149,18 +190,22 @@ export default function ModifierDevisPage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <FileText className="h-6 w-6 text-primary" />
-                  Modifier {devisExistant.numero}
+                  Modifier {devisData.numero}
                 </h1>
-                {getStatutBadge(devisExistant.statut)}
+                {getStatutBadge(devisData.statut)}
               </div>
               <p className="text-muted-foreground text-sm">
-                Créé le {devisExistant.dateCreation}
+                Créé le {new Date(devisData.created_at).toLocaleDateString('fr-FR')}
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            <Save className="h-4 w-4 mr-2" />
-            {isLoading ? "Enregistrement..." : "Enregistrer"}
+          <Button type="submit" disabled={updateDevisMutation.isPending}>
+            {updateDevisMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Enregistrer
           </Button>
         </div>
 
@@ -182,7 +227,7 @@ export default function ModifierDevisPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
+                      <SelectItem key={c.id} value={String(c.id)}>
                         {c.nom}
                       </SelectItem>
                     ))}
@@ -226,11 +271,11 @@ export default function ModifierDevisPage() {
                   className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end p-4 border rounded-lg bg-muted/30"
                 >
                   <div className="md:col-span-5 space-y-2">
-                    <Label>Description *</Label>
+                    <Label>Désignation *</Label>
                     <Input
                       placeholder="Description de la prestation"
-                      value={ligne.description}
-                      onChange={(e) => handleLigneChange(ligne.id, "description", e.target.value)}
+                      value={ligne.designation}
+                      onChange={(e) => handleLigneChange(ligne.id, "designation", e.target.value)}
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
@@ -249,16 +294,16 @@ export default function ModifierDevisPage() {
                     <Input
                       type="number"
                       min="0"
-                      value={ligne.prixUnitaire}
+                      value={ligne.prix_unitaire}
                       onChange={(e) =>
-                        handleLigneChange(ligne.id, "prixUnitaire", parseFloat(e.target.value) || 0)
+                        handleLigneChange(ligne.id, "prix_unitaire", parseFloat(e.target.value) || 0)
                       }
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <Label>Montant HT</Label>
+                    <Label>Montant</Label>
                     <div className="h-10 flex items-center font-medium">
-                      {formatMontant(ligne.montantHT)}
+                      {formatMontant(ligne.montant)}
                     </div>
                   </div>
                   <div className="md:col-span-1 flex justify-end">
