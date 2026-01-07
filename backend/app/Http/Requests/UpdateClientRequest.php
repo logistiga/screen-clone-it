@@ -18,10 +18,14 @@ class UpdateClientRequest extends FormRequest
             'email' => 'nullable|email|max:255',
             'telephone' => 'nullable|string|max:50',
             'adresse' => 'nullable|string|max:1000',
+            'ville' => 'nullable|string|max:255',
+            'pays' => 'nullable|string|max:100',
             'type' => 'sometimes|required|in:Particulier,Entreprise',
             'nif' => 'nullable|string|max:100',
             'rccm' => 'nullable|string|max:100',
             'contact_principal' => 'nullable|string|max:255',
+            'limite_credit' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:5000',
         ];
     }
 

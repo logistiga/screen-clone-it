@@ -16,9 +16,14 @@ return new class extends Migration
             $table->string('telephone')->nullable();
             $table->string('adresse')->nullable();
             $table->string('ville')->nullable();
+            $table->string('pays')->default('Gabon');
+            $table->enum('type', ['Particulier', 'Entreprise'])->default('Entreprise');
             $table->string('rccm')->nullable();
             $table->string('nif')->nullable();
+            $table->string('contact_principal')->nullable();
             $table->decimal('solde', 15, 2)->default(0);
+            $table->decimal('limite_credit', 15, 2)->default(0);
+            $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

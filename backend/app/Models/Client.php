@@ -16,13 +16,19 @@ class Client extends Model
         'telephone',
         'adresse',
         'ville',
+        'pays',
+        'type',
         'rccm',
         'nif',
+        'contact_principal',
         'solde',
+        'limite_credit',
+        'notes',
     ];
 
     protected $casts = [
         'solde' => 'decimal:2',
+        'limite_credit' => 'decimal:2',
     ];
 
     // Relations
