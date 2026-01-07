@@ -22,10 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { clients, formatMontant } from "@/data/mockData";
+import { clients, formatMontant, Client } from "@/data/mockData";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
@@ -39,28 +39,44 @@ export default function ClientsPage() {
   );
 
   const totalSolde = clients.reduce((sum, c) => sum + c.solde, 0);
+  const clientsAvecSolde = clients.filter(c => c.solde > 0).length;
 
-  const handleDelete = () => {
-    if (deleteConfirm) {
+  const handleDelete = (id: string) => {
+    const index = clients.findIndex(c => c.id === id);
+    if (index > -1) {
+      clients.splice(index, 1);
       toast({
         title: "Client supprimé",
-        description: `Le client ${deleteConfirm.nom} a été supprimé.`,
+        description: `Le client ${deleteConfirm?.nom} a été supprimé.`,
         variant: "destructive",
       });
-      setDeleteConfirm(null);
     }
+    setDeleteConfirm(null);
   };
+
+  if (clients.length === 0) {
+    return (
+      <MainLayout title="Clients">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Users className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Aucun client</h2>
+          <p className="text-muted-foreground mb-6">Commencez par ajouter votre premier client.</p>
+          <Button onClick={() => navigate("/clients/nouveau")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nouveau client
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Clients">
       <div className="space-y-6">
-        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Clients
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clients</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{clients.length}</div>
@@ -68,9 +84,7 @@ export default function ClientsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Solde Total Dû
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Solde Total Dû</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">{formatMontant(totalSolde)}</div>
@@ -78,17 +92,14 @@ export default function ClientsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Clients avec Solde
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Clients avec Solde</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{clients.filter(c => c.solde > 0).length}</div>
+              <div className="text-2xl font-bold">{clientsAvecSolde}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -105,7 +116,6 @@ export default function ClientsPage() {
           </Button>
         </div>
 
-        {/* Table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -120,10 +130,7 @@ export default function ClientsPage() {
               </TableHeader>
               <TableBody>
                 {filteredClients.map((client) => (
-                  <TableRow 
-                    key={client.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                  >
+                  <TableRow key={client.id} className="hover:bg-muted/50">
                     <TableCell 
                       className="font-medium text-primary hover:underline cursor-pointer"
                       onClick={() => navigate(`/clients/${client.id}`)}
@@ -136,28 +143,16 @@ export default function ClientsPage() {
                     </TableCell>
                     <TableCell>{client.ville}</TableCell>
                     <TableCell className="text-right">
-                      {client.solde > 0 ? (
-                        <Badge variant="destructive">{formatMontant(client.solde)}</Badge>
-                      ) : (
-                        <Badge variant="secondary">0 XAF</Badge>
-                      )}
+                      <Badge variant={client.solde > 0 ? "destructive" : "secondary"}>
+                        {client.solde > 0 ? formatMontant(client.solde) : "0 XAF"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          title="Voir"
-                          onClick={() => navigate(`/clients/${client.id}`)}
-                        >
+                        <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/clients/${client.id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          title="Modifier"
-                          onClick={() => navigate(`/clients/${client.id}/modifier`)}
-                        >
+                        <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/clients/${client.id}/modifier`)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -179,23 +174,19 @@ export default function ClientsPage() {
         </Card>
       </div>
 
-      {/* Modal de confirmation suppression */}
-      <AlertDialog 
-        open={!!deleteConfirm} 
-        onOpenChange={(open) => !open && setDeleteConfirm(null)}
-      >
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
               Êtes-vous sûr de vouloir supprimer le client <strong>{deleteConfirm?.nom}</strong> ? 
-              Cette action supprimera également tous les documents associés et est irréversible.
+              Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Non, annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Oui, supprimer
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteConfirm && handleDelete(deleteConfirm.id)} className="bg-destructive hover:bg-destructive/90">
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
