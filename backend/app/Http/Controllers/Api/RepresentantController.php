@@ -42,7 +42,7 @@ class RepresentantController extends Controller
     {
         $representant = Representant::create($request->validated());
 
-        Audit::log('create', 'representant', "Représentant créé: {$representant->nom} {$representant->prenom}", $representant->id);
+        Audit::log('create', 'representant', "Représentant créé: {$representant->nom} {$representant->prenom}", $representant);
 
         return response()->json(new RepresentantResource($representant), 201);
     }
@@ -61,7 +61,7 @@ class RepresentantController extends Controller
     {
         $representant->update($request->validated());
 
-        Audit::log('update', 'representant', "Représentant modifié: {$representant->nom} {$representant->prenom}", $representant->id);
+        Audit::log('update', 'representant', "Représentant modifié: {$representant->nom} {$representant->prenom}", $representant);
 
         return response()->json(new RepresentantResource($representant));
     }
@@ -74,7 +74,7 @@ class RepresentantController extends Controller
             ], 422);
         }
 
-        Audit::log('delete', 'representant', "Représentant supprimé: {$representant->nom} {$representant->prenom}", $representant->id);
+        Audit::log('delete', 'representant', "Représentant supprimé: {$representant->nom} {$representant->prenom}", $representant);
 
         $representant->delete();
 

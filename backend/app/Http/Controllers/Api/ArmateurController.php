@@ -38,7 +38,7 @@ class ArmateurController extends Controller
     {
         $armateur = Armateur::create($request->validated());
 
-        Audit::log('create', 'armateur', "Armateur créé: {$armateur->nom}", $armateur->id);
+        Audit::log('create', 'armateur', "Armateur créé: {$armateur->nom}", $armateur);
 
         return response()->json(new ArmateurResource($armateur), 201);
     }
@@ -52,14 +52,14 @@ class ArmateurController extends Controller
     {
         $armateur->update($request->validated());
 
-        Audit::log('update', 'armateur', "Armateur modifié: {$armateur->nom}", $armateur->id);
+        Audit::log('update', 'armateur', "Armateur modifié: {$armateur->nom}", $armateur);
 
         return response()->json(new ArmateurResource($armateur));
     }
 
     public function destroy(Armateur $armateur): JsonResponse
     {
-        Audit::log('delete', 'armateur', "Armateur supprimé: {$armateur->nom}", $armateur->id);
+        Audit::log('delete', 'armateur', "Armateur supprimé: {$armateur->nom}", $armateur);
 
         $armateur->delete();
 
