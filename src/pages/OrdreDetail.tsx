@@ -39,7 +39,7 @@ export default function OrdreDetailPage() {
   const [activeTab, setActiveTab] = useState("details");
   const [paiementModalOpen, setPaiementModalOpen] = useState(false);
 
-  const { data: ordre, isLoading, error } = useOrdreById(id || "");
+  const { data: ordre, isLoading, error, refetch } = useOrdreById(id || "");
   const convertMutation = useConvertOrdreToFacture();
 
   if (isLoading) {
@@ -429,8 +429,10 @@ export default function OrdreDetailPage() {
         open={paiementModalOpen}
         onOpenChange={setPaiementModalOpen}
         documentType="ordre"
+        documentId={ordre.id}
         documentNumero={ordre.numero}
         montantRestant={resteAPayer}
+        onSuccess={() => refetch()}
       />
     </MainLayout>
   );

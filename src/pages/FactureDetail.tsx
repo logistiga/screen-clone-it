@@ -38,7 +38,7 @@ export default function FactureDetailPage() {
   const [paiementModalOpen, setPaiementModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
 
-  const { data: facture, isLoading, error } = useFactureById(id || "");
+  const { data: facture, isLoading, error, refetch } = useFactureById(id || "");
 
   if (isLoading) {
     return (
@@ -406,8 +406,10 @@ export default function FactureDetailPage() {
         open={paiementModalOpen}
         onOpenChange={setPaiementModalOpen}
         documentType="facture"
+        documentId={facture.id}
         documentNumero={facture.numero}
         montantRestant={resteAPayer}
+        onSuccess={() => refetch()}
       />
 
       {/* Modal email */}

@@ -374,14 +374,42 @@ export const representantsApi = {
   },
 };
 
+// Banques API
+export interface Banque {
+  id: string;
+  nom: string;
+  code?: string;
+  iban?: string;
+  bic?: string;
+  solde?: number;
+  actif: boolean;
+}
+
+export const banquesApi = {
+  getAll: async () => {
+    const response = await api.get<{ data: Banque[] }>('/banques');
+    return response.data.data;
+  },
+};
+
 // Paiements API
+export interface PaiementData {
+  facture_id?: string;
+  ordre_id?: string;
+  montant: number;
+  mode_paiement: 'Espèces' | 'Chèque' | 'Virement' | 'Mobile Money';
+  reference?: string;
+  banque_id?: string;
+  notes?: string;
+}
+
 export const paiementsApi = {
-  create: async (data: { facture_id?: string; ordre_id?: string; montant: number; mode_paiement: string; reference?: string; notes?: string }) => {
+  create: async (data: PaiementData) => {
     const response = await api.post('/paiements', data);
     return response.data;
   },
   
-  createGlobal: async (data: { client_id: string; factures: { facture_id: string; montant: number }[]; mode_paiement: string; reference?: string }) => {
+  createGlobal: async (data: { client_id: string; montant: number; factures: { id: string; montant: number }[]; mode_paiement: string; reference?: string; banque_id?: string }) => {
     const response = await api.post('/paiements/global', data);
     return response.data;
   },

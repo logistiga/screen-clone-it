@@ -8,6 +8,7 @@ import {
   transitairesApi,
   representantsApi,
   paiementsApi,
+  banquesApi,
   configurationApi,
   Client,
   Devis,
@@ -15,7 +16,9 @@ import {
   Facture,
   Armateur,
   Transitaire,
-  Representant
+  Representant,
+  Banque,
+  PaiementData
 } from '@/lib/api/commercial';
 import { toast } from 'sonner';
 
@@ -368,11 +371,19 @@ export function useCreateRepresentant() {
   });
 }
 
+// Banques hooks
+export function useBanques() {
+  return useQuery({
+    queryKey: ['banques'],
+    queryFn: banquesApi.getAll,
+  });
+}
+
 // Paiements hooks
 export function useCreatePaiement() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: paiementsApi.create,
+    mutationFn: (data: PaiementData) => paiementsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['factures'] });
       queryClient.invalidateQueries({ queryKey: ['ordres'] });
