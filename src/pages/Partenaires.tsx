@@ -152,7 +152,7 @@ export default function PartenairesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{formatMontant(totalPrimesPayeesTransitaires)}</div>
+                  <div className="text-2xl font-bold text-primary">{formatMontant(totalPrimesPayeesTransitaires)}</div>
                 </CardContent>
               </Card>
             </div>
@@ -203,7 +203,7 @@ export default function PartenairesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className="text-green-600 font-medium">{formatMontant(primesPayees)}</span>
+                            <span className="text-primary font-medium">{formatMontant(primesPayees)}</span>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -269,7 +269,7 @@ export default function PartenairesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{formatMontant(totalPrimesPayeesRepresentants)}</div>
+                  <div className="text-2xl font-bold text-primary">{formatMontant(totalPrimesPayeesRepresentants)}</div>
                 </CardContent>
               </Card>
             </div>
@@ -320,7 +320,7 @@ export default function PartenairesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className="text-green-600 font-medium">{formatMontant(primesPayees)}</span>
+                            <span className="text-primary font-medium">{formatMontant(primesPayees)}</span>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -376,7 +376,7 @@ export default function PartenairesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{armateursData.filter(a => a.actif).length}</div>
+                  <div className="text-2xl font-bold text-primary">{armateursData.filter(a => a.actif).length}</div>
                 </CardContent>
               </Card>
             </div>
