@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Container, Package, Users, FileText, Plus, Trash2, Save, MapPin, Calendar } from "lucide-react";
+import { ArrowLeft, Container, Package, Users, FileText, Plus, Trash2, Save, MapPin, Calendar, Loader2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useConfiguration } from "@/hooks/use-commercial";
 import {
   CategorieDocument,
   TypeOperation,
@@ -26,9 +26,6 @@ import {
   LigneLot,
   LignePrestationEtendue,
   typesOperationConteneur,
-  armateurs,
-  transitaires,
-  representants,
   getCategoriesLabels,
   getOperationsIndepLabels,
   getInitialConteneur,
@@ -40,8 +37,28 @@ import {
 } from "@/types/documents";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
 
+const formatMontant = (montant: number) => {
+  return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
+};
+
 export default function NouveauDevisPage() {
   const navigate = useNavigate();
+  
+  // API hooks
+  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
+  const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
+  const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
+  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants();
+  const { data: config } = useConfiguration();
+  const createDevisMutation = useCreateDevis();
+
+  const clients = clientsData?.data || [];
+  const armateurs = armateursData || [];
+  const transitaires = transitairesData || [];
+  const representants = representantsData || [];
+  
+  const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
+  const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
   const operationsIndepLabels = getOperationsIndepLabels();
@@ -58,8 +75,6 @@ export default function NouveauDevisPage() {
   const [armateurId, setArmateurId] = useState("");
   const [transitaireId, setTransitaireId] = useState("");
   const [representantId, setRepresentantId] = useState("");
-  const [primeTransitaire, setPrimeTransitaire] = useState<number>(0);
-  const [primeRepresentant, setPrimeRepresentant] = useState<number>(0);
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
   const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
   const [lieuChargement, setLieuChargement] = useState("");
@@ -67,12 +82,6 @@ export default function NouveauDevisPage() {
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [notes, setNotes] = useState("");
-
-  const generateNumero = () => {
-    const year = new Date().getFullYear();
-    const counter = configurationNumerotation.prochainNumeroDevis.toString().padStart(4, '0');
-    return `${configurationNumerotation.prefixeDevis}-${year}-${counter}`;
-  };
 
   const handleAddConteneur = () => setConteneurs([...conteneurs, { ...getInitialConteneur(), id: String(Date.now()) }]);
   const handleRemoveConteneur = (id: string) => { if (conteneurs.length > 1) setConteneurs(conteneurs.filter(c => c.id !== id)); };
@@ -137,7 +146,6 @@ export default function NouveauDevisPage() {
     setPrestations(prestations.map(p => {
       if (p.id === id) {
         const updated = { ...p, [field]: value };
-        // Recalculer la quantité si on change les dates
         if (field === 'dateDebut' || field === 'dateFin') {
           const dateDebut = field === 'dateDebut' ? String(value) : updated.dateDebut || '';
           const dateFin = field === 'dateFin' ? String(value) : updated.dateFin || '';
@@ -178,42 +186,85 @@ export default function NouveauDevisPage() {
     setLieuDechargement("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) { toast.error("Veuillez sélectionner un client"); return; }
     if (!categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
     if ((categorie === "conteneurs" || categorie === "conventionnel") && !numeroBL) { toast.error("Veuillez saisir le numéro de BL"); return; }
     if (categorie === "operations_independantes" && !typeOperationIndep) { toast.error("Veuillez sélectionner un type d'opération"); return; }
 
+    // Préparer les lignes pour l'API
+    let lignes: any[] = [];
+    if (categorie === "conteneurs") {
+      conteneurs.forEach(c => {
+        if (c.prixUnitaire > 0) {
+          lignes.push({ designation: `Conteneur ${c.numero} (${c.taille})`, unite: 'unité', quantite: 1, prix_unitaire: c.prixUnitaire });
+        }
+        c.operations.forEach(op => {
+          lignes.push({ designation: `${typesOperationConteneur[op.type]?.label} - ${c.numero}`, unite: 'unité', quantite: op.quantite, prix_unitaire: op.prixUnitaire });
+        });
+      });
+    } else if (categorie === "conventionnel") {
+      lots.forEach(l => {
+        lignes.push({ designation: l.description || `Lot ${l.numeroLot}`, unite: 'unité', quantite: l.quantite, prix_unitaire: l.prixUnitaire });
+      });
+    } else {
+      prestations.forEach(p => {
+        lignes.push({ designation: p.description, unite: 'jour', quantite: p.quantite, prix_unitaire: p.prixUnitaire });
+      });
+    }
+
     const data = {
-      id: Date.now().toString(),
-      numero: generateNumero(),
-      clientId,
-      categorie,
-      typeOperation: categorie === "operations_independantes" ? typeOperationIndep : typeOperation,
-      numeroBL,
-      armateurId,
-      transitaireId,
-      representantId,
-      primeTransitaire,
-      primeRepresentant,
-      conteneurs: categorie === "conteneurs" ? conteneurs : [],
-      lots: categorie === "conventionnel" ? lots : [],
-      prestations: categorie === "operations_independantes" ? prestations : [],
-      montantHT,
-      tva,
-      css,
-      montantTTC,
-      statut: 'brouillon',
-      notes,
-      dateCreation: new Date().toISOString().split('T')[0],
-      dateValidite
+      client_id: parseInt(clientId),
+      transitaire_id: transitaireId ? parseInt(transitaireId) : null,
+      representant_id: representantId ? parseInt(representantId) : null,
+      armateur_id: armateurId ? parseInt(armateurId) : null,
+      date_devis: new Date().toISOString().split('T')[0],
+      date_validite: dateValidite,
+      reference_client: numeroBL || null,
+      navire: null,
+      voyage: null,
+      port_chargement: lieuChargement || null,
+      port_dechargement: lieuDechargement || null,
+      conditions: null,
+      notes: notes || null,
+      lignes,
+      conteneurs: categorie === "conteneurs" ? conteneurs.map(c => ({
+        numero: c.numero,
+        type: c.taille === "20'" ? "20" : "40",
+        taille: c.taille === "20'" ? "20" : "40",
+        operations: c.operations.map(op => ({
+          type_operation: op.type,
+          prix_unitaire: op.prixUnitaire,
+          quantite: op.quantite
+        }))
+      })) : [],
+      lots: categorie === "conventionnel" ? lots.map(l => ({
+        designation: l.description || `Lot ${l.numeroLot}`,
+        nature_marchandise: l.description,
+        nombre_colis: l.quantite
+      })) : []
     };
 
-    console.log("Devis créé:", data);
-    toast.success("Devis créé avec succès");
-    navigate("/devis");
+    try {
+      await createDevisMutation.mutateAsync(data);
+      navigate("/devis");
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
+
+  const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Nouveau devis">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Nouveau devis">
@@ -222,7 +273,7 @@ export default function NouveauDevisPage() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/devis")}><ArrowLeft className="h-5 w-5" /></Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="h-6 w-6 text-primary" />Nouveau devis</h1>
-            <p className="text-muted-foreground text-sm">Numéro: <span className="font-medium">{generateNumero()}</span></p>
+            <p className="text-muted-foreground text-sm">Créer un nouveau devis client</p>
           </div>
         </div>
       </div>
@@ -259,7 +310,12 @@ export default function NouveauDevisPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nom du client *</Label>
-                    <Select value={clientId} onValueChange={setClientId}><SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger><SelectContent>{clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>))}</SelectContent></Select>
+                    <Select value={clientId} onValueChange={setClientId}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Calendar className="h-4 w-4" />Date de validité</Label>
@@ -278,15 +334,11 @@ export default function NouveauDevisPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2"><Label>Type d'opération *</Label><Select value={typeOperation} onValueChange={(v) => setTypeOperation(v as TypeOperation)}><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent><SelectItem value="import">Import</SelectItem><SelectItem value="export">Export</SelectItem></SelectContent></Select></div>
                     <div className="space-y-2"><Label>Numéro BL *</Label><Input placeholder="Ex: MSCUAB123456" value={numeroBL} onChange={(e) => setNumeroBL(e.target.value.toUpperCase())} className="font-mono" /></div>
-                    <div className="space-y-2"><Label>Armateur *</Label><Select value={armateurId} onValueChange={setArmateurId}><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent>{armateurs.map((a) => (<SelectItem key={a.id} value={a.id}>{a.nom}</SelectItem>))}</SelectContent></Select></div>
+                    <div className="space-y-2"><Label>Armateur *</Label><Select value={armateurId} onValueChange={setArmateurId}><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent>{armateurs.map((a) => (<SelectItem key={a.id} value={String(a.id)}>{a.nom}</SelectItem>))}</SelectContent></Select></div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label className="text-amber-600">Transitaire</Label><Select value={transitaireId} onValueChange={setTransitaireId}><SelectTrigger className="border-amber-200"><SelectValue placeholder="Sélectionner (optionnel)" /></SelectTrigger><SelectContent>{transitaires.map((t) => (<SelectItem key={t.id} value={t.id}>{t.nom}</SelectItem>))}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label className="text-amber-600">Représentant</Label><Select value={representantId} onValueChange={setRepresentantId}><SelectTrigger className="border-amber-200"><SelectValue placeholder="Sélectionner (optionnel)" /></SelectTrigger><SelectContent>{representants.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nom}</SelectItem>))}</SelectContent></Select></div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Prime transitaire (FCFA)</Label><Input type="number" placeholder="0" value={primeTransitaire || ""} onChange={(e) => setPrimeTransitaire(parseFloat(e.target.value) || 0)} /></div>
-                    <div className="space-y-2"><Label>Prime représentant (FCFA)</Label><Input type="number" placeholder="0" value={primeRepresentant || ""} onChange={(e) => setPrimeRepresentant(parseFloat(e.target.value) || 0)} /></div>
+                    <div className="space-y-2"><Label className="text-amber-600">Transitaire</Label><Select value={transitaireId} onValueChange={setTransitaireId}><SelectTrigger className="border-amber-200"><SelectValue placeholder="Sélectionner (optionnel)" /></SelectTrigger><SelectContent>{transitaires.map((t) => (<SelectItem key={t.id} value={String(t.id)}>{t.nom}</SelectItem>))}</SelectContent></Select></div>
+                    <div className="space-y-2"><Label className="text-amber-600">Représentant</Label><Select value={representantId} onValueChange={setRepresentantId}><SelectTrigger className="border-amber-200"><SelectValue placeholder="Sélectionner (optionnel)" /></SelectTrigger><SelectContent>{representants.map((r) => (<SelectItem key={r.id} value={String(r.id)}>{r.nom}</SelectItem>))}</SelectContent></Select></div>
                   </div>
                 </CardContent>
               </Card>
@@ -305,7 +357,7 @@ export default function NouveauDevisPage() {
                           <div className="space-y-2"><Label>Prix (FCFA)</Label><Input type="number" placeholder="0" value={conteneur.prixUnitaire || ""} onChange={(e) => handleConteneurChange(conteneur.id, 'prixUnitaire', parseFloat(e.target.value) || 0)} className="text-right" /></div>
                         </div>
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between"><Label className="text-sm font-medium">Opérations</Label><div className="flex gap-2"><Button type="button" variant="outline" size="sm" className="gap-1 text-xs" disabled>Associer existante</Button><Button type="button" variant="outline" size="sm" onClick={() => handleAddOperationConteneur(conteneur.id)} className="gap-1 text-xs"><Plus className="h-3 w-3" />Nouvelle opération</Button></div></div>
+                          <div className="flex items-center justify-between"><Label className="text-sm font-medium">Opérations</Label><Button type="button" variant="outline" size="sm" onClick={() => handleAddOperationConteneur(conteneur.id)} className="gap-1 text-xs"><Plus className="h-3 w-3" />Nouvelle opération</Button></div>
                           {conteneur.operations.length === 0 ? (<p className="text-sm text-muted-foreground italic">Aucune opération ajoutée.</p>) : (
                             <div className="space-y-3">
                               {conteneur.operations.map((op, opIndex) => (
@@ -402,7 +454,15 @@ export default function NouveauDevisPage() {
             <Card><CardHeader><CardTitle className="text-lg">Conditions et notes</CardTitle></CardHeader><CardContent><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Conditions particulières, notes..." rows={4} /></CardContent></Card>
           )}
 
-          {categorie && (<div className="flex justify-end gap-4 pb-6"><Button type="button" variant="outline" onClick={() => navigate("/devis")}>Annuler</Button><Button type="submit" className="gap-2"><Save className="h-4 w-4" />Créer le devis</Button></div>)}
+          {categorie && (
+            <div className="flex justify-end gap-4 pb-6">
+              <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending}>Annuler</Button>
+              <Button type="submit" className="gap-2" disabled={createDevisMutation.isPending}>
+                {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Créer le devis
+              </Button>
+            </div>
+          )}
         </form>
       </div>
     </MainLayout>

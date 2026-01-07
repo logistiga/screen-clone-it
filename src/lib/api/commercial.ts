@@ -26,23 +26,28 @@ export interface Devis {
   numero: string;
   client_id: string;
   client?: Client;
-  categorie: string;
-  type_operation: string;
-  numero_bl?: string;
-  armateur_id?: string;
   transitaire_id?: string;
   representant_id?: string;
-  montant_ht: number;
+  armateur_id?: string;
+  date_devis: string;
+  date_validite: string;
+  reference_client?: string;
+  navire?: string;
+  voyage?: string;
+  port_chargement?: string;
+  port_dechargement?: string;
+  sous_total: number;
   tva: number;
   css: number;
-  montant_ttc: number;
-  statut: 'brouillon' | 'envoye' | 'accepte' | 'refuse' | 'expire';
+  total_ttc: number;
+  statut: 'brouillon' | 'envoye' | 'accepte' | 'refuse' | 'expire' | 'converti';
+  conditions?: string;
   notes?: string;
-  date_creation: string;
-  date_validite: string;
   conteneurs?: any[];
   lots?: any[];
   lignes?: any[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface OrdreTravail {

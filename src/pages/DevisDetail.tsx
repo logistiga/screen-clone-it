@@ -20,66 +20,43 @@ import {
   Edit,
   Mail,
   ArrowRight,
-  Ban,
-  Trash2,
   Clock,
   User,
-  CheckCircle,
   AlertCircle,
-  PenLine,
+  Loader2,
+  Download,
+  Copy,
 } from "lucide-react";
-import { devis, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { useDevisById, useConvertDevisToOrdre } from "@/hooks/use-commercial";
 
-// Mock traçabilité data
-const getTracabiliteDevis = (devisId: string) => [
-  {
-    id: "1",
-    action: "Création",
-    utilisateur: "Jean Dupont",
-    date: "2026-01-02 09:15:00",
-    details: "Devis créé à partir d'une demande client",
-    icon: FileText,
-    color: "text-blue-600",
-  },
-  {
-    id: "2",
-    action: "Modification",
-    utilisateur: "Marie Martin",
-    date: "2026-01-02 14:30:00",
-    details: "Ajout de 2 lignes de prestation",
-    icon: PenLine,
-    color: "text-orange-600",
-  },
-  {
-    id: "3",
-    action: "Envoi",
-    utilisateur: "Jean Dupont",
-    date: "2026-01-03 10:00:00",
-    details: "Envoyé par email à contact@total-gabon.ga",
-    icon: Mail,
-    color: "text-purple-600",
-  },
-  {
-    id: "4",
-    action: "Validation",
-    utilisateur: "Admin Principal",
-    date: "2026-01-04 16:45:00",
-    details: "Devis validé et approuvé",
-    icon: CheckCircle,
-    color: "text-green-600",
-  },
-];
+const formatMontant = (montant: number) => {
+  return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
+};
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleDateString('fr-FR');
+};
 
 export default function DevisDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("details");
 
-  const devisData = devis.find((d) => d.id === id);
-  const client = devisData ? clients.find((c) => c.id === devisData.clientId) : null;
-  const tracabilite = id ? getTracabiliteDevis(id) : [];
+  const { data: devisData, isLoading, error } = useDevisById(id || '');
+  const convertMutation = useConvertDevisToOrdre();
 
-  if (!devisData) {
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !devisData) {
     return (
       <MainLayout title="Devis non trouvé">
         <div className="flex flex-col items-center justify-center py-20">
@@ -101,9 +78,27 @@ export default function DevisDetailPage() {
       accepte: "default",
       refuse: "destructive",
       expire: "destructive",
-      annule: "destructive",
+      converti: "default",
     };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const labels: Record<string, string> = {
+      brouillon: "Brouillon",
+      envoye: "Envoyé",
+      accepte: "Accepté",
+      refuse: "Refusé",
+      expire: "Expiré",
+      converti: "Converti",
+    };
+    return <Badge variant={variants[statut] || "secondary"}>{labels[statut] || statut}</Badge>;
+  };
+
+  const handleConvertToOrdre = async () => {
+    if (!id) return;
+    try {
+      await convertMutation.mutateAsync(id);
+      navigate("/ordres");
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
   return (
@@ -121,8 +116,8 @@ export default function DevisDetailPage() {
                 {getStatutBadge(devisData.statut)}
               </div>
               <p className="text-muted-foreground">
-                Créé le {formatDate(devisData.dateCreation)} • Valide jusqu'au{" "}
-                {formatDate(devisData.dateValidite)}
+                Créé le {formatDate(devisData.date_devis)} • Valide jusqu'au{" "}
+                {formatDate(devisData.date_validite)}
               </p>
             </div>
           </div>
@@ -132,13 +127,14 @@ export default function DevisDetailPage() {
               className="gap-2"
               onClick={() => window.open(`/devis/${id}/pdf`, "_blank")}
             >
-              <FileText className="h-4 w-4" />
+              <Download className="h-4 w-4" />
               PDF
             </Button>
             <Button
               variant="outline"
               className="gap-2"
               onClick={() => navigate(`/devis/${id}/modifier`)}
+              disabled={devisData.statut === 'converti'}
             >
               <Edit className="h-4 w-4" />
               Modifier
@@ -147,9 +143,17 @@ export default function DevisDetailPage() {
               <Mail className="h-4 w-4" />
               Envoyer
             </Button>
-            {devisData.statut === "accepte" && (
-              <Button className="gap-2">
-                <ArrowRight className="h-4 w-4" />
+            {devisData.statut !== 'converti' && devisData.statut !== 'refuse' && (
+              <Button 
+                className="gap-2" 
+                onClick={handleConvertToOrdre}
+                disabled={convertMutation.isPending}
+              >
+                {convertMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-4 w-4" />
+                )}
                 Convertir en ordre
               </Button>
             )}
@@ -162,7 +166,7 @@ export default function DevisDetailPage() {
             <TabsTrigger value="details">Détails</TabsTrigger>
             <TabsTrigger value="tracabilite" className="gap-2">
               <Clock className="h-4 w-4" />
-              Historique / Traçabilité
+              Historique
             </TabsTrigger>
           </TabsList>
 
@@ -177,11 +181,11 @@ export default function DevisDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="font-semibold text-lg">{client?.nom}</p>
-                  <p className="text-muted-foreground">{client?.email}</p>
-                  <p className="text-muted-foreground">{client?.telephone}</p>
+                  <p className="font-semibold text-lg">{devisData.client?.nom}</p>
+                  <p className="text-muted-foreground">{devisData.client?.email}</p>
+                  <p className="text-muted-foreground">{devisData.client?.telephone}</p>
                   <p className="text-muted-foreground">
-                    {client?.adresse}, {client?.ville}
+                    {devisData.client?.adresse}, {devisData.client?.ville}
                   </p>
                 </CardContent>
               </Card>
@@ -196,20 +200,20 @@ export default function DevisDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Montant HT</span>
-                    <span className="font-medium">{formatMontant(devisData.montantHT)}</span>
+                    <span className="font-medium">{formatMontant(devisData.sous_total || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TVA (18%)</span>
-                    <span>{formatMontant(devisData.tva)}</span>
+                    <span>{formatMontant(devisData.tva || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">CSS (1%)</span>
-                    <span>{formatMontant(devisData.css)}</span>
+                    <span>{formatMontant(devisData.css || 0)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total TTC</span>
-                    <span className="text-primary">{formatMontant(devisData.montantTTC)}</span>
+                    <span className="text-primary">{formatMontant(devisData.total_ttc || 0)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -224,29 +228,67 @@ export default function DevisDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead>Description</TableHead>
+                      <TableHead>Désignation</TableHead>
                       <TableHead className="text-center">Quantité</TableHead>
                       <TableHead className="text-right">Prix unitaire</TableHead>
-                      <TableHead className="text-right">Montant HT</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {devisData.lignes.map((ligne) => (
+                    {devisData.lignes?.map((ligne: any) => (
                       <TableRow key={ligne.id}>
-                        <TableCell>{ligne.description}</TableCell>
-                        <TableCell className="text-center">{ligne.quantite}</TableCell>
+                        <TableCell>{ligne.designation}</TableCell>
+                        <TableCell className="text-center">{ligne.quantite} {ligne.unite}</TableCell>
                         <TableCell className="text-right">
-                          {formatMontant(ligne.prixUnitaire)}
+                          {formatMontant(ligne.prix_unitaire)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatMontant(ligne.montantHT)}
+                          {formatMontant(ligne.montant)}
                         </TableCell>
                       </TableRow>
                     ))}
+                    {(!devisData.lignes || devisData.lignes.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Aucune ligne
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
+
+            {/* Conteneurs si présents */}
+            {devisData.conteneurs && devisData.conteneurs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conteneurs</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Numéro</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Taille</TableHead>
+                        <TableHead className="text-right">Opérations</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {devisData.conteneurs.map((conteneur: any) => (
+                        <TableRow key={conteneur.id}>
+                          <TableCell className="font-mono">{conteneur.numero}</TableCell>
+                          <TableCell>{conteneur.type}</TableCell>
+                          <TableCell>{conteneur.taille}'</TableCell>
+                          <TableCell className="text-right">{conteneur.operations?.length || 0}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Notes */}
             {devisData.notes && (
@@ -270,37 +312,31 @@ export default function DevisDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="relative">
-                  {/* Timeline line */}
-                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-
-                  <div className="space-y-6">
-                    {tracabilite.map((action, index) => {
-                      const IconComponent = action.icon;
-                      return (
-                        <div key={action.id} className="relative flex gap-4 pl-10">
-                          {/* Timeline dot */}
-                          <div
-                            className={`absolute left-0 p-2 rounded-full bg-background border-2 ${action.color.replace("text-", "border-")}`}
-                          >
-                            <IconComponent className={`h-4 w-4 ${action.color}`} />
-                          </div>
-
-                          <div className="flex-1 bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-semibold">{action.action}</span>
-                              <span className="text-sm text-muted-foreground">{action.date}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                              <User className="h-3 w-3" />
-                              <span>{action.utilisateur}</span>
-                            </div>
-                            <p className="text-sm">{action.details}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                    <div className="p-2 rounded-full bg-blue-100">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Création du devis</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(devisData.created_at)}
+                      </p>
+                    </div>
                   </div>
+                  {devisData.updated_at !== devisData.created_at && (
+                    <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                      <div className="p-2 rounded-full bg-orange-100">
+                        <Edit className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Dernière modification</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(devisData.updated_at)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
