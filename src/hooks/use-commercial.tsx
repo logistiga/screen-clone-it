@@ -327,6 +327,20 @@ export function useCreateArmateur() {
   });
 }
 
+export function useDeleteArmateur() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: armateursApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['armateurs'] });
+      toast.success('Armateur supprimé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression de l\'armateur');
+    },
+  });
+}
+
 // Transitaires hooks
 export function useTransitaires() {
   return useQuery({
@@ -349,6 +363,20 @@ export function useCreateTransitaire() {
   });
 }
 
+export function useDeleteTransitaire() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transitairesApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
+      toast.success('Transitaire supprimé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression du transitaire');
+    },
+  });
+}
+
 // Representants hooks
 export function useRepresentants() {
   return useQuery({
@@ -367,6 +395,20 @@ export function useCreateRepresentant() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erreur lors de la création du représentant');
+    },
+  });
+}
+
+export function useDeleteRepresentant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: representantsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['representants'] });
+      toast.success('Représentant supprimé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression du représentant');
     },
   });
 }

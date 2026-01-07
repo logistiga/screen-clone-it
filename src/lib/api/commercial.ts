@@ -111,9 +111,10 @@ export interface Facture {
 export interface Armateur {
   id: string;
   nom: string;
-  code: string;
+  code?: string;
   email?: string;
   telephone?: string;
+  adresse?: string;
   actif: boolean;
 }
 
@@ -131,6 +132,7 @@ export interface Representant {
   nom: string;
   email?: string;
   telephone?: string;
+  adresse?: string;
   zone?: string;
   actif: boolean;
 }
