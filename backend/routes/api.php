@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Controllers
@@ -18,15 +17,13 @@ use App\Http\Controllers\Api\ArmateurController;
 use App\Http\Controllers\Api\CreditBancaireController;
 use App\Http\Controllers\Api\PrevisionController;
 use App\Http\Controllers\Api\AnnulationController;
-use App\Http\Controllers\Api\UtilisateurController;
-use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\ConfigurationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReportingController;
 use App\Http\Controllers\Api\PrimeController;
 use App\Http\Controllers\Api\NoteDebutController;
-use App\Http\Controllers\Api\DocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,9 +39,11 @@ Route::prefix('auth')->group(function () {
 });
 
 // Routes protégées par authentification
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     
-    // Auth
+    // ============================================
+    // AUTH & PROFIL
+    // ============================================
     Route::prefix('auth')->group(function () {
         Route::get('user', [AuthController::class, 'user']);
         Route::post('logout', [AuthController::class, 'logout']);
@@ -52,118 +51,358 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('password', [AuthController::class, 'updatePassword']);
     });
 
-    // Dashboard
-    Route::get('dashboard/stats', [DashboardController::class, 'stats']);
-    Route::get('dashboard/charts', [DashboardController::class, 'charts']);
-    Route::get('dashboard/recent-activities', [DashboardController::class, 'recentActivities']);
+    // ============================================
+    // DASHBOARD (accessible à tous les utilisateurs connectés)
+    // ============================================
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/', [DashboardController::class, 'index']);
+        Route::get('graphiques', [DashboardController::class, 'graphiques']);
+        Route::get('alertes', [DashboardController::class, 'alertes']);
+        Route::get('activite-recente', [DashboardController::class, 'activiteRecente']);
+    });
 
-    // Clients
-    Route::apiResource('clients', ClientController::class);
-    Route::get('clients/{client}/historique', [ClientController::class, 'historique']);
-    Route::get('clients/{client}/solde', [ClientController::class, 'solde']);
+    // ============================================
+    // CLIENTS
+    // ============================================
+    Route::prefix('clients')->middleware('audit')->group(function () {
+        Route::get('/', [ClientController::class, 'index'])
+            ->middleware('permission:clients.voir');
+        Route::post('/', [ClientController::class, 'store'])
+            ->middleware('permission:clients.creer');
+        Route::get('{client}', [ClientController::class, 'show'])
+            ->middleware('permission:clients.voir');
+        Route::put('{client}', [ClientController::class, 'update'])
+            ->middleware('permission:clients.modifier');
+        Route::delete('{client}', [ClientController::class, 'destroy'])
+            ->middleware('permission:clients.supprimer');
+        Route::get('{client}/stats', [ClientController::class, 'stats'])
+            ->middleware('permission:clients.voir');
+    });
 
-    // Devis
-    Route::apiResource('devis', DevisController::class);
-    Route::post('devis/{devis}/dupliquer', [DevisController::class, 'dupliquer']);
-    Route::post('devis/{devis}/convertir-ordre', [DevisController::class, 'convertirEnOrdre']);
-    Route::post('devis/{devis}/envoyer-email', [DevisController::class, 'envoyerEmail']);
-    Route::get('devis/{devis}/pdf', [DevisController::class, 'generatePdf']);
+    // ============================================
+    // DEVIS
+    // ============================================
+    Route::prefix('devis')->middleware('audit')->group(function () {
+        Route::get('/', [DevisController::class, 'index'])
+            ->middleware('permission:devis.voir');
+        Route::post('/', [DevisController::class, 'store'])
+            ->middleware('permission:devis.creer');
+        Route::get('{devis}', [DevisController::class, 'show'])
+            ->middleware('permission:devis.voir');
+        Route::put('{devis}', [DevisController::class, 'update'])
+            ->middleware('permission:devis.modifier');
+        Route::delete('{devis}', [DevisController::class, 'destroy'])
+            ->middleware('permission:devis.supprimer');
+        Route::post('{devis}/convert-ordre', [DevisController::class, 'convertToOrdre'])
+            ->middleware('permission:ordres.creer');
+        Route::post('{devis}/duplicate', [DevisController::class, 'duplicate'])
+            ->middleware('permission:devis.creer');
+    });
 
-    // Ordres de travail
-    Route::apiResource('ordres', OrdreTravailController::class);
-    Route::post('ordres/{ordre}/convertir-facture', [OrdreTravailController::class, 'convertirEnFacture']);
-    Route::post('ordres/{ordre}/terminer', [OrdreTravailController::class, 'terminer']);
-    Route::get('ordres/{ordre}/pdf', [OrdreTravailController::class, 'generatePdf']);
+    // ============================================
+    // ORDRES DE TRAVAIL
+    // ============================================
+    Route::prefix('ordres-travail')->middleware('audit')->group(function () {
+        Route::get('/', [OrdreTravailController::class, 'index'])
+            ->middleware('permission:ordres.voir');
+        Route::post('/', [OrdreTravailController::class, 'store'])
+            ->middleware('permission:ordres.creer');
+        Route::get('{ordreTravail}', [OrdreTravailController::class, 'show'])
+            ->middleware('permission:ordres.voir');
+        Route::put('{ordreTravail}', [OrdreTravailController::class, 'update'])
+            ->middleware('permission:ordres.modifier');
+        Route::delete('{ordreTravail}', [OrdreTravailController::class, 'destroy'])
+            ->middleware('permission:ordres.supprimer');
+        Route::post('{ordreTravail}/convert-facture', [OrdreTravailController::class, 'convertToFacture'])
+            ->middleware('permission:factures.creer');
+    });
 
-    // Factures
-    Route::apiResource('factures', FactureController::class);
-    Route::post('factures/{facture}/envoyer-email', [FactureController::class, 'envoyerEmail']);
-    Route::get('factures/{facture}/pdf', [FactureController::class, 'generatePdf']);
+    // ============================================
+    // FACTURES
+    // ============================================
+    Route::prefix('factures')->middleware('audit')->group(function () {
+        Route::get('/', [FactureController::class, 'index'])
+            ->middleware('permission:factures.voir');
+        Route::post('/', [FactureController::class, 'store'])
+            ->middleware('permission:factures.creer');
+        Route::get('impayes', [FactureController::class, 'impayes'])
+            ->middleware('permission:factures.voir');
+        Route::get('{facture}', [FactureController::class, 'show'])
+            ->middleware('permission:factures.voir');
+        Route::put('{facture}', [FactureController::class, 'update'])
+            ->middleware('permission:factures.modifier');
+        Route::delete('{facture}', [FactureController::class, 'destroy'])
+            ->middleware('permission:factures.supprimer');
+        Route::post('{facture}/annuler', [FactureController::class, 'annuler'])
+            ->middleware('permission:factures.modifier');
+        Route::post('{facture}/duplicate', [FactureController::class, 'duplicate'])
+            ->middleware('permission:factures.creer');
+    });
 
-    // Paiements
-    Route::apiResource('paiements', PaiementController::class);
-    Route::post('paiements/global', [PaiementController::class, 'paiementGlobal']);
+    // ============================================
+    // PAIEMENTS
+    // ============================================
+    Route::prefix('paiements')->middleware('audit')->group(function () {
+        Route::get('/', [PaiementController::class, 'index'])
+            ->middleware('permission:paiements.voir');
+        Route::post('/', [PaiementController::class, 'store'])
+            ->middleware('permission:paiements.creer');
+        Route::get('stats', [PaiementController::class, 'stats'])
+            ->middleware('permission:paiements.voir');
+        Route::get('{paiement}', [PaiementController::class, 'show'])
+            ->middleware('permission:paiements.voir');
+        Route::delete('{paiement}', [PaiementController::class, 'destroy'])
+            ->middleware('permission:paiements.supprimer');
+        Route::post('global', [PaiementController::class, 'paiementGlobal'])
+            ->middleware('permission:paiements.creer');
+    });
 
-    // Banques
-    Route::apiResource('banques', BanqueController::class);
-    Route::get('banques/{banque}/mouvements', [BanqueController::class, 'mouvements']);
-    Route::post('banques/{banque}/transfert', [BanqueController::class, 'transfert']);
+    // ============================================
+    // BANQUES
+    // ============================================
+    Route::prefix('banques')->middleware('audit')->group(function () {
+        Route::get('/', [BanqueController::class, 'index'])
+            ->middleware('permission:banques.voir');
+        Route::post('/', [BanqueController::class, 'store'])
+            ->middleware('permission:banques.creer');
+        Route::get('{banque}', [BanqueController::class, 'show'])
+            ->middleware('permission:banques.voir');
+        Route::put('{banque}', [BanqueController::class, 'update'])
+            ->middleware('permission:banques.modifier');
+        Route::delete('{banque}', [BanqueController::class, 'destroy'])
+            ->middleware('permission:banques.supprimer');
+        Route::get('{banque}/stats', [BanqueController::class, 'stats'])
+            ->middleware('permission:banques.voir');
+    });
 
-    // Caisse
-    Route::get('caisse/solde', [CaisseController::class, 'solde']);
-    Route::get('caisse/mouvements', [CaisseController::class, 'mouvements']);
-    Route::post('caisse/entree', [CaisseController::class, 'entree']);
-    Route::post('caisse/sortie', [CaisseController::class, 'sortie']);
-    Route::get('caisse/globale', [CaisseController::class, 'caisseGlobale']);
+    // ============================================
+    // CAISSE
+    // ============================================
+    Route::prefix('caisse')->middleware('audit')->group(function () {
+        Route::get('/', [CaisseController::class, 'index'])
+            ->middleware('permission:caisse.voir');
+        Route::post('/', [CaisseController::class, 'store'])
+            ->middleware('permission:caisse.creer');
+        Route::get('solde', [CaisseController::class, 'solde'])
+            ->middleware('permission:caisse.voir');
+        Route::get('stats', [CaisseController::class, 'stats'])
+            ->middleware('permission:caisse.voir');
+        Route::get('categories', [CaisseController::class, 'categories'])
+            ->middleware('permission:caisse.voir');
+        Route::get('{mouvement}', [CaisseController::class, 'show'])
+            ->middleware('permission:caisse.voir');
+        Route::delete('{mouvement}', [CaisseController::class, 'destroy'])
+            ->middleware('permission:caisse.supprimer');
+    });
 
-    // Partenaires
-    Route::apiResource('transitaires', TransitaireController::class);
-    Route::get('transitaires/{transitaire}/primes', [TransitaireController::class, 'primes']);
+    // ============================================
+    // CREDITS BANCAIRES
+    // ============================================
+    Route::prefix('credits')->middleware('audit')->group(function () {
+        Route::get('/', [CreditBancaireController::class, 'index'])
+            ->middleware('permission:credits.voir');
+        Route::post('/', [CreditBancaireController::class, 'store'])
+            ->middleware('permission:credits.creer');
+        Route::get('stats', [CreditBancaireController::class, 'stats'])
+            ->middleware('permission:credits.voir');
+        Route::get('{creditBancaire}', [CreditBancaireController::class, 'show'])
+            ->middleware('permission:credits.voir');
+        Route::put('{creditBancaire}', [CreditBancaireController::class, 'update'])
+            ->middleware('permission:credits.modifier');
+        Route::delete('{creditBancaire}', [CreditBancaireController::class, 'destroy'])
+            ->middleware('permission:credits.supprimer');
+        Route::post('{creditBancaire}/rembourser', [CreditBancaireController::class, 'rembourser'])
+            ->middleware('permission:credits.modifier');
+        Route::get('{creditBancaire}/echeances', [CreditBancaireController::class, 'echeances'])
+            ->middleware('permission:credits.voir');
+        Route::post('{creditBancaire}/documents', [CreditBancaireController::class, 'uploadDocument'])
+            ->middleware('permission:credits.modifier');
+    });
 
-    Route::apiResource('representants', RepresentantController::class);
-    Route::get('representants/{representant}/primes', [RepresentantController::class, 'primes']);
+    // ============================================
+    // PARTENAIRES - TRANSITAIRES
+    // ============================================
+    Route::prefix('transitaires')->middleware('audit')->group(function () {
+        Route::get('/', [TransitaireController::class, 'index'])
+            ->middleware('permission:partenaires.voir');
+        Route::post('/', [TransitaireController::class, 'store'])
+            ->middleware('permission:partenaires.creer');
+        Route::get('{transitaire}', [TransitaireController::class, 'show'])
+            ->middleware('permission:partenaires.voir');
+        Route::put('{transitaire}', [TransitaireController::class, 'update'])
+            ->middleware('permission:partenaires.modifier');
+        Route::delete('{transitaire}', [TransitaireController::class, 'destroy'])
+            ->middleware('permission:partenaires.supprimer');
+    });
 
-    Route::apiResource('armateurs', ArmateurController::class);
+    // ============================================
+    // PARTENAIRES - REPRESENTANTS
+    // ============================================
+    Route::prefix('representants')->middleware('audit')->group(function () {
+        Route::get('/', [RepresentantController::class, 'index'])
+            ->middleware('permission:partenaires.voir');
+        Route::post('/', [RepresentantController::class, 'store'])
+            ->middleware('permission:partenaires.creer');
+        Route::get('{representant}', [RepresentantController::class, 'show'])
+            ->middleware('permission:partenaires.voir');
+        Route::put('{representant}', [RepresentantController::class, 'update'])
+            ->middleware('permission:partenaires.modifier');
+        Route::delete('{representant}', [RepresentantController::class, 'destroy'])
+            ->middleware('permission:partenaires.supprimer');
+        Route::get('{representant}/primes', [RepresentantController::class, 'primes'])
+            ->middleware('permission:partenaires.voir');
+    });
 
-    // Primes partenaires
-    Route::apiResource('primes', PrimeController::class);
-    Route::post('primes/paiement', [PrimeController::class, 'payerPrimes']);
+    // ============================================
+    // PARTENAIRES - ARMATEURS
+    // ============================================
+    Route::prefix('armateurs')->middleware('audit')->group(function () {
+        Route::get('/', [ArmateurController::class, 'index'])
+            ->middleware('permission:partenaires.voir');
+        Route::post('/', [ArmateurController::class, 'store'])
+            ->middleware('permission:partenaires.creer');
+        Route::get('{armateur}', [ArmateurController::class, 'show'])
+            ->middleware('permission:partenaires.voir');
+        Route::put('{armateur}', [ArmateurController::class, 'update'])
+            ->middleware('permission:partenaires.modifier');
+        Route::delete('{armateur}', [ArmateurController::class, 'destroy'])
+            ->middleware('permission:partenaires.supprimer');
+    });
 
-    // Crédits bancaires
-    Route::apiResource('credits', CreditBancaireController::class);
-    Route::get('credits/{credit}/echeances', [CreditBancaireController::class, 'echeances']);
-    Route::post('credits/{credit}/remboursement', [CreditBancaireController::class, 'remboursement']);
-    Route::get('credits/{credit}/documents', [CreditBancaireController::class, 'documents']);
-    Route::post('credits/{credit}/documents', [CreditBancaireController::class, 'uploadDocument']);
+    // ============================================
+    // PRIMES
+    // ============================================
+    Route::prefix('primes')->middleware('audit')->group(function () {
+        Route::get('/', [PrimeController::class, 'index'])
+            ->middleware('permission:partenaires.voir');
+        Route::post('/', [PrimeController::class, 'store'])
+            ->middleware('permission:partenaires.creer');
+        Route::get('stats', [PrimeController::class, 'stats'])
+            ->middleware('permission:partenaires.voir');
+        Route::get('{prime}', [PrimeController::class, 'show'])
+            ->middleware('permission:partenaires.voir');
+        Route::put('{prime}', [PrimeController::class, 'update'])
+            ->middleware('permission:partenaires.modifier');
+        Route::delete('{prime}', [PrimeController::class, 'destroy'])
+            ->middleware('permission:partenaires.supprimer');
+        Route::post('{prime}/payer', [PrimeController::class, 'payer'])
+            ->middleware('permission:caisse.creer');
+    });
 
-    // Prévisions
-    Route::apiResource('previsions', PrevisionController::class);
+    // ============================================
+    // PREVISIONS
+    // ============================================
+    Route::prefix('previsions')->middleware('audit')->group(function () {
+        Route::get('/', [PrevisionController::class, 'index'])
+            ->middleware('permission:reporting.voir');
+        Route::post('/', [PrevisionController::class, 'store'])
+            ->middleware('permission:reporting.creer');
+        Route::get('stats', [PrevisionController::class, 'stats'])
+            ->middleware('permission:reporting.voir');
+        Route::get('categories', [PrevisionController::class, 'categories'])
+            ->middleware('permission:reporting.voir');
+        Route::get('{prevision}', [PrevisionController::class, 'show'])
+            ->middleware('permission:reporting.voir');
+        Route::put('{prevision}', [PrevisionController::class, 'update'])
+            ->middleware('permission:reporting.modifier');
+        Route::delete('{prevision}', [PrevisionController::class, 'destroy'])
+            ->middleware('permission:reporting.supprimer');
+        Route::patch('{prevision}/realise', [PrevisionController::class, 'updateRealise'])
+            ->middleware('permission:reporting.modifier');
+    });
 
-    // Annulations
-    Route::apiResource('annulations', AnnulationController::class);
-    Route::post('annulations/devis/{devis}', [AnnulationController::class, 'annulerDevis']);
-    Route::post('annulations/ordres/{ordre}', [AnnulationController::class, 'annulerOrdre']);
-    Route::post('annulations/factures/{facture}', [AnnulationController::class, 'annulerFacture']);
+    // ============================================
+    // NOTES DE DEBIT
+    // ============================================
+    Route::prefix('notes-debut')->middleware('audit')->group(function () {
+        Route::get('/', [NoteDebutController::class, 'index'])
+            ->middleware('permission:notes.voir');
+        Route::post('/', [NoteDebutController::class, 'store'])
+            ->middleware('permission:notes.creer');
+        Route::get('{noteDebut}', [NoteDebutController::class, 'show'])
+            ->middleware('permission:notes.voir');
+        Route::put('{noteDebut}', [NoteDebutController::class, 'update'])
+            ->middleware('permission:notes.modifier');
+        Route::delete('{noteDebut}', [NoteDebutController::class, 'destroy'])
+            ->middleware('permission:notes.supprimer');
+    });
 
-    // Notes de début
-    Route::apiResource('notes-debut', NoteDebutController::class);
-    Route::get('notes-debut/{note}/pdf', [NoteDebutController::class, 'generatePdf']);
+    // ============================================
+    // ANNULATIONS
+    // ============================================
+    Route::prefix('annulations')->group(function () {
+        Route::get('/', [AnnulationController::class, 'index'])
+            ->middleware('permission:factures.voir');
+        Route::get('stats', [AnnulationController::class, 'stats'])
+            ->middleware('permission:factures.voir');
+        Route::get('{annulation}', [AnnulationController::class, 'show'])
+            ->middleware('permission:factures.voir');
+    });
 
-    // Utilisateurs & Rôles
-    Route::apiResource('utilisateurs', UtilisateurController::class);
-    Route::put('utilisateurs/{utilisateur}/toggle-actif', [UtilisateurController::class, 'toggleActif']);
-    
-    Route::apiResource('roles', RoleController::class);
-    Route::get('permissions', [RoleController::class, 'permissions']);
+    // ============================================
+    // UTILISATEURS (Admin uniquement)
+    // ============================================
+    Route::prefix('utilisateurs')->middleware(['audit', 'permission:utilisateurs.voir'])->group(function () {
+        Route::get('/', [UserController::class, 'index']);
+        Route::post('/', [UserController::class, 'store'])
+            ->middleware('permission:utilisateurs.creer');
+        Route::get('roles', [UserController::class, 'roles']);
+        Route::get('{user}', [UserController::class, 'show']);
+        Route::put('{user}', [UserController::class, 'update'])
+            ->middleware('permission:utilisateurs.modifier');
+        Route::delete('{user}', [UserController::class, 'destroy'])
+            ->middleware('permission:utilisateurs.supprimer');
+        Route::patch('{user}/toggle-actif', [UserController::class, 'toggleActif'])
+            ->middleware('permission:utilisateurs.modifier');
+    });
 
-    // Audit & Traçabilité
-    Route::get('audit', [AuditController::class, 'index']);
-    Route::get('audit/export', [AuditController::class, 'export']);
+    // Profil utilisateur (accessible par tous)
+    Route::get('profile', [UserController::class, 'profile']);
+    Route::put('profile', [UserController::class, 'updateProfile']);
+    Route::put('password', [UserController::class, 'updatePassword']);
 
-    // Configuration
-    Route::prefix('configuration')->group(function () {
-        Route::get('numerotation', [ConfigurationController::class, 'numerotation']);
-        Route::put('numerotation', [ConfigurationController::class, 'updateNumerotation']);
+    // ============================================
+    // AUDIT & TRACABILITE
+    // ============================================
+    Route::prefix('audit')->middleware('permission:audit.voir')->group(function () {
+        Route::get('/', [AuditController::class, 'index']);
+        Route::get('actions', [AuditController::class, 'actions']);
+        Route::get('tables', [AuditController::class, 'tables']);
+        Route::get('stats', [AuditController::class, 'stats']);
+        Route::get('export', [AuditController::class, 'export']);
+        Route::get('{audit}', [AuditController::class, 'show']);
+    });
+
+    // ============================================
+    // CONFIGURATION (Admin uniquement)
+    // ============================================
+    Route::prefix('configuration')->middleware('permission:configuration.voir')->group(function () {
+        Route::get('/', [ConfigurationController::class, 'index']);
+        Route::put('/', [ConfigurationController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        
         Route::get('taxes', [ConfigurationController::class, 'taxes']);
-        Route::put('taxes', [ConfigurationController::class, 'updateTaxes']);
+        Route::put('taxes', [ConfigurationController::class, 'updateTaxes'])
+            ->middleware('permission:configuration.modifier');
+        
+        Route::get('numerotation', [ConfigurationController::class, 'numerotation']);
+        Route::put('numerotation', [ConfigurationController::class, 'updateNumerotation'])
+            ->middleware('permission:configuration.modifier');
+        
         Route::get('entreprise', [ConfigurationController::class, 'entreprise']);
-        Route::put('entreprise', [ConfigurationController::class, 'updateEntreprise']);
+        Route::put('entreprise', [ConfigurationController::class, 'updateEntreprise'])
+            ->middleware('permission:configuration.modifier');
     });
 
-    // Reporting
-    Route::prefix('reporting')->group(function () {
+    // ============================================
+    // REPORTING
+    // ============================================
+    Route::prefix('reporting')->middleware('permission:reporting.voir')->group(function () {
         Route::get('chiffre-affaires', [ReportingController::class, 'chiffreAffaires']);
-        Route::get('paiements', [ReportingController::class, 'paiements']);
-        Route::get('clients', [ReportingController::class, 'clients']);
-        Route::get('operations', [ReportingController::class, 'operations']);
-        Route::get('export/{type}', [ReportingController::class, 'export']);
+        Route::get('creances', [ReportingController::class, 'creances']);
+        Route::get('tresorerie', [ReportingController::class, 'tresorerie']);
+        Route::get('rentabilite', [ReportingController::class, 'rentabilite']);
+        Route::get('activite-clients', [ReportingController::class, 'activiteClients']);
+        Route::get('comparatif', [ReportingController::class, 'comparatif']);
     });
-
-    // Documents (upload, génération)
-    Route::post('documents/upload', [DocumentController::class, 'upload']);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download']);
-    Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
 });
-
-// Route de vérification de document (publique avec token)
-Route::get('verification/{token}', [DocumentController::class, 'verify']);
