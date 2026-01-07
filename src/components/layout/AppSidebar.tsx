@@ -3,7 +3,7 @@ import {
   Users, FileText, ClipboardList, Receipt, XCircle,
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
-  FileStack, Handshake, LayoutDashboard, ChevronDown
+  FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -16,12 +16,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import logo from "@/assets/lojistiga-logo.png";
 
 const menuItems = {
@@ -80,6 +86,9 @@ const menuItems = {
 
 export function AppSidebar() {
   const location = useLocation();
+  const { state, toggleSidebar } = useSidebar();
+  const isCollapsed = state === "collapsed";
+  
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     commercial: true,
     comptabilite: true,
@@ -91,13 +100,56 @@ export function AppSidebar() {
     setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const renderMenuItem = (item: { title: string; url: string; icon: any }, isActive: boolean) => {
+    const content = (
+      <NavLink
+        to={item.url}
+        className={cn(
+          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 relative",
+          isCollapsed && "justify-center px-2",
+          isActive 
+            ? "bg-sidebar-primary text-sidebar-primary-foreground before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-1 before:rounded-r-full before:bg-white" 
+            : "text-sidebar-foreground hover:bg-white/20 hover:text-white hover:translate-x-1 hover:shadow-md"
+        )}
+      >
+        <item.icon className="h-4 w-4 shrink-0" />
+        {!isCollapsed && <span>{item.title}</span>}
+      </NavLink>
+    );
+
+    if (isCollapsed) {
+      return (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            {content}
+          </TooltipTrigger>
+          <TooltipContent side="right" className="bg-sidebar text-sidebar-foreground border-sidebar-border">
+            {item.title}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return content;
+  };
+
   return (
-    <Sidebar className="border-r-0">
-      <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-4">
-        <img src={logo} alt="Lojistiga" className="h-10 w-auto" />
+    <Sidebar collapsible="icon" className="border-r-0">
+      <div className={cn(
+        "flex h-16 items-center border-b border-sidebar-border px-4 transition-all duration-200",
+        isCollapsed ? "justify-center" : "justify-center"
+      )}>
+        <img 
+          src={logo} 
+          alt="Lojistiga" 
+          className={cn(
+            "transition-all duration-200",
+            isCollapsed ? "h-8 w-8 object-contain" : "h-10 w-auto"
+          )} 
+        />
       </div>
       
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className={cn("py-4", isCollapsed ? "px-1" : "px-2")}>
         {Object.entries(menuItems).map(([key, group]) => {
           if (!group.collapsible) {
             return (
@@ -111,18 +163,30 @@ export function AppSidebar() {
                       return (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton asChild>
-                            <NavLink
-                              to={item.url}
-                              className={cn(
-                                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 relative",
-                                isActive 
-                                  ? "bg-sidebar-primary text-sidebar-primary-foreground before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-1 before:rounded-r-full before:bg-white" 
-                                  : "text-sidebar-foreground hover:bg-white/20 hover:text-white hover:translate-x-1 hover:shadow-md"
-                              )}
-                            >
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </NavLink>
+                            {renderMenuItem(item, isActive)}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            );
+          }
+
+          if (isCollapsed) {
+            return (
+              <SidebarGroup key={key}>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => {
+                      const isActive = location.pathname === item.url || 
+                        (item.url !== "/" && location.pathname.startsWith(item.url));
+                      
+                      return (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            {renderMenuItem(item, isActive)}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -161,18 +225,7 @@ export function AppSidebar() {
                         return (
                           <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton asChild>
-                              <NavLink
-                                to={item.url}
-                                className={cn(
-                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 relative",
-                                  isActive 
-                                    ? "bg-sidebar-primary text-sidebar-primary-foreground before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-1 before:rounded-r-full before:bg-white" 
-                                    : "text-sidebar-foreground hover:bg-white/20 hover:text-white hover:translate-x-1 hover:shadow-md"
-                                )}
-                              >
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </NavLink>
+                              {renderMenuItem(item, isActive)}
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                         );
@@ -185,6 +238,26 @@ export function AppSidebar() {
           );
         })}
       </SidebarContent>
+
+      {/* Toggle Button */}
+      <div className="mt-auto border-t border-sidebar-border p-2">
+        <button
+          onClick={toggleSidebar}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-sidebar-foreground/60 transition-all duration-200 hover:bg-white/20 hover:text-white",
+            isCollapsed && "justify-center px-2"
+          )}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <>
+              <ChevronLeft className="h-4 w-4" />
+              <span>Réduire</span>
+            </>
+          )}
+        </button>
+      </div>
     </Sidebar>
   );
 }
