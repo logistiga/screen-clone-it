@@ -3,14 +3,20 @@ import api from '@/lib/api';
 // Types
 export interface Client {
   id: string;
+  code: string;
   nom: string;
+  type: string;
   email: string;
   telephone: string;
   adresse: string;
   ville: string;
   pays: string;
-  code_fiscal?: string;
+  nif?: string;
+  rccm?: string;
+  limite_credit: number;
   solde: number;
+  notes?: string;
+  actif: boolean;
   created_at: string;
   updated_at: string;
 }
