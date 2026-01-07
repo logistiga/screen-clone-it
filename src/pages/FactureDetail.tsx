@@ -19,68 +19,38 @@ import {
   FileText,
   Edit,
   Wallet,
-  Ban,
-  Trash2,
   Clock,
   User,
-  CheckCircle,
   AlertCircle,
-  PenLine,
   Mail,
   Receipt,
+  Loader2,
 } from "lucide-react";
-import { factures, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
-
-// Mock traçabilité data
-const getTracabiliteFacture = (factureId: string) => [
-  {
-    id: "1",
-    action: "Création",
-    utilisateur: "Jean Dupont",
-    date: "2026-01-03 09:00:00",
-    details: "Facture créée à partir de l'ordre OT-2026-0001",
-    icon: FileText,
-    color: "text-blue-600",
-  },
-  {
-    id: "2",
-    action: "Envoi par email",
-    utilisateur: "Marie Martin",
-    date: "2026-01-03 10:30:00",
-    details: "Facture envoyée au client par email",
-    icon: Mail,
-    color: "text-purple-600",
-  },
-  {
-    id: "3",
-    action: "Paiement reçu",
-    utilisateur: "Admin Principal",
-    date: "2026-01-05 14:30:00",
-    details: "Paiement de 1 249 500 FCFA reçu par virement",
-    icon: Wallet,
-    color: "text-green-600",
-  },
-  {
-    id: "4",
-    action: "Validation",
-    utilisateur: "Directeur",
-    date: "2026-01-05 15:00:00",
-    details: "Facture marquée comme payée",
-    icon: CheckCircle,
-    color: "text-green-600",
-  },
-];
+import { useFactureById } from "@/hooks/use-commercial";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { PaiementModal } from "@/components/PaiementModal";
+import { EmailModal } from "@/components/EmailModal";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("details");
+  const [paiementModalOpen, setPaiementModalOpen] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
 
-  const facture = factures.find((f) => f.id === id);
-  const client = facture ? clients.find((c) => c.id === facture.clientId) : null;
-  const tracabilite = id ? getTracabiliteFacture(id) : [];
+  const { data: facture, isLoading, error } = useFactureById(id || "");
 
-  if (!facture) {
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !facture) {
     return (
       <MainLayout title="Facture non trouvée">
         <div className="flex flex-col items-center justify-center py-20">
@@ -95,7 +65,8 @@ export default function FactureDetailPage() {
     );
   }
 
-  const resteAPayer = facture.montantTTC - facture.montantPaye;
+  const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
+  const client = facture.client;
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -107,6 +78,19 @@ export default function FactureDetailPage() {
     };
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
+
+  // Traçabilité mock
+  const tracabilite = [
+    {
+      id: "1",
+      action: "Création",
+      utilisateur: "Système",
+      date: facture.created_at || facture.date_facture,
+      details: "Facture créée",
+      icon: FileText,
+      color: "text-blue-600",
+    },
+  ];
 
   return (
     <MainLayout title={`Facture ${facture.numero}`}>
@@ -123,7 +107,7 @@ export default function FactureDetailPage() {
                 {getStatutBadge(facture.statut)}
               </div>
               <p className="text-muted-foreground">
-                Créée le {formatDate(facture.dateCreation)} • Échéance: {formatDate(facture.dateEcheance)}
+                Créée le {formatDate(facture.date_facture)} • Échéance: {formatDate(facture.date_echeance)}
               </p>
             </div>
           </div>
@@ -136,6 +120,14 @@ export default function FactureDetailPage() {
               <FileText className="h-4 w-4" />
               PDF
             </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setEmailModalOpen(true)}
+            >
+              <Mail className="h-4 w-4" />
+              Email
+            </Button>
             {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
               <>
                 <Button
@@ -146,10 +138,12 @@ export default function FactureDetailPage() {
                   <Edit className="h-4 w-4" />
                   Modifier
                 </Button>
-                <Button variant="outline" className="gap-2 text-green-600">
-                  <Wallet className="h-4 w-4" />
-                  Paiement
-                </Button>
+                {resteAPayer > 0 && (
+                  <Button variant="outline" className="gap-2 text-green-600" onClick={() => setPaiementModalOpen(true)}>
+                    <Wallet className="h-4 w-4" />
+                    Paiement
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -195,25 +189,25 @@ export default function FactureDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Montant HT</span>
-                    <span className="font-medium">{formatMontant(facture.montantHT)}</span>
+                    <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">TVA (18%)</span>
-                    <span>{formatMontant(facture.tva)}</span>
+                    <span className="text-muted-foreground">TVA</span>
+                    <span>{formatMontant(facture.montant_tva)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">CSS (1%)</span>
-                    <span>{formatMontant(facture.css)}</span>
+                    <span className="text-muted-foreground">CSS</span>
+                    <span>{formatMontant(facture.montant_css)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total TTC</span>
-                    <span className="text-primary">{formatMontant(facture.montantTTC)}</span>
+                    <span className="text-primary">{formatMontant(facture.montant_ttc)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Montant payé</span>
-                    <span className="text-green-600 font-medium">{formatMontant(facture.montantPaye)}</span>
+                    <span className="text-green-600 font-medium">{formatMontant(facture.montant_paye || 0)}</span>
                   </div>
                   <div className="flex justify-between font-semibold">
                     <span>Reste à payer</span>
@@ -225,38 +219,131 @@ export default function FactureDetailPage() {
               </Card>
             </div>
 
+            {/* Infos BL */}
+            {facture.bl_numero && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informations BL</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <span className="text-sm text-muted-foreground">Numéro BL</span>
+                      <p className="font-mono font-medium">{facture.bl_numero}</p>
+                    </div>
+                    {facture.navire && (
+                      <div>
+                        <span className="text-sm text-muted-foreground">Navire</span>
+                        <p className="font-medium">{facture.navire}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Lignes de la facture */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Lignes de la facture</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-center">Quantité</TableHead>
-                      <TableHead className="text-right">Prix unitaire</TableHead>
-                      <TableHead className="text-right">Montant HT</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {facture.lignes.map((ligne) => (
-                      <TableRow key={ligne.id}>
-                        <TableCell>{ligne.description}</TableCell>
-                        <TableCell className="text-center">{ligne.quantite}</TableCell>
-                        <TableCell className="text-right">
-                          {formatMontant(ligne.prixUnitaire)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatMontant(ligne.montantHT)}
-                        </TableCell>
+            {facture.lignes && facture.lignes.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lignes de la facture</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-center">Quantité</TableHead>
+                        <TableHead className="text-right">Prix unitaire</TableHead>
+                        <TableHead className="text-right">Montant HT</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {facture.lignes.map((ligne: any) => (
+                        <TableRow key={ligne.id}>
+                          <TableCell>{ligne.description || ligne.type_operation}</TableCell>
+                          <TableCell className="text-center">{ligne.quantite}</TableCell>
+                          <TableCell className="text-right">
+                            {formatMontant(ligne.prix_unitaire)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatMontant(ligne.montant_ht)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Conteneurs */}
+            {facture.conteneurs && facture.conteneurs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conteneurs</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Numéro</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Taille</TableHead>
+                        <TableHead className="text-right">Montant</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {facture.conteneurs.map((conteneur: any) => (
+                        <TableRow key={conteneur.id}>
+                          <TableCell className="font-mono">{conteneur.numero}</TableCell>
+                          <TableCell>{conteneur.type}</TableCell>
+                          <TableCell>{conteneur.taille}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatMontant(conteneur.montant_ht || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lots */}
+            {facture.lots && facture.lots.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lots</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Désignation</TableHead>
+                        <TableHead className="text-center">Quantité</TableHead>
+                        <TableHead className="text-right">Prix unitaire</TableHead>
+                        <TableHead className="text-right">Montant</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {facture.lots.map((lot: any) => (
+                        <TableRow key={lot.id}>
+                          <TableCell>{lot.designation}</TableCell>
+                          <TableCell className="text-center">{lot.quantite}</TableCell>
+                          <TableCell className="text-right">
+                            {formatMontant(lot.prix_unitaire)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatMontant(lot.montant_ht || lot.quantite * lot.prix_unitaire)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Notes */}
             {facture.notes && (
@@ -295,7 +382,7 @@ export default function FactureDetailPage() {
                           <div className="flex-1 bg-muted/30 rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-semibold">{action.action}</span>
-                              <span className="text-sm text-muted-foreground">{action.date}</span>
+                              <span className="text-sm text-muted-foreground">{formatDate(action.date)}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                               <User className="h-3 w-3" />
@@ -313,6 +400,25 @@ export default function FactureDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal paiement */}
+      <PaiementModal
+        open={paiementModalOpen}
+        onOpenChange={setPaiementModalOpen}
+        documentType="facture"
+        documentNumero={facture.numero}
+        montantRestant={resteAPayer}
+      />
+
+      {/* Modal email */}
+      <EmailModal
+        open={emailModalOpen}
+        onOpenChange={setEmailModalOpen}
+        documentType="facture"
+        documentNumero={facture.numero}
+        clientEmail={client?.email || ""}
+        clientNom={client?.nom || ""}
+      />
     </MainLayout>
   );
 }
