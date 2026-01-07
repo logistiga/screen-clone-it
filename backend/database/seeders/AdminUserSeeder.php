@@ -18,7 +18,17 @@ class AdminUserSeeder extends Seeder
             'actif' => true,
             'email_verified_at' => now(),
         ]);
-
         $admin->assignRole('administrateur');
+
+        // Admin Omar
+        $omar = User::create([
+            'nom' => 'Omar Amraoui',
+            'email' => 'omar@logistiga.com',
+            'password' => Hash::make('Amraoui@1'),
+            'telephone' => '+241 00 00 00 01',
+            'actif' => true,
+            'email_verified_at' => now(),
+        ]);
+        $omar->assignRole('administrateur');
     }
 }
