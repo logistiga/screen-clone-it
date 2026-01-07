@@ -45,7 +45,7 @@ export default function NouveauClientPage() {
 
   // Informations du client
   const [nom, setNom] = useState("");
-  const [type, setType] = useState("entreprise");
+  const [type, setType] = useState("Entreprise");
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
   const [adresse, setAdresse] = useState("");
@@ -186,8 +186,8 @@ export default function NouveauClientPage() {
                       <SelectValue placeholder="Type de client" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="entreprise">Entreprise</SelectItem>
-                      <SelectItem value="particulier">Particulier</SelectItem>
+                      <SelectItem value="Entreprise">Entreprise</SelectItem>
+                      <SelectItem value="Particulier">Particulier</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
