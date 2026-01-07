@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreBanqueRequest;
+use App\Http\Requests\UpdateBanqueRequest;
+use App\Http\Resources\BanqueResource;
 use App\Models\Banque;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class BanqueController extends Controller
 {
@@ -29,62 +32,32 @@ class BanqueController extends Controller
 
         $banques = $query->orderBy('nom')->get();
 
-        return response()->json($banques);
+        return response()->json(BanqueResource::collection($banques));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreBanqueRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:banques,code',
-            'adresse' => 'nullable|string',
-            'telephone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
-            'rib' => 'nullable|string|max:100',
-            'iban' => 'nullable|string|max:50',
-            'swift' => 'nullable|string|max:20',
-            'actif' => 'boolean',
-        ]);
+        $banque = Banque::create($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('create', 'banque', "Banque créée: {$banque->nom}", $banque->id);
 
-        $banque = Banque::create($request->all());
-
-        return response()->json($banque, 201);
+        return response()->json(new BanqueResource($banque), 201);
     }
 
     public function show(Banque $banque): JsonResponse
     {
         $banque->load(['paiements' => fn($q) => $q->orderBy('date_paiement', 'desc')->limit(20)]);
-        $banque->total_paiements = $banque->paiements()->sum('montant');
-        $banque->nombre_paiements = $banque->paiements()->count();
-
-        return response()->json($banque);
+        
+        return response()->json(new BanqueResource($banque));
     }
 
-    public function update(Request $request, Banque $banque): JsonResponse
+    public function update(UpdateBanqueRequest $request, Banque $banque): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:banques,code,' . $banque->id,
-            'adresse' => 'nullable|string',
-            'telephone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
-            'rib' => 'nullable|string|max:100',
-            'iban' => 'nullable|string|max:50',
-            'swift' => 'nullable|string|max:20',
-            'actif' => 'boolean',
-        ]);
+        $banque->update($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('update', 'banque', "Banque modifiée: {$banque->nom}", $banque->id);
 
-        $banque->update($request->all());
-
-        return response()->json($banque);
+        return response()->json(new BanqueResource($banque));
     }
 
     public function destroy(Banque $banque): JsonResponse
@@ -94,6 +67,8 @@ class BanqueController extends Controller
                 'message' => 'Impossible de supprimer cette banque car elle a des paiements associés'
             ], 422);
         }
+
+        Audit::log('delete', 'banque', "Banque supprimée: {$banque->nom}", $banque->id);
 
         $banque->delete();
 

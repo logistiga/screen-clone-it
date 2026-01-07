@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePrevisionRequest;
+use App\Http\Requests\UpdatePrevisionRequest;
+use App\Http\Resources\PrevisionResource;
 use App\Models\Prevision;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -35,26 +39,11 @@ class PrevisionController extends Controller
             ->orderBy('mois', 'desc')
             ->paginate($request->get('per_page', 15));
 
-        return response()->json($previsions);
+        return response()->json(PrevisionResource::collection($previsions)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePrevisionRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'type' => 'required|in:Recette,Dépense',
-            'categorie' => 'required|string|max:100',
-            'description' => 'required|string|max:500',
-            'montant_prevu' => 'required|numeric|min:0',
-            'mois' => 'required|integer|min:1|max:12',
-            'annee' => 'required|integer|min:2020',
-            'date_prevue' => 'nullable|date',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // Vérifier si une prévision similaire existe déjà
         $exists = Prevision::where('type', $request->type)
             ->where('categorie', $request->categorie)
             ->where('mois', $request->mois)
@@ -80,49 +69,38 @@ class PrevisionController extends Controller
             'user_id' => auth()->id(),
         ]);
 
-        return response()->json($prevision, 201);
+        Audit::log('create', 'prevision', "Prévision créée: {$request->type} - {$request->categorie}", $prevision->id);
+
+        return response()->json(new PrevisionResource($prevision), 201);
     }
 
     public function show(Prevision $prevision): JsonResponse
     {
         $prevision->load('user');
-        $prevision->ecart = $prevision->montant_realise - $prevision->montant_prevu;
-        $prevision->taux_realisation = $prevision->montant_prevu > 0 
-            ? round(($prevision->montant_realise / $prevision->montant_prevu) * 100, 2) 
-            : 0;
-
-        return response()->json($prevision);
+        return response()->json(new PrevisionResource($prevision));
     }
 
-    public function update(Request $request, Prevision $prevision): JsonResponse
+    public function update(UpdatePrevisionRequest $request, Prevision $prevision): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'description' => 'sometimes|required|string|max:500',
-            'montant_prevu' => 'sometimes|required|numeric|min:0',
-            'montant_realise' => 'sometimes|numeric|min:0',
-            'date_prevue' => 'nullable|date',
-            'statut' => 'sometimes|in:En cours,Atteint,Non atteint',
-        ]);
+        $prevision->update($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $prevision->update($request->all());
-
-        // Mettre à jour le statut automatiquement
         if ($request->has('montant_realise')) {
             if ($prevision->montant_realise >= $prevision->montant_prevu) {
                 $prevision->update(['statut' => 'Atteint']);
             }
         }
 
-        return response()->json($prevision);
+        Audit::log('update', 'prevision', "Prévision modifiée", $prevision->id);
+
+        return response()->json(new PrevisionResource($prevision));
     }
 
     public function destroy(Prevision $prevision): JsonResponse
     {
+        Audit::log('delete', 'prevision', "Prévision supprimée", $prevision->id);
+
         $prevision->delete();
+        
         return response()->json(['message' => 'Prévision supprimée avec succès']);
     }
 
@@ -142,7 +120,7 @@ class PrevisionController extends Controller
             'statut' => $nouveauMontant >= $prevision->montant_prevu ? 'Atteint' : 'En cours',
         ]);
 
-        return response()->json($prevision);
+        return response()->json(new PrevisionResource($prevision));
     }
 
     public function stats(Request $request): JsonResponse

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreClientRequest;
+use App\Http\Requests\UpdateClientRequest;
+use App\Http\Resources\ClientResource;
 use App\Models\Client;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class ClientController extends Controller
 {
@@ -29,29 +32,16 @@ class ClientController extends Controller
 
         $clients = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($clients);
+        return response()->json(ClientResource::collection($clients)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreClientRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'telephone' => 'nullable|string|max:50',
-            'adresse' => 'nullable|string',
-            'type' => 'required|in:Particulier,Entreprise',
-            'nif' => 'nullable|string|max:100',
-            'rccm' => 'nullable|string|max:100',
-            'contact_principal' => 'nullable|string|max:255',
-        ]);
+        $client = Client::create($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('create', 'client', "Client créé: {$client->nom}", $client->id);
 
-        $client = Client::create($request->all());
-
-        return response()->json($client, 201);
+        return response()->json(new ClientResource($client), 201);
     }
 
     public function show(Client $client): JsonResponse
@@ -63,39 +53,20 @@ class ClientController extends Controller
             'paiements' => fn($q) => $q->orderBy('created_at', 'desc'),
         ]);
 
-        // Calculer les statistiques
-        $client->total_facture = $client->factures->sum('montant_ttc');
-        $client->total_paye = $client->paiements->sum('montant');
-        $client->solde = $client->total_facture - $client->total_paye;
-
-        return response()->json($client);
+        return response()->json(new ClientResource($client));
     }
 
-    public function update(Request $request, Client $client): JsonResponse
+    public function update(UpdateClientRequest $request, Client $client): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'telephone' => 'nullable|string|max:50',
-            'adresse' => 'nullable|string',
-            'type' => 'sometimes|required|in:Particulier,Entreprise',
-            'nif' => 'nullable|string|max:100',
-            'rccm' => 'nullable|string|max:100',
-            'contact_principal' => 'nullable|string|max:255',
-        ]);
+        $client->update($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('update', 'client', "Client modifié: {$client->nom}", $client->id);
 
-        $client->update($request->all());
-
-        return response()->json($client);
+        return response()->json(new ClientResource($client));
     }
 
     public function destroy(Client $client): JsonResponse
     {
-        // Vérifier s'il y a des factures impayées
         $facturesImpayees = $client->factures()->where('statut', '!=', 'Payée')->count();
         
         if ($facturesImpayees > 0) {
@@ -103,6 +74,8 @@ class ClientController extends Controller
                 'message' => 'Impossible de supprimer ce client car il a des factures impayées'
             ], 422);
         }
+
+        Audit::log('delete', 'client', "Client supprimé: {$client->nom}", $client->id);
 
         $client->delete();
 

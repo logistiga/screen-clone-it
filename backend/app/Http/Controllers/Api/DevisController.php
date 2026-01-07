@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDevisRequest;
+use App\Http\Requests\UpdateDevisRequest;
+use App\Http\Resources\DevisResource;
 use App\Models\Devis;
 use App\Models\LigneDevis;
 use App\Models\ConteneurDevis;
 use App\Models\OperationConteneurDevis;
 use App\Models\LotDevis;
 use App\Models\Configuration;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class DevisController extends Controller
 {
@@ -42,40 +45,18 @@ class DevisController extends Controller
 
         $devis = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($devis);
+        return response()->json(DevisResource::collection($devis)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreDevisRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'type_document' => 'required|in:Conteneur,Lot,Independant',
-            'bl_numero' => 'nullable|string|max:100',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'validite_jours' => 'nullable|integer|min:1',
-            'notes' => 'nullable|string',
-            'lignes' => 'nullable|array',
-            'conteneurs' => 'nullable|array',
-            'lots' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         try {
             DB::beginTransaction();
 
-            // Générer le numéro
             $numero = $this->generateNumero();
-
-            // Récupérer les taux de taxes
             $tauxTva = Configuration::where('cle', 'taux_tva')->value('valeur') ?? 18;
             $tauxCss = Configuration::where('cle', 'taux_css')->value('valeur') ?? 1;
 
-            // Créer le devis
             $devis = Devis::create([
                 'numero' => $numero,
                 'client_id' => $request->client_id,
@@ -92,72 +73,16 @@ class DevisController extends Controller
                 'taux_css' => $tauxCss,
             ]);
 
-            // Créer les lignes (opérations indépendantes)
-            if ($request->has('lignes')) {
-                foreach ($request->lignes as $ligne) {
-                    LigneDevis::create([
-                        'devis_id' => $devis->id,
-                        'type_operation' => $ligne['type_operation'],
-                        'description' => $ligne['description'] ?? null,
-                        'lieu_depart' => $ligne['lieu_depart'] ?? null,
-                        'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
-                        'date_debut' => $ligne['date_debut'] ?? null,
-                        'date_fin' => $ligne['date_fin'] ?? null,
-                        'quantite' => $ligne['quantite'] ?? 1,
-                        'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
-                    ]);
-                }
-            }
-
-            // Créer les conteneurs
-            if ($request->has('conteneurs')) {
-                foreach ($request->conteneurs as $conteneur) {
-                    $cont = ConteneurDevis::create([
-                        'devis_id' => $devis->id,
-                        'numero' => $conteneur['numero'],
-                        'type' => $conteneur['type'],
-                        'taille' => $conteneur['taille'],
-                        'armateur_id' => $conteneur['armateur_id'] ?? null,
-                    ]);
-
-                    // Créer les opérations du conteneur
-                    if (isset($conteneur['operations'])) {
-                        foreach ($conteneur['operations'] as $operation) {
-                            OperationConteneurDevis::create([
-                                'conteneur_devis_id' => $cont->id,
-                                'type_operation' => $operation['type_operation'],
-                                'description' => $operation['description'] ?? null,
-                                'quantite' => $operation['quantite'] ?? 1,
-                                'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
-                                'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            // Créer les lots
-            if ($request->has('lots')) {
-                foreach ($request->lots as $lot) {
-                    LotDevis::create([
-                        'devis_id' => $devis->id,
-                        'designation' => $lot['designation'],
-                        'quantite' => $lot['quantite'] ?? 1,
-                        'poids' => $lot['poids'] ?? null,
-                        'volume' => $lot['volume'] ?? null,
-                        'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
-                    ]);
-                }
-            }
-
-            // Calculer les totaux
+            $this->createLignes($devis, $request->lignes ?? []);
+            $this->createConteneurs($devis, $request->conteneurs ?? []);
+            $this->createLots($devis, $request->lots ?? []);
             $this->calculerTotaux($devis);
+
+            Audit::log('create', 'devis', "Devis créé: {$devis->numero}", $devis->id);
 
             DB::commit();
 
-            return response()->json($devis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']), 201);
+            return response()->json(new DevisResource($devis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -168,29 +93,13 @@ class DevisController extends Controller
     public function show(Devis $devis): JsonResponse
     {
         $devis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'conteneurs.armateur', 'lots']);
-        return response()->json($devis);
+        return response()->json(new DevisResource($devis));
     }
 
-    public function update(Request $request, Devis $devis): JsonResponse
+    public function update(UpdateDevisRequest $request, Devis $devis): JsonResponse
     {
         if ($devis->statut === 'Converti') {
             return response()->json(['message' => 'Impossible de modifier un devis converti'], 422);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'sometimes|required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'type_document' => 'sometimes|required|in:Conteneur,Lot,Independant',
-            'bl_numero' => 'nullable|string|max:100',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'validite_jours' => 'nullable|integer|min:1',
-            'notes' => 'nullable|string',
-            'statut' => 'sometimes|in:Brouillon,Envoyé,Accepté,Refusé,Expiré,Converti',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
@@ -201,75 +110,29 @@ class DevisController extends Controller
                 'navire', 'date_arrivee', 'validite_jours', 'notes', 'statut'
             ]));
 
-            // Mettre à jour les lignes si fournies
             if ($request->has('lignes')) {
                 $devis->lignes()->delete();
-                foreach ($request->lignes as $ligne) {
-                    LigneDevis::create([
-                        'devis_id' => $devis->id,
-                        'type_operation' => $ligne['type_operation'],
-                        'description' => $ligne['description'] ?? null,
-                        'lieu_depart' => $ligne['lieu_depart'] ?? null,
-                        'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
-                        'date_debut' => $ligne['date_debut'] ?? null,
-                        'date_fin' => $ligne['date_fin'] ?? null,
-                        'quantite' => $ligne['quantite'] ?? 1,
-                        'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
-                    ]);
-                }
+                $this->createLignes($devis, $request->lignes);
             }
 
-            // Mettre à jour les conteneurs si fournis
             if ($request->has('conteneurs')) {
                 $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
                 $devis->conteneurs()->delete();
-                
-                foreach ($request->conteneurs as $conteneur) {
-                    $cont = ConteneurDevis::create([
-                        'devis_id' => $devis->id,
-                        'numero' => $conteneur['numero'],
-                        'type' => $conteneur['type'],
-                        'taille' => $conteneur['taille'],
-                        'armateur_id' => $conteneur['armateur_id'] ?? null,
-                    ]);
-
-                    if (isset($conteneur['operations'])) {
-                        foreach ($conteneur['operations'] as $operation) {
-                            OperationConteneurDevis::create([
-                                'conteneur_devis_id' => $cont->id,
-                                'type_operation' => $operation['type_operation'],
-                                'description' => $operation['description'] ?? null,
-                                'quantite' => $operation['quantite'] ?? 1,
-                                'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
-                                'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
-                            ]);
-                        }
-                    }
-                }
+                $this->createConteneurs($devis, $request->conteneurs);
             }
 
-            // Mettre à jour les lots si fournis
             if ($request->has('lots')) {
                 $devis->lots()->delete();
-                foreach ($request->lots as $lot) {
-                    LotDevis::create([
-                        'devis_id' => $devis->id,
-                        'designation' => $lot['designation'],
-                        'quantite' => $lot['quantite'] ?? 1,
-                        'poids' => $lot['poids'] ?? null,
-                        'volume' => $lot['volume'] ?? null,
-                        'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
-                    ]);
-                }
+                $this->createLots($devis, $request->lots);
             }
 
             $this->calculerTotaux($devis);
 
+            Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis->id);
+
             DB::commit();
 
-            return response()->json($devis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']));
+            return response()->json(new DevisResource($devis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])));
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -282,6 +145,8 @@ class DevisController extends Controller
         if ($devis->statut === 'Converti') {
             return response()->json(['message' => 'Impossible de supprimer un devis converti'], 422);
         }
+
+        Audit::log('delete', 'devis', "Devis supprimé: {$devis->numero}", $devis->id);
 
         $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
         $devis->conteneurs()->delete();
@@ -301,7 +166,6 @@ class DevisController extends Controller
         try {
             DB::beginTransaction();
 
-            // Créer l'ordre de travail à partir du devis
             $ordre = \App\Models\OrdreTravail::create([
                 'numero' => $this->generateNumeroOrdre(),
                 'devis_id' => $devis->id,
@@ -322,7 +186,6 @@ class DevisController extends Controller
                 'taux_css' => $devis->taux_css,
             ]);
 
-            // Copier les lignes
             foreach ($devis->lignes as $ligne) {
                 \App\Models\LigneOrdre::create([
                     'ordre_travail_id' => $ordre->id,
@@ -338,7 +201,6 @@ class DevisController extends Controller
                 ]);
             }
 
-            // Copier les conteneurs et opérations
             foreach ($devis->conteneurs as $conteneur) {
                 $newCont = \App\Models\ConteneurOrdre::create([
                     'ordre_travail_id' => $ordre->id,
@@ -360,7 +222,6 @@ class DevisController extends Controller
                 }
             }
 
-            // Copier les lots
             foreach ($devis->lots as $lot) {
                 \App\Models\LotOrdre::create([
                     'ordre_travail_id' => $ordre->id,
@@ -373,14 +234,15 @@ class DevisController extends Controller
                 ]);
             }
 
-            // Marquer le devis comme converti
             $devis->update(['statut' => 'Converti']);
+
+            Audit::log('convert', 'devis', "Devis converti en ordre: {$devis->numero} -> {$ordre->numero}", $devis->id);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Devis converti en ordre de travail',
-                'ordre' => $ordre->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])
+                'ordre' => new \App\Http\Resources\OrdreTravailResource($ordre->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']))
             ]);
 
         } catch (\Exception $e) {
@@ -400,14 +262,12 @@ class DevisController extends Controller
             $newDevis->statut = 'Brouillon';
             $newDevis->save();
 
-            // Dupliquer les lignes
             foreach ($devis->lignes as $ligne) {
                 $newLigne = $ligne->replicate();
                 $newLigne->devis_id = $newDevis->id;
                 $newLigne->save();
             }
 
-            // Dupliquer les conteneurs et opérations
             foreach ($devis->conteneurs as $conteneur) {
                 $newCont = $conteneur->replicate();
                 $newCont->devis_id = $newDevis->id;
@@ -420,20 +280,80 @@ class DevisController extends Controller
                 }
             }
 
-            // Dupliquer les lots
             foreach ($devis->lots as $lot) {
                 $newLot = $lot->replicate();
                 $newLot->devis_id = $newDevis->id;
                 $newLot->save();
             }
 
+            Audit::log('duplicate', 'devis', "Devis dupliqué: {$devis->numero} -> {$newDevis->numero}", $newDevis->id);
+
             DB::commit();
 
-            return response()->json($newDevis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']), 201);
+            return response()->json(new DevisResource($newDevis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Erreur lors de la duplication', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function createLignes(Devis $devis, array $lignes): void
+    {
+        foreach ($lignes as $ligne) {
+            LigneDevis::create([
+                'devis_id' => $devis->id,
+                'type_operation' => $ligne['type_operation'],
+                'description' => $ligne['description'] ?? null,
+                'lieu_depart' => $ligne['lieu_depart'] ?? null,
+                'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
+                'date_debut' => $ligne['date_debut'] ?? null,
+                'date_fin' => $ligne['date_fin'] ?? null,
+                'quantite' => $ligne['quantite'] ?? 1,
+                'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
+                'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
+            ]);
+        }
+    }
+
+    private function createConteneurs(Devis $devis, array $conteneurs): void
+    {
+        foreach ($conteneurs as $conteneur) {
+            $cont = ConteneurDevis::create([
+                'devis_id' => $devis->id,
+                'numero' => $conteneur['numero'],
+                'type' => $conteneur['type'],
+                'taille' => $conteneur['taille'],
+                'armateur_id' => $conteneur['armateur_id'] ?? null,
+            ]);
+
+            if (isset($conteneur['operations'])) {
+                foreach ($conteneur['operations'] as $operation) {
+                    OperationConteneurDevis::create([
+                        'conteneur_devis_id' => $cont->id,
+                        'type_operation' => $operation['type_operation'],
+                        'description' => $operation['description'] ?? null,
+                        'quantite' => $operation['quantite'] ?? 1,
+                        'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
+                        'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function createLots(Devis $devis, array $lots): void
+    {
+        foreach ($lots as $lot) {
+            LotDevis::create([
+                'devis_id' => $devis->id,
+                'designation' => $lot['designation'],
+                'quantite' => $lot['quantite'] ?? 1,
+                'poids' => $lot['poids'] ?? null,
+                'volume' => $lot['volume'] ?? null,
+                'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
+                'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
+            ]);
         }
     }
 
@@ -458,16 +378,10 @@ class DevisController extends Controller
     private function calculerTotaux(Devis $devis): void
     {
         $montantHt = 0;
-
-        // Total des lignes
         $montantHt += $devis->lignes()->sum('montant_ht');
-
-        // Total des opérations conteneurs
         foreach ($devis->conteneurs as $conteneur) {
             $montantHt += $conteneur->operations()->sum('montant_ht');
         }
-
-        // Total des lots
         $montantHt += $devis->lots()->sum('montant_ht');
 
         $montantTva = $montantHt * ($devis->taux_tva / 100);

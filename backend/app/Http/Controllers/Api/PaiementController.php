@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePaiementRequest;
+use App\Http\Requests\StorePaiementGlobalRequest;
+use App\Http\Resources\PaiementResource;
 use App\Models\Paiement;
 use App\Models\Facture;
 use App\Models\MouvementCaisse;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class PaiementController extends Controller
 {
@@ -44,24 +47,11 @@ class PaiementController extends Controller
 
         $paiements = $query->orderBy('date_paiement', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($paiements);
+        return response()->json(PaiementResource::collection($paiements)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePaiementRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'facture_id' => 'required|exists:factures,id',
-            'montant' => 'required|numeric|min:0.01',
-            'mode_paiement' => 'required|in:Espèces,Chèque,Virement,Mobile Money',
-            'reference' => 'nullable|string|max:100',
-            'banque_id' => 'nullable|exists:banques,id',
-            'notes' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $facture = Facture::with('paiements')->findOrFail($request->facture_id);
         
         $montantPaye = $facture->paiements->sum('montant');
@@ -89,7 +79,6 @@ class PaiementController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            // Créer le mouvement de caisse si paiement en espèces
             if ($request->mode_paiement === 'Espèces') {
                 MouvementCaisse::create([
                     'type' => 'Entrée',
@@ -102,7 +91,6 @@ class PaiementController extends Controller
                 ]);
             }
 
-            // Mettre à jour le statut de la facture
             $nouveauMontantPaye = $montantPaye + $request->montant;
             if ($nouveauMontantPaye >= $facture->montant_ttc) {
                 $facture->update(['statut' => 'Payée']);
@@ -110,9 +98,11 @@ class PaiementController extends Controller
                 $facture->update(['statut' => 'Partiellement payée']);
             }
 
+            Audit::log('create', 'paiement', "Paiement enregistré: {$request->montant} pour facture {$facture->numero}", $paiement->id);
+
             DB::commit();
 
-            return response()->json($paiement->load(['facture', 'client', 'banque']), 201);
+            return response()->json(new PaiementResource($paiement->load(['facture', 'client', 'banque'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -123,7 +113,7 @@ class PaiementController extends Controller
     public function show(Paiement $paiement): JsonResponse
     {
         $paiement->load(['facture.client', 'client', 'banque']);
-        return response()->json($paiement);
+        return response()->json(new PaiementResource($paiement));
     }
 
     public function destroy(Paiement $paiement): JsonResponse
@@ -133,14 +123,14 @@ class PaiementController extends Controller
 
             $facture = $paiement->facture;
 
-            // Supprimer le mouvement de caisse associé
             MouvementCaisse::where('reference', $paiement->id)
                 ->where('categorie', 'Paiement facture')
                 ->delete();
 
+            Audit::log('delete', 'paiement', "Paiement supprimé: {$paiement->montant}", $paiement->id);
+
             $paiement->delete();
 
-            // Recalculer le statut de la facture
             $montantPaye = $facture->paiements()->sum('montant');
             if ($montantPaye <= 0) {
                 $facture->update(['statut' => 'Envoyée']);
@@ -158,23 +148,8 @@ class PaiementController extends Controller
         }
     }
 
-    public function paiementGlobal(Request $request): JsonResponse
+    public function paiementGlobal(StorePaiementGlobalRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'required|exists:clients,id',
-            'montant' => 'required|numeric|min:0.01',
-            'mode_paiement' => 'required|in:Espèces,Chèque,Virement,Mobile Money',
-            'reference' => 'nullable|string|max:100',
-            'banque_id' => 'nullable|exists:banques,id',
-            'factures' => 'required|array|min:1',
-            'factures.*.id' => 'required|exists:factures,id',
-            'factures.*.montant' => 'required|numeric|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $totalRepartition = collect($request->factures)->sum('montant');
         if (abs($totalRepartition - $request->montant) > 0.01) {
             return response()->json([
@@ -213,7 +188,6 @@ class PaiementController extends Controller
 
                 $paiements[] = $paiement;
 
-                // Mouvement de caisse si espèces
                 if ($request->mode_paiement === 'Espèces') {
                     MouvementCaisse::create([
                         'type' => 'Entrée',
@@ -226,7 +200,6 @@ class PaiementController extends Controller
                     ]);
                 }
 
-                // Mettre à jour le statut
                 $nouveauMontantPaye = $montantPaye + $factureData['montant'];
                 if ($nouveauMontantPaye >= $facture->montant_ttc) {
                     $facture->update(['statut' => 'Payée']);
@@ -235,11 +208,13 @@ class PaiementController extends Controller
                 }
             }
 
+            Audit::log('create', 'paiement', "Paiement global enregistré: {$request->montant}", null);
+
             DB::commit();
 
             return response()->json([
                 'message' => 'Paiement global enregistré avec succès',
-                'paiements' => $paiements
+                'paiements' => PaiementResource::collection($paiements)
             ], 201);
 
         } catch (\Exception $e) {
