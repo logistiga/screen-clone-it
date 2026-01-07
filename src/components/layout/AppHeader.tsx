@@ -20,9 +20,16 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title }: AppHeaderProps) {
-  // Utilisateur connecté (simulé)
-  const currentUser = utilisateurs[0];
-  const userRole = roles.find(r => r.id === currentUser.roleId);
+  // Utilisateur connecté (simulé) - avec valeur par défaut si tableau vide
+  const currentUser = utilisateurs[0] || {
+    id: 'default',
+    nom: 'Utilisateur',
+    email: 'user@lojistiga.ga',
+    roleId: '1',
+    actif: true,
+    dateCreation: new Date().toISOString().split('T')[0]
+  };
+  const userRole = roles.find(r => r.id === currentUser.roleId) || { id: '1', nom: 'Administrateur', description: '', permissions: [] };
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
