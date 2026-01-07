@@ -2,7 +2,7 @@ import {
   Users, FileText, ClipboardList, Receipt, XCircle,
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
-  FileStack, Handshake
+  FileStack, Handshake, LayoutDashboard
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,12 @@ import {
 import logo from "@/assets/lojistiga-logo.png";
 
 const menuItems = {
+  dashboard: {
+    label: "",
+    items: [
+      { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+    ]
+  },
   commercial: {
     label: "Commercial",
     items: [
