@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Ship, Container, Package, Users, FileText, Plus, Trash2, Save, MapPin } from "lucide-react";
+import { ArrowLeft, Ship, Container, Package, Users, FileText, Plus, Trash2, Save, MapPin, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/select";
 import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
+import { primesPartenaires, transitairesData, representantsData } from "@/data/partenairesData";
+import { PrimePartenaire } from "@/types/partenaires";
 import {
   CategorieDocument,
   TypeOperation,
@@ -230,6 +232,75 @@ export default function NouvelOrdrePage() {
     setLieuDechargement("");
   };
 
+  // Génération automatique des primes partenaires
+  const generatePrimesPartenaires = (ordreId: string, ordreNumero: string) => {
+    const dateCreation = new Date().toISOString().split('T')[0];
+    const primesGeneres: PrimePartenaire[] = [];
+
+    // Prime transitaire
+    if (transitaireId && primeTransitaire > 0) {
+      const primeTransit: PrimePartenaire = {
+        id: `prime-${Date.now()}-trans`,
+        ordreId,
+        ordreNumero,
+        transitaireId,
+        montant: primeTransitaire,
+        statut: 'due',
+        dateCreation
+      };
+      primesPartenaires.push(primeTransit);
+      primesGeneres.push(primeTransit);
+    }
+
+    // Prime représentant
+    if (representantId && primeRepresentant > 0) {
+      const primeRep: PrimePartenaire = {
+        id: `prime-${Date.now()}-rep`,
+        ordreId,
+        ordreNumero,
+        representantId,
+        montant: primeRepresentant,
+        statut: 'due',
+        dateCreation
+      };
+      primesPartenaires.push(primeRep);
+      primesGeneres.push(primeRep);
+    }
+
+    return primesGeneres;
+  };
+
+  // Envoi des données partenaires à la comptabilité
+  const envoyerComptabilite = (data: any, primes: PrimePartenaire[]) => {
+    const transitaire = transitaireId ? transitairesData.find(t => t.id === transitaireId) : null;
+    const representant = representantId ? representantsData.find(r => r.id === representantId) : null;
+
+    const dataComptabilite = {
+      ...data,
+      partenaires: {
+        transitaire: transitaire ? {
+          id: transitaire.id,
+          nom: transitaire.nom,
+          email: transitaire.email,
+          telephone: transitaire.telephone,
+          prime: primeTransitaire
+        } : null,
+        representant: representant ? {
+          id: representant.id,
+          nom: representant.nom,
+          email: representant.email,
+          telephone: representant.telephone,
+          prime: primeRepresentant
+        } : null,
+        totalPrimes: primeTransitaire + primeRepresentant
+      },
+      primesGenerees: primes
+    };
+
+    console.log("📊 Données envoyées à la comptabilité:", dataComptabilite);
+    return dataComptabilite;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -250,9 +321,12 @@ export default function NouvelOrdrePage() {
       return;
     }
 
+    const ordreId = Date.now().toString();
+    const ordreNumero = generateNumero();
+
     const data = {
-      id: Date.now().toString(),
-      numero: generateNumero(),
+      id: ordreId,
+      numero: ordreNumero,
       clientId,
       categorie,
       typeOperation: categorie === "operations_independantes" ? typeOperationIndep : typeOperation,
@@ -275,8 +349,21 @@ export default function NouvelOrdrePage() {
       dateCreation: new Date().toISOString().split('T')[0]
     };
 
+    // Générer automatiquement les primes partenaires
+    const primesGenerees = generatePrimesPartenaires(ordreId, ordreNumero);
+
+    // Envoyer à la comptabilité avec les données partenaires
+    const dataComptabilite = envoyerComptabilite(data, primesGenerees);
+
     console.log("Ordre créé:", data);
-    toast.success("Ordre de travail créé avec succès");
+    
+    // Afficher message de succès avec info sur les primes
+    if (primesGenerees.length > 0) {
+      toast.success(`Ordre créé avec ${primesGenerees.length} prime(s) générée(s) et envoyé à la comptabilité`);
+    } else {
+      toast.success("Ordre de travail créé avec succès");
+    }
+    
     navigate("/ordres");
   };
 
