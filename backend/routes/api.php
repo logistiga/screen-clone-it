@@ -330,13 +330,23 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ANNULATIONS
     // ============================================
-    Route::prefix('annulations')->group(function () {
+    Route::prefix('annulations')->middleware('audit')->group(function () {
         Route::get('/', [AnnulationController::class, 'index'])
             ->middleware('permission:factures.voir');
         Route::get('stats', [AnnulationController::class, 'stats'])
             ->middleware('permission:factures.voir');
+        Route::get('client/{clientId}', [AnnulationController::class, 'historiqueClient'])
+            ->middleware('permission:clients.voir');
         Route::get('{annulation}', [AnnulationController::class, 'show'])
             ->middleware('permission:factures.voir');
+        
+        // Routes d'annulation de documents
+        Route::post('facture/{facture}', [AnnulationController::class, 'annulerFacture'])
+            ->middleware('permission:factures.modifier');
+        Route::post('ordre/{ordre}', [AnnulationController::class, 'annulerOrdre'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
+            ->middleware('permission:devis.modifier');
     });
 
     // ============================================
