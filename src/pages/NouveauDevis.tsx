@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
+import { MainLayout } from "@/components/layout/MainLayout";
 import {
   CategorieDocument,
   TypeOperation,
@@ -202,20 +203,18 @@ export default function NouveauDevisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/devis")}><ArrowLeft className="h-5 w-5" /></Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="h-6 w-6 text-primary" />Nouveau devis</h1>
-              <p className="text-muted-foreground text-sm">Numéro: <span className="font-medium">{generateNumero()}</span></p>
-            </div>
+    <MainLayout title="Nouveau devis">
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/devis")}><ArrowLeft className="h-5 w-5" /></Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="h-6 w-6 text-primary" />Nouveau devis</h1>
+            <p className="text-muted-foreground text-sm">Numéro: <span className="font-medium">{generateNumero()}</span></p>
           </div>
         </div>
       </div>
 
-      <div className="container py-6">
+      <div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {!categorie && (
             <Card>
@@ -403,6 +402,6 @@ export default function NouveauDevisPage() {
           {categorie && (<div className="flex justify-end gap-4 pb-6"><Button type="button" variant="outline" onClick={() => navigate("/devis")}>Annuler</Button><Button type="submit" className="gap-2"><Save className="h-4 w-4" />Créer le devis</Button></div>)}
         </form>
       </div>
-    </div>
+    </MainLayout>
   );
 }

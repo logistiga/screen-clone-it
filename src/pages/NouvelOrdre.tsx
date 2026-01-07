@@ -18,6 +18,7 @@ import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant }
 import { toast } from "sonner";
 import { primesPartenaires, transitairesData, representantsData } from "@/data/partenairesData";
 import { PrimePartenaire } from "@/types/partenaires";
+import { MainLayout } from "@/components/layout/MainLayout";
 import {
   CategorieDocument,
   TypeOperation,
@@ -368,28 +369,25 @@ export default function NouvelOrdrePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Ship className="h-6 w-6 text-primary" />
-                Nouvel ordre de travail
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Créez un ordre de travail pour l'exploitation
-              </p>
-            </div>
+    <MainLayout title="Nouvel ordre de travail">
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Ship className="h-6 w-6 text-primary" />
+              Nouvel ordre de travail
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Créez un ordre de travail pour l'exploitation
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="container py-6">
+      <div>
         <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* Sélection de catégorie */}
@@ -838,6 +836,6 @@ export default function NouvelOrdrePage() {
           )}
         </form>
       </div>
-    </div>
+    </MainLayout>
   );
 }
