@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { clients, TAUX_TVA, TAUX_CSS, configurationNumerotation, formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
+import { MainLayout } from "@/components/layout/MainLayout";
 import {
   CategorieDocument,
   TypeOperation,
@@ -203,20 +204,18 @@ export default function NouvelleFacturePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/factures")}><ArrowLeft className="h-5 w-5" /></Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold flex items-center gap-2"><Receipt className="h-6 w-6 text-primary" />Nouvelle facture</h1>
-              <p className="text-muted-foreground text-sm">Numéro: <span className="font-medium">{generateNumero()}</span></p>
-            </div>
+    <MainLayout title="Nouvelle facture">
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/factures")}><ArrowLeft className="h-5 w-5" /></Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Receipt className="h-6 w-6 text-primary" />Nouvelle facture</h1>
+            <p className="text-muted-foreground text-sm">Numéro: <span className="font-medium">{generateNumero()}</span></p>
           </div>
         </div>
       </div>
 
-      <div className="container py-6">
+      <div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {!categorie && (
             <Card>
@@ -404,6 +403,6 @@ export default function NouvelleFacturePage() {
           {categorie && (<div className="flex justify-end gap-4 pb-6"><Button type="button" variant="outline" onClick={() => navigate("/factures")}>Annuler</Button><Button type="submit" className="gap-2"><Save className="h-4 w-4" />Créer la facture</Button></div>)}
         </form>
       </div>
-    </div>
+    </MainLayout>
   );
 }
