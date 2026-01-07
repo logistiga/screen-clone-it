@@ -12,7 +12,11 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        $modules = ['clients', 'devis', 'ordres', 'factures', 'paiements', 'caisse', 'banques', 'credits', 'partenaires', 'utilisateurs', 'configuration', 'reporting'];
+        $modules = [
+            'clients', 'devis', 'ordres', 'factures', 'paiements', 
+            'caisse', 'banques', 'credits', 'partenaires', 'notes',
+            'utilisateurs', 'configuration', 'reporting', 'audit'
+        ];
         $actions = ['voir', 'creer', 'modifier', 'supprimer'];
 
         foreach ($modules as $module) {
