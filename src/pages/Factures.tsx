@@ -30,65 +30,62 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard } from "lucide-react";
+import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmailModal } from "@/components/EmailModal";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
 import { AnnulationModal } from "@/components/AnnulationModal";
-import { factures, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { factures as facturesData, clients, formatMontant, formatDate, getStatutLabel, Facture } from "@/data/mockData";
 
 export default function FacturesPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Données en mémoire uniquement
+  const [facturesList, setFacturesList] = useState<Facture[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   
-  // États pour les modales
-  const [confirmAction, setConfirmAction] = useState<{
-    type: 'supprimer' | null;
-    id: string;
-    numero: string;
-  }>({ type: null, id: '', numero: '' });
-
+  // États modales consolidés
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; numero: string } | null>(null);
   const [emailModal, setEmailModal] = useState<{
     open: boolean;
-    documentType: "devis" | "ordre" | "facture";
     documentNumero: string;
     clientEmail: string;
     clientNom: string;
-  }>({ open: false, documentType: "facture", documentNumero: "", clientEmail: "", clientNom: "" });
-
-  const [paiementModal, setPaiementModal] = useState<{
-    open: boolean;
-    numero: string;
-    montantRestant: number;
-  }>({ open: false, numero: '', montantRestant: 0 });
-
+  } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ numero: string; montantRestant: number } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{
-    open: boolean;
     numero: string;
     montantTTC: number;
     montantPaye: number;
     clientNom: string;
-  }>({ open: false, numero: '', montantTTC: 0, montantPaye: 0, clientNom: '' });
-
+  } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
-  const confirmSupprimer = () => {
-    if (confirmAction.type === 'supprimer') {
-      toast({
-        title: "Facture supprimée",
-        description: `La facture ${confirmAction.numero} a été supprimée.`,
-        variant: "destructive",
-      });
-      setConfirmAction({ type: null, id: '', numero: '' });
-    }
+  // Handlers consolidés
+  const handleDelete = () => {
+    if (!confirmDelete) return;
+    setFacturesList(prev => prev.filter(f => f.id !== confirmDelete.id));
+    toast({
+      title: "Facture supprimée",
+      description: `La facture ${confirmDelete.numero} a été supprimée.`,
+      variant: "destructive",
+    });
+    setConfirmDelete(null);
   };
 
-  const filteredFactures = factures.filter(f => {
+  const handleAnnulation = (factureId: string) => {
+    setFacturesList(prev => prev.map(f => 
+      f.id === factureId ? { ...f, statut: 'annulee' as const } : f
+    ));
+  };
+
+  // Filtrage
+  const filteredFactures = facturesList.filter(f => {
     const client = clients.find(c => c.id === f.clientId);
     const matchSearch = f.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client?.nom.toLowerCase().includes(searchTerm.toLowerCase());
@@ -96,8 +93,9 @@ export default function FacturesPage() {
     return matchSearch && matchStatut;
   });
 
-  const totalFactures = factures.reduce((sum, f) => sum + f.montantTTC, 0);
-  const totalPaye = factures.reduce((sum, f) => sum + f.montantPaye, 0);
+  // Statistiques
+  const totalFactures = facturesList.reduce((sum, f) => sum + f.montantTTC, 0);
+  const totalPaye = facturesList.reduce((sum, f) => sum + f.montantPaye, 0);
   const totalImpaye = totalFactures - totalPaye;
 
   const getStatutBadge = (statut: string) => {
@@ -111,6 +109,25 @@ export default function FacturesPage() {
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
 
+  // État vide
+  if (facturesList.length === 0) {
+    return (
+      <MainLayout title="Factures">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Receipt className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Aucune facture</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Commencez par créer votre première facture pour gérer vos encaissements.
+          </p>
+          <Button className="gap-2" onClick={() => navigate("/factures/nouvelle")}>
+            <Plus className="h-4 w-4" />
+            Nouvelle facture
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="Factures">
       <div className="space-y-6">
@@ -118,19 +135,15 @@ export default function FacturesPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Factures
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Factures</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{factures.length}</div>
+              <div className="text-2xl font-bold">{facturesList.length}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Montant Total
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatMontant(totalFactures)}</div>
@@ -138,9 +151,7 @@ export default function FacturesPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Encaissé
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Encaissé</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{formatMontant(totalPaye)}</div>
@@ -148,9 +159,7 @@ export default function FacturesPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Impayé
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Impayé</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">{formatMontant(totalImpaye)}</div>
@@ -245,21 +254,11 @@ export default function FacturesPage() {
                       <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Voir"
-                            onClick={() => navigate(`/factures/${facture.id}`)}
-                          >
+                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/factures/${facture.id}`)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Modifier"
-                              onClick={() => navigate(`/factures/${facture.id}/modifier`)}
-                            >
+                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/factures/${facture.id}/modifier`)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
@@ -269,11 +268,7 @@ export default function FacturesPage() {
                               size="icon" 
                               title="Paiement" 
                               className="text-green-600"
-                              onClick={() => setPaiementModal({
-                                open: true,
-                                numero: facture.numero,
-                                montantRestant: resteAPayer
-                              })}
+                              onClick={() => setPaiementModal({ numero: facture.numero, montantRestant: resteAPayer })}
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
@@ -281,11 +276,10 @@ export default function FacturesPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            title="Envoyer par email"
+                            title="Email"
                             className="text-blue-600"
                             onClick={() => setEmailModal({
                               open: true,
-                              documentType: "facture",
                               documentNumero: facture.numero,
                               clientEmail: client?.email || "",
                               clientNom: client?.nom || ""
@@ -293,12 +287,7 @@ export default function FacturesPage() {
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="PDF"
-                            onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}
-                          >
+                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}>
                             <FileText className="h-4 w-4" />
                           </Button>
                           {facture.statut !== 'annulee' && (
@@ -308,7 +297,6 @@ export default function FacturesPage() {
                               title="Annuler"
                               className="text-orange-600"
                               onClick={() => setAnnulationModal({
-                                open: true,
                                 numero: facture.numero,
                                 montantTTC: facture.montantTTC,
                                 montantPaye: facture.montantPaye,
@@ -323,7 +311,7 @@ export default function FacturesPage() {
                             size="icon" 
                             title="Supprimer"
                             className="text-destructive"
-                            onClick={() => setConfirmAction({ type: 'supprimer', id: facture.id, numero: facture.numero })}
+                            onClick={() => setConfirmDelete({ id: facture.id, numero: facture.numero })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -338,22 +326,19 @@ export default function FacturesPage() {
         </Card>
       </div>
 
-      {/* Modal de confirmation pour suppression */}
-      <AlertDialog 
-        open={confirmAction.type === 'supprimer'} 
-        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
-      >
+      {/* Modal suppression */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer la facture <strong>{confirmAction.numero}</strong> ? 
+              Êtes-vous sûr de vouloir supprimer la facture <strong>{confirmDelete?.numero}</strong> ? 
               Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSupprimer} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
               Oui, supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -362,49 +347,39 @@ export default function FacturesPage() {
 
       {/* Modal Email */}
       <EmailModal
-        open={emailModal.open}
-        onOpenChange={(open) => setEmailModal(prev => ({ ...prev, open }))}
-        documentType={emailModal.documentType}
-        documentNumero={emailModal.documentNumero}
-        clientEmail={emailModal.clientEmail}
-        clientNom={emailModal.clientNom}
+        open={!!emailModal}
+        onOpenChange={(open) => !open && setEmailModal(null)}
+        documentType="facture"
+        documentNumero={emailModal?.documentNumero || ""}
+        clientEmail={emailModal?.clientEmail || ""}
+        clientNom={emailModal?.clientNom || ""}
       />
 
       {/* Modal Paiement */}
       <PaiementModal
-        open={paiementModal.open}
-        onOpenChange={(open) => setPaiementModal(prev => ({ ...prev, open }))}
+        open={!!paiementModal}
+        onOpenChange={(open) => !open && setPaiementModal(null)}
         documentType="facture"
-        documentNumero={paiementModal.numero}
-        montantRestant={paiementModal.montantRestant}
+        documentNumero={paiementModal?.numero || ""}
+        montantRestant={paiementModal?.montantRestant || 0}
       />
 
       {/* Modal Paiement Global */}
-      <PaiementGlobalModal
-        open={paiementGlobalOpen}
-        onOpenChange={setPaiementGlobalOpen}
-      />
+      <PaiementGlobalModal open={paiementGlobalOpen} onOpenChange={setPaiementGlobalOpen} />
 
       {/* Modal Export */}
-      <ExportModal
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-      />
+      <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
 
       {/* Modal Annulation */}
       <AnnulationModal
-        open={annulationModal.open}
-        onOpenChange={(open) => setAnnulationModal(prev => ({ ...prev, open }))}
+        open={!!annulationModal}
+        onOpenChange={(open) => !open && setAnnulationModal(null)}
         documentType="facture"
-        documentNumero={annulationModal.numero}
-        montantTTC={annulationModal.montantTTC}
-        montantPaye={annulationModal.montantPaye}
-        clientNom={annulationModal.clientNom}
-        onSuccess={(avoirGenere) => {
-          if (avoirGenere) {
-            navigate("/annulations");
-          }
-        }}
+        documentNumero={annulationModal?.numero || ""}
+        montantTTC={annulationModal?.montantTTC || 0}
+        montantPaye={annulationModal?.montantPaye || 0}
+        clientNom={annulationModal?.clientNom || ""}
+        onSuccess={() => navigate("/annulations")}
       />
     </MainLayout>
   );
