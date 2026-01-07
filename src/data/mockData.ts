@@ -258,8 +258,79 @@ export interface AlerteCredit {
   lu: boolean;
 }
 
-// Données en mémoire (tableaux vides - à remplir via l'interface)
-export const clients: Client[] = [];
+// Données de démonstration
+export const clients: Client[] = [
+  {
+    id: "cli-001",
+    nom: "SARL Transports Cameroun",
+    email: "contact@transports-cmr.com",
+    telephone: "+237 699 123 456",
+    adresse: "123 Boulevard de la Liberté",
+    ville: "Douala",
+    rccm: "RC/DLA/2020/B/1234",
+    nif: "M012345678901X",
+    dateCreation: "2024-01-15",
+    solde: 2500000
+  },
+  {
+    id: "cli-002",
+    nom: "Import Export Global SA",
+    email: "info@ieg-sa.com",
+    telephone: "+237 677 234 567",
+    adresse: "45 Rue du Commerce",
+    ville: "Yaoundé",
+    rccm: "RC/YDE/2019/A/5678",
+    nif: "M098765432109Y",
+    dateCreation: "2023-06-20",
+    solde: 0
+  },
+  {
+    id: "cli-003",
+    nom: "NGOMBA Industries",
+    email: "direction@ngomba.cm",
+    telephone: "+237 655 345 678",
+    adresse: "Zone Industrielle Bassa",
+    ville: "Douala",
+    rccm: "RC/DLA/2018/B/9012",
+    nif: "M567890123456Z",
+    dateCreation: "2022-03-10",
+    solde: 1750000
+  },
+  {
+    id: "cli-004",
+    nom: "Maison ATANGANA & Fils",
+    email: "contact@atangana-fils.com",
+    telephone: "+237 699 456 789",
+    adresse: "78 Avenue Kennedy",
+    ville: "Yaoundé",
+    rccm: "RC/YDE/2021/C/3456",
+    nif: "M234567890123W",
+    dateCreation: "2024-02-28",
+    solde: 500000
+  },
+  {
+    id: "cli-005",
+    nom: "Congo Shipping Lines",
+    email: "operations@congoshipping.cd",
+    telephone: "+243 81 234 5678",
+    adresse: "Port de Matadi",
+    ville: "Kinshasa",
+    dateCreation: "2023-09-05",
+    solde: 0
+  },
+  {
+    id: "cli-006",
+    nom: "MBARGA Trading Company",
+    email: "mbarga.trading@gmail.com",
+    telephone: "+237 677 567 890",
+    adresse: "15 Rue de l'Aéroport",
+    ville: "Douala",
+    rccm: "RC/DLA/2022/A/7890",
+    nif: "M890123456789V",
+    dateCreation: "2023-11-12",
+    solde: 3200000
+  }
+];
 
 export const devis: Devis[] = [];
 
