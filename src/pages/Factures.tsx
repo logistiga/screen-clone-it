@@ -255,7 +255,7 @@ export default function FacturesPage() {
                         {facture.numero}
                       </TableCell>
                       <TableCell>{facture.client?.nom}</TableCell>
-                      <TableCell>{formatDate(facture.date_creation)}</TableCell>
+                      <TableCell>{formatDate(facture.date_facture)}</TableCell>
                       <TableCell>{formatDate(facture.date_echeance)}</TableCell>
                       <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                       <TableCell className="text-right">

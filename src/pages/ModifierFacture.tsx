@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Users, FileText, Plus, Trash2, Calendar, Receipt, Container, Package } from "lucide-react";
+import { ArrowLeft, Save, Users, FileText, Plus, Trash2, Calendar, Receipt, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { clients, TAUX_TVA, TAUX_CSS, formatMontant, factures } from "@/data/mockData";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useFactureById, useUpdateFacture, useClients, useConfiguration } from "@/hooks/use-commercial";
+import { formatMontant, formatDate } from "@/data/mockData";
 
 interface LigneFacture {
   id: string;
@@ -30,24 +31,53 @@ export default function ModifierFacturePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Trouver la facture à modifier
-  const factureExistante = factures.find((f) => f.id === id);
+  // API hooks
+  const { data: facture, isLoading: factureLoading, error } = useFactureById(id || "");
+  const { data: clientsData } = useClients();
+  const { data: configData } = useConfiguration();
+  const updateFactureMutation = useUpdateFacture();
+  
+  const clients = clientsData?.data || [];
+  
+  // Taux depuis configuration
+  const TAUX_TVA = configData?.tva_taux ? parseFloat(configData.tva_taux) / 100 : 0.18;
+  const TAUX_CSS = configData?.css_taux ? parseFloat(configData.css_taux) / 100 : 0.01;
 
-  const [clientId, setClientId] = useState(factureExistante?.clientId || "");
-  const [dateEcheance, setDateEcheance] = useState(factureExistante?.dateEcheance || "");
-  const [notes, setNotes] = useState(factureExistante?.notes || "");
-  const [lignes, setLignes] = useState<LigneFacture[]>(
-    factureExistante?.lignes.map((l) => ({
-      id: l.id,
-      description: l.description,
-      quantite: l.quantite,
-      prixUnitaire: l.prixUnitaire,
-      montantHT: l.montantHT,
-    })) || [{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [dateEcheance, setDateEcheance] = useState("");
+  const [notes, setNotes] = useState("");
+  const [lignes, setLignes] = useState<LigneFacture[]>([{ id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0 }]);
 
-  if (!factureExistante) {
+  // Initialiser le formulaire avec les données de la facture
+  useEffect(() => {
+    if (facture) {
+      setClientId(String(facture.client_id || ""));
+      setDateEcheance(facture.date_echeance || "");
+      setNotes(facture.notes || "");
+      
+      if (facture.lignes && facture.lignes.length > 0) {
+        setLignes(facture.lignes.map((l: any) => ({
+          id: String(l.id),
+          description: l.description || l.type_operation || "",
+          quantite: l.quantite || 1,
+          prixUnitaire: l.prix_unitaire || 0,
+          montantHT: l.montant_ht || (l.quantite * l.prix_unitaire) || 0,
+        })));
+      }
+    }
+  }, [facture]);
+
+  if (factureLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !facture) {
     return (
       <MainLayout title="Facture non trouvée">
         <div className="flex flex-col items-center justify-center py-20">
@@ -103,18 +133,29 @@ export default function ModifierFacturePage() {
       return;
     }
 
-    setIsLoading(true);
+    const data = {
+      client_id: clientId,
+      date_echeance: dateEcheance,
+      notes,
+      lignes: lignes.map(l => ({
+        type_operation: l.description,
+        description: l.description,
+        quantite: l.quantite,
+        prix_unitaire: l.prixUnitaire,
+      })),
+    };
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    toast.success(`Facture ${factureExistante.numero} modifiée avec succès`);
-    setIsLoading(false);
-    navigate(`/factures/${id}`);
+    try {
+      await updateFactureMutation.mutateAsync({ id: id!, data });
+      toast.success(`Facture ${facture.numero} modifiée avec succès`);
+      navigate(`/factures/${id}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Erreur lors de la modification");
+    }
   };
 
   return (
-    <MainLayout title={`Modifier ${factureExistante.numero}`}>
+    <MainLayout title={`Modifier ${facture.numero}`}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -131,18 +172,18 @@ export default function ModifierFacturePage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Receipt className="h-6 w-6 text-primary" />
-                  Modifier {factureExistante.numero}
+                  Modifier {facture.numero}
                 </h1>
                 <Badge variant="secondary">En modification</Badge>
               </div>
               <p className="text-muted-foreground text-sm">
-                Créée le {factureExistante.dateCreation}
+                Créée le {formatDate(facture.date_facture)}
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            <Save className="h-4 w-4 mr-2" />
-            {isLoading ? "Enregistrement..." : "Enregistrer"}
+          <Button type="submit" disabled={updateFactureMutation.isPending}>
+            {updateFactureMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Enregistrer
           </Button>
         </div>
 
@@ -164,7 +205,7 @@ export default function ModifierFacturePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
+                      <SelectItem key={c.id} value={String(c.id)}>
                         {c.nom}
                       </SelectItem>
                     ))}
@@ -202,7 +243,7 @@ export default function ModifierFacturePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {lignes.map((ligne, index) => (
+              {lignes.map((ligne) => (
                 <div
                   key={ligne.id}
                   className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end p-4 border rounded-lg bg-muted/30"
@@ -274,11 +315,11 @@ export default function ModifierFacturePage() {
                 <span className="font-medium">{formatMontant(montantHT)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">TVA (18%)</span>
+                <span className="text-muted-foreground">TVA ({Math.round(TAUX_TVA * 100)}%)</span>
                 <span>{formatMontant(tva)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">CSS (1%)</span>
+                <span className="text-muted-foreground">CSS ({Math.round(TAUX_CSS * 100)}%)</span>
                 <span>{formatMontant(css)}</span>
               </div>
               <div className="border-t pt-3 flex justify-between text-lg font-bold">
