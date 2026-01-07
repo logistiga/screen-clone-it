@@ -30,48 +30,53 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmailModal } from "@/components/EmailModal";
-import { devis, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { clients, formatMontant, formatDate, getStatutLabel, Devis } from "@/data/mockData";
 
 export default function DevisPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Données en mémoire uniquement
+  const [devisList, setDevisList] = useState<Devis[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  
+  // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
     type: 'annuler' | 'supprimer' | 'convertir' | null;
     id: string;
     numero: string;
-  }>({ type: null, id: '', numero: '' });
+  } | null>(null);
   const [emailModal, setEmailModal] = useState<{
-    open: boolean;
     numero: string;
     clientEmail: string;
     clientNom: string;
-  }>({ open: false, numero: '', clientEmail: '', clientNom: '' });
+  } | null>(null);
 
-  const resetConfirm = () => setConfirmAction({ type: null, id: '', numero: '' });
-
+  // Handlers consolidés
   const handleAction = () => {
-    const index = devis.findIndex(d => d.id === confirmAction.id);
-    if (index === -1) return resetConfirm();
-
+    if (!confirmAction) return;
+    
     if (confirmAction.type === 'annuler') {
-      devis[index].statut = 'refuse';
+      setDevisList(prev => prev.map(d => 
+        d.id === confirmAction.id ? { ...d, statut: 'refuse' as const } : d
+      ));
       toast({ title: "Devis annulé", description: `Le devis ${confirmAction.numero} a été annulé.` });
     } else if (confirmAction.type === 'supprimer') {
-      devis.splice(index, 1);
+      setDevisList(prev => prev.filter(d => d.id !== confirmAction.id));
       toast({ title: "Devis supprimé", description: `Le devis ${confirmAction.numero} a été supprimé.`, variant: "destructive" });
     } else if (confirmAction.type === 'convertir') {
       toast({ title: "Conversion réussie", description: `Le devis ${confirmAction.numero} a été converti en ordre de travail.` });
       navigate("/ordres/nouveau");
     }
-    resetConfirm();
+    setConfirmAction(null);
   };
 
-  const filteredDevis = devis.filter(d => {
+  // Filtrage
+  const filteredDevis = devisList.filter(d => {
     const client = clients.find(c => c.id === d.clientId);
     const matchSearch = d.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client?.nom.toLowerCase().includes(searchTerm.toLowerCase());
@@ -79,9 +84,10 @@ export default function DevisPage() {
     return matchSearch && matchStatut;
   });
 
-  const totalDevis = devis.reduce((sum, d) => sum + d.montantTTC, 0);
-  const devisAcceptes = devis.filter(d => d.statut === 'accepte').length;
-  const devisEnAttente = devis.filter(d => d.statut === 'envoye').length;
+  // Statistiques
+  const totalDevis = devisList.reduce((sum, d) => sum + d.montantTTC, 0);
+  const devisAcceptes = devisList.filter(d => d.statut === 'accepte').length;
+  const devisEnAttente = devisList.filter(d => d.statut === 'envoye').length;
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -94,13 +100,16 @@ export default function DevisPage() {
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
 
-  if (devis.length === 0) {
+  // État vide
+  if (devisList.length === 0) {
     return (
       <MainLayout title="Devis">
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Aucun devis</h2>
-          <p className="text-muted-foreground mb-6">Commencez par créer votre premier devis.</p>
+          <FileCheck className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Aucun devis</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Commencez par créer votre premier devis pour proposer vos services.
+          </p>
           <Button onClick={() => navigate("/devis/nouveau")} className="gap-2">
             <Plus className="h-4 w-4" />
             Nouveau devis
@@ -113,13 +122,14 @@ export default function DevisPage() {
   return (
     <MainLayout title="Devis">
       <div className="space-y-6">
+        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Devis</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{devis.length}</div>
+              <div className="text-2xl font-bold">{devisList.length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -148,6 +158,7 @@ export default function DevisPage() {
           </Card>
         </div>
 
+        {/* Actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-72">
@@ -174,6 +185,7 @@ export default function DevisPage() {
           </Button>
         </div>
 
+        {/* Table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -221,7 +233,7 @@ export default function DevisPage() {
                             <FileText className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" title="Envoyer par email" className="text-blue-600"
-                            onClick={() => setEmailModal({ open: true, numero: d.numero, clientEmail: client?.email || '', clientNom: client?.nom || '' })}>
+                            onClick={() => setEmailModal({ numero: d.numero, clientEmail: client?.email || '', clientNom: client?.nom || '' })}>
                             <Mail className="h-4 w-4" />
                           </Button>
                           {d.statut === 'accepte' && (
@@ -251,58 +263,62 @@ export default function DevisPage() {
         </Card>
       </div>
 
-      <AlertDialog open={confirmAction.type === 'annuler'} onOpenChange={(open) => !open && resetConfirm()}>
+      {/* Modal Annulation */}
+      <AlertDialog open={confirmAction?.type === 'annuler'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir annuler le devis <strong>{confirmAction.numero}</strong> ?
+              Êtes-vous sûr de vouloir annuler le devis <strong>{confirmAction?.numero}</strong> ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700">Confirmer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmAction.type === 'supprimer'} onOpenChange={(open) => !open && resetConfirm()}>
+      {/* Modal Suppression */}
+      <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer le devis <strong>{confirmAction.numero}</strong> ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer le devis <strong>{confirmAction?.numero}</strong> ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmAction.type === 'convertir'} onOpenChange={(open) => !open && resetConfirm()}>
+      {/* Modal Conversion */}
+      <AlertDialog open={confirmAction?.type === 'convertir'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Convertir en ordre de travail</AlertDialogTitle>
             <AlertDialogDescription>
-              Voulez-vous convertir le devis <strong>{confirmAction.numero}</strong> en ordre de travail ?
+              Voulez-vous convertir le devis <strong>{confirmAction?.numero}</strong> en ordre de travail ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Non</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction}>Convertir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Modal Email */}
       <EmailModal
-        open={emailModal.open}
-        onOpenChange={(open) => setEmailModal({ ...emailModal, open })}
+        open={!!emailModal}
+        onOpenChange={(open) => !open && setEmailModal(null)}
         documentType="devis"
-        documentNumero={emailModal.numero}
-        clientEmail={emailModal.clientEmail}
-        clientNom={emailModal.clientNom}
+        documentNumero={emailModal?.numero || ""}
+        clientEmail={emailModal?.clientEmail || ""}
+        clientNom={emailModal?.clientNom || ""}
       />
     </MainLayout>
   );

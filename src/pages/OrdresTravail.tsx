@@ -35,48 +35,52 @@ import { useToast } from "@/hooks/use-toast";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
-import { ordresTravail, clients, formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { clients, formatMontant, formatDate, getStatutLabel, OrdreTravail } from "@/data/mockData";
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Données en mémoire uniquement
+  const [ordresList, setOrdresList] = useState<OrdreTravail[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  
+  // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
     type: 'annuler' | 'supprimer' | 'facturer' | null;
     id: string;
     numero: string;
-  }>({ type: null, id: '', numero: '' });
-  const [paiementModal, setPaiementModal] = useState<{
-    open: boolean;
-    numero: string;
-    montantRestant: number;
-  }>({ open: false, numero: '', montantRestant: 0 });
+  } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ numero: string; montantRestant: number } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
-  const resetConfirm = () => setConfirmAction({ type: null, id: '', numero: '' });
-
+  // Handlers consolidés
   const handleAction = () => {
-    const index = ordresTravail.findIndex(o => o.id === confirmAction.id);
-    if (index === -1) return resetConfirm();
-
+    if (!confirmAction) return;
+    
     if (confirmAction.type === 'annuler') {
-      ordresTravail[index].statut = 'annule';
+      setOrdresList(prev => prev.map(o => 
+        o.id === confirmAction.id ? { ...o, statut: 'annule' as const } : o
+      ));
       toast({ title: "Ordre annulé", description: `L'ordre ${confirmAction.numero} a été annulé.` });
     } else if (confirmAction.type === 'supprimer') {
-      ordresTravail.splice(index, 1);
+      setOrdresList(prev => prev.filter(o => o.id !== confirmAction.id));
       toast({ title: "Ordre supprimé", description: `L'ordre ${confirmAction.numero} a été supprimé.`, variant: "destructive" });
     } else if (confirmAction.type === 'facturer') {
-      ordresTravail[index].statut = 'facture';
+      setOrdresList(prev => prev.map(o => 
+        o.id === confirmAction.id ? { ...o, statut: 'facture' as const } : o
+      ));
       toast({ title: "Facturation réussie", description: `L'ordre ${confirmAction.numero} a été converti en facture.` });
       navigate("/factures/nouvelle");
     }
-    resetConfirm();
+    setConfirmAction(null);
   };
 
-  const filteredOrdres = ordresTravail.filter(o => {
+  // Filtrage
+  const filteredOrdres = ordresList.filter(o => {
     const client = clients.find(c => c.id === o.clientId);
     const matchSearch = o.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client?.nom.toLowerCase().includes(searchTerm.toLowerCase());
@@ -85,9 +89,10 @@ export default function OrdresTravailPage() {
     return matchSearch && matchStatut && matchType;
   });
 
-  const totalOrdres = ordresTravail.reduce((sum, o) => sum + o.montantTTC, 0);
-  const totalPaye = ordresTravail.reduce((sum, o) => sum + o.montantPaye, 0);
-  const ordresEnCours = ordresTravail.filter(o => o.statut === 'en_cours').length;
+  // Statistiques
+  const totalOrdres = ordresList.reduce((sum, o) => sum + o.montantTTC, 0);
+  const totalPaye = ordresList.reduce((sum, o) => sum + o.montantPaye, 0);
+  const ordresEnCours = ordresList.filter(o => o.statut === 'en_cours').length;
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -101,23 +106,26 @@ export default function OrdresTravailPage() {
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      conteneurs: "bg-blue-100 text-blue-800",
-      conventionnel: "bg-purple-100 text-purple-800",
-      location: "bg-orange-100 text-orange-800",
-      transport: "bg-green-100 text-green-800",
-      manutention: "bg-yellow-100 text-yellow-800",
-      stockage: "bg-gray-100 text-gray-800",
+      conteneurs: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      conventionnel: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      location: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+      transport: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      manutention: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+      stockage: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
     };
     return <Badge className={colors[type] || "bg-gray-100"}>{type}</Badge>;
   };
 
-  if (ordresTravail.length === 0) {
+  // État vide
+  if (ordresList.length === 0) {
     return (
       <MainLayout title="Ordres de Travail">
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <ClipboardList className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Aucun ordre de travail</h2>
-          <p className="text-muted-foreground mb-6">Commencez par créer votre premier ordre.</p>
+          <h2 className="text-2xl font-semibold mb-2">Aucun ordre de travail</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Commencez par créer votre premier ordre de travail pour gérer vos opérations.
+          </p>
           <Button onClick={() => navigate("/ordres/nouveau")} className="gap-2">
             <Plus className="h-4 w-4" />
             Nouvel ordre
@@ -130,13 +138,14 @@ export default function OrdresTravailPage() {
   return (
     <MainLayout title="Ordres de Travail">
       <div className="space-y-6">
+        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Ordres</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{ordresTravail.length}</div>
+              <div className="text-2xl font-bold">{ordresList.length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -165,6 +174,7 @@ export default function OrdresTravailPage() {
           </Card>
         </div>
 
+        {/* Actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-72">
@@ -214,6 +224,7 @@ export default function OrdresTravailPage() {
           </div>
         </div>
 
+        {/* Table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -259,7 +270,7 @@ export default function OrdresTravailPage() {
                           )}
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
                             <Button variant="ghost" size="icon" title="Paiement" className="text-green-600"
-                              onClick={() => setPaiementModal({ open: true, numero: ordre.numero, montantRestant: resteAPayer })}>
+                              onClick={() => setPaiementModal({ numero: ordre.numero, montantRestant: resteAPayer })}>
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
@@ -293,61 +304,67 @@ export default function OrdresTravailPage() {
         </Card>
       </div>
 
-      <AlertDialog open={confirmAction.type === 'annuler'} onOpenChange={(open) => !open && resetConfirm()}>
+      {/* Modal Annulation */}
+      <AlertDialog open={confirmAction?.type === 'annuler'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir annuler l'ordre <strong>{confirmAction.numero}</strong> ?
+              Êtes-vous sûr de vouloir annuler l'ordre <strong>{confirmAction?.numero}</strong> ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700">Confirmer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmAction.type === 'supprimer'} onOpenChange={(open) => !open && resetConfirm()}>
+      {/* Modal Suppression */}
+      <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer l'ordre <strong>{confirmAction.numero}</strong> ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer l'ordre <strong>{confirmAction?.numero}</strong> ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmAction.type === 'facturer'} onOpenChange={(open) => !open && resetConfirm()}>
+      {/* Modal Facturation */}
+      <AlertDialog open={confirmAction?.type === 'facturer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Convertir en facture</AlertDialogTitle>
             <AlertDialogDescription>
-              Voulez-vous convertir l'ordre <strong>{confirmAction.numero}</strong> en facture ?
+              Voulez-vous convertir l'ordre <strong>{confirmAction?.numero}</strong> en facture ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Non</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction}>Créer la facture</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Modal Paiement */}
       <PaiementModal
-        open={paiementModal.open}
-        onOpenChange={(open) => setPaiementModal({ ...paiementModal, open })}
+        open={!!paiementModal}
+        onOpenChange={(open) => !open && setPaiementModal(null)}
         documentType="ordre"
-        documentNumero={paiementModal.numero}
-        montantRestant={paiementModal.montantRestant}
+        documentNumero={paiementModal?.numero || ""}
+        montantRestant={paiementModal?.montantRestant || 0}
       />
 
+      {/* Modal Paiement Global */}
       <PaiementGlobalModal open={paiementGlobalOpen} onOpenChange={setPaiementGlobalOpen} />
 
+      {/* Modal Export */}
       <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
     </MainLayout>
   );
