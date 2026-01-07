@@ -10,14 +10,16 @@ class ClientResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => (string) $this->id,
             'nom' => $this->nom,
             'email' => $this->email,
             'telephone' => $this->telephone,
             'adresse' => $this->adresse,
-            'type' => $this->type,
+            'ville' => $this->ville,
+            'type' => $this->type ?? 'client',
             'nif' => $this->nif,
             'rccm' => $this->rccm,
+            'solde' => (float) ($this->solde ?? 0),
             'contact_principal' => $this->contact_principal,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
