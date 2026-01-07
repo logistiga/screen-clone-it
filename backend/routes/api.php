@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\ConfigurationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReportingController;
+use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\PrimeController;
 use App\Http\Controllers\Api\NoteDebutController;
 
@@ -416,5 +417,22 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('activite-clients', [ReportingController::class, 'activiteClients']);
         Route::get('comparatif', [ReportingController::class, 'comparatif']);
         Route::get('statistiques-documents', [ReportingController::class, 'statistiquesDocuments']);
+    });
+
+    // ============================================
+    // EXPORTS
+    // ============================================
+    Route::prefix('exports')->middleware('permission:reporting.voir')->group(function () {
+        Route::get('factures', [ExportController::class, 'factures']);
+        Route::get('devis', [ExportController::class, 'devis']);
+        Route::get('paiements', [ExportController::class, 'paiements']);
+        Route::get('caisse', [ExportController::class, 'caisse']);
+        Route::get('clients', [ExportController::class, 'clients']);
+        Route::get('chiffre-affaires', [ExportController::class, 'chiffreAffaires']);
+        Route::get('creances', [ExportController::class, 'creances']);
+        Route::get('tresorerie', [ExportController::class, 'tresorerie']);
+        Route::get('credits', [ExportController::class, 'credits']);
+        Route::get('annulations', [ExportController::class, 'annulations']);
+        Route::get('tableau-de-bord', [ExportController::class, 'tableauDeBord']);
     });
 });
