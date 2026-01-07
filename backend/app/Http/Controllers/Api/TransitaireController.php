@@ -39,7 +39,7 @@ class TransitaireController extends Controller
     {
         $transitaire = Transitaire::create($request->validated());
 
-        Audit::log('create', 'transitaire', "Transitaire créé: {$transitaire->nom}", $transitaire->id);
+        Audit::log('create', 'transitaire', "Transitaire créé: {$transitaire->nom}", $transitaire);
 
         return response()->json(new TransitaireResource($transitaire), 201);
     }
@@ -59,7 +59,7 @@ class TransitaireController extends Controller
     {
         $transitaire->update($request->validated());
 
-        Audit::log('update', 'transitaire', "Transitaire modifié: {$transitaire->nom}", $transitaire->id);
+        Audit::log('update', 'transitaire', "Transitaire modifié: {$transitaire->nom}", $transitaire);
 
         return response()->json(new TransitaireResource($transitaire));
     }
@@ -72,7 +72,7 @@ class TransitaireController extends Controller
             ], 422);
         }
 
-        Audit::log('delete', 'transitaire', "Transitaire supprimé: {$transitaire->nom}", $transitaire->id);
+        Audit::log('delete', 'transitaire', "Transitaire supprimé: {$transitaire->nom}", $transitaire);
 
         $transitaire->delete();
 
