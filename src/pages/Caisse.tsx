@@ -21,67 +21,61 @@ import {
 } from "@/components/ui/select";
 import { Search, ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt } from "lucide-react";
 import { SortieCaisseModal } from "@/components/SortieCaisseModal";
-import { mouvementsCaisse, paiements, ordresTravail, factures, clients, formatMontant, formatDate } from "@/data/mockData";
+import { formatMontant, formatDate } from "@/data/mockData";
+
+interface MouvementCaisse {
+  id: string;
+  type: 'entree' | 'sortie';
+  montant: number;
+  date: string;
+  description: string;
+  source: 'paiement' | 'manuel';
+  documentNumero: string;
+  clientNom: string;
+}
 
 export default function CaissePage() {
+  // Données en mémoire uniquement
+  const [mouvements] = useState<MouvementCaisse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortieModalOpen, setSortieModalOpen] = useState(false);
 
-  // Paiements en espèces (entrées de caisse)
-  const paiementsEspeces = paiements.filter(p => p.modePaiement === 'especes');
-  
-  // Créer une liste complète des mouvements de caisse
-  const entresCaisse = paiementsEspeces.map(p => {
-    const ordre = ordresTravail.find(o => o.id === p.ordreId);
-    const facture = factures.find(f => f.id === p.factureId);
-    const client = clients.find(c => c.id === p.clientId);
-    
-    return {
-      id: `paiement-${p.id}`,
-      type: 'entree' as const,
-      montant: p.montant,
-      date: p.date,
-      description: ordre 
-        ? `Paiement ordre ${ordre.numero}` 
-        : facture 
-          ? `Paiement facture ${facture.numero}` 
-          : 'Paiement',
-      source: 'paiement' as const,
-      documentNumero: ordre?.numero || facture?.numero || '',
-      clientNom: client?.nom || '',
-    };
-  });
-
-  // Sorties de caisse (mouvements manuels)
-  const sortiesCaisse = mouvementsCaisse
-    .filter(m => m.source === 'caisse' && m.type === 'sortie')
-    .map(m => ({
-      id: m.id,
-      type: 'sortie' as const,
-      montant: m.montant,
-      date: m.date,
-      description: m.description,
-      source: 'manuel' as const,
-      documentNumero: '',
-      clientNom: '',
-    }));
-
-  const allMouvements = [...entresCaisse, ...sortiesCaisse].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  const totalEntrees = entresCaisse.reduce((sum, m) => sum + m.montant, 0);
-  const totalSorties = sortiesCaisse.reduce((sum, m) => sum + m.montant, 0);
+  // Stats
+  const entrees = mouvements.filter(m => m.type === 'entree');
+  const sorties = mouvements.filter(m => m.type === 'sortie');
+  const totalEntrees = entrees.reduce((sum, m) => sum + m.montant, 0);
+  const totalSorties = sorties.reduce((sum, m) => sum + m.montant, 0);
   const soldeCaisse = totalEntrees - totalSorties;
 
-  const filteredMouvements = allMouvements.filter(m => {
+  // Filtrage
+  const filteredMouvements = mouvements.filter(m => {
     const matchSearch = m.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.documentNumero.toLowerCase().includes(searchTerm.toLowerCase());
     const matchType = typeFilter === "all" || m.type === typeFilter;
     return matchSearch && matchType;
   });
+
+  // État vide
+  if (mouvements.length === 0) {
+    return (
+      <MainLayout title="Caisse">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Wallet className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Aucun mouvement de caisse</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Les paiements en espèces et sorties de caisse apparaîtront ici.
+          </p>
+          <Button variant="outline" className="gap-2 text-destructive border-destructive" onClick={() => setSortieModalOpen(true)}>
+            <ArrowUpCircle className="h-4 w-4" />
+            Nouvelle sortie
+          </Button>
+        </div>
+        <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" />
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Caisse">
@@ -108,7 +102,7 @@ export default function CaissePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{formatMontant(totalEntrees)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{entresCaisse.length} paiements</p>
+              <p className="text-xs text-muted-foreground mt-1">{entrees.length} paiements</p>
             </CardContent>
           </Card>
           <Card>
@@ -120,17 +114,15 @@ export default function CaissePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">{formatMontant(totalSorties)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{sortiesCaisse.length} sorties</p>
+              <p className="text-xs text-muted-foreground mt-1">{sorties.length} sorties</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Opérations
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Opérations</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{allMouvements.length}</div>
+              <div className="text-2xl font-bold">{mouvements.length}</div>
             </CardContent>
           </Card>
         </div>
@@ -140,12 +132,7 @@ export default function CaissePage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+              <Input placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-full sm:w-40">
@@ -158,11 +145,7 @@ export default function CaissePage() {
               </SelectContent>
             </Select>
           </div>
-          <Button 
-            variant="outline" 
-            className="gap-2 text-destructive border-destructive hover:bg-destructive/10"
-            onClick={() => setSortieModalOpen(true)}
-          >
+          <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10" onClick={() => setSortieModalOpen(true)}>
             <ArrowUpCircle className="h-4 w-4" />
             Nouvelle sortie
           </Button>
@@ -194,43 +177,26 @@ export default function CaissePage() {
                     <TableCell>{formatDate(mouvement.date)}</TableCell>
                     <TableCell>
                       {mouvement.type === 'entree' ? (
-                        <Badge className="bg-green-100 text-green-800 gap-1">
-                          <ArrowDownCircle className="h-3 w-3" />
-                          Entrée
-                        </Badge>
+                        <Badge className="bg-green-100 text-green-800 gap-1"><ArrowDownCircle className="h-3 w-3" />Entrée</Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-800 gap-1">
-                          <ArrowUpCircle className="h-3 w-3" />
-                          Sortie
-                        </Badge>
+                        <Badge className="bg-red-100 text-red-800 gap-1"><ArrowUpCircle className="h-3 w-3" />Sortie</Badge>
                       )}
                     </TableCell>
                     <TableCell>{mouvement.description}</TableCell>
                     <TableCell>
                       {mouvement.documentNumero ? (
-                        <Badge variant="outline" className="gap-1">
-                          <FileText className="h-3 w-3" />
-                          {mouvement.documentNumero}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                        <Badge variant="outline" className="gap-1"><FileText className="h-3 w-3" />{mouvement.documentNumero}</Badge>
+                      ) : <span className="text-muted-foreground">-</span>}
                     </TableCell>
-                    <TableCell>
-                      {mouvement.clientNom || <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${
-                      mouvement.type === 'entree' ? 'text-green-600' : 'text-destructive'
-                    }`}>
+                    <TableCell>{mouvement.clientNom || <span className="text-muted-foreground">-</span>}</TableCell>
+                    <TableCell className={`text-right font-medium ${mouvement.type === 'entree' ? 'text-green-600' : 'text-destructive'}`}>
                       {mouvement.type === 'entree' ? '+' : '-'}{formatMontant(mouvement.montant)}
                     </TableCell>
                   </TableRow>
                 ))}
                 {filteredMouvements.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      Aucun mouvement de caisse
-                    </TableCell>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucun mouvement de caisse</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -239,12 +205,7 @@ export default function CaissePage() {
         </Card>
       </div>
 
-      {/* Modal Sortie */}
-      <SortieCaisseModal
-        open={sortieModalOpen}
-        onOpenChange={setSortieModalOpen}
-        type="caisse"
-      />
+      <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" />
     </MainLayout>
   );
 }
