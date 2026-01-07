@@ -22,80 +22,34 @@ import {
 } from "@/components/ui/select";
 import { CalendarIcon, Download, ArrowUpCircle, ArrowDownCircle, Building2, Wallet, PieChart, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { mouvementsCaisse, banques, paiements, ordresTravail, factures, clients, formatMontant, formatDate } from "@/data/mockData";
+import { formatMontant, formatDate } from "@/data/mockData";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+interface Mouvement {
+  id: string;
+  type: 'entree' | 'sortie';
+  source: 'caisse' | 'banque';
+  montant: number;
+  date: string;
+  description: string;
+  clientNom: string;
+  banqueNom: string;
+}
+
 export default function CaisseGlobalePage() {
   const { toast } = useToast();
+  
+  // Données en mémoire uniquement
+  const [mouvements] = useState<Mouvement[]>([]);
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
   });
   const [sourceFilter, setSourceFilter] = useState<string>("all");
 
-  // Construire tous les mouvements à partir des paiements
-  const paiementsEspeces = paiements.filter(p => p.modePaiement === 'especes');
-  const paiementsBanque = paiements.filter(p => p.modePaiement === 'virement' || p.modePaiement === 'cheque');
-
-  // Entrées caisse (espèces)
-  const entreesCaisse = paiementsEspeces.map(p => {
-    const ordre = ordresTravail.find(o => o.id === p.ordreId);
-    const facture = factures.find(f => f.id === p.factureId);
-    const client = clients.find(c => c.id === p.clientId);
-    return {
-      id: `caisse-${p.id}`,
-      type: 'entree' as const,
-      source: 'caisse' as const,
-      montant: p.montant,
-      date: p.date,
-      description: ordre ? `Paiement ${ordre.numero}` : facture ? `Paiement ${facture.numero}` : 'Paiement',
-      clientNom: client?.nom || '',
-      banqueNom: '',
-    };
-  });
-
-  // Entrées banque
-  const entreesBanque = paiementsBanque.map(p => {
-    const ordre = ordresTravail.find(o => o.id === p.ordreId);
-    const facture = factures.find(f => f.id === p.factureId);
-    const client = clients.find(c => c.id === p.clientId);
-    const banque = banques.find(b => b.id === p.banqueId);
-    return {
-      id: `banque-${p.id}`,
-      type: 'entree' as const,
-      source: 'banque' as const,
-      montant: p.montant,
-      date: p.date,
-      description: ordre ? `Paiement ${ordre.numero}` : facture ? `Paiement ${facture.numero}` : 'Paiement',
-      clientNom: client?.nom || '',
-      banqueNom: banque?.nom || '',
-    };
-  });
-
-  // Sorties (depuis mouvementsCaisse)
-  const sorties = mouvementsCaisse
-    .filter(m => m.type === 'sortie')
-    .map(m => {
-      const banque = banques.find(b => b.id === m.banqueId);
-      return {
-        id: m.id,
-        type: 'sortie' as const,
-        source: m.source as 'caisse' | 'banque',
-        montant: m.montant,
-        date: m.date,
-        description: m.description,
-        clientNom: '',
-        banqueNom: banque?.nom || '',
-      };
-    });
-
-  const allMouvements = [...entreesCaisse, ...entreesBanque, ...sorties].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  // Filtrage par date et source
-  const filteredMouvements = allMouvements.filter(m => {
+  // Filtrage
+  const filteredMouvements = mouvements.filter(m => {
     const matchSource = sourceFilter === "all" || m.source === sourceFilter;
     let matchDate = true;
     if (dateRange.from) {
@@ -109,24 +63,40 @@ export default function CaisseGlobalePage() {
   });
 
   // Stats
+  const entreesCaisse = mouvements.filter(m => m.type === 'entree' && m.source === 'caisse');
+  const entreesBanque = mouvements.filter(m => m.type === 'entree' && m.source === 'banque');
+  const sortiesCaisse = mouvements.filter(m => m.type === 'sortie' && m.source === 'caisse');
+  const sortiesBanque = mouvements.filter(m => m.type === 'sortie' && m.source === 'banque');
+
   const totalEntreesCaisse = entreesCaisse.reduce((sum, m) => sum + m.montant, 0);
   const totalEntreesBanque = entreesBanque.reduce((sum, m) => sum + m.montant, 0);
-  const totalSortiesCaisse = sorties.filter(m => m.source === 'caisse').reduce((sum, m) => sum + m.montant, 0);
-  const totalSortiesBanque = sorties.filter(m => m.source === 'banque').reduce((sum, m) => sum + m.montant, 0);
+  const totalSortiesCaisse = sortiesCaisse.reduce((sum, m) => sum + m.montant, 0);
+  const totalSortiesBanque = sortiesBanque.reduce((sum, m) => sum + m.montant, 0);
 
   const soldeCaisse = totalEntreesCaisse - totalSortiesCaisse;
-  const soldeBanques = banques.reduce((sum, b) => sum + b.solde, 0);
+  const soldeBanques = totalEntreesBanque - totalSortiesBanque;
   const soldeGlobal = soldeCaisse + soldeBanques;
-
   const totalEntrees = totalEntreesCaisse + totalEntreesBanque;
   const totalSorties = totalSortiesCaisse + totalSortiesBanque;
 
   const handleExport = (format: 'pdf' | 'excel') => {
-    toast({
-      title: `Export ${format.toUpperCase()}`,
-      description: `Export des données comptables en cours...`,
-    });
+    toast({ title: `Export ${format.toUpperCase()}`, description: `Export des données comptables en cours...` });
   };
+
+  // État vide
+  if (mouvements.length === 0) {
+    return (
+      <MainLayout title="Caisse Globale">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <PieChart className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Aucun mouvement</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Les mouvements de caisse et banque apparaîtront ici pour une vue globale de votre trésorerie.
+          </p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Caisse Globale">
@@ -165,7 +135,6 @@ export default function CaisseGlobalePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatMontant(soldeBanques)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{banques.filter(b => b.actif).length} comptes</p>
             </CardContent>
           </Card>
           <Card>
@@ -245,24 +214,13 @@ export default function CaisseGlobalePage() {
                   <CalendarIcon className="h-4 w-4" />
                   {dateRange.from ? (
                     dateRange.to ? (
-                      <>
-                        {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
-                      </>
-                    ) : (
-                      format(dateRange.from, "dd/MM/yyyy")
-                    )
-                  ) : (
-                    "Période"
-                  )}
+                      <>{format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}</>
+                    ) : format(dateRange.from, "dd/MM/yyyy")
+                  ) : "Période"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
-                  locale={fr}
-                />
+                <Calendar mode="range" selected={dateRange} onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })} locale={fr} />
               </PopoverContent>
             </Popover>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
@@ -276,14 +234,7 @@ export default function CaisseGlobalePage() {
               </SelectContent>
             </Select>
             {(dateRange.from || sourceFilter !== "all") && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => {
-                  setDateRange({ from: undefined, to: undefined });
-                  setSourceFilter("all");
-                }}
-              >
+              <Button variant="ghost" size="sm" onClick={() => { setDateRange({ from: undefined, to: undefined }); setSourceFilter("all"); }}>
                 Réinitialiser
               </Button>
             )}
@@ -323,37 +274,21 @@ export default function CaisseGlobalePage() {
                     <TableCell>{formatDate(mouvement.date)}</TableCell>
                     <TableCell>
                       {mouvement.source === 'caisse' ? (
-                        <Badge variant="secondary" className="gap-1">
-                          <Wallet className="h-3 w-3" />
-                          Caisse
-                        </Badge>
+                        <Badge variant="secondary" className="gap-1"><Wallet className="h-3 w-3" />Caisse</Badge>
                       ) : (
-                        <Badge variant="outline" className="gap-1">
-                          <Building2 className="h-3 w-3" />
-                          {mouvement.banqueNom || 'Banque'}
-                        </Badge>
+                        <Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" />{mouvement.banqueNom || 'Banque'}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
                       {mouvement.type === 'entree' ? (
-                        <Badge className="bg-green-100 text-green-800 gap-1">
-                          <ArrowDownCircle className="h-3 w-3" />
-                          Entrée
-                        </Badge>
+                        <Badge className="bg-green-100 text-green-800 gap-1"><ArrowDownCircle className="h-3 w-3" />Entrée</Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-800 gap-1">
-                          <ArrowUpCircle className="h-3 w-3" />
-                          Sortie
-                        </Badge>
+                        <Badge className="bg-red-100 text-red-800 gap-1"><ArrowUpCircle className="h-3 w-3" />Sortie</Badge>
                       )}
                     </TableCell>
                     <TableCell>{mouvement.description}</TableCell>
-                    <TableCell>
-                      {mouvement.clientNom || <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${
-                      mouvement.type === 'entree' ? 'text-green-600' : 'text-destructive'
-                    }`}>
+                    <TableCell>{mouvement.clientNom || <span className="text-muted-foreground">-</span>}</TableCell>
+                    <TableCell className={`text-right font-medium ${mouvement.type === 'entree' ? 'text-green-600' : 'text-destructive'}`}>
                       {mouvement.type === 'entree' ? '+' : '-'}{formatMontant(mouvement.montant)}
                     </TableCell>
                   </TableRow>
