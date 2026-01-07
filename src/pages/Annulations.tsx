@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,36 +11,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Ban } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 
-// Données mock pour les annulations
-const annulations = [
-  {
-    id: '1',
-    numero: 'AV-2026-0001',
-    type: 'facture',
-    documentNumero: 'FAC-2025-0045',
-    client: 'TOTAL GABON',
-    montant: 1500000,
-    date: '2026-01-02',
-    motif: 'Erreur de facturation - doublon',
-    avoirGenere: true,
-  },
-  {
-    id: '2',
-    numero: 'AV-2026-0002',
-    type: 'ordre',
-    documentNumero: 'OT-2025-0089',
-    client: 'COMILOG',
-    montant: 750000,
-    date: '2026-01-04',
-    motif: 'Service non effectué',
-    avoirGenere: false,
-  },
-];
+interface Annulation {
+  id: string;
+  numero: string;
+  type: "devis" | "ordre" | "facture";
+  documentNumero: string;
+  client: string;
+  montant: number;
+  date: string;
+  motif: string;
+  avoirGenere: boolean;
+}
 
 export default function AnnulationsPage() {
+  // Données en mémoire uniquement - perdues au refresh
+  const [annulations] = useState<Annulation[]>([]);
+
   const totalAnnulations = annulations.reduce((sum, a) => sum + a.montant, 0);
 
   const getTypeBadge = (type: string) => {
@@ -51,6 +41,25 @@ export default function AnnulationsPage() {
     return <Badge className={colors[type]}>{type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
   };
 
+  // État vide
+  if (annulations.length === 0) {
+    return (
+      <MainLayout title="Annulations & Avoirs">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Ban className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Aucune annulation</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Les annulations de devis, ordres et factures apparaîtront ici.
+          </p>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nouvelle annulation
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="Annulations & Avoirs">
       <div className="space-y-6">
@@ -58,9 +67,7 @@ export default function AnnulationsPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Annulations
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Annulations</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{annulations.length}</div>
@@ -68,9 +75,7 @@ export default function AnnulationsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Montant Total
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">{formatMontant(totalAnnulations)}</div>
@@ -78,14 +83,10 @@ export default function AnnulationsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Avoirs Générés
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Avoirs Générés</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {annulations.filter(a => a.avoirGenere).length}
-              </div>
+              <div className="text-2xl font-bold">{annulations.filter(a => a.avoirGenere).length}</div>
             </CardContent>
           </Card>
         </div>
@@ -135,13 +136,6 @@ export default function AnnulationsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {annulations.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      Aucune annulation
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </CardContent>
