@@ -29,6 +29,10 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin = Role::create(['name' => 'administrateur']);
         $admin->givePermissionTo(Permission::all());
 
+        // Rôle Directeur (tous les droits comme admin)
+        $directeur = Role::create(['name' => 'directeur']);
+        $directeur->givePermissionTo(Permission::all());
+
         // Rôle Comptable
         $comptable = Role::create(['name' => 'comptable']);
         $comptable->givePermissionTo([
@@ -39,6 +43,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'banques.voir',
             'credits.voir', 'credits.creer',
             'reporting.voir',
+        ]);
+
+        // Rôle Caissier
+        $caissier = Role::create(['name' => 'caissier']);
+        $caissier->givePermissionTo([
+            'clients.voir',
+            'paiements.voir', 'paiements.creer',
+            'caisse.voir', 'caisse.creer',
+            'banques.voir',
         ]);
 
         // Rôle Commercial
