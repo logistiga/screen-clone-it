@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateConfigurationRequest;
+use App\Http\Requests\UpdateTaxesRequest;
+use App\Http\Requests\UpdateNumerotationRequest;
+use App\Http\Requests\UpdateEntrepriseRequest;
+use App\Http\Resources\ConfigurationResource;
 use App\Models\Configuration;
-use Illuminate\Http\Request;
+use App\Models\Audit;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class ConfigurationController extends Controller
 {
@@ -14,7 +18,6 @@ class ConfigurationController extends Controller
     {
         $configurations = Configuration::orderBy('groupe')->orderBy('cle')->get();
         
-        // Grouper par catégorie
         $grouped = $configurations->groupBy('groupe');
 
         return response()->json($grouped);
@@ -23,27 +26,19 @@ class ConfigurationController extends Controller
     public function show(string $cle): JsonResponse
     {
         $configuration = Configuration::where('cle', $cle)->firstOrFail();
-        return response()->json($configuration);
+        return response()->json(new ConfigurationResource($configuration));
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(UpdateConfigurationRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'configurations' => 'required|array',
-            'configurations.*.cle' => 'required|string',
-            'configurations.*.valeur' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         foreach ($request->configurations as $config) {
             Configuration::updateOrCreate(
                 ['cle' => $config['cle']],
                 ['valeur' => $config['valeur']]
             );
         }
+
+        Audit::log('update', 'configuration', 'Configurations mises à jour');
 
         return response()->json(['message' => 'Configurations mises à jour avec succès']);
     }
@@ -58,17 +53,8 @@ class ConfigurationController extends Controller
         return response()->json($taxes);
     }
 
-    public function updateTaxes(Request $request): JsonResponse
+    public function updateTaxes(UpdateTaxesRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'taux_tva' => 'required|numeric|min:0|max:100',
-            'taux_css' => 'required|numeric|min:0|max:100',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         Configuration::updateOrCreate(
             ['cle' => 'taux_tva'],
             ['valeur' => $request->taux_tva, 'groupe' => 'taxes', 'description' => 'Taux de TVA (%)']
@@ -78,6 +64,8 @@ class ConfigurationController extends Controller
             ['cle' => 'taux_css'],
             ['valeur' => $request->taux_css, 'groupe' => 'taxes', 'description' => 'Taux de CSS (%)']
         );
+
+        Audit::log('update', 'configuration', 'Taux de taxes mis à jour');
 
         return response()->json(['message' => 'Taux de taxes mis à jour avec succès']);
     }
@@ -93,18 +81,8 @@ class ConfigurationController extends Controller
         return response()->json($prefixes);
     }
 
-    public function updateNumerotation(Request $request): JsonResponse
+    public function updateNumerotation(UpdateNumerotationRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'prefixe_devis' => 'required|string|max:10',
-            'prefixe_ordre' => 'required|string|max:10',
-            'prefixe_facture' => 'required|string|max:10',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         Configuration::updateOrCreate(
             ['cle' => 'prefixe_devis'],
             ['valeur' => $request->prefixe_devis, 'groupe' => 'numerotation', 'description' => 'Préfixe des devis']
@@ -119,6 +97,8 @@ class ConfigurationController extends Controller
             ['cle' => 'prefixe_facture'],
             ['valeur' => $request->prefixe_facture, 'groupe' => 'numerotation', 'description' => 'Préfixe des factures']
         );
+
+        Audit::log('update', 'configuration', 'Préfixes de numérotation mis à jour');
 
         return response()->json(['message' => 'Préfixes de numérotation mis à jour avec succès']);
     }
@@ -138,21 +118,8 @@ class ConfigurationController extends Controller
         return response()->json($entreprise);
     }
 
-    public function updateEntreprise(Request $request): JsonResponse
+    public function updateEntreprise(UpdateEntrepriseRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'adresse' => 'nullable|string',
-            'telephone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
-            'nif' => 'nullable|string|max:100',
-            'rccm' => 'nullable|string|max:100',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $fields = ['nom', 'adresse', 'telephone', 'email', 'nif', 'rccm'];
 
         foreach ($fields as $field) {
@@ -163,6 +130,8 @@ class ConfigurationController extends Controller
                 );
             }
         }
+
+        Audit::log('update', 'configuration', 'Informations entreprise mises à jour');
 
         return response()->json(['message' => 'Informations entreprise mises à jour avec succès']);
     }

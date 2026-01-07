@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreArmateurRequest;
+use App\Http\Requests\UpdateArmateurRequest;
+use App\Http\Resources\ArmateurResource;
 use App\Models\Armateur;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class ArmateurController extends Controller
 {
@@ -28,56 +31,36 @@ class ArmateurController extends Controller
 
         $armateurs = $query->orderBy('nom')->get();
 
-        return response()->json($armateurs);
+        return response()->json(ArmateurResource::collection($armateurs));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreArmateurRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:armateurs,code',
-            'adresse' => 'nullable|string',
-            'telephone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
-            'actif' => 'boolean',
-        ]);
+        $armateur = Armateur::create($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('create', 'armateur', "Armateur créé: {$armateur->nom}", $armateur->id);
 
-        $armateur = Armateur::create($request->all());
-
-        return response()->json($armateur, 201);
+        return response()->json(new ArmateurResource($armateur), 201);
     }
 
     public function show(Armateur $armateur): JsonResponse
     {
-        return response()->json($armateur);
+        return response()->json(new ArmateurResource($armateur));
     }
 
-    public function update(Request $request, Armateur $armateur): JsonResponse
+    public function update(UpdateArmateurRequest $request, Armateur $armateur): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:armateurs,code,' . $armateur->id,
-            'adresse' => 'nullable|string',
-            'telephone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
-            'actif' => 'boolean',
-        ]);
+        $armateur->update($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('update', 'armateur', "Armateur modifié: {$armateur->nom}", $armateur->id);
 
-        $armateur->update($request->all());
-
-        return response()->json($armateur);
+        return response()->json(new ArmateurResource($armateur));
     }
 
     public function destroy(Armateur $armateur): JsonResponse
     {
+        Audit::log('delete', 'armateur', "Armateur supprimé: {$armateur->nom}", $armateur->id);
+
         $armateur->delete();
 
         return response()->json(['message' => 'Armateur supprimé avec succès']);

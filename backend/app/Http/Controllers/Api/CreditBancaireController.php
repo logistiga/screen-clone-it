@@ -3,17 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCreditBancaireRequest;
+use App\Http\Requests\RembourserCreditRequest;
+use App\Http\Resources\CreditBancaireResource;
+use App\Http\Resources\EcheanceCreditResource;
+use App\Http\Resources\RemboursementCreditResource;
+use App\Http\Resources\DocumentCreditResource;
 use App\Models\CreditBancaire;
 use App\Models\EcheanceCredit;
 use App\Models\RemboursementCredit;
 use App\Models\DocumentCredit;
 use App\Models\ModificationCredit;
 use App\Models\MouvementCaisse;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
 
 class CreditBancaireController extends Controller
 {
@@ -40,40 +46,16 @@ class CreditBancaireController extends Controller
 
         $credits = $query->orderBy('date_debut', 'desc')->paginate($request->get('per_page', 15));
 
-        // Calculer les montants remboursés
-        $credits->getCollection()->transform(function ($credit) {
-            $credit->montant_rembourse = $credit->remboursements->sum('montant');
-            $credit->reste_a_payer = $credit->montant_total - $credit->montant_rembourse;
-            return $credit;
-        });
-
-        return response()->json($credits);
+        return response()->json(CreditBancaireResource::collection($credits)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCreditBancaireRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'banque_id' => 'required|exists:banques,id',
-            'objet' => 'required|string|max:255',
-            'montant_principal' => 'required|numeric|min:0.01',
-            'taux_interet' => 'required|numeric|min:0',
-            'duree_mois' => 'required|integer|min:1',
-            'date_debut' => 'required|date',
-            'notes' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         try {
             DB::beginTransaction();
 
-            // Calculer le montant total avec intérêts
             $montantInteret = $request->montant_principal * ($request->taux_interet / 100) * ($request->duree_mois / 12);
             $montantTotal = $request->montant_principal + $montantInteret;
-
-            // Générer le numéro
             $numero = $this->generateNumero();
 
             $credit = CreditBancaire::create([
@@ -91,7 +73,6 @@ class CreditBancaireController extends Controller
                 'statut' => 'Actif',
             ]);
 
-            // Générer les échéances
             $mensualite = $montantTotal / $request->duree_mois;
             for ($i = 1; $i <= $request->duree_mois; $i++) {
                 EcheanceCredit::create([
@@ -103,9 +84,11 @@ class CreditBancaireController extends Controller
                 ]);
             }
 
+            Audit::log('create', 'credit', "Crédit créé: {$credit->numero}", $credit->id);
+
             DB::commit();
 
-            return response()->json($credit->load(['banque', 'echeances']), 201);
+            return response()->json(new CreditBancaireResource($credit->load(['banque', 'echeances'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -117,14 +100,7 @@ class CreditBancaireController extends Controller
     {
         $creditBancaire->load(['banque', 'echeances', 'remboursements', 'documents', 'modifications']);
         
-        $creditBancaire->montant_rembourse = $creditBancaire->remboursements->sum('montant');
-        $creditBancaire->reste_a_payer = $creditBancaire->montant_total - $creditBancaire->montant_rembourse;
-        $creditBancaire->prochaine_echeance = $creditBancaire->echeances()
-            ->where('statut', 'En attente')
-            ->orderBy('date_echeance')
-            ->first();
-
-        return response()->json($creditBancaire);
+        return response()->json(new CreditBancaireResource($creditBancaire));
     }
 
     public function update(Request $request, CreditBancaire $creditBancaire): JsonResponse
@@ -139,7 +115,6 @@ class CreditBancaireController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Enregistrer la modification
         if ($request->has('objet') || $request->has('notes')) {
             ModificationCredit::create([
                 'credit_bancaire_id' => $creditBancaire->id,
@@ -152,7 +127,9 @@ class CreditBancaireController extends Controller
 
         $creditBancaire->update($request->only(['objet', 'notes', 'statut']));
 
-        return response()->json($creditBancaire->load(['banque', 'echeances']));
+        Audit::log('update', 'credit', "Crédit modifié: {$creditBancaire->numero}", $creditBancaire->id);
+
+        return response()->json(new CreditBancaireResource($creditBancaire->load(['banque', 'echeances'])));
     }
 
     public function destroy(CreditBancaire $creditBancaire): JsonResponse
@@ -163,6 +140,8 @@ class CreditBancaireController extends Controller
             ], 422);
         }
 
+        Audit::log('delete', 'credit', "Crédit supprimé: {$creditBancaire->numero}", $creditBancaire->id);
+
         $creditBancaire->echeances()->delete();
         $creditBancaire->documents()->delete();
         $creditBancaire->delete();
@@ -170,20 +149,8 @@ class CreditBancaireController extends Controller
         return response()->json(['message' => 'Crédit supprimé avec succès']);
     }
 
-    public function rembourser(Request $request, CreditBancaire $creditBancaire): JsonResponse
+    public function rembourser(RembourserCreditRequest $request, CreditBancaire $creditBancaire): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'montant' => 'required|numeric|min:0.01',
-            'mode_paiement' => 'required|in:Espèces,Chèque,Virement',
-            'reference' => 'nullable|string|max:100',
-            'echeance_id' => 'nullable|exists:echeances_credit,id',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $montantRembourse = $creditBancaire->remboursements()->sum('montant');
         $resteAPayer = $creditBancaire->montant_total - $montantRembourse;
 
@@ -208,7 +175,6 @@ class CreditBancaireController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            // Mouvement de caisse si espèces
             if ($request->mode_paiement === 'Espèces') {
                 MouvementCaisse::create([
                     'type' => 'Sortie',
@@ -221,21 +187,21 @@ class CreditBancaireController extends Controller
                 ]);
             }
 
-            // Mettre à jour l'échéance si spécifiée
             if ($request->echeance_id) {
                 $echeance = EcheanceCredit::find($request->echeance_id);
                 $echeance->update(['statut' => 'Payée', 'date_paiement' => now()]);
             }
 
-            // Vérifier si le crédit est soldé
             $nouveauMontantRembourse = $montantRembourse + $request->montant;
             if ($nouveauMontantRembourse >= $creditBancaire->montant_total) {
                 $creditBancaire->update(['statut' => 'Soldé']);
             }
 
+            Audit::log('create', 'remboursement', "Remboursement: {$request->montant} pour crédit {$creditBancaire->numero}", $remboursement->id);
+
             DB::commit();
 
-            return response()->json($remboursement, 201);
+            return response()->json(new RemboursementCreditResource($remboursement), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -250,13 +216,13 @@ class CreditBancaireController extends Controller
             ->orderBy('numero_echeance')
             ->get();
 
-        return response()->json($echeances);
+        return response()->json(EcheanceCreditResource::collection($echeances));
     }
 
     public function uploadDocument(Request $request, CreditBancaire $creditBancaire): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'fichier' => 'required|file|max:10240', // 10MB max
+            'fichier' => 'required|file|max:10240',
             'type' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
         ]);
@@ -276,7 +242,7 @@ class CreditBancaireController extends Controller
             'user_id' => auth()->id(),
         ]);
 
-        return response()->json($document, 201);
+        return response()->json(new DocumentCreditResource($document), 201);
     }
 
     public function stats(Request $request): JsonResponse

@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMouvementCaisseRequest;
+use App\Http\Resources\MouvementCaisseResource;
 use App\Models\MouvementCaisse;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class CaisseController extends Controller
 {
@@ -39,24 +40,11 @@ class CaisseController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 20));
 
-        return response()->json($mouvements);
+        return response()->json(MouvementCaisseResource::collection($mouvements)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreMouvementCaisseRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'type' => 'required|in:Entrée,Sortie',
-            'categorie' => 'required|string|max:100',
-            'montant' => 'required|numeric|min:0.01',
-            'description' => 'required|string|max:500',
-            'beneficiaire' => 'nullable|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // Vérifier le solde pour les sorties
         if ($request->type === 'Sortie') {
             $solde = $this->getSoldeActuel();
             if ($request->montant > $solde) {
@@ -77,23 +65,26 @@ class CaisseController extends Controller
             'user_id' => auth()->id(),
         ]);
 
-        return response()->json($mouvement->load('user'), 201);
+        Audit::log('create', 'caisse', "Mouvement caisse: {$request->type} - {$request->montant}", $mouvement->id);
+
+        return response()->json(new MouvementCaisseResource($mouvement->load('user')), 201);
     }
 
     public function show(MouvementCaisse $mouvement): JsonResponse
     {
         $mouvement->load('user');
-        return response()->json($mouvement);
+        return response()->json(new MouvementCaisseResource($mouvement));
     }
 
     public function destroy(MouvementCaisse $mouvement): JsonResponse
     {
-        // Ne pas supprimer les mouvements liés aux paiements
         if ($mouvement->categorie === 'Paiement facture' && $mouvement->reference) {
             return response()->json([
                 'message' => 'Ce mouvement est lié à un paiement et ne peut pas être supprimé directement'
             ], 422);
         }
+
+        Audit::log('delete', 'caisse', "Mouvement supprimé: {$mouvement->type} - {$mouvement->montant}", $mouvement->id);
 
         $mouvement->delete();
 

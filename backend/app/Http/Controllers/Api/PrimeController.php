@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePrimeRequest;
+use App\Http\Requests\PayerPrimeRequest;
+use App\Http\Resources\PrimeResource;
+use App\Http\Resources\PaiementPrimeResource;
 use App\Models\Prime;
 use App\Models\PaiementPrime;
 use App\Models\MouvementCaisse;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -39,29 +44,11 @@ class PrimeController extends Controller
 
         $primes = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        // Calculer les montants payés
-        $primes->getCollection()->transform(function ($prime) {
-            $prime->montant_paye = $prime->paiements->sum('montant');
-            $prime->reste_a_payer = $prime->montant - $prime->montant_paye;
-            return $prime;
-        });
-
-        return response()->json($primes);
+        return response()->json(PrimeResource::collection($primes)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePrimeRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'representant_id' => 'required|exists:representants,id',
-            'facture_id' => 'nullable|exists:factures,id',
-            'montant' => 'required|numeric|min:0.01',
-            'description' => 'nullable|string|max:500',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $prime = Prime::create([
             'representant_id' => $request->representant_id,
             'facture_id' => $request->facture_id,
@@ -70,16 +57,15 @@ class PrimeController extends Controller
             'statut' => 'En attente',
         ]);
 
-        return response()->json($prime->load(['representant', 'facture']), 201);
+        Audit::log('create', 'prime', "Prime créée: {$request->montant}", $prime->id);
+
+        return response()->json(new PrimeResource($prime->load(['representant', 'facture'])), 201);
     }
 
     public function show(Prime $prime): JsonResponse
     {
         $prime->load(['representant', 'facture', 'paiements']);
-        $prime->montant_paye = $prime->paiements->sum('montant');
-        $prime->reste_a_payer = $prime->montant - $prime->montant_paye;
-
-        return response()->json($prime);
+        return response()->json(new PrimeResource($prime));
     }
 
     public function update(Request $request, Prime $prime): JsonResponse
@@ -100,7 +86,9 @@ class PrimeController extends Controller
 
         $prime->update($request->all());
 
-        return response()->json($prime->load(['representant', 'facture']));
+        Audit::log('update', 'prime', "Prime modifiée: {$prime->montant}", $prime->id);
+
+        return response()->json(new PrimeResource($prime->load(['representant', 'facture'])));
     }
 
     public function destroy(Prime $prime): JsonResponse
@@ -111,24 +99,15 @@ class PrimeController extends Controller
             ], 422);
         }
 
+        Audit::log('delete', 'prime', "Prime supprimée: {$prime->montant}", $prime->id);
+
         $prime->delete();
 
         return response()->json(['message' => 'Prime supprimée avec succès']);
     }
 
-    public function payer(Request $request, Prime $prime): JsonResponse
+    public function payer(PayerPrimeRequest $request, Prime $prime): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'montant' => 'required|numeric|min:0.01',
-            'mode_paiement' => 'required|in:Espèces,Chèque,Virement,Mobile Money',
-            'reference' => 'nullable|string|max:100',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $montantPaye = $prime->paiements()->sum('montant');
         $resteAPayer = $prime->montant - $montantPaye;
 
@@ -152,7 +131,6 @@ class PrimeController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            // Mouvement de caisse si espèces
             if ($request->mode_paiement === 'Espèces') {
                 MouvementCaisse::create([
                     'type' => 'Sortie',
@@ -165,7 +143,6 @@ class PrimeController extends Controller
                 ]);
             }
 
-            // Mettre à jour le statut
             $nouveauMontantPaye = $montantPaye + $request->montant;
             if ($nouveauMontantPaye >= $prime->montant) {
                 $prime->update(['statut' => 'Payée']);
@@ -173,9 +150,11 @@ class PrimeController extends Controller
                 $prime->update(['statut' => 'Partiellement payée']);
             }
 
+            Audit::log('create', 'paiement_prime', "Paiement prime: {$request->montant}", $paiement->id);
+
             DB::commit();
 
-            return response()->json($paiement, 201);
+            return response()->json(new PaiementPrimeResource($paiement), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();

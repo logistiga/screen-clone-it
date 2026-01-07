@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreRepresentantRequest;
+use App\Http\Requests\UpdateRepresentantRequest;
+use App\Http\Resources\RepresentantResource;
+use App\Http\Resources\PrimeResource;
 use App\Models\Representant;
-use App\Models\Prime;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class RepresentantController extends Controller
 {
@@ -32,28 +35,16 @@ class RepresentantController extends Controller
 
         $representants = $query->orderBy('nom')->paginate($request->get('per_page', 15));
 
-        return response()->json($representants);
+        return response()->json(RepresentantResource::collection($representants)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRepresentantRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'telephone' => 'nullable|string|max:50',
-            'adresse' => 'nullable|string',
-            'taux_commission' => 'nullable|numeric|min:0|max:100',
-            'actif' => 'boolean',
-        ]);
+        $representant = Representant::create($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('create', 'representant', "Représentant créé: {$representant->nom} {$representant->prenom}", $representant->id);
 
-        $representant = Representant::create($request->all());
-
-        return response()->json($representant, 201);
+        return response()->json(new RepresentantResource($representant), 201);
     }
 
     public function show(Representant $representant): JsonResponse
@@ -63,39 +54,16 @@ class RepresentantController extends Controller
             'primes.paiements',
         ]);
 
-        $representant->stats = [
-            'total_primes' => $representant->primes()->sum('montant'),
-            'primes_payees' => $representant->primes()
-                ->whereHas('paiements')
-                ->get()
-                ->sum(fn($p) => $p->paiements->sum('montant')),
-            'primes_en_attente' => $representant->primes()
-                ->where('statut', 'En attente')
-                ->sum('montant'),
-        ];
-
-        return response()->json($representant);
+        return response()->json(new RepresentantResource($representant));
     }
 
-    public function update(Request $request, Representant $representant): JsonResponse
+    public function update(UpdateRepresentantRequest $request, Representant $representant): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'prenom' => 'sometimes|required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'telephone' => 'nullable|string|max:50',
-            'adresse' => 'nullable|string',
-            'taux_commission' => 'nullable|numeric|min:0|max:100',
-            'actif' => 'boolean',
-        ]);
+        $representant->update($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        Audit::log('update', 'representant', "Représentant modifié: {$representant->nom} {$representant->prenom}", $representant->id);
 
-        $representant->update($request->all());
-
-        return response()->json($representant);
+        return response()->json(new RepresentantResource($representant));
     }
 
     public function destroy(Representant $representant): JsonResponse
@@ -105,6 +73,8 @@ class RepresentantController extends Controller
                 'message' => 'Impossible de supprimer ce représentant car il a des primes associées'
             ], 422);
         }
+
+        Audit::log('delete', 'representant', "Représentant supprimé: {$representant->nom} {$representant->prenom}", $representant->id);
 
         $representant->delete();
 
@@ -125,6 +95,6 @@ class RepresentantController extends Controller
 
         $primes = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($primes);
+        return response()->json(PrimeResource::collection($primes)->response()->getData(true));
     }
 }

@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreFactureRequest;
+use App\Http\Requests\UpdateFactureRequest;
+use App\Http\Requests\AnnulerFactureRequest;
+use App\Http\Resources\FactureResource;
 use App\Models\Facture;
 use App\Models\LigneFacture;
 use App\Models\ConteneurFacture;
 use App\Models\OperationConteneurFacture;
 use App\Models\LotFacture;
 use App\Models\Configuration;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class FactureController extends Controller
 {
@@ -47,30 +51,11 @@ class FactureController extends Controller
 
         $factures = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($factures);
+        return response()->json(FactureResource::collection($factures)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreFactureRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'ordre_travail_id' => 'nullable|exists:ordres_travail,id',
-            'type_document' => 'required|in:Conteneur,Lot,Independant',
-            'date_echeance' => 'nullable|date',
-            'bl_numero' => 'nullable|string|max:100',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'lignes' => 'nullable|array',
-            'conteneurs' => 'nullable|array',
-            'lots' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         try {
             DB::beginTransaction();
 
@@ -95,67 +80,16 @@ class FactureController extends Controller
                 'taux_css' => $tauxCss,
             ]);
 
-            if ($request->has('lignes')) {
-                foreach ($request->lignes as $ligne) {
-                    LigneFacture::create([
-                        'facture_id' => $facture->id,
-                        'type_operation' => $ligne['type_operation'],
-                        'description' => $ligne['description'] ?? null,
-                        'lieu_depart' => $ligne['lieu_depart'] ?? null,
-                        'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
-                        'date_debut' => $ligne['date_debut'] ?? null,
-                        'date_fin' => $ligne['date_fin'] ?? null,
-                        'quantite' => $ligne['quantite'] ?? 1,
-                        'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
-                    ]);
-                }
-            }
-
-            if ($request->has('conteneurs')) {
-                foreach ($request->conteneurs as $conteneur) {
-                    $cont = ConteneurFacture::create([
-                        'facture_id' => $facture->id,
-                        'numero' => $conteneur['numero'],
-                        'type' => $conteneur['type'],
-                        'taille' => $conteneur['taille'],
-                        'armateur_id' => $conteneur['armateur_id'] ?? null,
-                    ]);
-
-                    if (isset($conteneur['operations'])) {
-                        foreach ($conteneur['operations'] as $operation) {
-                            OperationConteneurFacture::create([
-                                'conteneur_facture_id' => $cont->id,
-                                'type_operation' => $operation['type_operation'],
-                                'description' => $operation['description'] ?? null,
-                                'quantite' => $operation['quantite'] ?? 1,
-                                'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
-                                'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            if ($request->has('lots')) {
-                foreach ($request->lots as $lot) {
-                    LotFacture::create([
-                        'facture_id' => $facture->id,
-                        'designation' => $lot['designation'],
-                        'quantite' => $lot['quantite'] ?? 1,
-                        'poids' => $lot['poids'] ?? null,
-                        'volume' => $lot['volume'] ?? null,
-                        'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
-                    ]);
-                }
-            }
-
+            $this->createLignes($facture, $request->lignes ?? []);
+            $this->createConteneurs($facture, $request->conteneurs ?? []);
+            $this->createLots($facture, $request->lots ?? []);
             $this->calculerTotaux($facture);
+
+            Audit::log('create', 'facture', "Facture créée: {$facture->numero}", $facture->id);
 
             DB::commit();
 
-            return response()->json($facture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']), 201);
+            return response()->json(new FactureResource($facture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -170,32 +104,13 @@ class FactureController extends Controller
             'conteneurs.operations', 'conteneurs.armateur', 'lots', 'paiements'
         ]);
 
-        $facture->montant_paye = $facture->paiements->sum('montant');
-        $facture->reste_a_payer = $facture->montant_ttc - $facture->montant_paye;
-
-        return response()->json($facture);
+        return response()->json(new FactureResource($facture));
     }
 
-    public function update(Request $request, Facture $facture): JsonResponse
+    public function update(UpdateFactureRequest $request, Facture $facture): JsonResponse
     {
         if (in_array($facture->statut, ['Payée', 'Annulée'])) {
             return response()->json(['message' => 'Impossible de modifier cette facture'], 422);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'sometimes|required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'type_document' => 'sometimes|required|in:Conteneur,Lot,Independant',
-            'date_echeance' => 'nullable|date',
-            'bl_numero' => 'nullable|string|max:100',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'statut' => 'sometimes|in:Brouillon,Envoyée,Partiellement payée,Payée,Annulée',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
@@ -208,70 +123,27 @@ class FactureController extends Controller
 
             if ($request->has('lignes')) {
                 $facture->lignes()->delete();
-                foreach ($request->lignes as $ligne) {
-                    LigneFacture::create([
-                        'facture_id' => $facture->id,
-                        'type_operation' => $ligne['type_operation'],
-                        'description' => $ligne['description'] ?? null,
-                        'lieu_depart' => $ligne['lieu_depart'] ?? null,
-                        'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
-                        'date_debut' => $ligne['date_debut'] ?? null,
-                        'date_fin' => $ligne['date_fin'] ?? null,
-                        'quantite' => $ligne['quantite'] ?? 1,
-                        'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
-                    ]);
-                }
+                $this->createLignes($facture, $request->lignes);
             }
 
             if ($request->has('conteneurs')) {
                 $facture->conteneurs()->each(fn($c) => $c->operations()->delete());
                 $facture->conteneurs()->delete();
-                
-                foreach ($request->conteneurs as $conteneur) {
-                    $cont = ConteneurFacture::create([
-                        'facture_id' => $facture->id,
-                        'numero' => $conteneur['numero'],
-                        'type' => $conteneur['type'],
-                        'taille' => $conteneur['taille'],
-                        'armateur_id' => $conteneur['armateur_id'] ?? null,
-                    ]);
-
-                    if (isset($conteneur['operations'])) {
-                        foreach ($conteneur['operations'] as $operation) {
-                            OperationConteneurFacture::create([
-                                'conteneur_facture_id' => $cont->id,
-                                'type_operation' => $operation['type_operation'],
-                                'description' => $operation['description'] ?? null,
-                                'quantite' => $operation['quantite'] ?? 1,
-                                'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
-                                'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
-                            ]);
-                        }
-                    }
-                }
+                $this->createConteneurs($facture, $request->conteneurs);
             }
 
             if ($request->has('lots')) {
                 $facture->lots()->delete();
-                foreach ($request->lots as $lot) {
-                    LotFacture::create([
-                        'facture_id' => $facture->id,
-                        'designation' => $lot['designation'],
-                        'quantite' => $lot['quantite'] ?? 1,
-                        'poids' => $lot['poids'] ?? null,
-                        'volume' => $lot['volume'] ?? null,
-                        'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
-                    ]);
-                }
+                $this->createLots($facture, $request->lots);
             }
 
             $this->calculerTotaux($facture);
 
+            Audit::log('update', 'facture', "Facture modifiée: {$facture->numero}", $facture->id);
+
             DB::commit();
 
-            return response()->json($facture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']));
+            return response()->json(new FactureResource($facture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])));
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -285,6 +157,8 @@ class FactureController extends Controller
             return response()->json(['message' => 'Impossible de supprimer une facture avec des paiements'], 422);
         }
 
+        Audit::log('delete', 'facture', "Facture supprimée: {$facture->numero}", $facture->id);
+
         $facture->conteneurs()->each(fn($c) => $c->operations()->delete());
         $facture->conteneurs()->delete();
         $facture->lignes()->delete();
@@ -294,24 +168,15 @@ class FactureController extends Controller
         return response()->json(['message' => 'Facture supprimée avec succès']);
     }
 
-    public function annuler(Request $request, Facture $facture): JsonResponse
+    public function annuler(AnnulerFactureRequest $request, Facture $facture): JsonResponse
     {
         if ($facture->statut === 'Annulée') {
             return response()->json(['message' => 'Cette facture est déjà annulée'], 422);
         }
 
-        $validator = Validator::make($request->all(), [
-            'motif' => 'required|string|max:500',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         try {
             DB::beginTransaction();
 
-            // Créer l'annulation
             \App\Models\Annulation::create([
                 'facture_id' => $facture->id,
                 'motif' => $request->motif,
@@ -320,6 +185,8 @@ class FactureController extends Controller
             ]);
 
             $facture->update(['statut' => 'Annulée']);
+
+            Audit::log('cancel', 'facture', "Facture annulée: {$facture->numero}", $facture->id);
 
             DB::commit();
 
@@ -368,9 +235,11 @@ class FactureController extends Controller
                 $newLot->save();
             }
 
+            Audit::log('duplicate', 'facture', "Facture dupliquée: {$facture->numero} -> {$newFacture->numero}", $newFacture->id);
+
             DB::commit();
 
-            return response()->json($newFacture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']), 201);
+            return response()->json(new FactureResource($newFacture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -389,15 +258,66 @@ class FactureController extends Controller
 
         $factures = $query->orderBy('date_echeance', 'asc')->get();
 
-        $factures->each(function ($facture) {
-            $facture->montant_paye = $facture->paiements->sum('montant');
-            $facture->reste_a_payer = $facture->montant_ttc - $facture->montant_paye;
-            $facture->jours_retard = $facture->date_echeance < now() 
-                ? now()->diffInDays($facture->date_echeance) 
-                : 0;
-        });
+        return response()->json(FactureResource::collection($factures));
+    }
 
-        return response()->json($factures);
+    private function createLignes(Facture $facture, array $lignes): void
+    {
+        foreach ($lignes as $ligne) {
+            LigneFacture::create([
+                'facture_id' => $facture->id,
+                'type_operation' => $ligne['type_operation'],
+                'description' => $ligne['description'] ?? null,
+                'lieu_depart' => $ligne['lieu_depart'] ?? null,
+                'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
+                'date_debut' => $ligne['date_debut'] ?? null,
+                'date_fin' => $ligne['date_fin'] ?? null,
+                'quantite' => $ligne['quantite'] ?? 1,
+                'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
+                'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
+            ]);
+        }
+    }
+
+    private function createConteneurs(Facture $facture, array $conteneurs): void
+    {
+        foreach ($conteneurs as $conteneur) {
+            $cont = ConteneurFacture::create([
+                'facture_id' => $facture->id,
+                'numero' => $conteneur['numero'],
+                'type' => $conteneur['type'],
+                'taille' => $conteneur['taille'],
+                'armateur_id' => $conteneur['armateur_id'] ?? null,
+            ]);
+
+            if (isset($conteneur['operations'])) {
+                foreach ($conteneur['operations'] as $operation) {
+                    OperationConteneurFacture::create([
+                        'conteneur_facture_id' => $cont->id,
+                        'type_operation' => $operation['type_operation'],
+                        'description' => $operation['description'] ?? null,
+                        'quantite' => $operation['quantite'] ?? 1,
+                        'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
+                        'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function createLots(Facture $facture, array $lots): void
+    {
+        foreach ($lots as $lot) {
+            LotFacture::create([
+                'facture_id' => $facture->id,
+                'designation' => $lot['designation'],
+                'quantite' => $lot['quantite'] ?? 1,
+                'poids' => $lot['poids'] ?? null,
+                'volume' => $lot['volume'] ?? null,
+                'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
+                'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
+            ]);
+        }
     }
 
     private function generateNumero(): string

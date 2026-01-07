@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreOrdreTravailRequest;
+use App\Http\Requests\UpdateOrdreTravailRequest;
+use App\Http\Resources\OrdreTravailResource;
+use App\Http\Resources\FactureResource;
 use App\Models\OrdreTravail;
 use App\Models\LigneOrdre;
 use App\Models\ConteneurOrdre;
 use App\Models\OperationConteneurOrdre;
 use App\Models\LotOrdre;
 use App\Models\Configuration;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class OrdreTravailController extends Controller
 {
@@ -43,29 +47,11 @@ class OrdreTravailController extends Controller
 
         $ordres = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($ordres);
+        return response()->json(OrdreTravailResource::collection($ordres)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreOrdreTravailRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'devis_id' => 'nullable|exists:devis,id',
-            'type_document' => 'required|in:Conteneur,Lot,Independant',
-            'bl_numero' => 'nullable|string|max:100',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'lignes' => 'nullable|array',
-            'conteneurs' => 'nullable|array',
-            'lots' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         try {
             DB::beginTransaction();
 
@@ -89,70 +75,16 @@ class OrdreTravailController extends Controller
                 'taux_css' => $tauxCss,
             ]);
 
-            // Créer les lignes
-            if ($request->has('lignes')) {
-                foreach ($request->lignes as $ligne) {
-                    LigneOrdre::create([
-                        'ordre_travail_id' => $ordre->id,
-                        'type_operation' => $ligne['type_operation'],
-                        'description' => $ligne['description'] ?? null,
-                        'lieu_depart' => $ligne['lieu_depart'] ?? null,
-                        'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
-                        'date_debut' => $ligne['date_debut'] ?? null,
-                        'date_fin' => $ligne['date_fin'] ?? null,
-                        'quantite' => $ligne['quantite'] ?? 1,
-                        'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
-                    ]);
-                }
-            }
-
-            // Créer les conteneurs
-            if ($request->has('conteneurs')) {
-                foreach ($request->conteneurs as $conteneur) {
-                    $cont = ConteneurOrdre::create([
-                        'ordre_travail_id' => $ordre->id,
-                        'numero' => $conteneur['numero'],
-                        'type' => $conteneur['type'],
-                        'taille' => $conteneur['taille'],
-                        'armateur_id' => $conteneur['armateur_id'] ?? null,
-                    ]);
-
-                    if (isset($conteneur['operations'])) {
-                        foreach ($conteneur['operations'] as $operation) {
-                            OperationConteneurOrdre::create([
-                                'conteneur_ordre_id' => $cont->id,
-                                'type_operation' => $operation['type_operation'],
-                                'description' => $operation['description'] ?? null,
-                                'quantite' => $operation['quantite'] ?? 1,
-                                'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
-                                'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            // Créer les lots
-            if ($request->has('lots')) {
-                foreach ($request->lots as $lot) {
-                    LotOrdre::create([
-                        'ordre_travail_id' => $ordre->id,
-                        'designation' => $lot['designation'],
-                        'quantite' => $lot['quantite'] ?? 1,
-                        'poids' => $lot['poids'] ?? null,
-                        'volume' => $lot['volume'] ?? null,
-                        'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
-                    ]);
-                }
-            }
-
+            $this->createLignes($ordre, $request->lignes ?? []);
+            $this->createConteneurs($ordre, $request->conteneurs ?? []);
+            $this->createLots($ordre, $request->lots ?? []);
             $this->calculerTotaux($ordre);
+
+            Audit::log('create', 'ordre', "Ordre créé: {$ordre->numero}", $ordre->id);
 
             DB::commit();
 
-            return response()->json($ordre->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']), 201);
+            return response()->json(new OrdreTravailResource($ordre->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -163,28 +95,13 @@ class OrdreTravailController extends Controller
     public function show(OrdreTravail $ordreTravail): JsonResponse
     {
         $ordreTravail->load(['client', 'transitaire', 'devis', 'lignes', 'conteneurs.operations', 'conteneurs.armateur', 'lots', 'facture']);
-        return response()->json($ordreTravail);
+        return response()->json(new OrdreTravailResource($ordreTravail));
     }
 
-    public function update(Request $request, OrdreTravail $ordreTravail): JsonResponse
+    public function update(UpdateOrdreTravailRequest $request, OrdreTravail $ordreTravail): JsonResponse
     {
         if ($ordreTravail->statut === 'Facturé') {
             return response()->json(['message' => 'Impossible de modifier un ordre facturé'], 422);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'sometimes|required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'type_document' => 'sometimes|required|in:Conteneur,Lot,Independant',
-            'bl_numero' => 'nullable|string|max:100',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'statut' => 'sometimes|in:En attente,En cours,Terminé,Facturé,Annulé',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
@@ -197,70 +114,27 @@ class OrdreTravailController extends Controller
 
             if ($request->has('lignes')) {
                 $ordreTravail->lignes()->delete();
-                foreach ($request->lignes as $ligne) {
-                    LigneOrdre::create([
-                        'ordre_travail_id' => $ordreTravail->id,
-                        'type_operation' => $ligne['type_operation'],
-                        'description' => $ligne['description'] ?? null,
-                        'lieu_depart' => $ligne['lieu_depart'] ?? null,
-                        'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
-                        'date_debut' => $ligne['date_debut'] ?? null,
-                        'date_fin' => $ligne['date_fin'] ?? null,
-                        'quantite' => $ligne['quantite'] ?? 1,
-                        'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
-                    ]);
-                }
+                $this->createLignes($ordreTravail, $request->lignes);
             }
 
             if ($request->has('conteneurs')) {
                 $ordreTravail->conteneurs()->each(fn($c) => $c->operations()->delete());
                 $ordreTravail->conteneurs()->delete();
-                
-                foreach ($request->conteneurs as $conteneur) {
-                    $cont = ConteneurOrdre::create([
-                        'ordre_travail_id' => $ordreTravail->id,
-                        'numero' => $conteneur['numero'],
-                        'type' => $conteneur['type'],
-                        'taille' => $conteneur['taille'],
-                        'armateur_id' => $conteneur['armateur_id'] ?? null,
-                    ]);
-
-                    if (isset($conteneur['operations'])) {
-                        foreach ($conteneur['operations'] as $operation) {
-                            OperationConteneurOrdre::create([
-                                'conteneur_ordre_id' => $cont->id,
-                                'type_operation' => $operation['type_operation'],
-                                'description' => $operation['description'] ?? null,
-                                'quantite' => $operation['quantite'] ?? 1,
-                                'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
-                                'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
-                            ]);
-                        }
-                    }
-                }
+                $this->createConteneurs($ordreTravail, $request->conteneurs);
             }
 
             if ($request->has('lots')) {
                 $ordreTravail->lots()->delete();
-                foreach ($request->lots as $lot) {
-                    LotOrdre::create([
-                        'ordre_travail_id' => $ordreTravail->id,
-                        'designation' => $lot['designation'],
-                        'quantite' => $lot['quantite'] ?? 1,
-                        'poids' => $lot['poids'] ?? null,
-                        'volume' => $lot['volume'] ?? null,
-                        'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
-                        'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
-                    ]);
-                }
+                $this->createLots($ordreTravail, $request->lots);
             }
 
             $this->calculerTotaux($ordreTravail);
 
+            Audit::log('update', 'ordre', "Ordre modifié: {$ordreTravail->numero}", $ordreTravail->id);
+
             DB::commit();
 
-            return response()->json($ordreTravail->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']));
+            return response()->json(new OrdreTravailResource($ordreTravail->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])));
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -273,6 +147,8 @@ class OrdreTravailController extends Controller
         if ($ordreTravail->statut === 'Facturé') {
             return response()->json(['message' => 'Impossible de supprimer un ordre facturé'], 422);
         }
+
+        Audit::log('delete', 'ordre', "Ordre supprimé: {$ordreTravail->numero}", $ordreTravail->id);
 
         $ordreTravail->conteneurs()->each(fn($c) => $c->operations()->delete());
         $ordreTravail->conteneurs()->delete();
@@ -363,16 +239,77 @@ class OrdreTravailController extends Controller
 
             $ordreTravail->update(['statut' => 'Facturé']);
 
+            Audit::log('convert', 'ordre', "Ordre converti en facture: {$ordreTravail->numero} -> {$facture->numero}", $ordreTravail->id);
+
             DB::commit();
 
             return response()->json([
                 'message' => 'Ordre converti en facture',
-                'facture' => $facture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots'])
+                'facture' => new FactureResource($facture->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']))
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Erreur lors de la conversion', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function createLignes(OrdreTravail $ordre, array $lignes): void
+    {
+        foreach ($lignes as $ligne) {
+            LigneOrdre::create([
+                'ordre_travail_id' => $ordre->id,
+                'type_operation' => $ligne['type_operation'],
+                'description' => $ligne['description'] ?? null,
+                'lieu_depart' => $ligne['lieu_depart'] ?? null,
+                'lieu_arrivee' => $ligne['lieu_arrivee'] ?? null,
+                'date_debut' => $ligne['date_debut'] ?? null,
+                'date_fin' => $ligne['date_fin'] ?? null,
+                'quantite' => $ligne['quantite'] ?? 1,
+                'prix_unitaire' => $ligne['prix_unitaire'] ?? 0,
+                'montant_ht' => ($ligne['quantite'] ?? 1) * ($ligne['prix_unitaire'] ?? 0),
+            ]);
+        }
+    }
+
+    private function createConteneurs(OrdreTravail $ordre, array $conteneurs): void
+    {
+        foreach ($conteneurs as $conteneur) {
+            $cont = ConteneurOrdre::create([
+                'ordre_travail_id' => $ordre->id,
+                'numero' => $conteneur['numero'],
+                'type' => $conteneur['type'],
+                'taille' => $conteneur['taille'],
+                'armateur_id' => $conteneur['armateur_id'] ?? null,
+            ]);
+
+            if (isset($conteneur['operations'])) {
+                foreach ($conteneur['operations'] as $operation) {
+                    OperationConteneurOrdre::create([
+                        'conteneur_ordre_id' => $cont->id,
+                        'type_operation' => $operation['type_operation'],
+                        'description' => $operation['description'] ?? null,
+                        'quantite' => $operation['quantite'] ?? 1,
+                        'prix_unitaire' => $operation['prix_unitaire'] ?? 0,
+                        'montant_ht' => ($operation['quantite'] ?? 1) * ($operation['prix_unitaire'] ?? 0),
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function createLots(OrdreTravail $ordre, array $lots): void
+    {
+        foreach ($lots as $lot) {
+            LotOrdre::create([
+                'ordre_travail_id' => $ordre->id,
+                'designation' => $lot['designation'],
+                'quantite' => $lot['quantite'] ?? 1,
+                'poids' => $lot['poids'] ?? null,
+                'volume' => $lot['volume'] ?? null,
+                'prix_unitaire' => $lot['prix_unitaire'] ?? 0,
+                'montant_ht' => ($lot['quantite'] ?? 1) * ($lot['prix_unitaire'] ?? 0),
+            ]);
         }
     }
 

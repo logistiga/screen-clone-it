@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreNoteDebutRequest;
+use App\Http\Requests\UpdateNoteDebutRequest;
+use App\Http\Resources\NoteDebutResource;
 use App\Models\NoteDebut;
 use App\Models\Configuration;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class NoteDebutController extends Controller
 {
@@ -39,38 +42,13 @@ class NoteDebutController extends Controller
 
         $notes = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
-        return response()->json($notes);
+        return response()->json(NoteDebutResource::collection($notes)->response()->getData(true));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreNoteDebutRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'type' => 'required|in:Detention,Ouverture Port,Reparation',
-            'client_id' => 'required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'armateur_id' => 'nullable|exists:armateurs,id',
-            'bl_numero' => 'nullable|string|max:100',
-            'conteneur_numero' => 'nullable|string|max:50',
-            'conteneur_type' => 'nullable|string|max:50',
-            'conteneur_taille' => 'nullable|string|max:20',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'date_debut' => 'nullable|date',
-            'date_fin' => 'nullable|date',
-            'nombre_jours' => 'nullable|integer|min:0',
-            'tarif_journalier' => 'nullable|numeric|min:0',
-            'montant_ht' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $numero = $this->generateNumero($request->type);
 
-        // Calculer le montant si dates fournies
         $nombreJours = $request->nombre_jours;
         $montantHt = $request->montant_ht;
 
@@ -118,43 +96,21 @@ class NoteDebutController extends Controller
             'notes' => $request->notes,
         ]);
 
-        return response()->json($note->load(['client', 'transitaire', 'armateur']), 201);
+        Audit::log('create', 'note', "Note créée: {$note->numero}", $note->id);
+
+        return response()->json(new NoteDebutResource($note->load(['client', 'transitaire', 'armateur'])), 201);
     }
 
     public function show(NoteDebut $noteDebut): JsonResponse
     {
         $noteDebut->load(['client', 'transitaire', 'armateur']);
-        return response()->json($noteDebut);
+        return response()->json(new NoteDebutResource($noteDebut));
     }
 
-    public function update(Request $request, NoteDebut $noteDebut): JsonResponse
+    public function update(UpdateNoteDebutRequest $request, NoteDebut $noteDebut): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'client_id' => 'sometimes|required|exists:clients,id',
-            'transitaire_id' => 'nullable|exists:transitaires,id',
-            'armateur_id' => 'nullable|exists:armateurs,id',
-            'bl_numero' => 'nullable|string|max:100',
-            'conteneur_numero' => 'nullable|string|max:50',
-            'conteneur_type' => 'nullable|string|max:50',
-            'conteneur_taille' => 'nullable|string|max:20',
-            'navire' => 'nullable|string|max:255',
-            'date_arrivee' => 'nullable|date',
-            'date_debut' => 'nullable|date',
-            'date_fin' => 'nullable|date',
-            'nombre_jours' => 'nullable|integer|min:0',
-            'tarif_journalier' => 'nullable|numeric|min:0',
-            'montant_ht' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $data = $request->all();
-
-        // Recalculer si nécessaire
         if (isset($data['date_debut']) && isset($data['date_fin'])) {
             $debut = new \DateTime($data['date_debut']);
             $fin = new \DateTime($data['date_fin']);
@@ -173,12 +129,17 @@ class NoteDebutController extends Controller
 
         $noteDebut->update($data);
 
-        return response()->json($noteDebut->load(['client', 'transitaire', 'armateur']));
+        Audit::log('update', 'note', "Note modifiée: {$noteDebut->numero}", $noteDebut->id);
+
+        return response()->json(new NoteDebutResource($noteDebut->load(['client', 'transitaire', 'armateur'])));
     }
 
     public function destroy(NoteDebut $noteDebut): JsonResponse
     {
+        Audit::log('delete', 'note', "Note supprimée: {$noteDebut->numero}", $noteDebut->id);
+
         $noteDebut->delete();
+        
         return response()->json(['message' => 'Note supprimée avec succès']);
     }
 
