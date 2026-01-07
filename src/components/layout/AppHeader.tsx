@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { User, LogOut, KeyRound, Settings, Moon, Sun, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, LogOut, KeyRound, Settings } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -9,27 +9,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { utilisateurs, roles } from "@/data/mockData";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppHeaderProps {
   title: string;
 }
 
 export function AppHeader({ title }: AppHeaderProps) {
-  // Utilisateur connecté (simulé) - avec valeur par défaut si tableau vide
-  const currentUser = utilisateurs[0] || {
-    id: 'default',
-    nom: 'Utilisateur',
-    email: 'user@lojistiga.ga',
-    roleId: '1',
-    actif: true,
-    dateCreation: new Date().toISOString().split('T')[0]
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await logout();
+    toast({
+      title: "Déconnexion réussie",
+      description: "À bientôt !",
+    });
+    navigate("/login", { replace: true });
   };
-  const userRole = roles.find(r => r.id === currentUser.roleId) || { id: '1', nom: 'Administrateur', description: '', permissions: [] };
+
+  const getUserInitials = () => {
+    if (!user?.nom) return "U";
+    return user.nom.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
@@ -50,14 +58,13 @@ export function AppHeader({ title }: AppHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={currentUser.photo} alt={currentUser.nom} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {currentUser.nom.split(' ').map(n => n[0]).join('')}
+                  {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium">{currentUser.nom}</p>
-                <p className="text-xs text-muted-foreground">{userRole?.nom}</p>
+                <p className="text-sm font-medium">{user?.nom || "Utilisateur"}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role || "Invité"}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>
@@ -77,7 +84,10 @@ export function AppHeader({ title }: AppHeaderProps) {
               <span>Paramètres</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive cursor-pointer"
+              onClick={handleLogout}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Déconnexion</span>
             </DropdownMenuItem>

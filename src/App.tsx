@@ -2,8 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import LoginPage from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/Dashboard";
 import ClientsPage from "./pages/Clients";
@@ -57,62 +60,68 @@ const queryClient = new QueryClient();
 const App = () => (
   <ThemeProvider defaultTheme="light" storageKey="lojistiga-theme">
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/clients" element={<ClientsPage />} />
-            <Route path="/clients/nouveau" element={<NouveauClientPage />} />
-            <Route path="/clients/:id" element={<ClientDetailPage />} />
-            <Route path="/clients/:id/modifier" element={<NouveauClientPage />} />
-            <Route path="/devis" element={<DevisPage />} />
-            <Route path="/devis/nouveau" element={<NouveauDevisPage />} />
-            <Route path="/devis/:id" element={<DevisDetailPage />} />
-            <Route path="/devis/:id/pdf" element={<DevisPDFPage />} />
-            <Route path="/devis/:id/modifier" element={<ModifierDevisPage />} />
-            <Route path="/ordres" element={<OrdresTravailPage />} />
-            <Route path="/ordres/nouveau" element={<NouvelOrdrePage />} />
-            <Route path="/ordres/:id" element={<OrdreDetailPage />} />
-            <Route path="/ordres/:id/pdf" element={<OrdrePDFPage />} />
-            <Route path="/ordres/:id/connaissement" element={<ConnaissementPDFPage />} />
-            <Route path="/ordres/:id/modifier" element={<ModifierOrdrePage />} />
-            <Route path="/factures" element={<FacturesPage />} />
-            <Route path="/factures/nouvelle" element={<NouvelleFacturePage />} />
-            <Route path="/factures/:id" element={<FactureDetailPage />} />
-            <Route path="/factures/:id/pdf" element={<FacturePDFPage />} />
-            <Route path="/factures/:id/modifier" element={<ModifierFacturePage />} />
-            <Route path="/annulations" element={<AnnulationsPage />} />
-            <Route path="/notes-debut" element={<NotesDebutPage />} />
-            <Route path="/notes-debut/nouvelle" element={<NouvelleNoteDebutPage />} />
-            <Route path="/notes-debut/ouverture-port" element={<NouvelleNoteOuverturePortPage />} />
-            <Route path="/notes-debut/detention" element={<NouvelleNoteDetentionPage />} />
-            <Route path="/notes-debut/reparation" element={<NouvelleNoteReparationPage />} />
-            <Route path="/notes-debut/:id" element={<NoteDebutDetailPage />} />
-            <Route path="/notes-debut/:id/modifier" element={<ModifierNoteDebutPage />} />
-            <Route path="/caisse" element={<CaissePage />} />
-            <Route path="/banque" element={<BanquePage />} />
-            <Route path="/caisse-globale" element={<CaisseGlobalePage />} />
-            <Route path="/reporting" element={<ReportingPage />} />
-            <Route path="/previsions" element={<PrevisionsPage />} />
-            <Route path="/credits" element={<CreditsPage />} />
-            <Route path="/credits/:id" element={<CreditDetailPage />} />
-            <Route path="/utilisateurs" element={<UtilisateursPage />} />
-            <Route path="/roles" element={<RolesPage />} />
-            <Route path="/tracabilite" element={<TracabilitePage />} />
-            <Route path="/emails" element={<EmailsPage />} />
-            <Route path="/taxes" element={<TaxesPage />} />
-            <Route path="/banques" element={<BanquesPage />} />
-            <Route path="/numerotation" element={<NumerotationPage />} />
-            <Route path="/verification" element={<VerificationDocumentPage />} />
-            <Route path="/partenaires" element={<PartenairesPage />} />
-            <Route path="/partenaires/transitaires/:id" element={<TransitaireDetailPage />} />
-            <Route path="/partenaires/representants/:id" element={<RepresentantDetailPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Route publique */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Routes protégées */}
+              <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
+              <Route path="/clients/nouveau" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
+              <Route path="/clients/:id" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
+              <Route path="/clients/:id/modifier" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
+              <Route path="/devis" element={<ProtectedRoute><DevisPage /></ProtectedRoute>} />
+              <Route path="/devis/nouveau" element={<ProtectedRoute><NouveauDevisPage /></ProtectedRoute>} />
+              <Route path="/devis/:id" element={<ProtectedRoute><DevisDetailPage /></ProtectedRoute>} />
+              <Route path="/devis/:id/pdf" element={<ProtectedRoute><DevisPDFPage /></ProtectedRoute>} />
+              <Route path="/devis/:id/modifier" element={<ProtectedRoute><ModifierDevisPage /></ProtectedRoute>} />
+              <Route path="/ordres" element={<ProtectedRoute><OrdresTravailPage /></ProtectedRoute>} />
+              <Route path="/ordres/nouveau" element={<ProtectedRoute><NouvelOrdrePage /></ProtectedRoute>} />
+              <Route path="/ordres/:id" element={<ProtectedRoute><OrdreDetailPage /></ProtectedRoute>} />
+              <Route path="/ordres/:id/pdf" element={<ProtectedRoute><OrdrePDFPage /></ProtectedRoute>} />
+              <Route path="/ordres/:id/connaissement" element={<ProtectedRoute><ConnaissementPDFPage /></ProtectedRoute>} />
+              <Route path="/ordres/:id/modifier" element={<ProtectedRoute><ModifierOrdrePage /></ProtectedRoute>} />
+              <Route path="/factures" element={<ProtectedRoute><FacturesPage /></ProtectedRoute>} />
+              <Route path="/factures/nouvelle" element={<ProtectedRoute><NouvelleFacturePage /></ProtectedRoute>} />
+              <Route path="/factures/:id" element={<ProtectedRoute><FactureDetailPage /></ProtectedRoute>} />
+              <Route path="/factures/:id/pdf" element={<ProtectedRoute><FacturePDFPage /></ProtectedRoute>} />
+              <Route path="/factures/:id/modifier" element={<ProtectedRoute><ModifierFacturePage /></ProtectedRoute>} />
+              <Route path="/annulations" element={<ProtectedRoute><AnnulationsPage /></ProtectedRoute>} />
+              <Route path="/notes-debut" element={<ProtectedRoute><NotesDebutPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/nouvelle" element={<ProtectedRoute><NouvelleNoteDebutPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/ouverture-port" element={<ProtectedRoute><NouvelleNoteOuverturePortPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/detention" element={<ProtectedRoute><NouvelleNoteDetentionPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/reparation" element={<ProtectedRoute><NouvelleNoteReparationPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/:id" element={<ProtectedRoute><NoteDebutDetailPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/:id/modifier" element={<ProtectedRoute><ModifierNoteDebutPage /></ProtectedRoute>} />
+              <Route path="/caisse" element={<ProtectedRoute><CaissePage /></ProtectedRoute>} />
+              <Route path="/banque" element={<ProtectedRoute><BanquePage /></ProtectedRoute>} />
+              <Route path="/caisse-globale" element={<ProtectedRoute><CaisseGlobalePage /></ProtectedRoute>} />
+              <Route path="/reporting" element={<ProtectedRoute><ReportingPage /></ProtectedRoute>} />
+              <Route path="/previsions" element={<ProtectedRoute><PrevisionsPage /></ProtectedRoute>} />
+              <Route path="/credits" element={<ProtectedRoute><CreditsPage /></ProtectedRoute>} />
+              <Route path="/credits/:id" element={<ProtectedRoute><CreditDetailPage /></ProtectedRoute>} />
+              <Route path="/utilisateurs" element={<ProtectedRoute><UtilisateursPage /></ProtectedRoute>} />
+              <Route path="/roles" element={<ProtectedRoute><RolesPage /></ProtectedRoute>} />
+              <Route path="/tracabilite" element={<ProtectedRoute><TracabilitePage /></ProtectedRoute>} />
+              <Route path="/emails" element={<ProtectedRoute><EmailsPage /></ProtectedRoute>} />
+              <Route path="/taxes" element={<ProtectedRoute><TaxesPage /></ProtectedRoute>} />
+              <Route path="/banques" element={<ProtectedRoute><BanquesPage /></ProtectedRoute>} />
+              <Route path="/numerotation" element={<ProtectedRoute><NumerotationPage /></ProtectedRoute>} />
+              <Route path="/verification" element={<ProtectedRoute><VerificationDocumentPage /></ProtectedRoute>} />
+              <Route path="/partenaires" element={<ProtectedRoute><PartenairesPage /></ProtectedRoute>} />
+              <Route path="/partenaires/transitaires/:id" element={<ProtectedRoute><TransitaireDetailPage /></ProtectedRoute>} />
+              <Route path="/partenaires/representants/:id" element={<ProtectedRoute><RepresentantDetailPage /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </ThemeProvider>
 );
