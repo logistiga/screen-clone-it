@@ -53,18 +53,18 @@ class AuditLog
         };
 
         $routeName = $request->route()?->getName() ?? $request->path();
-        $tableName = $this->extractTableName($routeName);
+        $module = $this->extractTableName($routeName);
 
         Audit::create([
             'user_id' => $request->user()->id,
             'action' => $action,
-            'table_name' => $tableName,
-            'record_id' => $request->route('id') ?? $this->extractIdFromResponse($response),
-            'old_values' => null,
-            'new_values' => $request->except(['password', 'password_confirmation', 'current_password']),
+            'module' => $module,
+            'document_id' => $request->route('id') ?? $this->extractIdFromResponse($response),
+            'details' => "{$action} sur {$module}",
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'description' => "{$action} sur {$tableName}",
+            'old_values' => null,
+            'new_values' => $request->except(['password', 'password_confirmation', 'current_password']),
         ]);
     }
 
