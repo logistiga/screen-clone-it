@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { clients } from "@/data/mockData";
 import { toast } from "sonner";
+import { MainLayout } from "@/components/layout/MainLayout";
 
 interface Contact {
   id: string;
@@ -100,28 +101,25 @@ export default function NouveauClientPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/clients")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Building2 className="h-6 w-6 text-primary" />
-                {isEditMode ? `Modifier ${existingClient?.nom}` : "Nouveau client"}
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                {isEditMode ? "Modifier les informations du client" : "Créer un nouveau client avec ses contacts"}
-              </p>
-            </div>
+    <MainLayout title={isEditMode ? "Modifier client" : "Nouveau client"}>
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/clients")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Building2 className="h-6 w-6 text-primary" />
+              {isEditMode ? `Modifier ${existingClient?.nom}` : "Nouveau client"}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {isEditMode ? "Modifier les informations du client" : "Créer un nouveau client avec ses contacts"}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="container py-6">
+      <div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informations générales */}
           <Card>
@@ -384,6 +382,6 @@ export default function NouveauClientPage() {
           </div>
         </form>
       </div>
-    </div>
+    </MainLayout>
   );
 }
