@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
@@ -43,53 +43,37 @@ export default function OrdresTravailPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  
-  // États pour les modales
   const [confirmAction, setConfirmAction] = useState<{
     type: 'annuler' | 'supprimer' | 'facturer' | null;
     id: string;
     numero: string;
   }>({ type: null, id: '', numero: '' });
-
   const [paiementModal, setPaiementModal] = useState<{
     open: boolean;
     numero: string;
     montantRestant: number;
   }>({ open: false, numero: '', montantRestant: 0 });
-
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
-  const confirmAnnuler = () => {
+  const resetConfirm = () => setConfirmAction({ type: null, id: '', numero: '' });
+
+  const handleAction = () => {
+    const index = ordresTravail.findIndex(o => o.id === confirmAction.id);
+    if (index === -1) return resetConfirm();
+
     if (confirmAction.type === 'annuler') {
-      toast({
-        title: "Ordre annulé",
-        description: `L'ordre ${confirmAction.numero} a été annulé.`,
-      });
-      setConfirmAction({ type: null, id: '', numero: '' });
-    }
-  };
-
-  const confirmSupprimer = () => {
-    if (confirmAction.type === 'supprimer') {
-      toast({
-        title: "Ordre supprimé",
-        description: `L'ordre ${confirmAction.numero} a été supprimé.`,
-        variant: "destructive",
-      });
-      setConfirmAction({ type: null, id: '', numero: '' });
-    }
-  };
-
-  const confirmFacturer = () => {
-    if (confirmAction.type === 'facturer') {
-      toast({
-        title: "Facturation réussie",
-        description: `L'ordre ${confirmAction.numero} a été converti en facture.`,
-      });
-      setConfirmAction({ type: null, id: '', numero: '' });
+      ordresTravail[index].statut = 'annule';
+      toast({ title: "Ordre annulé", description: `L'ordre ${confirmAction.numero} a été annulé.` });
+    } else if (confirmAction.type === 'supprimer') {
+      ordresTravail.splice(index, 1);
+      toast({ title: "Ordre supprimé", description: `L'ordre ${confirmAction.numero} a été supprimé.`, variant: "destructive" });
+    } else if (confirmAction.type === 'facturer') {
+      ordresTravail[index].statut = 'facture';
+      toast({ title: "Facturation réussie", description: `L'ordre ${confirmAction.numero} a été converti en facture.` });
       navigate("/factures/nouvelle");
     }
+    resetConfirm();
   };
 
   const filteredOrdres = ordresTravail.filter(o => {
@@ -103,6 +87,7 @@ export default function OrdresTravailPage() {
 
   const totalOrdres = ordresTravail.reduce((sum, o) => sum + o.montantTTC, 0);
   const totalPaye = ordresTravail.reduce((sum, o) => sum + o.montantPaye, 0);
+  const ordresEnCours = ordresTravail.filter(o => o.statut === 'en_cours').length;
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -126,16 +111,29 @@ export default function OrdresTravailPage() {
     return <Badge className={colors[type] || "bg-gray-100"}>{type}</Badge>;
   };
 
+  if (ordresTravail.length === 0) {
+    return (
+      <MainLayout title="Ordres de Travail">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <ClipboardList className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Aucun ordre de travail</h2>
+          <p className="text-muted-foreground mb-6">Commencez par créer votre premier ordre.</p>
+          <Button onClick={() => navigate("/ordres/nouveau")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nouvel ordre
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="Ordres de Travail">
       <div className="space-y-6">
-        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Ordres
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Ordres</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{ordresTravail.length}</div>
@@ -143,9 +141,7 @@ export default function OrdresTravailPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Montant Total
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatMontant(totalOrdres)}</div>
@@ -153,9 +149,7 @@ export default function OrdresTravailPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Payé
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Payé</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{formatMontant(totalPaye)}</div>
@@ -163,29 +157,19 @@ export default function OrdresTravailPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                En cours
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">En cours</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-500">
-                {ordresTravail.filter(o => o.statut === 'en_cours').length}
-              </div>
+              <div className="text-2xl font-bold text-orange-500">{ordresEnCours}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+              <Input placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
             </div>
             <Select value={statutFilter} onValueChange={setStatutFilter}>
               <SelectTrigger className="w-full sm:w-40">
@@ -230,7 +214,6 @@ export default function OrdresTravailPage() {
           </div>
         </div>
 
-        {/* Table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -251,11 +234,8 @@ export default function OrdresTravailPage() {
                   const client = clients.find(c => c.id === ordre.clientId);
                   const resteAPayer = ordre.montantTTC - ordre.montantPaye;
                   return (
-                    <TableRow key={ordre.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell 
-                        className="font-medium text-primary hover:underline cursor-pointer"
-                        onClick={() => navigate(`/ordres/${ordre.id}`)}
-                      >
+                    <TableRow key={ordre.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/ordres/${ordre.id}`)}>
                         {ordre.numero}
                       </TableCell>
                       <TableCell>{client?.nom}</TableCell>
@@ -263,88 +243,43 @@ export default function OrdresTravailPage() {
                       <TableCell>{getTypeBadge(ordre.typeOperation)}</TableCell>
                       <TableCell className="text-right">{formatMontant(ordre.montantTTC)}</TableCell>
                       <TableCell className="text-right">
-                        <span className={ordre.montantPaye > 0 ? "text-green-600" : ""}>
-                          {formatMontant(ordre.montantPaye)}
-                        </span>
-                        {resteAPayer > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            Reste: {formatMontant(resteAPayer)}
-                          </div>
-                        )}
+                        <span className={ordre.montantPaye > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montantPaye)}</span>
+                        {resteAPayer > 0 && <div className="text-xs text-muted-foreground">Reste: {formatMontant(resteAPayer)}</div>}
                       </TableCell>
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Voir"
-                            onClick={() => navigate(`/ordres/${ordre.id}`)}
-                          >
+                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Modifier"
-                              onClick={() => navigate(`/ordres/${ordre.id}/modifier`)}
-                            >
+                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/ordres/${ordre.id}/modifier`)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Paiement" 
-                              className="text-green-600"
-                              onClick={() => setPaiementModal({
-                                open: true,
-                                numero: ordre.numero,
-                                montantRestant: resteAPayer
-                              })}
-                            >
+                            <Button variant="ghost" size="icon" title="Paiement" className="text-green-600"
+                              onClick={() => setPaiementModal({ open: true, numero: ordre.numero, montantRestant: resteAPayer })}>
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Facturer" 
-                              className="text-primary"
-                              onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
-                            >
+                            <Button variant="ghost" size="icon" title="Facturer" className="text-primary"
+                              onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}>
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="PDF"
-                            onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')}
-                          >
+                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')}>
                             <FileText className="h-4 w-4" />
                           </Button>
                           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Annuler"
-                              className="text-orange-600"
-                              onClick={() => setConfirmAction({ type: 'annuler', id: ordre.id, numero: ordre.numero })}
-                            >
+                            <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600"
+                              onClick={() => setConfirmAction({ type: 'annuler', id: ordre.id, numero: ordre.numero })}>
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Supprimer"
-                            className="text-destructive"
-                            onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}
-                          >
+                          <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive"
+                            onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -358,73 +293,51 @@ export default function OrdresTravailPage() {
         </Card>
       </div>
 
-      {/* Modal de confirmation pour annulation */}
-      <AlertDialog 
-        open={confirmAction.type === 'annuler'} 
-        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
-      >
+      <AlertDialog open={confirmAction.type === 'annuler'} onOpenChange={(open) => !open && resetConfirm()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir annuler l'ordre <strong>{confirmAction.numero}</strong> ? 
-              Cette action changera le statut de l'ordre.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmAnnuler} className="bg-orange-600 hover:bg-orange-700">
-              Oui, annuler
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal de confirmation pour suppression */}
-      <AlertDialog 
-        open={confirmAction.type === 'supprimer'} 
-        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer l'ordre <strong>{confirmAction.numero}</strong> ? 
-              Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSupprimer} className="bg-destructive hover:bg-destructive/90">
-              Oui, supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal de confirmation pour facturation */}
-      <AlertDialog 
-        open={confirmAction.type === 'facturer'} 
-        onOpenChange={(open) => !open && setConfirmAction({ type: null, id: '', numero: '' })}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Convertir en facture</AlertDialogTitle>
-            <AlertDialogDescription>
-              Voulez-vous convertir l'ordre <strong>{confirmAction.numero}</strong> en facture ? 
-              Les données de l'ordre seront utilisées pour créer la facture.
+              Êtes-vous sûr de vouloir annuler l'ordre <strong>{confirmAction.numero}</strong> ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmFacturer}>
-              Créer la facture
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700">Confirmer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal Paiement */}
+      <AlertDialog open={confirmAction.type === 'supprimer'} onOpenChange={(open) => !open && resetConfirm()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer l'ordre <strong>{confirmAction.numero}</strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmAction.type === 'facturer'} onOpenChange={(open) => !open && resetConfirm()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convertir en facture</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous convertir l'ordre <strong>{confirmAction.numero}</strong> en facture ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction}>Créer la facture</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <PaiementModal
         open={paiementModal.open}
         onOpenChange={(open) => setPaiementModal({ ...paiementModal, open })}
@@ -433,17 +346,9 @@ export default function OrdresTravailPage() {
         montantRestant={paiementModal.montantRestant}
       />
 
-      {/* Modal Paiement Global */}
-      <PaiementGlobalModal
-        open={paiementGlobalOpen}
-        onOpenChange={setPaiementGlobalOpen}
-      />
+      <PaiementGlobalModal open={paiementGlobalOpen} onOpenChange={setPaiementGlobalOpen} />
 
-      {/* Modal Export */}
-      <ExportModal
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-      />
+      <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
     </MainLayout>
   );
 }
