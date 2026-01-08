@@ -12,6 +12,7 @@ import { CategorieDocument, getCategoriesLabels, typesOperationConteneur } from 
 import {
   CategorieSelector,
   ClientInfoCard,
+  RecapitulatifCard,
   DevisConteneursForm,
   DevisConventionnelForm,
   DevisIndependantForm,
@@ -239,6 +240,17 @@ export default function NouveauDevisPage() {
               />
             </CardContent>
           </Card>
+        )}
+
+        {categorie && (
+          <RecapitulatifCard
+            montantHT={montantHT}
+            tva={tva}
+            css={css}
+            montantTTC={montantTTC}
+            tauxTva={Math.round(TAUX_TVA * 100)}
+            tauxCss={Math.round(TAUX_CSS * 100)}
+          />
         )}
 
         {categorie && (

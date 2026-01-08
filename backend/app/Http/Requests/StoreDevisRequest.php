@@ -16,6 +16,8 @@ class StoreDevisRequest extends FormRequest
         return [
             'client_id' => 'required|exists:clients,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
+            'representant_id' => 'nullable|exists:representants,id',
+            'armateur_id' => 'nullable|exists:armateurs,id',
             'type_document' => 'required|in:Conteneur,Lot,Independant',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
@@ -37,9 +39,10 @@ class StoreDevisRequest extends FormRequest
             // Conteneurs
             'conteneurs' => 'nullable|array',
             'conteneurs.*.numero' => 'required_with:conteneurs|string|max:50',
-            'conteneurs.*.type' => 'required_with:conteneurs|string|max:50',
+            'conteneurs.*.type' => 'nullable|string|max:50',
             'conteneurs.*.taille' => 'required_with:conteneurs|string|max:20',
             'conteneurs.*.armateur_id' => 'nullable|exists:armateurs,id',
+            'conteneurs.*.description' => 'nullable|string|max:500',
             'conteneurs.*.operations' => 'nullable|array',
             'conteneurs.*.operations.*.type_operation' => 'required|string|max:100',
             'conteneurs.*.operations.*.description' => 'nullable|string|max:500',
@@ -49,6 +52,7 @@ class StoreDevisRequest extends FormRequest
             // Lots
             'lots' => 'nullable|array',
             'lots.*.designation' => 'required_with:lots|string|max:255',
+            'lots.*.numero_lot' => 'nullable|string|max:50',
             'lots.*.quantite' => 'nullable|numeric|min:0',
             'lots.*.poids' => 'nullable|numeric|min:0',
             'lots.*.volume' => 'nullable|numeric|min:0',
