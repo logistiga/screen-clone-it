@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck, Loader2, Check } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -58,7 +58,7 @@ export default function DevisPage() {
   
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'annuler' | 'supprimer' | 'convertir' | null;
+    type: 'annuler' | 'supprimer' | 'convertir' | 'valider' | null;
     id: string;
     numero: string;
   } | null>(null);
@@ -75,6 +75,8 @@ export default function DevisPage() {
     try {
       if (confirmAction.type === 'annuler') {
         await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'refuse' } });
+      } else if (confirmAction.type === 'valider') {
+        await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'accepte' } });
       } else if (confirmAction.type === 'supprimer') {
         await deleteDevisMutation.mutateAsync(confirmAction.id);
       } else if (confirmAction.type === 'convertir') {
@@ -94,7 +96,7 @@ export default function DevisPage() {
   const totalItems = devisData?.meta?.total || 0;
 
   // Statistiques
-  const totalDevis = devisList.reduce((sum, d) => sum + (d.total_ttc || 0), 0);
+  const totalDevis = devisList.reduce((sum, d) => sum + (d.montant_ttc || 0), 0);
   const devisAcceptes = devisList.filter(d => d.statut === 'accepte').length;
   const devisEnAttente = devisList.filter(d => d.statut === 'envoye').length;
 
@@ -227,12 +229,9 @@ export default function DevisPage() {
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Validité</TableHead>
-                  <TableHead className="text-right">Montant HT</TableHead>
-                  <TableHead className="text-right">TVA</TableHead>
-                  <TableHead className="text-right">CSS</TableHead>
-                  <TableHead className="text-right">Total TTC</TableHead>
+                  <TableHead className="text-right">Montant TTC</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="w-40">Actions</TableHead>
+                  <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -242,19 +241,16 @@ export default function DevisPage() {
                       {d.numero}
                     </TableCell>
                     <TableCell>{d.client?.nom}</TableCell>
-                    <TableCell>{formatDate(d.date_devis)}</TableCell>
+                    <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
                     <TableCell>{formatDate(d.date_validite)}</TableCell>
-                    <TableCell className="text-right">{formatMontant(d.sous_total)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatMontant(d.tva)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatMontant(d.css)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatMontant(d.total_ttc)}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
                     <TableCell>{getStatutBadge(d.statut)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/devis/${d.id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {d.statut !== 'refuse' && d.statut !== 'expire' && (
+                        {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
                           <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -266,13 +262,19 @@ export default function DevisPage() {
                           onClick={() => setEmailModal({ numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
                           <Mail className="h-4 w-4" />
                         </Button>
+                        {(d.statut === 'brouillon' || d.statut === 'envoye') && (
+                          <Button variant="ghost" size="icon" title="Valider le devis" className="text-green-600"
+                            onClick={() => setConfirmAction({ type: 'valider', id: d.id, numero: d.numero })}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        )}
                         {d.statut === 'accepte' && (
                           <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary"
                             onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         )}
-                        {d.statut !== 'refuse' && d.statut !== 'expire' && (
+                        {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
                           <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600"
                             onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}>
                             <Ban className="h-4 w-4" />
@@ -331,6 +333,24 @@ export default function DevisPage() {
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90" disabled={deleteDevisMutation.isPending}>
               {deleteDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Validation */}
+      <AlertDialog open={confirmAction?.type === 'valider'} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Valider le devis</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous valider le devis <strong>{confirmAction?.numero}</strong> ? Le statut passera à "Accepté".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction} className="bg-green-600 hover:bg-green-700" disabled={updateDevisMutation.isPending}>
+              {updateDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

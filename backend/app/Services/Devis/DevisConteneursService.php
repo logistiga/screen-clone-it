@@ -77,11 +77,15 @@ class DevisConteneursService
      */
     public function calculerTotaux(Devis $devis): void
     {
+        // Recharger les conteneurs et opérations
+        $devis->load('conteneurs.operations');
+        
         $montantHT = $this->calculerTotalHT($devis);
         
-        $config = Configuration::first();
-        $tauxTVA = $config->taux_tva ?? 18;
-        $tauxCSS = $config->taux_css ?? 1;
+        // Récupérer les taux depuis la configuration taxes
+        $taxesConfig = Configuration::getOrCreate('taxes');
+        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
+        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
         
         $montantTVA = $montantHT * ($tauxTVA / 100);
         $montantCSS = $montantHT * ($tauxCSS / 100);
