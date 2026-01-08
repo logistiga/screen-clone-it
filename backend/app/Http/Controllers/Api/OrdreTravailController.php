@@ -9,17 +9,17 @@ use App\Http\Resources\OrdreTravailResource;
 use App\Http\Resources\FactureResource;
 use App\Models\OrdreTravail;
 use App\Models\Audit;
-use App\Services\OrdreTravailService;
+use App\Services\OrdreTravail\OrdreServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class OrdreTravailController extends Controller
 {
-    protected OrdreTravailService $ordreService;
+    protected OrdreServiceFactory $ordreFactory;
 
-    public function __construct(OrdreTravailService $ordreService)
+    public function __construct(OrdreServiceFactory $ordreFactory)
     {
-        $this->ordreService = $ordreService;
+        $this->ordreFactory = $ordreFactory;
     }
 
     public function index(Request $request): JsonResponse
@@ -30,7 +30,7 @@ class OrdreTravailController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
-                  ->orWhere('bl_numero', 'like', "%{$search}%")
+                  ->orWhere('numero_bl', 'like', "%{$search}%")
                   ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
             });
         }
@@ -41,6 +41,10 @@ class OrdreTravailController extends Controller
 
         if ($request->has('client_id')) {
             $query->where('client_id', $request->get('client_id'));
+        }
+
+        if ($request->has('categorie')) {
+            $query->where('categorie', $request->get('categorie'));
         }
 
         if ($request->has('date_debut') && $request->has('date_fin')) {
@@ -55,7 +59,7 @@ class OrdreTravailController extends Controller
     public function store(StoreOrdreTravailRequest $request): JsonResponse
     {
         try {
-            $ordre = $this->ordreService->creer($request->validated());
+            $ordre = $this->ordreFactory->creer($request->validated());
 
             Audit::log('create', 'ordre', "Ordre créé: {$ordre->numero}", $ordre->id);
 
@@ -74,12 +78,12 @@ class OrdreTravailController extends Controller
 
     public function update(UpdateOrdreTravailRequest $request, OrdreTravail $ordreTravail): JsonResponse
     {
-        if ($ordreTravail->statut === 'Facturé') {
+        if ($ordreTravail->statut === 'facture') {
             return response()->json(['message' => 'Impossible de modifier un ordre facturé'], 422);
         }
 
         try {
-            $ordreTravail = $this->ordreService->modifier($ordreTravail, $request->validated());
+            $ordreTravail = $this->ordreFactory->modifier($ordreTravail, $request->validated());
 
             Audit::log('update', 'ordre', "Ordre modifié: {$ordreTravail->numero}", $ordreTravail->id);
 
@@ -92,7 +96,7 @@ class OrdreTravailController extends Controller
 
     public function destroy(OrdreTravail $ordreTravail): JsonResponse
     {
-        if ($ordreTravail->statut === 'Facturé') {
+        if ($ordreTravail->statut === 'facture') {
             return response()->json(['message' => 'Impossible de supprimer un ordre facturé'], 422);
         }
 
@@ -109,12 +113,12 @@ class OrdreTravailController extends Controller
 
     public function convertToFacture(OrdreTravail $ordreTravail): JsonResponse
     {
-        if ($ordreTravail->statut === 'Facturé') {
+        if ($ordreTravail->statut === 'facture') {
             return response()->json(['message' => 'Cet ordre a déjà été facturé'], 422);
         }
 
         try {
-            $facture = $this->ordreService->convertirEnFacture($ordreTravail);
+            $facture = $this->ordreFactory->convertirEnFacture($ordreTravail);
 
             Audit::log('convert', 'ordre', "Ordre converti en facture: {$ordreTravail->numero} -> {$facture->numero}", $ordreTravail->id);
 

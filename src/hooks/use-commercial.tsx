@@ -197,7 +197,7 @@ export function useConvertDevisToOrdre() {
 }
 
 // Ordres hooks
-export function useOrdres(params?: { search?: string; statut?: string; client_id?: string; page?: number; per_page?: number }) {
+export function useOrdres(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
   return useQuery({
     queryKey: ['ordres', params],
     queryFn: () => ordresApi.getAll(params),
