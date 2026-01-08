@@ -114,15 +114,37 @@ class DevisController extends Controller
             return response()->json(['message' => 'Impossible de supprimer un devis converti'], 422);
         }
 
-        Audit::log('delete', 'devis', "Devis supprimé: {$devis->numero}", $devis->id);
+        try {
+            $numero = $devis->numero;
+            $devisId = $devis->id;
 
-        $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
-        $devis->conteneurs()->delete();
-        $devis->lignes()->delete();
-        $devis->lots()->delete();
-        $devis->delete();
+            // Supprimer les relations en premier
+            $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
+            $devis->conteneurs()->delete();
+            $devis->lignes()->delete();
+            $devis->lots()->delete();
+            
+            // Supprimer le devis
+            $devis->delete();
 
-        return response()->json(['message' => 'Devis supprimé avec succès']);
+            // Log après suppression réussie
+            Audit::log('delete', 'devis', "Devis supprimé: {$numero}", $devisId);
+
+            return response()->json(['message' => 'Devis supprimé avec succès']);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur suppression devis', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la suppression du devis',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function convertToOrdre(Devis $devis): JsonResponse
