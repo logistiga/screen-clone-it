@@ -174,20 +174,27 @@ class Devis extends Model
 
             $prefixe = $config->data['prefixe_devis'] ?? 'DEV';
 
-            // Chercher le dernier numéro de devis existant cette année
-            $dernierDevis = self::whereYear('created_at', $annee)
-                ->orderBy('id', 'desc')
-                ->first();
+            // Trouver le numéro maximum existant dans la base (incluant soft-deleted)
+            $maxNumero = self::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
 
-            $prochainNumero = 1;
-            if ($dernierDevis && preg_match('/-(\d{4})$/', $dernierDevis->numero, $matches)) {
-                $prochainNumero = intval($matches[1]) + 1;
-            }
+            $prochainNumero = ($maxNumero ?? 0) + 1;
 
             // S'assurer que le numéro est au moins égal au compteur stocké
             $compteurStocke = $config->data['prochain_numero_devis'] ?? 1;
             if ($prochainNumero < $compteurStocke) {
                 $prochainNumero = $compteurStocke;
+            }
+
+            // Générer le numéro candidat
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+
+            // Vérifier que ce numéro n'existe vraiment pas (double sécurité)
+            while (self::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
             }
 
             // Mettre à jour le compteur
@@ -196,7 +203,7 @@ class Devis extends Model
             $config->data = $data;
             $config->save();
 
-            return sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            return $numero;
         });
     }
 }
