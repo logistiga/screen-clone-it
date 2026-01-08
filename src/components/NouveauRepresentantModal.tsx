@@ -24,9 +24,11 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
   const createRepresentant = useCreateRepresentant();
   const [formData, setFormData] = useState({
     nom: "",
+    prenom: "",
     email: "",
     telephone: "",
     adresse: "",
+    taux_commission: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -41,13 +43,27 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
       return;
     }
 
-    createRepresentant.mutate(formData, {
+    if (!formData.prenom.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Le prénom est requis",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const dataToSend = {
+      ...formData,
+      taux_commission: formData.taux_commission ? parseFloat(formData.taux_commission) : null,
+    };
+
+    createRepresentant.mutate(dataToSend, {
       onSuccess: () => {
         toast({
           title: "Représentant créé",
-          description: `${formData.nom} a été ajouté avec succès.`,
+          description: `${formData.prenom} ${formData.nom} a été ajouté avec succès.`,
         });
-        setFormData({ nom: "", email: "", telephone: "", adresse: "" });
+        setFormData({ nom: "", prenom: "", email: "", telephone: "", adresse: "", taux_commission: "" });
         onOpenChange(false);
       },
       onError: (error: unknown) => {
@@ -91,7 +107,17 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 id="nom"
                 value={formData.nom}
                 onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                placeholder="Nom du représentant"
+                placeholder="Nom de famille"
+                disabled={createRepresentant.isPending}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="prenom">Prénom *</Label>
+              <Input
+                id="prenom"
+                value={formData.prenom}
+                onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
+                placeholder="Prénom"
                 disabled={createRepresentant.isPending}
               />
             </div>
@@ -123,6 +149,20 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 value={formData.adresse}
                 onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
                 placeholder="Adresse complète"
+                disabled={createRepresentant.isPending}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="taux_commission">Taux de commission (%)</Label>
+              <Input
+                id="taux_commission"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={formData.taux_commission}
+                onChange={(e) => setFormData({ ...formData, taux_commission: e.target.value })}
+                placeholder="Ex: 5"
                 disabled={createRepresentant.isPending}
               />
             </div>
