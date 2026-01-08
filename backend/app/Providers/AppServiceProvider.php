@@ -24,7 +24,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Services de base sans dépendances
+        // Services Devis spécialisés par type
+        $this->app->singleton(\App\Services\Devis\DevisConteneursService::class);
+        $this->app->singleton(\App\Services\Devis\DevisConventionnelService::class);
+        $this->app->singleton(\App\Services\Devis\DevisIndependantService::class);
+        $this->app->singleton(\App\Services\Devis\DevisServiceFactory::class);
+        
+        // Services principaux
         $this->app->singleton(DevisService::class);
         $this->app->singleton(FactureService::class);
         $this->app->singleton(OrdreTravailService::class);
