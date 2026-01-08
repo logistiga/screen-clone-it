@@ -151,7 +151,24 @@ export function useDeleteDevis() {
       toast.success('Devis supprimé avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la suppression du devis');
+      const responseData = error?.response?.data;
+
+      console.error('Erreur suppression devis:', {
+        status: error?.response?.status,
+        data: responseData,
+        message: error?.message,
+      });
+      try {
+        console.error('Erreur suppression devis (json):', JSON.stringify(responseData, null, 2));
+      } catch {
+        // ignore
+      }
+
+      toast.error(
+        (typeof responseData === 'string' ? responseData : responseData?.error) ||
+          responseData?.message ||
+          'Erreur lors de la suppression du devis'
+      );
     },
   });
 }

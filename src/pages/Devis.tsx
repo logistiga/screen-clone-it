@@ -71,16 +71,20 @@ export default function DevisPage() {
   // Handlers consolidés
   const handleAction = async () => {
     if (!confirmAction) return;
-    
-    if (confirmAction.type === 'annuler') {
-      await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'refuse' } });
-    } else if (confirmAction.type === 'supprimer') {
-      await deleteDevisMutation.mutateAsync(confirmAction.id);
-    } else if (confirmAction.type === 'convertir') {
-      await convertMutation.mutateAsync(confirmAction.id);
-      navigate("/ordres");
+
+    try {
+      if (confirmAction.type === 'annuler') {
+        await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'refuse' } });
+      } else if (confirmAction.type === 'supprimer') {
+        await deleteDevisMutation.mutateAsync(confirmAction.id);
+      } else if (confirmAction.type === 'convertir') {
+        await convertMutation.mutateAsync(confirmAction.id);
+        navigate("/ordres");
+      }
+    } finally {
+      // Fermer la modale même si la requête échoue (le toast onError gère le feedback)
+      setConfirmAction(null);
     }
-    setConfirmAction(null);
   };
 
   const devisList = devisData?.data || [];

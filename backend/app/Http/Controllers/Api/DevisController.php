@@ -119,7 +119,7 @@ class DevisController extends Controller
             $devisId = $devis->id;
 
             // Supprimer les relations en premier
-            $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
+            $devis->conteneurs()->get()->each(fn($c) => $c->operations()->delete());
             $devis->conteneurs()->delete();
             $devis->lignes()->delete();
             $devis->lots()->delete();
