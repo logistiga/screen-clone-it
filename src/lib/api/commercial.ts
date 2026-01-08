@@ -116,6 +116,8 @@ export interface Armateur {
   telephone?: string;
   adresse?: string;
   actif: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Transitaire {
@@ -124,17 +126,26 @@ export interface Transitaire {
   email?: string;
   telephone?: string;
   adresse?: string;
+  contact_principal?: string;
+  nif?: string;
+  rccm?: string;
   actif: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Representant {
   id: string;
   nom: string;
+  prenom?: string;
   email?: string;
   telephone?: string;
   adresse?: string;
   zone?: string;
+  taux_commission?: number;
   actif: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PaginatedResponse<T> {

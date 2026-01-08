@@ -349,6 +349,14 @@ export function useTransitaires() {
   });
 }
 
+export function useTransitaireById(id: string | undefined) {
+  return useQuery({
+    queryKey: ['transitaires', id],
+    queryFn: () => transitairesApi.getById(id!),
+    enabled: !!id,
+  });
+}
+
 export function useCreateTransitaire() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -382,6 +390,14 @@ export function useRepresentants() {
   return useQuery({
     queryKey: ['representants'],
     queryFn: representantsApi.getAll,
+  });
+}
+
+export function useRepresentantById(id: string | undefined) {
+  return useQuery({
+    queryKey: ['representants', id],
+    queryFn: () => representantsApi.getById(id!),
+    enabled: !!id,
   });
 }
 

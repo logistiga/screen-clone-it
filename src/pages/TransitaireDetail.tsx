@@ -14,17 +14,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, ClipboardList, Receipt, FileText, History, DollarSign } from "lucide-react";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, ClipboardList, Receipt, FileText, History, DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMontant, formatDate, ordresTravail, factures, devis, getStatutLabel } from "@/data/mockData";
 import { 
-  transitairesData, 
   getPrimesTransitaire, 
   getPaiementsTransitaire,
   getTotalPrimesDues,
   getTotalPrimesPayees
 } from "@/data/partenairesData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
+import { useTransitaireById } from "@/hooks/use-commercial";
 
 export default function TransitaireDetailPage() {
   const { id } = useParams();
@@ -33,11 +33,21 @@ export default function TransitaireDetailPage() {
   const [showPaiementModal, setShowPaiementModal] = useState(false);
   const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
   
-  const transitaire = transitairesData.find(t => t.id === id);
+  const { data: transitaire, isLoading, error } = useTransitaireById(id);
   const primes = id ? getPrimesTransitaire(id) : [];
   const paiements = id ? getPaiementsTransitaire(id) : [];
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
   
-  if (!transitaire) {
+  if (error || !transitaire) {
     return (
       <MainLayout title="Transitaire non trouvé">
         <div className="flex flex-col items-center justify-center py-12">
@@ -94,7 +104,7 @@ export default function TransitaireDetailPage() {
   };
 
   return (
-    <MainLayout title={transitaire.nom}>
+    <MainLayout title={transitaire.nom || 'Transitaire'}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -131,23 +141,23 @@ export default function TransitaireDetailPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{transitaire.email}</span>
+                    <span>{transitaire.email || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{transitaire.telephone}</span>
+                    <span>{transitaire.telephone || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{transitaire.adresse}</span>
+                    <span>{transitaire.adresse || '-'}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="text-sm text-muted-foreground">
-                    Partenaire depuis le {formatDate(transitaire.dateCreation)}
+                    Partenaire depuis le {transitaire.created_at ? formatDate(transitaire.created_at) : '-'}
                   </div>
-                  <Badge variant={transitaire.actif ? "default" : "secondary"}>
-                    {transitaire.actif ? "Actif" : "Inactif"}
+                  <Badge variant={transitaire.actif !== false ? "default" : "secondary"}>
+                    {transitaire.actif !== false ? "Actif" : "Inactif"}
                   </Badge>
                 </div>
               </div>
