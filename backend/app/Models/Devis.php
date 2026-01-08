@@ -160,16 +160,43 @@ class Devis extends Model
 
     public static function genererNumero()
     {
-        $config = Configuration::getOrCreate('numerotation');
-        $prefixe = $config->data['prefixe_devis'] ?? 'DEV';
         $annee = date('Y');
-        $prochain = $config->data['prochain_numero_devis'] ?? 1;
 
-        $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochain);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
+            
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'],
+                ]);
+            }
 
-        $config->data['prochain_numero_devis'] = $prochain + 1;
-        $config->save();
+            $prefixe = $config->data['prefixe_devis'] ?? 'DEV';
 
-        return $numero;
+            // Chercher le dernier numéro de devis existant cette année
+            $dernierDevis = self::whereYear('created_at', $annee)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $prochainNumero = 1;
+            if ($dernierDevis && preg_match('/-(\d{4})$/', $dernierDevis->numero, $matches)) {
+                $prochainNumero = intval($matches[1]) + 1;
+            }
+
+            // S'assurer que le numéro est au moins égal au compteur stocké
+            $compteurStocke = $config->data['prochain_numero_devis'] ?? 1;
+            if ($prochainNumero < $compteurStocke) {
+                $prochainNumero = $compteurStocke;
+            }
+
+            // Mettre à jour le compteur
+            $data = $config->data;
+            $data['prochain_numero_devis'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+        });
     }
 }
