@@ -23,7 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, Trash2, Ship, User, Truck, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Ship, User, Truck, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { formatMontant } from "@/data/mockData";
 import { NouveauTransitaireModal } from "@/components/NouveauTransitaireModal";
@@ -56,9 +57,61 @@ export default function PartenairesPage() {
   const [armateursPageSize, setArmateursPageSize] = useState(10);
 
   // Fetch data from API
-  const { data: transitaires = [], isLoading: isLoadingTransitaires } = useTransitaires();
-  const { data: representants = [], isLoading: isLoadingRepresentants } = useRepresentants();
-  const { data: armateurs = [], isLoading: isLoadingArmateurs } = useArmateurs();
+  const { data: transitaires = [], isLoading: isLoadingTransitaires, error: errorTransitaires, refetch: refetchTransitaires } = useTransitaires();
+  const { data: representants = [], isLoading: isLoadingRepresentants, error: errorRepresentants, refetch: refetchRepresentants } = useRepresentants();
+  const { data: armateurs = [], isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
+
+  // Helper to get error message
+  const getErrorMessage = (error: unknown): { title: string; description: string } => {
+    const axiosError = error as { response?: { status?: number } };
+    const status = axiosError?.response?.status;
+    
+    if (status === 401) {
+      return {
+        title: "Session expirée",
+        description: "Votre session a expiré. Veuillez vous reconnecter."
+      };
+    }
+    if (status === 403) {
+      return {
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions nécessaires pour accéder à ces données."
+      };
+    }
+    if (status === 500) {
+      return {
+        title: "Erreur serveur",
+        description: "Une erreur s'est produite sur le serveur. Veuillez réessayer plus tard."
+      };
+    }
+    return {
+      title: "Erreur de chargement",
+      description: "Impossible de charger les données. Vérifiez votre connexion et réessayez."
+    };
+  };
+
+  // Error UI component
+  const ErrorCard = ({ error, onRetry, entityName }: { error: unknown; onRetry: () => void; entityName: string }) => {
+    const { title, description } = getErrorMessage(error);
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>{title}</AlertTitle>
+        <AlertDescription className="flex items-center justify-between">
+          <span>{description}</span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onRetry}
+            className="ml-4 gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Réessayer
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  };
 
   // Delete mutations
   const deleteTransitaireMutation = useDeleteTransitaire();
@@ -187,11 +240,23 @@ export default function PartenairesPage() {
               </Button>
             </div>
 
+            {errorTransitaires && (
+              <ErrorCard 
+                error={errorTransitaires} 
+                onRetry={() => refetchTransitaires()} 
+                entityName="transitaires" 
+              />
+            )}
+
             <Card>
               <CardContent className="p-0">
                 {isLoadingTransitaires ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : errorTransitaires ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Données non disponibles
                   </div>
                 ) : (
                   <>
@@ -324,11 +389,23 @@ export default function PartenairesPage() {
               </Button>
             </div>
 
+            {errorRepresentants && (
+              <ErrorCard 
+                error={errorRepresentants} 
+                onRetry={() => refetchRepresentants()} 
+                entityName="représentants" 
+              />
+            )}
+
             <Card>
               <CardContent className="p-0">
                 {isLoadingRepresentants ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : errorRepresentants ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Données non disponibles
                   </div>
                 ) : (
                   <>
@@ -449,11 +526,23 @@ export default function PartenairesPage() {
               </Button>
             </div>
 
+            {errorArmateurs && (
+              <ErrorCard 
+                error={errorArmateurs} 
+                onRetry={() => refetchArmateurs()} 
+                entityName="armateurs" 
+              />
+            )}
+
             <Card>
               <CardContent className="p-0">
                 {isLoadingArmateurs ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : errorArmateurs ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Données non disponibles
                   </div>
                 ) : (
                   <>
