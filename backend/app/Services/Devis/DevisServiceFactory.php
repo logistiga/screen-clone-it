@@ -61,8 +61,19 @@ class DevisServiceFactory
         }
         unset($data['bl_numero'], $data['type_document']);
 
+        // type_operation pour conteneurs (import/export)
+        if (isset($data['type_operation'])) {
+            // Garder tel quel, le modèle l'attend
+        }
+
+        // type_operation_indep pour opérations indépendantes
+        if (isset($data['type_operation_indep'])) {
+            // Garder tel quel, le modèle l'attend
+        }
+
         // Dates
         $data['date_creation'] = $data['date_creation'] ?? now()->toDateString();
+        $data['date'] = $data['date'] ?? now()->toDateString();
 
         if (!isset($data['date_validite'])) {
             $validite = isset($data['validite_jours']) ? (int) $data['validite_jours'] : 30;
