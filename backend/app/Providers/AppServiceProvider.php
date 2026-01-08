@@ -15,19 +15,31 @@ use App\Services\ReportingService;
 use App\Services\ExportService;
 use App\Services\NotificationService;
 
-// Services spécialisés par type
+// Services spécialisés par type - Devis
 use App\Services\Devis\DevisConteneursService;
 use App\Services\Devis\DevisConventionnelService;
 use App\Services\Devis\DevisIndependantService;
 use App\Services\Devis\DevisServiceFactory;
+
+// Services spécialisés par type - OrdreTravail
 use App\Services\OrdreTravail\OrdreConteneursService;
 use App\Services\OrdreTravail\OrdreConventionnelService;
 use App\Services\OrdreTravail\OrdreIndependantService;
 use App\Services\OrdreTravail\OrdreServiceFactory;
+
+// Services spécialisés par type - Facture
 use App\Services\Facture\FactureConteneursService;
 use App\Services\Facture\FactureConventionnelService;
 use App\Services\Facture\FactureIndependantService;
 use App\Services\Facture\FactureServiceFactory;
+
+// Services spécialisés par type d'opération indépendante
+use App\Services\OperationsIndependantes\LocationService;
+use App\Services\OperationsIndependantes\TransportService;
+use App\Services\OperationsIndependantes\ManutentionService;
+use App\Services\OperationsIndependantes\DoubleRelevageService;
+use App\Services\OperationsIndependantes\StockageService;
+use App\Services\OperationsIndependantes\OperationIndependanteFactory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -36,6 +48,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // === Services Opérations Indépendantes (par type) ===
+        $this->app->singleton(LocationService::class);
+        $this->app->singleton(TransportService::class);
+        $this->app->singleton(ManutentionService::class);
+        $this->app->singleton(DoubleRelevageService::class);
+        $this->app->singleton(StockageService::class);
+        $this->app->singleton(OperationIndependanteFactory::class);
+
         // === Services Devis spécialisés par type ===
         $this->app->singleton(DevisConteneursService::class);
         $this->app->singleton(DevisConventionnelService::class);
