@@ -215,29 +215,32 @@ class OrdreTravailService
      */
     public function calculerTotaux(OrdreTravail $ordre): void
     {
+        // Recharger les relations
+        $ordre->load(['lignes', 'conteneurs.operations', 'lots']);
+        
         $montantHT = 0;
 
         // Additionner les lignes directes
         foreach ($ordre->lignes as $ligne) {
-            $montantHT += $ligne->quantite * $ligne->prix_unitaire;
+            $montantHT += ($ligne->quantite ?? 1) * ($ligne->prix_unitaire ?? 0);
         }
 
         // Additionner les opérations des conteneurs
         foreach ($ordre->conteneurs as $conteneur) {
             foreach ($conteneur->operations as $operation) {
-                $montantHT += $operation->quantite * $operation->prix_unitaire;
+                $montantHT += ($operation->quantite ?? 1) * ($operation->prix_unitaire ?? 0);
             }
         }
 
         // Additionner les lots
         foreach ($ordre->lots as $lot) {
-            $montantHT += $lot->quantite * $lot->prix_unitaire;
+            $montantHT += ($lot->quantite ?? 1) * ($lot->prix_unitaire ?? 0);
         }
 
-        // Récupérer les taux de taxes
-        $config = Configuration::first();
-        $tauxTVA = $config->taux_tva ?? 18;
-        $tauxCSS = $config->taux_css ?? 1;
+        // Récupérer les taux de taxes depuis la configuration
+        $taxesConfig = Configuration::getOrCreate('taxes');
+        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
+        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
 
         // Calculer selon la catégorie
         if ($ordre->categorie === 'non_assujetti') {
@@ -256,6 +259,12 @@ class OrdreTravailService
             'montant_css' => $montantCSS,
             'montant_ttc' => $montantTTC,
         ]);
+        
+        Log::info('Totaux ordre calculés', [
+            'ordre_id' => $ordre->id,
+            'montant_ht' => $montantHT,
+            'montant_ttc' => $montantTTC,
+        ]);
     }
 
     /**
@@ -263,17 +272,49 @@ class OrdreTravailService
      */
     public function genererNumero(): string
     {
-        $config = Configuration::first();
-        $prefixe = $config->prefixe_ordre ?? 'OT';
         $annee = date('Y');
         
-        $dernierOrdre = OrdreTravail::whereYear('created_at', $annee)
-            ->orderBy('id', 'desc')
-            ->first();
+        return DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
+            
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'],
+                ]);
+            }
+            
+            $prefixe = $config->data['prefixe_ordre'] ?? 'OT';
 
-        $numero = $dernierOrdre ? intval(substr($dernierOrdre->numero, -4)) + 1 : 1;
+            // Trouver le numéro maximum existant
+            $maxNumero = OrdreTravail::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
 
-        return sprintf('%s-%s-%04d', $prefixe, $annee, $numero);
+            $prochainNumero = ($maxNumero ?? 0) + 1;
+
+            // S'assurer que le numéro est au moins égal au compteur stocké
+            $compteurStocke = $config->data['prochain_numero_ordre'] ?? 1;
+            if ($prochainNumero < $compteurStocke) {
+                $prochainNumero = $compteurStocke;
+            }
+
+            // Vérifier l'unicité
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            while (OrdreTravail::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            }
+
+            // Mettre à jour le compteur
+            $data = $config->data;
+            $data['prochain_numero_ordre'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return $numero;
+        });
     }
 
     /**

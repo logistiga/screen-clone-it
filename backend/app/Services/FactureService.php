@@ -168,29 +168,32 @@ class FactureService
      */
     public function calculerTotaux(Facture $facture): void
     {
+        // Recharger les relations
+        $facture->load(['lignes', 'conteneurs.operations', 'lots']);
+        
         $montantHT = 0;
 
         // Additionner les lignes directes
         foreach ($facture->lignes as $ligne) {
-            $montantHT += $ligne->quantite * $ligne->prix_unitaire;
+            $montantHT += ($ligne->quantite ?? 1) * ($ligne->prix_unitaire ?? 0);
         }
 
         // Additionner les opérations des conteneurs
         foreach ($facture->conteneurs as $conteneur) {
             foreach ($conteneur->operations as $operation) {
-                $montantHT += $operation->quantite * $operation->prix_unitaire;
+                $montantHT += ($operation->quantite ?? 1) * ($operation->prix_unitaire ?? 0);
             }
         }
 
         // Additionner les lots
         foreach ($facture->lots as $lot) {
-            $montantHT += $lot->quantite * $lot->prix_unitaire;
+            $montantHT += ($lot->quantite ?? 1) * ($lot->prix_unitaire ?? 0);
         }
 
-        // Récupérer les taux de taxes
-        $config = Configuration::first();
-        $tauxTVA = $config->taux_tva ?? 18;
-        $tauxCSS = $config->taux_css ?? 1;
+        // Récupérer les taux de taxes depuis la configuration
+        $taxesConfig = Configuration::getOrCreate('taxes');
+        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
+        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
 
         // Calculer selon la catégorie
         if ($facture->categorie === 'non_assujetti') {
@@ -209,6 +212,12 @@ class FactureService
             'montant_css' => $montantCSS,
             'montant_ttc' => $montantTTC,
         ]);
+        
+        Log::info('Totaux facture calculés', [
+            'facture_id' => $facture->id,
+            'montant_ht' => $montantHT,
+            'montant_ttc' => $montantTTC,
+        ]);
     }
 
     /**
@@ -216,17 +225,49 @@ class FactureService
      */
     public function genererNumero(): string
     {
-        $config = Configuration::first();
-        $prefixe = $config->prefixe_facture ?? 'FAC';
         $annee = date('Y');
         
-        $derniereFacture = Facture::whereYear('created_at', $annee)
-            ->orderBy('id', 'desc')
-            ->first();
+        return DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
+            
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'],
+                ]);
+            }
+            
+            $prefixe = $config->data['prefixe_facture'] ?? 'FAC';
 
-        $numero = $derniereFacture ? intval(substr($derniereFacture->numero, -4)) + 1 : 1;
+            // Trouver le numéro maximum existant
+            $maxNumero = Facture::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
 
-        return sprintf('%s-%s-%04d', $prefixe, $annee, $numero);
+            $prochainNumero = ($maxNumero ?? 0) + 1;
+
+            // S'assurer que le numéro est au moins égal au compteur stocké
+            $compteurStocke = $config->data['prochain_numero_facture'] ?? 1;
+            if ($prochainNumero < $compteurStocke) {
+                $prochainNumero = $compteurStocke;
+            }
+
+            // Vérifier l'unicité
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            while (Facture::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            }
+
+            // Mettre à jour le compteur
+            $data = $config->data;
+            $data['prochain_numero_facture'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return $numero;
+        });
     }
 
     /**
