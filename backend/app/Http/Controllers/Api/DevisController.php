@@ -114,30 +114,38 @@ class DevisController extends Controller
             return response()->json(['message' => 'Impossible de supprimer un devis converti'], 422);
         }
 
-        try {
-            $numero = $devis->numero;
-            $devisId = $devis->id;
+        $numero = $devis->numero;
+        $devisId = $devis->id;
 
+        try {
             // Supprimer les relations en premier
             $devis->conteneurs()->get()->each(fn($c) => $c->operations()->delete());
             $devis->conteneurs()->delete();
             $devis->lignes()->delete();
             $devis->lots()->delete();
-            
+
             // Supprimer le devis
             $devis->delete();
 
-            // Log après suppression réussie
-            Audit::log('delete', 'devis', "Devis supprimé: {$numero}", $devisId);
+            // Audit: ne doit jamais casser la suppression
+            try {
+                // Certains backends attendent un Model (pas un id). On passe donc le Model.
+                Audit::log('delete', 'devis', "Devis supprimé: {$numero}", $devis);
+            } catch (\Throwable $auditError) {
+                \Illuminate\Support\Facades\Log::warning('Audit delete devis échoué', [
+                    'devis_id' => $devisId,
+                    'exception' => get_class($auditError),
+                    'message' => $auditError->getMessage(),
+                ]);
+            }
 
             return response()->json(['message' => 'Devis supprimé avec succès']);
 
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Erreur suppression devis', [
-                'devis_id' => $devis->id,
+                'devis_id' => $devisId,
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
