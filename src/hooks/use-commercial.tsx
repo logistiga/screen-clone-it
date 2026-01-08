@@ -270,7 +270,7 @@ export function useConvertOrdreToFacture() {
 }
 
 // Factures hooks
-export function useFactures(params?: { search?: string; statut?: string; client_id?: string; page?: number; per_page?: number }) {
+export function useFactures(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
   return useQuery({
     queryKey: ['factures', params],
     queryFn: () => facturesApi.getAll(params),

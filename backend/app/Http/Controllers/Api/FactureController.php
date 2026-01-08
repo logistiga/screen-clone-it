@@ -10,18 +10,18 @@ use App\Http\Resources\FactureResource;
 use App\Models\Facture;
 use App\Models\Annulation;
 use App\Models\Audit;
-use App\Services\FactureService;
+use App\Services\Facture\FactureServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 class FactureController extends Controller
 {
-    protected FactureService $factureService;
+    protected FactureServiceFactory $factureFactory;
 
-    public function __construct(FactureService $factureService)
+    public function __construct(FactureServiceFactory $factureFactory)
     {
-        $this->factureService = $factureService;
+        $this->factureFactory = $factureFactory;
     }
 
     public function index(Request $request): JsonResponse
@@ -32,13 +32,17 @@ class FactureController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
-                  ->orWhere('bl_numero', 'like', "%{$search}%")
+                  ->orWhere('numero_bl', 'like', "%{$search}%")
                   ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
             });
         }
 
         if ($request->has('statut')) {
             $query->where('statut', $request->get('statut'));
+        }
+
+        if ($request->has('categorie')) {
+            $query->where('categorie', $request->get('categorie'));
         }
 
         if ($request->has('client_id')) {
@@ -61,7 +65,7 @@ class FactureController extends Controller
     public function store(StoreFactureRequest $request): JsonResponse
     {
         try {
-            $facture = $this->factureService->creer($request->validated());
+            $facture = $this->factureFactory->creer($request->validated());
 
             Audit::log('create', 'facture', "Facture créée: {$facture->numero}", $facture->id);
 
@@ -84,12 +88,12 @@ class FactureController extends Controller
 
     public function update(UpdateFactureRequest $request, Facture $facture): JsonResponse
     {
-        if (in_array($facture->statut, ['Payée', 'Annulée'])) {
+        if (in_array($facture->statut, ['payee', 'annulee'])) {
             return response()->json(['message' => 'Impossible de modifier cette facture'], 422);
         }
 
         try {
-            $facture = $this->factureService->modifier($facture, $request->validated());
+            $facture = $this->factureFactory->modifier($facture, $request->validated());
 
             Audit::log('update', 'facture', "Facture modifiée: {$facture->numero}", $facture->id);
 
@@ -150,7 +154,7 @@ class FactureController extends Controller
     public function duplicate(Facture $facture): JsonResponse
     {
         try {
-            $newFacture = $this->factureService->dupliquer($facture);
+            $newFacture = $this->factureFactory->dupliquer($facture);
 
             Audit::log('duplicate', 'facture', "Facture dupliquée: {$facture->numero} -> {$newFacture->numero}", $newFacture->id);
 
