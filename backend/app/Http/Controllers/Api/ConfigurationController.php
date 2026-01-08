@@ -157,29 +157,23 @@ class ConfigurationController extends Controller
 
             $data = $config->data;
 
-            // Sync Devis
-            $dernierDevis = \App\Models\Devis::whereYear('created_at', $annee)
-                ->orderBy('id', 'desc')
-                ->first();
-            if ($dernierDevis && preg_match('/-(\d{4})$/', $dernierDevis->numero, $matches)) {
-                $data['prochain_numero_devis'] = intval($matches[1]) + 1;
-            }
+            // Sync Devis (max suffixe sur 4 chiffres)
+            $maxDevis = \App\Models\Devis::whereYear('created_at', $annee)
+                ->selectRaw('MAX(CAST(RIGHT(numero, 4) AS UNSIGNED)) as max_num')
+                ->value('max_num');
+            $data['prochain_numero_devis'] = ((int) $maxDevis) + 1;
 
             // Sync Ordres
-            $dernierOrdre = \App\Models\OrdreTravail::whereYear('created_at', $annee)
-                ->orderBy('id', 'desc')
-                ->first();
-            if ($dernierOrdre && preg_match('/-(\d{4})$/', $dernierOrdre->numero, $matches)) {
-                $data['prochain_numero_ordre'] = intval($matches[1]) + 1;
-            }
+            $maxOrdres = \App\Models\OrdreTravail::whereYear('created_at', $annee)
+                ->selectRaw('MAX(CAST(RIGHT(numero, 4) AS UNSIGNED)) as max_num')
+                ->value('max_num');
+            $data['prochain_numero_ordre'] = ((int) $maxOrdres) + 1;
 
             // Sync Factures
-            $derniereFacture = \App\Models\Facture::whereYear('created_at', $annee)
-                ->orderBy('id', 'desc')
-                ->first();
-            if ($derniereFacture && preg_match('/-(\d{4})$/', $derniereFacture->numero, $matches)) {
-                $data['prochain_numero_facture'] = intval($matches[1]) + 1;
-            }
+            $maxFactures = \App\Models\Facture::whereYear('created_at', $annee)
+                ->selectRaw('MAX(CAST(RIGHT(numero, 4) AS UNSIGNED)) as max_num')
+                ->value('max_num');
+            $data['prochain_numero_facture'] = ((int) $maxFactures) + 1;
 
             $config->data = $data;
             $config->save();
