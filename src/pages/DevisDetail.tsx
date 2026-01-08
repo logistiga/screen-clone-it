@@ -116,7 +116,7 @@ export default function DevisDetailPage() {
                 {getStatutBadge(devisData.statut)}
               </div>
               <p className="text-muted-foreground">
-                Créé le {formatDate(devisData.date_devis)} • Valide jusqu'au{" "}
+                Créé le {formatDate(devisData.date_creation || devisData.date)} • Valide jusqu'au{" "}
                 {formatDate(devisData.date_validite)}
               </p>
             </div>
@@ -200,20 +200,20 @@ export default function DevisDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Montant HT</span>
-                    <span className="font-medium">{formatMontant(devisData.sous_total || 0)}</span>
+                    <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TVA (18%)</span>
-                    <span>{formatMontant(devisData.tva || 0)}</span>
+                    <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">CSS (1%)</span>
-                    <span>{formatMontant(devisData.css || 0)}</span>
+                    <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total TTC</span>
-                    <span className="text-primary">{formatMontant(devisData.total_ttc || 0)}</span>
+                    <span className="text-primary">{formatMontant(devisData.montant_ttc || 0)}</span>
                   </div>
                 </CardContent>
               </Card>
