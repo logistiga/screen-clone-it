@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard, ClipboardList, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard, ClipboardList, Loader2, Container, Package, Truck } from "lucide-react";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
@@ -43,7 +43,7 @@ export default function OrdresTravailPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [categorieFilter, setCategorieFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
@@ -51,6 +51,7 @@ export default function OrdresTravailPage() {
   const { data: ordresData, isLoading, error, refetch } = useOrdres({
     search: searchTerm || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
+    categorie: categorieFilter !== "all" ? categorieFilter : undefined,
     page: currentPage,
     per_page: pageSize,
   });
@@ -88,15 +89,10 @@ export default function OrdresTravailPage() {
   const totalPages = ordresData?.meta?.last_page || 1;
   const totalItems = ordresData?.meta?.total || 0;
 
-  // Filtrage par type (côté client car pas de filtre API)
-  const filteredOrdres = typeFilter === "all" 
-    ? ordresList 
-    : ordresList.filter(o => o.type_document === typeFilter);
-
   // Statistiques
-  const totalOrdres = filteredOrdres.reduce((sum, o) => sum + (o.montant_ttc || 0), 0);
-  const totalPaye = filteredOrdres.reduce((sum, o) => sum + (o.montant_paye || 0), 0);
-  const ordresEnCours = filteredOrdres.filter(o => o.statut === 'en_cours').length;
+  const totalOrdres = ordresList.reduce((sum, o) => sum + (o.montant_ttc || 0), 0);
+  const totalPaye = ordresList.reduce((sum, o) => sum + (o.montant_paye || 0), 0);
+  const ordresEnCours = ordresList.filter(o => o.statut === 'en_cours').length;
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -108,16 +104,19 @@ export default function OrdresTravailPage() {
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
 
-  const getTypeBadge = (type: string) => {
-    const colors: Record<string, string> = {
-      conteneurs: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-      conventionnel: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-      location: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-      transport: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      manutention: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      stockage: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+  const getCategorieBadge = (categorie?: string) => {
+    const configs: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      conteneurs: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      conventionnel: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+      operations_independantes: { label: "Indépendant", icon: <Truck className="h-3 w-3" />, className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
     };
-    return <Badge className={colors[type] || "bg-gray-100"}>{type}</Badge>;
+    const config = configs[categorie || ''] || { label: categorie || 'N/A', icon: null, className: "bg-gray-100 text-gray-800" };
+    return (
+      <Badge className={`${config.className} flex items-center gap-1`}>
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -144,7 +143,7 @@ export default function OrdresTravailPage() {
   }
 
   // État vide
-  if (ordresList.length === 0 && !searchTerm && statutFilter === "all") {
+  if (ordresList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return (
       <MainLayout title="Ordres de Travail">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -220,18 +219,15 @@ export default function OrdresTravailPage() {
                 <SelectItem value="annule">Annulé</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Tous les types" />
+            <Select value={categorieFilter} onValueChange={setCategorieFilter}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Toutes catégories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
+                <SelectItem value="all">Toutes catégories</SelectItem>
                 <SelectItem value="conteneurs">Conteneurs</SelectItem>
                 <SelectItem value="conventionnel">Conventionnel</SelectItem>
-                <SelectItem value="location">Location</SelectItem>
-                <SelectItem value="transport">Transport</SelectItem>
-                <SelectItem value="manutention">Manutention</SelectItem>
-                <SelectItem value="stockage">Stockage</SelectItem>
+                <SelectItem value="operations_independantes">Indépendant</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -260,7 +256,7 @@ export default function OrdresTravailPage() {
                   <TableHead>Numéro</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Catégorie</TableHead>
                   <TableHead className="text-right">Montant TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
@@ -268,7 +264,7 @@ export default function OrdresTravailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrdres.map((ordre) => {
+                {ordresList.map((ordre) => {
                   const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
                   return (
                     <TableRow key={ordre.id} className="hover:bg-muted/50">
@@ -276,9 +272,9 @@ export default function OrdresTravailPage() {
                         {ordre.numero}
                       </TableCell>
                       <TableCell>{ordre.client?.nom}</TableCell>
-                      <TableCell>{formatDate(ordre.date)}</TableCell>
-                      <TableCell>{getTypeBadge(ordre.type_document)}</TableCell>
-                      <TableCell className="text-right">{formatMontant(ordre.montant_ttc)}</TableCell>
+                      <TableCell>{formatDate(ordre.date || ordre.date_creation || ordre.created_at)}</TableCell>
+                      <TableCell>{getCategorieBadge(ordre.categorie)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
                         <span className={(ordre.montant_paye || 0) > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montant_paye)}</span>
                         {resteAPayer > 0 && <div className="text-xs text-muted-foreground">Reste: {formatMontant(resteAPayer)}</div>}
