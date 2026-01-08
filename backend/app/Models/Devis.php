@@ -15,19 +15,22 @@ class Devis extends Model
     protected $fillable = [
         'numero',
         'client_id',
-        'date_creation',
-        'date_validite',
+        'transitaire_id',
+        'representant_id',
+        'armateur_id',
+        'type_document',
         'categorie',
         'type_operation',
         'type_operation_indep',
-        'armateur_id',
-        'transitaire_id',
-        'representant_id',
+        'bl_numero',
         'navire',
-        'numero_bl',
+        'date_arrivee',
+        'date_creation',
+        'date_validite',
+        'validite_jours',
         'montant_ht',
-        'tva',
-        'css',
+        'montant_tva',
+        'montant_css',
         'montant_ttc',
         'statut',
         'notes',
@@ -36,9 +39,10 @@ class Devis extends Model
     protected $casts = [
         'date_creation' => 'date',
         'date_validite' => 'date',
+        'date_arrivee' => 'date',
         'montant_ht' => 'decimal:2',
-        'tva' => 'decimal:2',
-        'css' => 'decimal:2',
+        'montant_tva' => 'decimal:2',
+        'montant_css' => 'decimal:2',
         'montant_ttc' => 'decimal:2',
     ];
 
@@ -105,9 +109,9 @@ class Devis extends Model
             $this->montant_ht = $this->lignes->sum('montant_ht');
         }
 
-        $this->tva = $this->montant_ht * $tauxTva;
-        $this->css = $this->montant_ht * $tauxCss;
-        $this->montant_ttc = $this->montant_ht + $this->tva + $this->css;
+        $this->montant_tva = $this->montant_ht * $tauxTva;
+        $this->montant_css = $this->montant_ht * $tauxCss;
+        $this->montant_ttc = $this->montant_ht + $this->montant_tva + $this->montant_css;
         
         $this->save();
     }
@@ -126,10 +130,10 @@ class Devis extends Model
             'transitaire_id' => $this->transitaire_id,
             'representant_id' => $this->representant_id,
             'navire' => $this->navire,
-            'numero_bl' => $this->numero_bl,
+            'bl_numero' => $this->bl_numero,
             'montant_ht' => $this->montant_ht,
-            'tva' => $this->tva,
-            'css' => $this->css,
+            'montant_tva' => $this->montant_tva,
+            'montant_css' => $this->montant_css,
             'montant_ttc' => $this->montant_ttc,
             'montant_paye' => 0,
             'statut' => 'en_cours',
