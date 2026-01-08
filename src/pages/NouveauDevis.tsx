@@ -214,35 +214,49 @@ export default function NouveauDevisPage() {
       });
     }
 
+    // Mapper la catégorie frontend vers le type_document backend
+    const typeDocumentMap: Record<CategorieDocument, string> = {
+      conteneurs: "Conteneur",
+      conventionnel: "Lot",
+      operations_independantes: "Independant"
+    };
+
     const data = {
       client_id: parseInt(clientId),
+      type_document: typeDocumentMap[categorie as CategorieDocument],
       transitaire_id: transitaireId ? parseInt(transitaireId) : null,
       representant_id: representantId ? parseInt(representantId) : null,
       armateur_id: armateurId ? parseInt(armateurId) : null,
-      date_devis: new Date().toISOString().split('T')[0],
-      date_validite: dateValidite,
-      reference_client: numeroBL || null,
-      navire: null,
-      voyage: null,
-      port_chargement: lieuChargement || null,
-      port_dechargement: lieuDechargement || null,
-      conditions: null,
+      bl_numero: numeroBL || null,
+      date_arrivee: new Date().toISOString().split('T')[0],
+      validite_jours: Math.ceil((new Date(dateValidite).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
       notes: notes || null,
-      lignes,
+      lignes: categorie === "operations_independantes" ? prestations.map(p => ({
+        type_operation: typeOperationIndep || "autre",
+        description: p.description,
+        lieu_depart: lieuChargement || null,
+        lieu_arrivee: lieuDechargement || null,
+        date_debut: p.dateDebut || null,
+        date_fin: p.dateFin || null,
+        quantite: p.quantite,
+        prix_unitaire: p.prixUnitaire
+      })) : [],
       conteneurs: categorie === "conteneurs" ? conteneurs.map(c => ({
         numero: c.numero,
-        type: c.taille === "20'" ? "20" : "40",
+        type: c.description || "DRY",
         taille: c.taille === "20'" ? "20" : "40",
+        armateur_id: armateurId ? parseInt(armateurId) : null,
         operations: c.operations.map(op => ({
-          type_operation: op.type,
-          prix_unitaire: op.prixUnitaire,
-          quantite: op.quantite
+          type_operation: typesOperationConteneur[op.type]?.label || op.type,
+          description: op.description || "",
+          quantite: op.quantite,
+          prix_unitaire: op.prixUnitaire
         }))
       })) : [],
       lots: categorie === "conventionnel" ? lots.map(l => ({
         designation: l.description || `Lot ${l.numeroLot}`,
-        nature_marchandise: l.description,
-        nombre_colis: l.quantite
+        quantite: l.quantite,
+        prix_unitaire: l.prixUnitaire
       })) : []
     };
 
