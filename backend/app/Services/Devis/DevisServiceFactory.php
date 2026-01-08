@@ -229,39 +229,53 @@ class DevisServiceFactory
      */
     protected function genererNumero(): string
     {
-        $config = Configuration::getOrCreate('numerotation');
-        $prefixe = $config->data['prefixe_devis'] ?? 'DEV';
         $annee = date('Y');
 
-        // Utiliser une transaction + verrouillage pour éviter les doublons
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($config, $prefixe, $annee) {
+        return DB::transaction(function () use ($annee) {
             // Verrouiller la ligne de configuration pour empêcher les lectures concurrentes
-            $configLocked = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
-
-            // Chercher le dernier numéro de devis existant cette année
-            $dernierDevis = Devis::whereYear('created_at', $annee)
-                ->orderBy('id', 'desc')
-                ->first();
-
-            // Calculer le prochain numéro basé sur le dernier devis existant
-            $prochainNumero = 1;
-            if ($dernierDevis && preg_match('/-(\d{4})$/', $dernierDevis->numero, $matches)) {
-                $prochainNumero = intval($matches[1]) + 1;
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
+            
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'],
+                ]);
             }
 
+            $prefixe = $config->data['prefixe_devis'] ?? 'DEV';
+
+            // Trouver le numéro maximum existant dans la base (incluant soft-deleted)
+            $maxNumero = Devis::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
+
+            $prochainNumero = ($maxNumero ?? 0) + 1;
+
             // S'assurer que le numéro est au moins égal au compteur stocké
-            $compteurStocke = $configLocked->data['prochain_numero_devis'] ?? 1;
+            $compteurStocke = $config->data['prochain_numero_devis'] ?? 1;
             if ($prochainNumero < $compteurStocke) {
                 $prochainNumero = $compteurStocke;
             }
 
-            // Mettre à jour le compteur
-            $data = $configLocked->data;
-            $data['prochain_numero_devis'] = $prochainNumero + 1;
-            $configLocked->data = $data;
-            $configLocked->save();
+            // Générer le numéro candidat
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
 
-            return sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            // Vérifier que ce numéro n'existe vraiment pas (double sécurité)
+            while (Devis::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            }
+
+            // Mettre à jour le compteur
+            $data = $config->data;
+            $data['prochain_numero_devis'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            Log::info('Numéro devis généré', ['numero' => $numero, 'prochain' => $prochainNumero + 1]);
+
+            return $numero;
         });
     }
 }
