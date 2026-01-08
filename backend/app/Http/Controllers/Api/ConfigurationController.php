@@ -110,18 +110,84 @@ class ConfigurationController extends Controller
             'prefixe_devis' => $numerotation['prefixe_devis'] ?? 'DEV',
             'prefixe_ordre' => $numerotation['prefixe_ordre'] ?? 'OT',
             'prefixe_facture' => $numerotation['prefixe_facture'] ?? 'FAC',
+            'prefixe_avoir' => $numerotation['prefixe_avoir'] ?? 'AV',
+            'format_annee' => $numerotation['format_annee'] ?? true,
+            'prochain_numero_devis' => $numerotation['prochain_numero_devis'] ?? 1,
+            'prochain_numero_ordre' => $numerotation['prochain_numero_ordre'] ?? 1,
+            'prochain_numero_facture' => $numerotation['prochain_numero_facture'] ?? 1,
+            'prochain_numero_avoir' => $numerotation['prochain_numero_avoir'] ?? 1,
         ]);
     }
 
     public function updateNumerotation(UpdateNumerotationRequest $request): JsonResponse
     {
-        Configuration::setValue('numerotation', 'prefixe_devis', $request->prefixe_devis);
-        Configuration::setValue('numerotation', 'prefixe_ordre', $request->prefixe_ordre);
-        Configuration::setValue('numerotation', 'prefixe_facture', $request->prefixe_facture);
+        $fields = [
+            'prefixe_devis', 'prefixe_ordre', 'prefixe_facture', 'prefixe_avoir',
+            'format_annee',
+            'prochain_numero_devis', 'prochain_numero_ordre', 'prochain_numero_facture', 'prochain_numero_avoir',
+        ];
 
-        Audit::log('update', 'configuration', 'Préfixes de numérotation mis à jour');
+        foreach ($fields as $field) {
+            if ($request->has($field)) {
+                Configuration::setValue('numerotation', $field, $request->get($field));
+            }
+        }
 
-        return response()->json(['message' => 'Préfixes de numérotation mis à jour avec succès']);
+        Audit::log('update', 'configuration', 'Numérotation mise à jour');
+
+        return response()->json(['message' => 'Numérotation mise à jour avec succès']);
+    }
+
+    /**
+     * Synchronise les compteurs avec les derniers numéros existants en base.
+     */
+    public function syncCompteurs(): JsonResponse
+    {
+        $annee = date('Y');
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
+
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'],
+                ]);
+            }
+
+            $data = $config->data;
+
+            // Sync Devis
+            $dernierDevis = \App\Models\Devis::whereYear('created_at', $annee)
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($dernierDevis && preg_match('/-(\d{4})$/', $dernierDevis->numero, $matches)) {
+                $data['prochain_numero_devis'] = intval($matches[1]) + 1;
+            }
+
+            // Sync Ordres
+            $dernierOrdre = \App\Models\OrdreTravail::whereYear('created_at', $annee)
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($dernierOrdre && preg_match('/-(\d{4})$/', $dernierOrdre->numero, $matches)) {
+                $data['prochain_numero_ordre'] = intval($matches[1]) + 1;
+            }
+
+            // Sync Factures
+            $derniereFacture = \App\Models\Facture::whereYear('created_at', $annee)
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($derniereFacture && preg_match('/-(\d{4})$/', $derniereFacture->numero, $matches)) {
+                $data['prochain_numero_facture'] = intval($matches[1]) + 1;
+            }
+
+            $config->data = $data;
+            $config->save();
+        });
+
+        Audit::log('sync', 'configuration', 'Compteurs synchronisés automatiquement');
+
+        return response()->json(['message' => 'Compteurs synchronisés avec succès']);
     }
 
     public function entreprise(): JsonResponse

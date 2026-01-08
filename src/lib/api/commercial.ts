@@ -444,4 +444,24 @@ export const configurationApi = {
     const response = await api.get('/configuration/numerotation');
     return response.data;
   },
+
+  updateNumerotation: async (data: {
+    prefixe_devis?: string;
+    prefixe_ordre?: string;
+    prefixe_facture?: string;
+    prefixe_avoir?: string;
+    format_annee?: boolean;
+    prochain_numero_devis?: number;
+    prochain_numero_ordre?: number;
+    prochain_numero_facture?: number;
+    prochain_numero_avoir?: number;
+  }) => {
+    const response = await api.put('/configuration/numerotation', data);
+    return response.data;
+  },
+
+  syncCompteurs: async () => {
+    const response = await api.post('/configuration/numerotation/sync');
+    return response.data;
+  },
 };

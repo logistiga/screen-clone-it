@@ -400,6 +400,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('numerotation', [ConfigurationController::class, 'numerotation']);
         Route::put('numerotation', [ConfigurationController::class, 'updateNumerotation'])
             ->middleware('permission:configuration.modifier');
+        Route::post('numerotation/sync', [ConfigurationController::class, 'syncCompteurs'])
+            ->middleware('permission:configuration.modifier');
         
         Route::get('entreprise', [ConfigurationController::class, 'entreprise']);
         Route::put('entreprise', [ConfigurationController::class, 'updateEntreprise'])
