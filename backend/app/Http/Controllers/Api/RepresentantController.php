@@ -44,7 +44,7 @@ class RepresentantController extends Controller
 
         Audit::log('create', 'representant', "Représentant créé: {$representant->nom} {$representant->prenom}", $representant);
 
-        return response()->json(new RepresentantResource($representant), 201);
+        return response()->json(['data' => new RepresentantResource($representant)], 201);
     }
 
     public function show(Representant $representant): JsonResponse
@@ -54,7 +54,7 @@ class RepresentantController extends Controller
             'primes.paiements',
         ]);
 
-        return response()->json(new RepresentantResource($representant));
+        return response()->json(['data' => new RepresentantResource($representant)]);
     }
 
     public function update(UpdateRepresentantRequest $request, Representant $representant): JsonResponse
@@ -63,7 +63,7 @@ class RepresentantController extends Controller
 
         Audit::log('update', 'representant', "Représentant modifié: {$representant->nom} {$representant->prenom}", $representant);
 
-        return response()->json(new RepresentantResource($representant));
+        return response()->json(['data' => new RepresentantResource($representant)]);
     }
 
     public function destroy(Representant $representant): JsonResponse
