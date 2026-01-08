@@ -4,24 +4,21 @@ namespace App\Services\Devis;
 
 use App\Models\Devis;
 use App\Models\Configuration;
+use App\Services\OperationsIndependantes\OperationIndependanteFactory;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Service spécialisé pour les devis de type Opérations Indépendantes.
- * Gère la création, modification et calcul des totaux pour transport, location, manutention, stockage.
+ * Délègue aux services spécifiques par type (Location, Transport, Manutention, etc.)
  */
 class DevisIndependantService
 {
-    /**
-     * Types d'opérations indépendantes supportées
-     */
-    public const TYPES_OPERATION = [
-        'location' => 'Location véhicule/équipement',
-        'transport' => 'Transport hors Libreville',
-        'manutention' => 'Manutention',
-        'double_relevage' => 'Double relevage',
-        'stockage' => 'Stockage',
-    ];
+    protected OperationIndependanteFactory $operationFactory;
+
+    public function __construct(OperationIndependanteFactory $operationFactory)
+    {
+        $this->operationFactory = $operationFactory;
+    }
 
     /**
      * Valider les données spécifiques aux opérations indépendantes
@@ -34,8 +31,9 @@ class DevisIndependantService
             $errors[] = 'Au moins une ligne de prestation est requise';
         } else {
             foreach ($data['lignes'] as $index => $ligne) {
-                if (empty($ligne['type_operation'])) {
-                    $errors[] = "Ligne #{$index}: type d'opération requis";
+                $ligneErrors = $this->operationFactory->validerLigne($ligne);
+                foreach ($ligneErrors as $error) {
+                    $errors[] = "Ligne #{$index}: {$error}";
                 }
             }
         }
@@ -49,7 +47,7 @@ class DevisIndependantService
     public function creerLignes(Devis $devis, array $lignes): void
     {
         foreach ($lignes as $ligne) {
-            $ligne = $this->normaliserLigne($ligne);
+            $ligne = $this->operationFactory->normaliserLigne($ligne);
             $devis->lignes()->create($ligne);
         }
     }
@@ -102,22 +100,6 @@ class DevisIndependantService
     }
 
     /**
-     * Calculer le nombre de jours entre deux dates
-     */
-    public function calculerNombreJours(?string $dateDebut, ?string $dateFin): int
-    {
-        if (empty($dateDebut) || empty($dateFin)) {
-            return 1;
-        }
-        
-        $debut = new \DateTime($dateDebut);
-        $fin = new \DateTime($dateFin);
-        $diff = $fin->diff($debut);
-        
-        return max(1, $diff->days);
-    }
-
-    /**
      * Préparer les données pour conversion en ordre de travail
      */
     public function preparerPourConversion(Devis $devis): array
@@ -136,24 +118,5 @@ class DevisIndependantService
                 ];
             })->toArray(),
         ];
-    }
-
-    /**
-     * Normaliser les données d'une ligne depuis l'API
-     */
-    protected function normaliserLigne(array $data): array
-    {
-        // Valeurs par défaut
-        $data['quantite'] = $data['quantite'] ?? 1;
-        $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
-        
-        // Calcul automatique de la quantité pour location/stockage
-        if (in_array($data['type_operation'] ?? '', ['location', 'stockage'])) {
-            if (!empty($data['date_debut']) && !empty($data['date_fin'])) {
-                $data['quantite'] = $this->calculerNombreJours($data['date_debut'], $data['date_fin']);
-            }
-        }
-        
-        return $data;
     }
 }

@@ -1,4 +1,4 @@
-import { Plus, Trash2, MapPin, Calendar } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,8 +8,14 @@ import {
   TypeOperationIndep,
   LignePrestationEtendue,
   getOperationsIndepLabels,
-  calculateDaysBetween,
 } from "@/types/documents";
+import {
+  LocationFormFields,
+  TransportFormFields,
+  ManutentionFormFields,
+  DoubleRelevageFormFields,
+  StockageFormFields,
+} from "./forms";
 
 interface OperationsIndependantesFormProps {
   typeOperationIndep: TypeOperationIndep;
@@ -28,28 +34,51 @@ export default function OperationsIndependantesForm({
 }: OperationsIndependantesFormProps) {
   const operationsIndepLabels = getOperationsIndepLabels();
   
-  const handleDateChange = (id: string, field: 'dateDebut' | 'dateFin', value: string) => {
-    const prestation = prestations.find(p => p.id === id);
-    if (!prestation) return;
-    
-    // Mettre à jour la date
-    onPrestationChange(id, field, value);
-    
-    // Calculer la nouvelle quantité
-    const dateDebut = field === 'dateDebut' ? value : prestation.dateDebut || '';
-    const dateFin = field === 'dateFin' ? value : prestation.dateFin || '';
-    
-    if (dateDebut && dateFin) {
-      const days = calculateDaysBetween(dateDebut, dateFin);
-      onPrestationChange(id, 'quantite', days);
+  // Pour Location et Stockage : la quantité est calculée automatiquement
+  const isDateBased = typeOperationIndep === 'location' || typeOperationIndep === 'stockage';
+
+  // Rendu des champs spécifiques selon le type d'opération
+  const renderSpecificFields = (prestation: LignePrestationEtendue) => {
+    switch (typeOperationIndep) {
+      case 'location':
+        return (
+          <LocationFormFields
+            prestation={prestation}
+            onPrestationChange={onPrestationChange}
+          />
+        );
+      case 'transport':
+        return (
+          <TransportFormFields
+            prestation={prestation}
+            onPrestationChange={onPrestationChange}
+          />
+        );
+      case 'manutention':
+        return (
+          <ManutentionFormFields
+            prestation={prestation}
+            onPrestationChange={onPrestationChange}
+          />
+        );
+      case 'double_relevage':
+        return (
+          <DoubleRelevageFormFields
+            prestation={prestation}
+            onPrestationChange={onPrestationChange}
+          />
+        );
+      case 'stockage':
+        return (
+          <StockageFormFields
+            prestation={prestation}
+            onPrestationChange={onPrestationChange}
+          />
+        );
+      default:
+        return null;
     }
   };
-
-  // Pour Location et Stockage : afficher les dates
-  const showDates = typeOperationIndep === 'location' || typeOperationIndep === 'stockage';
-  
-  // Pour Transport : afficher départ/arrivée
-  const showTransport = typeOperationIndep === 'transport';
 
   return (
     <Card>
@@ -83,61 +112,8 @@ export default function OperationsIndependantesForm({
                 )}
               </div>
 
-              {/* Champs spécifiques pour Transport */}
-              {showTransport && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      Lieu de départ
-                    </Label>
-                    <Input 
-                      placeholder="Ex: Libreville" 
-                      value={prestation.lieuDepart || ''} 
-                      onChange={(e) => onPrestationChange(prestation.id, 'lieuDepart', e.target.value)} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      Lieu d'arrivée
-                    </Label>
-                    <Input 
-                      placeholder="Ex: Franceville" 
-                      value={prestation.lieuArrivee || ''} 
-                      onChange={(e) => onPrestationChange(prestation.id, 'lieuArrivee', e.target.value)} 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Champs spécifiques pour Location et Stockage */}
-              {showDates && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-primary" />
-                      {typeOperationIndep === 'stockage' ? 'Début de stockage' : 'Date de début'}
-                    </Label>
-                    <Input 
-                      type="date" 
-                      value={prestation.dateDebut || ''} 
-                      onChange={(e) => handleDateChange(prestation.id, 'dateDebut', e.target.value)} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-primary" />
-                      {typeOperationIndep === 'stockage' ? 'Fin de stockage' : 'Date de fin'}
-                    </Label>
-                    <Input 
-                      type="date" 
-                      value={prestation.dateFin || ''} 
-                      onChange={(e) => handleDateChange(prestation.id, 'dateFin', e.target.value)} 
-                    />
-                  </div>
-                </div>
-              )}
+              {/* Champs spécifiques au type d'opération */}
+              {renderSpecificFields(prestation)}
 
               {/* Champs communs */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -150,14 +126,14 @@ export default function OperationsIndependantesForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{showDates ? 'Nombre de jours' : 'Quantité'}</Label>
+                  <Label>{isDateBased ? 'Nombre de jours' : 'Quantité'}</Label>
                   <Input 
                     type="number" 
                     min="1" 
                     value={prestation.quantite} 
                     onChange={(e) => onPrestationChange(prestation.id, 'quantite', parseInt(e.target.value) || 0)}
-                    disabled={showDates}
-                    className={showDates ? "bg-muted" : ""}
+                    disabled={isDateBased}
+                    className={isDateBased ? "bg-muted" : ""}
                   />
                 </div>
                 <div className="space-y-2">
