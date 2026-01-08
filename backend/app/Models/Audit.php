@@ -53,13 +53,27 @@ class Audit extends Model
     // Méthodes statiques
     public static function log($action, $module, $details = null, $document = null, $oldValues = null, $newValues = null)
     {
+        // Le code existant appelle parfois Audit::log(..., $documentId) au lieu du Model.
+        // On supporte donc: Model | int|string (id) | null.
+        $documentType = null;
+        $documentId = null;
+        $documentNumero = null;
+
+        if ($document instanceof \Illuminate\Database\Eloquent\Model) {
+            $documentType = class_basename($document);
+            $documentId = $document->getKey();
+            $documentNumero = $document->numero ?? null;
+        } elseif (is_numeric($document)) {
+            $documentId = (int) $document;
+        }
+
         return self::create([
             'user_id' => auth()->id(),
             'action' => $action,
             'module' => $module,
-            'document_type' => $document ? class_basename($document) : null,
-            'document_id' => $document?->id,
-            'document_numero' => $document?->numero ?? null,
+            'document_type' => $documentType,
+            'document_id' => $documentId,
+            'document_numero' => $documentNumero,
             'details' => $details,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
