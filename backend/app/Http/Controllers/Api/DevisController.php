@@ -24,7 +24,7 @@ class DevisController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Devis::with(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'lots']);
+        $query = Devis::with(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -76,7 +76,7 @@ class DevisController extends Controller
 
     public function show(Devis $devis): JsonResponse
     {
-        $devis->load(['client', 'transitaire', 'lignes', 'conteneurs.operations', 'conteneurs.armateur', 'lots']);
+        $devis->load(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'conteneurs.armateur', 'lots']);
         return response()->json(new DevisResource($devis));
     }
 
