@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 
 interface Client {
-  id: number;
+  id: string | number;
   nom: string;
 }
 
