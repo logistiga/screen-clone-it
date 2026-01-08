@@ -12,6 +12,7 @@ class Armateur extends Model
 
     protected $fillable = [
         'nom',
+        'code',
         'email',
         'telephone',
         'adresse',
