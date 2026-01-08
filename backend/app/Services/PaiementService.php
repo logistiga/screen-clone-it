@@ -7,18 +7,20 @@ use App\Models\Facture;
 use App\Models\OrdreTravail;
 use App\Models\MouvementCaisse;
 use App\Models\Banque;
+use App\Services\Facture\FactureServiceFactory;
+use App\Services\OrdreTravail\OrdreServiceFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaiementService
 {
-    protected FactureService $factureService;
-    protected OrdreTravailService $ordreService;
+    protected FactureServiceFactory $factureFactory;
+    protected OrdreServiceFactory $ordreFactory;
 
-    public function __construct(FactureService $factureService, OrdreTravailService $ordreService)
+    public function __construct(FactureServiceFactory $factureFactory, OrdreServiceFactory $ordreFactory)
     {
-        $this->factureService = $factureService;
-        $this->ordreService = $ordreService;
+        $this->factureFactory = $factureFactory;
+        $this->ordreFactory = $ordreFactory;
     }
 
     /**
@@ -33,12 +35,12 @@ class PaiementService
             // Enregistrer le paiement sur la facture ou l'ordre
             if ($paiement->facture_id) {
                 $facture = Facture::find($paiement->facture_id);
-                $this->factureService->enregistrerPaiement($facture, $paiement->montant);
+                $this->factureFactory->enregistrerPaiement($facture, $paiement->montant);
             }
             
             if ($paiement->ordre_id) {
                 $ordre = OrdreTravail::find($paiement->ordre_id);
-                $this->ordreService->enregistrerPaiement($ordre, $paiement->montant);
+                $this->ordreFactory->enregistrerPaiement($ordre, $paiement->montant);
             }
 
             // Créer le mouvement de caisse
@@ -152,7 +154,7 @@ class PaiementService
                     'statut' => $statut,
                 ]);
 
-                $this->factureService->mettreAJourSoldeClient($facture->client_id);
+                $this->factureFactory->mettreAJourSoldeClient($facture->client_id);
             }
 
             // Inverser le paiement sur l'ordre

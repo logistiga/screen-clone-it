@@ -8,16 +8,17 @@ use App\Models\OrdreTravail;
 use App\Models\Devis;
 use App\Models\MouvementCaisse;
 use App\Models\Configuration;
+use App\Services\Facture\FactureServiceFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AnnulationService
 {
-    protected FactureService $factureService;
+    protected FactureServiceFactory $factureFactory;
 
-    public function __construct(FactureService $factureService)
+    public function __construct(FactureServiceFactory $factureFactory)
     {
-        $this->factureService = $factureService;
+        $this->factureFactory = $factureFactory;
     }
 
     /**
@@ -52,7 +53,7 @@ class AnnulationService
             $facture->update(['statut' => 'annulee']);
 
             // Mettre à jour le solde client
-            $this->factureService->mettreAJourSoldeClient($facture->client_id);
+            $this->factureFactory->mettreAJourSoldeClient($facture->client_id);
 
             Log::info('Facture annulée', [
                 'facture_id' => $facture->id,

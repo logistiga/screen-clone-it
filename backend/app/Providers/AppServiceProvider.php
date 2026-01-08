@@ -7,8 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use App\Services\DevisService;
-use App\Services\FactureService;
-use App\Services\OrdreTravailService;
 use App\Services\PaiementService;
 use App\Services\NoteDebutService;
 use App\Services\CaisseService;
@@ -17,6 +15,20 @@ use App\Services\ReportingService;
 use App\Services\ExportService;
 use App\Services\NotificationService;
 
+// Services spécialisés par type
+use App\Services\Devis\DevisConteneursService;
+use App\Services\Devis\DevisConventionnelService;
+use App\Services\Devis\DevisIndependantService;
+use App\Services\Devis\DevisServiceFactory;
+use App\Services\OrdreTravail\OrdreConteneursService;
+use App\Services\OrdreTravail\OrdreConventionnelService;
+use App\Services\OrdreTravail\OrdreIndependantService;
+use App\Services\OrdreTravail\OrdreServiceFactory;
+use App\Services\Facture\FactureConteneursService;
+use App\Services\Facture\FactureConventionnelService;
+use App\Services\Facture\FactureIndependantService;
+use App\Services\Facture\FactureServiceFactory;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -24,27 +36,37 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Services Devis spécialisés par type
-        $this->app->singleton(\App\Services\Devis\DevisConteneursService::class);
-        $this->app->singleton(\App\Services\Devis\DevisConventionnelService::class);
-        $this->app->singleton(\App\Services\Devis\DevisIndependantService::class);
-        $this->app->singleton(\App\Services\Devis\DevisServiceFactory::class);
+        // === Services Devis spécialisés par type ===
+        $this->app->singleton(DevisConteneursService::class);
+        $this->app->singleton(DevisConventionnelService::class);
+        $this->app->singleton(DevisIndependantService::class);
+        $this->app->singleton(DevisServiceFactory::class);
         
-        // Services principaux
+        // === Services OrdreTravail spécialisés par type ===
+        $this->app->singleton(OrdreConteneursService::class);
+        $this->app->singleton(OrdreConventionnelService::class);
+        $this->app->singleton(OrdreIndependantService::class);
+        $this->app->singleton(OrdreServiceFactory::class);
+        
+        // === Services Facture spécialisés par type ===
+        $this->app->singleton(FactureConteneursService::class);
+        $this->app->singleton(FactureConventionnelService::class);
+        $this->app->singleton(FactureIndependantService::class);
+        $this->app->singleton(FactureServiceFactory::class);
+        
+        // === Services utilitaires ===
         $this->app->singleton(DevisService::class);
-        $this->app->singleton(FactureService::class);
-        $this->app->singleton(OrdreTravailService::class);
         $this->app->singleton(NoteDebutService::class);
         $this->app->singleton(CaisseService::class);
         $this->app->singleton(AnnulationService::class);
         $this->app->singleton(ReportingService::class);
         $this->app->singleton(NotificationService::class);
 
-        // PaiementService a des dépendances
+        // PaiementService utilise les Factories
         $this->app->singleton(PaiementService::class, function ($app) {
             return new PaiementService(
-                $app->make(FactureService::class),
-                $app->make(OrdreTravailService::class)
+                $app->make(FactureServiceFactory::class),
+                $app->make(OrdreServiceFactory::class)
             );
         });
 
