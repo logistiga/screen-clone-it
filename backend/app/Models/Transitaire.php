@@ -28,9 +28,18 @@ class Transitaire extends Model
         return $this->hasMany(Devis::class);
     }
 
-    public function ordres()
+    public function ordresTravail()
     {
         return $this->hasMany(OrdreTravail::class);
+    }
+
+    /**
+     * Alias conservé pour compatibilité.
+     * @deprecated Utiliser ordresTravail()
+     */
+    public function ordres()
+    {
+        return $this->ordresTravail();
     }
 
     public function factures()
