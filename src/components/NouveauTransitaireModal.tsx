@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateTransitaire } from "@/hooks/use-commercial";
+import { Loader2 } from "lucide-react";
 
 interface NouveauTransitaireModalProps {
   open: boolean;
@@ -19,6 +21,7 @@ interface NouveauTransitaireModalProps {
 
 export function NouveauTransitaireModal({ open, onOpenChange }: NouveauTransitaireModalProps) {
   const { toast } = useToast();
+  const createTransitaire = useCreateTransitaire();
   const [formData, setFormData] = useState({
     nom: "",
     email: "",
@@ -38,13 +41,37 @@ export function NouveauTransitaireModal({ open, onOpenChange }: NouveauTransitai
       return;
     }
 
-    toast({
-      title: "Transitaire créé",
-      description: `${formData.nom} a été ajouté avec succès.`,
+    createTransitaire.mutate(formData, {
+      onSuccess: () => {
+        toast({
+          title: "Transitaire créé",
+          description: `${formData.nom} a été ajouté avec succès.`,
+        });
+        setFormData({ nom: "", email: "", telephone: "", adresse: "" });
+        onOpenChange(false);
+      },
+      onError: (error: unknown) => {
+        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+        const status = axiosError?.response?.status;
+        let message = "Une erreur est survenue lors de la création.";
+        
+        if (status === 401) {
+          message = "Session expirée. Veuillez vous reconnecter.";
+        } else if (status === 403) {
+          message = "Vous n'avez pas les permissions pour créer un transitaire.";
+        } else if (status === 422) {
+          message = axiosError?.response?.data?.message || "Données invalides.";
+        } else if (status === 500) {
+          message = "Erreur serveur. Veuillez réessayer plus tard.";
+        }
+        
+        toast({
+          title: "Erreur",
+          description: message,
+          variant: "destructive",
+        });
+      }
     });
-    
-    setFormData({ nom: "", email: "", telephone: "", adresse: "" });
-    onOpenChange(false);
   };
 
   return (
@@ -65,6 +92,7 @@ export function NouveauTransitaireModal({ open, onOpenChange }: NouveauTransitai
                 value={formData.nom}
                 onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                 placeholder="Nom du transitaire"
+                disabled={createTransitaire.isPending}
               />
             </div>
             <div className="grid gap-2">
@@ -75,6 +103,7 @@ export function NouveauTransitaireModal({ open, onOpenChange }: NouveauTransitai
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="email@exemple.com"
+                disabled={createTransitaire.isPending}
               />
             </div>
             <div className="grid gap-2">
@@ -84,6 +113,7 @@ export function NouveauTransitaireModal({ open, onOpenChange }: NouveauTransitai
                 value={formData.telephone}
                 onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                 placeholder="+241 XX XX XX XX"
+                disabled={createTransitaire.isPending}
               />
             </div>
             <div className="grid gap-2">
@@ -93,14 +123,24 @@ export function NouveauTransitaireModal({ open, onOpenChange }: NouveauTransitai
                 value={formData.adresse}
                 onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
                 placeholder="Adresse complète"
+                disabled={createTransitaire.isPending}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createTransitaire.isPending}>
               Annuler
             </Button>
-            <Button type="submit">Créer</Button>
+            <Button type="submit" disabled={createTransitaire.isPending}>
+              {createTransitaire.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                "Créer"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
