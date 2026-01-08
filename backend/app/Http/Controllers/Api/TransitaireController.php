@@ -41,7 +41,7 @@ class TransitaireController extends Controller
 
         Audit::log('create', 'transitaire', "Transitaire créé: {$transitaire->nom}", $transitaire);
 
-        return response()->json(new TransitaireResource($transitaire), 201);
+        return response()->json(['data' => new TransitaireResource($transitaire)], 201);
     }
 
     public function show(Transitaire $transitaire): JsonResponse
@@ -52,7 +52,7 @@ class TransitaireController extends Controller
             'factures' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
         ]);
 
-        return response()->json(new TransitaireResource($transitaire));
+        return response()->json(['data' => new TransitaireResource($transitaire)]);
     }
 
     public function update(UpdateTransitaireRequest $request, Transitaire $transitaire): JsonResponse
@@ -61,7 +61,7 @@ class TransitaireController extends Controller
 
         Audit::log('update', 'transitaire', "Transitaire modifié: {$transitaire->nom}", $transitaire);
 
-        return response()->json(new TransitaireResource($transitaire));
+        return response()->json(['data' => new TransitaireResource($transitaire)]);
     }
 
     public function destroy(Transitaire $transitaire): JsonResponse

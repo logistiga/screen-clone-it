@@ -29,9 +29,9 @@ class ArmateurController extends Controller
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $armateurs = $query->orderBy('nom')->get();
+        $armateurs = $query->orderBy('nom')->paginate($request->get('per_page', 15));
 
-        return response()->json(ArmateurResource::collection($armateurs));
+        return response()->json(ArmateurResource::collection($armateurs)->response()->getData(true));
     }
 
     public function store(StoreArmateurRequest $request): JsonResponse
@@ -40,12 +40,12 @@ class ArmateurController extends Controller
 
         Audit::log('create', 'armateur', "Armateur créé: {$armateur->nom}", $armateur);
 
-        return response()->json(new ArmateurResource($armateur), 201);
+        return response()->json(['data' => new ArmateurResource($armateur)], 201);
     }
 
     public function show(Armateur $armateur): JsonResponse
     {
-        return response()->json(new ArmateurResource($armateur));
+        return response()->json(['data' => new ArmateurResource($armateur)]);
     }
 
     public function update(UpdateArmateurRequest $request, Armateur $armateur): JsonResponse
@@ -54,7 +54,7 @@ class ArmateurController extends Controller
 
         Audit::log('update', 'armateur', "Armateur modifié: {$armateur->nom}", $armateur);
 
-        return response()->json(new ArmateurResource($armateur));
+        return response()->json(['data' => new ArmateurResource($armateur)]);
     }
 
     public function destroy(Armateur $armateur): JsonResponse
