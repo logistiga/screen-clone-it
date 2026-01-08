@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Loader2, Container, Package, Truck } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
@@ -45,6 +45,7 @@ export default function FacturesPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  const [categorieFilter, setCategorieFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
@@ -52,6 +53,7 @@ export default function FacturesPage() {
   const { data: facturesData, isLoading, error, refetch } = useFactures({
     search: searchTerm || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
+    categorie: categorieFilter !== "all" ? categorieFilter : undefined,
     page: currentPage,
     per_page: pageSize,
   });
@@ -95,13 +97,30 @@ export default function FacturesPage() {
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      brouillon: "outline",
       emise: "outline",
+      validee: "secondary",
       payee: "default",
-      partielle: "secondary",
+      partiellement_payee: "secondary",
       impayee: "destructive",
       annulee: "destructive",
     };
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+  };
+
+  const getCategorieBadge = (categorie?: string) => {
+    const configs: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      conteneurs: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      conventionnel: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+      operations_independantes: { label: "Indépendant", icon: <Truck className="h-3 w-3" />, className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+    };
+    const config = configs[categorie || ''] || { label: categorie || 'N/A', icon: null, className: "bg-gray-100 text-gray-800" };
+    return (
+      <Badge className={`${config.className} flex items-center gap-1`}>
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -128,7 +147,7 @@ export default function FacturesPage() {
   }
 
   // État vide
-  if (facturesList.length === 0 && !searchTerm && statutFilter === "all") {
+  if (facturesList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return (
       <MainLayout title="Factures">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -203,11 +222,22 @@ export default function FacturesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="emise">Émise</SelectItem>
+                <SelectItem value="brouillon">Brouillon</SelectItem>
+                <SelectItem value="validee">Validée</SelectItem>
                 <SelectItem value="payee">Payée</SelectItem>
-                <SelectItem value="partielle">Partielle</SelectItem>
-                <SelectItem value="impayee">Impayée</SelectItem>
+                <SelectItem value="partiellement_payee">Partielle</SelectItem>
                 <SelectItem value="annulee">Annulée</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categorieFilter} onValueChange={setCategorieFilter}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Toutes catégories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes catégories</SelectItem>
+                <SelectItem value="conteneurs">Conteneurs</SelectItem>
+                <SelectItem value="conventionnel">Conventionnel</SelectItem>
+                <SelectItem value="operations_independantes">Indépendant</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -236,7 +266,7 @@ export default function FacturesPage() {
                   <TableHead>Numéro</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Échéance</TableHead>
+                  <TableHead>Catégorie</TableHead>
                   <TableHead className="text-right">Total TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
@@ -255,8 +285,8 @@ export default function FacturesPage() {
                         {facture.numero}
                       </TableCell>
                       <TableCell>{facture.client?.nom}</TableCell>
-                      <TableCell>{formatDate(facture.date_facture)}</TableCell>
-                      <TableCell>{formatDate(facture.date_echeance)}</TableCell>
+                      <TableCell>{formatDate(facture.date_facture || facture.date || facture.created_at)}</TableCell>
+                      <TableCell>{getCategorieBadge(facture.categorie)}</TableCell>
                       <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
                         <span className={(facture.montant_paye || 0) > 0 ? "text-green-600" : ""}>
