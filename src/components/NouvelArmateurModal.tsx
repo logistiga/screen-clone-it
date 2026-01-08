@@ -24,6 +24,7 @@ export function NouvelArmateurModal({ open, onOpenChange }: NouvelArmateurModalP
   const createArmateur = useCreateArmateur();
   const [formData, setFormData] = useState({
     nom: "",
+    code: "",
     email: "",
     telephone: "",
     adresse: "",
@@ -47,7 +48,7 @@ export function NouvelArmateurModal({ open, onOpenChange }: NouvelArmateurModalP
           title: "Armateur créé",
           description: `${formData.nom} a été ajouté avec succès.`,
         });
-        setFormData({ nom: "", email: "", telephone: "", adresse: "" });
+        setFormData({ nom: "", code: "", email: "", telephone: "", adresse: "" });
         onOpenChange(false);
       },
       onError: (error: unknown) => {
@@ -92,6 +93,16 @@ export function NouvelArmateurModal({ open, onOpenChange }: NouvelArmateurModalP
                 value={formData.nom}
                 onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                 placeholder="Nom de l'armateur (ex: MSC, MAERSK)"
+                disabled={createArmateur.isPending}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="code">Code</Label>
+              <Input
+                id="code"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                placeholder="Code unique (ex: MSC, MAE)"
                 disabled={createArmateur.isPending}
               />
             </div>

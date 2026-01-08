@@ -28,7 +28,6 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
     email: "",
     telephone: "",
     adresse: "",
-    taux_commission: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,18 +51,13 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
       return;
     }
 
-    const dataToSend = {
-      ...formData,
-      taux_commission: formData.taux_commission ? parseFloat(formData.taux_commission) : null,
-    };
-
-    createRepresentant.mutate(dataToSend, {
+    createRepresentant.mutate(formData, {
       onSuccess: () => {
         toast({
           title: "Représentant créé",
           description: `${formData.prenom} ${formData.nom} a été ajouté avec succès.`,
         });
-        setFormData({ nom: "", prenom: "", email: "", telephone: "", adresse: "", taux_commission: "" });
+        setFormData({ nom: "", prenom: "", email: "", telephone: "", adresse: "" });
         onOpenChange(false);
       },
       onError: (error: unknown) => {
@@ -149,20 +143,6 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 value={formData.adresse}
                 onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
                 placeholder="Adresse complète"
-                disabled={createRepresentant.isPending}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="taux_commission">Taux de commission (%)</Label>
-              <Input
-                id="taux_commission"
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formData.taux_commission}
-                onChange={(e) => setFormData({ ...formData, taux_commission: e.target.value })}
-                placeholder="Ex: 5"
                 disabled={createRepresentant.isPending}
               />
             </div>
