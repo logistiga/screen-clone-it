@@ -4,7 +4,7 @@ namespace App\Services\OrdreTravail;
 
 use App\Models\OrdreTravail;
 use App\Models\Configuration;
-use App\Services\FactureService;
+use App\Services\Facture\FactureServiceFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -165,7 +165,7 @@ class OrdreServiceFactory
             $categorie = $ordre->categorie;
             $service = $this->getService($categorie);
 
-            $factureService = app(FactureService::class);
+            $factureFactory = app(FactureServiceFactory::class);
 
             $factureData = [
                 'client_id' => $ordre->client_id,
@@ -185,7 +185,7 @@ class OrdreServiceFactory
             // Ajouter les éléments spécifiques au type
             $factureData = array_merge($factureData, $service->preparerPourConversion($ordre));
 
-            $facture = $factureService->creer($factureData);
+            $facture = $factureFactory->creer($factureData);
 
             $ordre->update(['statut' => 'facture']);
 
