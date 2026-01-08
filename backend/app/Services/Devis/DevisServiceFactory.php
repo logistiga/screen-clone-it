@@ -170,7 +170,7 @@ class DevisServiceFactory
             $categorie = $devis->categorie;
             $service = $this->getService($categorie);
 
-            $ordreService = app(\App\Services\OrdreTravailService::class);
+            $ordreFactory = app(\App\Services\OrdreTravail\OrdreServiceFactory::class);
 
             $ordreData = [
                 'client_id' => $devis->client_id,
@@ -190,7 +190,7 @@ class DevisServiceFactory
             // Ajouter les éléments spécifiques au type
             $ordreData = array_merge($ordreData, $service->preparerPourConversion($devis));
 
-            $ordre = $ordreService->creer($ordreData);
+            $ordre = $ordreFactory->creer($ordreData);
 
             $devis->update(['statut' => 'converti']);
 

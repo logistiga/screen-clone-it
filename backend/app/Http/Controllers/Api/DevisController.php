@@ -9,17 +9,17 @@ use App\Http\Resources\DevisResource;
 use App\Http\Resources\OrdreTravailResource;
 use App\Models\Devis;
 use App\Models\Audit;
-use App\Services\DevisService;
+use App\Services\Devis\DevisServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class DevisController extends Controller
 {
-    protected DevisService $devisService;
+    protected DevisServiceFactory $devisFactory;
 
-    public function __construct(DevisService $devisService)
+    public function __construct(DevisServiceFactory $devisFactory)
     {
-        $this->devisService = $devisService;
+        $this->devisFactory = $devisFactory;
     }
 
     public function index(Request $request): JsonResponse
@@ -54,7 +54,7 @@ class DevisController extends Controller
     public function store(StoreDevisRequest $request): JsonResponse
     {
         try {
-            $devis = $this->devisService->creer($request->validated());
+            $devis = $this->devisFactory->creer($request->validated());
 
             Audit::log('create', 'devis', "Devis créé: {$devis->numero}", $devis->id);
 
@@ -87,7 +87,7 @@ class DevisController extends Controller
         }
 
         try {
-            $devis = $this->devisService->modifier($devis, $request->validated());
+            $devis = $this->devisFactory->modifier($devis, $request->validated());
 
             Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis->id);
 
@@ -162,7 +162,7 @@ class DevisController extends Controller
         }
 
         try {
-            $ordre = $this->devisService->convertirEnOrdre($devis);
+            $ordre = $this->devisFactory->convertirEnOrdre($devis);
 
             Audit::log('convert', 'devis', "Devis converti en ordre: {$devis->numero} -> {$ordre->numero}", $devis->id);
 
@@ -189,7 +189,7 @@ class DevisController extends Controller
     public function duplicate(Devis $devis): JsonResponse
     {
         try {
-            $newDevis = $this->devisService->dupliquer($devis);
+            $newDevis = $this->devisFactory->dupliquer($devis);
 
             Audit::log('duplicate', 'devis', "Devis dupliqué: {$devis->numero} -> {$newDevis->numero}", $newDevis->id);
 
