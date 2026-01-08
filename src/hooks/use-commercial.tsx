@@ -105,7 +105,18 @@ export function useCreateDevis() {
       toast.success('Devis créé avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la création du devis');
+      // Garder une trace exploitable côté navigateur pour diagnostiquer les 500 backend
+      console.error('Erreur création devis:', {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+      });
+
+      toast.error(
+        error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          'Erreur lors de la création du devis'
+      );
     },
   });
 }
