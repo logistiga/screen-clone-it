@@ -14,31 +14,74 @@ use Illuminate\Support\Facades\Log;
 class DevisService
 {
     /**
+     * Normaliser le payload API vers le schéma DB actuel.
+     */
+    protected function normaliserDonneesDevis(array $data): array
+    {
+        // type_document (API) -> categorie (DB)
+        if (!isset($data['categorie']) && isset($data['type_document'])) {
+            $data['categorie'] = match ($data['type_document']) {
+                'Conteneur' => 'conteneurs',
+                'Lot' => 'conventionnel',
+                'Independant' => 'operations_independantes',
+                default => 'conteneurs',
+            };
+        }
+
+        // bl_numero (API) -> numero_bl (DB)
+        if (isset($data['bl_numero']) && !isset($data['numero_bl'])) {
+            $data['numero_bl'] = $data['bl_numero'];
+        }
+        unset($data['bl_numero'], $data['type_document']);
+
+        // dates
+        $dateCreation = $data['date_creation'] ?? now()->toDateString();
+        $data['date_creation'] = $dateCreation;
+
+        if (!isset($data['date_validite'])) {
+            $validite = isset($data['validite_jours']) ? (int) $data['validite_jours'] : 30;
+            $validite = max(1, min(365, $validite));
+            $data['date_validite'] = now()->addDays($validite)->toDateString();
+        }
+        unset($data['validite_jours'], $data['date_arrivee']);
+
+        return $data;
+    }
+
+    /**
      * Créer un nouveau devis avec ses lignes, conteneurs et lots
      */
     public function creer(array $data): Devis
     {
         return DB::transaction(function () use ($data) {
+            $data = $this->normaliserDonneesDevis($data);
+
             // Générer le numéro
             $data['numero'] = $this->genererNumero();
             $data['statut'] = $data['statut'] ?? 'brouillon';
+
+            // Extraire les relations avant l'insert
+            $lignes = $data['lignes'] ?? [];
+            $conteneurs = $data['conteneurs'] ?? [];
+            $lots = $data['lots'] ?? [];
+            unset($data['lignes'], $data['conteneurs'], $data['lots']);
 
             // Créer le devis
             $devis = Devis::create($data);
 
             // Créer les lignes
-            if (!empty($data['lignes'])) {
-                $this->creerLignes($devis, $data['lignes']);
+            if (!empty($lignes)) {
+                $this->creerLignes($devis, $lignes);
             }
 
             // Créer les conteneurs
-            if (!empty($data['conteneurs'])) {
-                $this->creerConteneurs($devis, $data['conteneurs']);
+            if (!empty($conteneurs)) {
+                $this->creerConteneurs($devis, $conteneurs);
             }
 
             // Créer les lots
-            if (!empty($data['lots'])) {
-                $this->creerLots($devis, $data['lots']);
+            if (!empty($lots)) {
+                $this->creerLots($devis, $lots);
             }
 
             // Calculer les totaux
@@ -231,8 +274,8 @@ class DevisService
 
         $devis->update([
             'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
+            'tva' => $montantTVA,
+            'css' => $montantCSS,
             'montant_ttc' => $montantTTC,
         ]);
     }
@@ -277,6 +320,11 @@ class DevisService
             $conteneur = $devis->conteneurs()->create($conteneurData);
 
             foreach ($operations as $operation) {
+                // API -> DB: type_operation -> type
+                if (isset($operation['type_operation']) && !isset($operation['type'])) {
+                    $operation['type'] = $operation['type_operation'];
+                    unset($operation['type_operation']);
+                }
                 $conteneur->operations()->create($operation);
             }
         }
@@ -287,7 +335,17 @@ class DevisService
      */
     protected function creerLots(Devis $devis, array $lots): void
     {
-        foreach ($lots as $lot) {
+        foreach (array_values($lots) as $i => $lot) {
+            // API -> DB
+            if (isset($lot['designation']) && !isset($lot['description'])) {
+                $lot['description'] = $lot['designation'];
+            }
+            if (!isset($lot['numero_lot'])) {
+                $lot['numero_lot'] = 'LOT-' . ($i + 1);
+            }
+
+            unset($lot['designation']);
+
             $devis->lots()->create($lot);
         }
     }
