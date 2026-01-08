@@ -14,17 +14,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, ClipboardList, Receipt, History, DollarSign } from "lucide-react";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, ClipboardList, Receipt, History, DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMontant, formatDate, ordresTravail, factures, getStatutLabel } from "@/data/mockData";
 import { 
-  representantsData, 
   getPrimesRepresentant, 
   getPaiementsRepresentant,
   getTotalPrimesDues,
   getTotalPrimesPayees
 } from "@/data/partenairesData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
+import { useRepresentantById } from "@/hooks/use-commercial";
 
 export default function RepresentantDetailPage() {
   const { id } = useParams();
@@ -33,11 +33,21 @@ export default function RepresentantDetailPage() {
   const [showPaiementModal, setShowPaiementModal] = useState(false);
   const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
   
-  const representant = representantsData.find(r => r.id === id);
+  const { data: representant, isLoading, error } = useRepresentantById(id);
   const primes = id ? getPrimesRepresentant(id) : [];
   const paiements = id ? getPaiementsRepresentant(id) : [];
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
   
-  if (!representant) {
+  if (error || !representant) {
     return (
       <MainLayout title="Représentant non trouvé">
         <div className="flex flex-col items-center justify-center py-12">
@@ -94,7 +104,7 @@ export default function RepresentantDetailPage() {
   };
 
   return (
-    <MainLayout title={representant.nom}>
+    <MainLayout title={representant.prenom ? `${representant.prenom} ${representant.nom}` : representant.nom || 'Représentant'}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -131,23 +141,23 @@ export default function RepresentantDetailPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{representant.email}</span>
+                    <span>{representant.email || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{representant.telephone}</span>
+                    <span>{representant.telephone || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{representant.adresse}</span>
+                    <span>{representant.adresse || '-'}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="text-sm text-muted-foreground">
-                    Partenaire depuis le {formatDate(representant.dateCreation)}
+                    Partenaire depuis le {representant.created_at ? formatDate(representant.created_at) : '-'}
                   </div>
-                  <Badge variant={representant.actif ? "default" : "secondary"}>
-                    {representant.actif ? "Actif" : "Inactif"}
+                  <Badge variant={representant.actif !== false ? "default" : "secondary"}>
+                    {representant.actif !== false ? "Actif" : "Inactif"}
                   </Badge>
                 </div>
               </div>
