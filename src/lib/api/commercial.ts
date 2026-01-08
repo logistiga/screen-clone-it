@@ -230,31 +230,31 @@ export const devisApi = {
 // Ordres de Travail API
 export const ordresApi = {
   getAll: async (params?: { search?: string; statut?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) => {
-    const response = await api.get<PaginatedResponse<OrdreTravail>>('/ordres', { params });
+    const response = await api.get<PaginatedResponse<OrdreTravail>>('/ordres-travail', { params });
     return response.data;
   },
   
   getById: async (id: string) => {
-    const response = await api.get<{ data: OrdreTravail }>(`/ordres/${id}`);
+    const response = await api.get<{ data: OrdreTravail }>(`/ordres-travail/${id}`);
     return response.data.data;
   },
   
   create: async (data: any) => {
-    const response = await api.post<{ data: OrdreTravail }>('/ordres', data);
+    const response = await api.post<{ data: OrdreTravail }>('/ordres-travail', data);
     return response.data.data;
   },
   
   update: async (id: string, data: any) => {
-    const response = await api.put<{ data: OrdreTravail }>(`/ordres/${id}`, data);
+    const response = await api.put<{ data: OrdreTravail }>(`/ordres-travail/${id}`, data);
     return response.data.data;
   },
   
   delete: async (id: string) => {
-    await api.delete(`/ordres/${id}`);
+    await api.delete(`/ordres-travail/${id}`);
   },
   
   convertToFacture: async (id: string) => {
-    const response = await api.post<{ data: Facture; message: string }>(`/ordres/${id}/convert-to-facture`);
+    const response = await api.post<{ data: Facture; message: string }>(`/ordres-travail/${id}/convert-facture`);
     return response.data;
   },
 };
