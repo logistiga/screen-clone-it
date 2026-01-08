@@ -229,16 +229,39 @@ class DevisServiceFactory
      */
     protected function genererNumero(): string
     {
-        $config = Configuration::first();
-        $prefixe = $config->prefixe_devis ?? 'DEV';
+        $config = Configuration::getOrCreate('numerotation');
+        $prefixe = $config->data['prefixe_devis'] ?? 'DEV';
         $annee = date('Y');
 
-        $dernierDevis = Devis::whereYear('created_at', $annee)
-            ->orderBy('id', 'desc')
-            ->first();
+        // Utiliser une transaction + verrouillage pour éviter les doublons
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($config, $prefixe, $annee) {
+            // Verrouiller la ligne de configuration pour empêcher les lectures concurrentes
+            $configLocked = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
 
-        $numero = $dernierDevis ? intval(substr($dernierDevis->numero, -4)) + 1 : 1;
+            // Chercher le dernier numéro de devis existant cette année
+            $dernierDevis = Devis::whereYear('created_at', $annee)
+                ->orderBy('id', 'desc')
+                ->first();
 
-        return sprintf('%s-%s-%04d', $prefixe, $annee, $numero);
+            // Calculer le prochain numéro basé sur le dernier devis existant
+            $prochainNumero = 1;
+            if ($dernierDevis && preg_match('/-(\d{4})$/', $dernierDevis->numero, $matches)) {
+                $prochainNumero = intval($matches[1]) + 1;
+            }
+
+            // S'assurer que le numéro est au moins égal au compteur stocké
+            $compteurStocke = $configLocked->data['prochain_numero_devis'] ?? 1;
+            if ($prochainNumero < $compteurStocke) {
+                $prochainNumero = $compteurStocke;
+            }
+
+            // Mettre à jour le compteur
+            $data = $configLocked->data;
+            $data['prochain_numero_devis'] = $prochainNumero + 1;
+            $configLocked->data = $data;
+            $configLocked->save();
+
+            return sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+        });
     }
 }
