@@ -81,8 +81,10 @@ export default function DevisPage() {
         await convertMutation.mutateAsync(confirmAction.id);
         navigate("/ordres");
       }
+    } catch {
+      // noop: les mutations gèrent déjà le toast d'erreur dans onError
     } finally {
-      // Fermer la modale même si la requête échoue (le toast onError gère le feedback)
+      // Fermer la modale même si la requête échoue
       setConfirmAction(null);
     }
   };

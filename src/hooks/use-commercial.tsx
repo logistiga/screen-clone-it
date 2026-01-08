@@ -151,10 +151,18 @@ export function useDeleteDevis() {
       toast.success('Devis supprimé avec succès');
     },
     onError: (error: any) => {
+      const status = error?.response?.status;
       const responseData = error?.response?.data;
 
+      // Si le devis n'existe plus côté backend, on considère que l'état est déjà "supprimé"
+      if (status === 404) {
+        queryClient.invalidateQueries({ queryKey: ['devis'] });
+        toast.success('Devis déjà supprimé');
+        return;
+      }
+
       console.error('Erreur suppression devis:', {
-        status: error?.response?.status,
+        status,
         data: responseData,
         message: error?.message,
       });
