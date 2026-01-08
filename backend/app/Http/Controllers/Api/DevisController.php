@@ -60,8 +60,17 @@ class DevisController extends Controller
 
             return response()->json(new DevisResource($devis), 201);
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la création du devis', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur création devis', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la création du devis',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
         }
     }
 
@@ -84,8 +93,18 @@ class DevisController extends Controller
 
             return response()->json(new DevisResource($devis));
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la mise à jour', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur mise à jour devis', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
         }
     }
 
@@ -122,8 +141,18 @@ class DevisController extends Controller
                 'ordre' => new OrdreTravailResource($ordre)
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la conversion', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur conversion devis->ordre', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la conversion',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
         }
     }
 
@@ -136,8 +165,18 @@ class DevisController extends Controller
 
             return response()->json(new DevisResource($newDevis), 201);
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la duplication', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur duplication devis', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la duplication',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
         }
     }
 }
