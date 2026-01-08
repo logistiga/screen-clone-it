@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateRepresentant } from "@/hooks/use-commercial";
+import { Loader2 } from "lucide-react";
 
 interface NouveauRepresentantModalProps {
   open: boolean;
@@ -19,6 +21,7 @@ interface NouveauRepresentantModalProps {
 
 export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresentantModalProps) {
   const { toast } = useToast();
+  const createRepresentant = useCreateRepresentant();
   const [formData, setFormData] = useState({
     nom: "",
     email: "",
@@ -38,13 +41,37 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
       return;
     }
 
-    toast({
-      title: "Représentant créé",
-      description: `${formData.nom} a été ajouté avec succès.`,
+    createRepresentant.mutate(formData, {
+      onSuccess: () => {
+        toast({
+          title: "Représentant créé",
+          description: `${formData.nom} a été ajouté avec succès.`,
+        });
+        setFormData({ nom: "", email: "", telephone: "", adresse: "" });
+        onOpenChange(false);
+      },
+      onError: (error: unknown) => {
+        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+        const status = axiosError?.response?.status;
+        let message = "Une erreur est survenue lors de la création.";
+        
+        if (status === 401) {
+          message = "Session expirée. Veuillez vous reconnecter.";
+        } else if (status === 403) {
+          message = "Vous n'avez pas les permissions pour créer un représentant.";
+        } else if (status === 422) {
+          message = axiosError?.response?.data?.message || "Données invalides.";
+        } else if (status === 500) {
+          message = "Erreur serveur. Veuillez réessayer plus tard.";
+        }
+        
+        toast({
+          title: "Erreur",
+          description: message,
+          variant: "destructive",
+        });
+      }
     });
-    
-    setFormData({ nom: "", email: "", telephone: "", adresse: "" });
-    onOpenChange(false);
   };
 
   return (
@@ -65,6 +92,7 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 value={formData.nom}
                 onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                 placeholder="Nom du représentant"
+                disabled={createRepresentant.isPending}
               />
             </div>
             <div className="grid gap-2">
@@ -75,6 +103,7 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="email@exemple.com"
+                disabled={createRepresentant.isPending}
               />
             </div>
             <div className="grid gap-2">
@@ -84,6 +113,7 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 value={formData.telephone}
                 onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                 placeholder="+241 XX XX XX XX"
+                disabled={createRepresentant.isPending}
               />
             </div>
             <div className="grid gap-2">
@@ -93,14 +123,24 @@ export function NouveauRepresentantModal({ open, onOpenChange }: NouveauRepresen
                 value={formData.adresse}
                 onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
                 placeholder="Adresse complète"
+                disabled={createRepresentant.isPending}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createRepresentant.isPending}>
               Annuler
             </Button>
-            <Button type="submit">Créer</Button>
+            <Button type="submit" disabled={createRepresentant.isPending}>
+              {createRepresentant.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                "Créer"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
