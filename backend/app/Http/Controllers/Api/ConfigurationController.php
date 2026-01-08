@@ -4,38 +4,77 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateConfigurationRequest;
-use App\Http\Requests\UpdateTaxesRequest;
-use App\Http\Requests\UpdateNumerotationRequest;
 use App\Http\Requests\UpdateEntrepriseRequest;
-use App\Http\Resources\ConfigurationResource;
-use App\Models\Configuration;
+use App\Http\Requests\UpdateNumerotationRequest;
+use App\Http\Requests\UpdateTaxesRequest;
 use App\Models\Audit;
+use App\Models\Configuration;
 use Illuminate\Http\JsonResponse;
 
 class ConfigurationController extends Controller
 {
+    /**
+     * Retourne une vue “plate” de la configuration utilisée par le front.
+     * IMPORTANT: le modèle/DB utilise (key, data) JSON.
+     */
     public function index(): JsonResponse
     {
-        $configurations = Configuration::orderBy('groupe')->orderBy('cle')->get();
-        
-        $grouped = $configurations->groupBy('groupe');
+        $taxes = Configuration::getValue('taxes') ?? [];
+        $numerotation = Configuration::getValue('numerotation') ?? [];
+        $entreprise = Configuration::getValue('entreprise') ?? [];
 
-        return response()->json($grouped);
+        $payload = [
+            // Taxes (attendu par le front)
+            'taux_tva' => (float) ($taxes['tva_taux'] ?? 18),
+            'taux_css' => (float) ($taxes['css_taux'] ?? 1),
+
+            // Numérotation (utile sur plusieurs écrans)
+            'prefixe_devis' => $numerotation['prefixe_devis'] ?? 'DEV',
+            'prefixe_ordre' => $numerotation['prefixe_ordre'] ?? 'OT',
+            'prefixe_facture' => $numerotation['prefixe_facture'] ?? 'FAC',
+
+            // Entreprise
+            'entreprise' => $entreprise,
+        ];
+
+        return response()->json(['data' => $payload]);
     }
 
+    /**
+     * Expose une section par key (ex: taxes | numerotation | entreprise).
+     */
     public function show(string $cle): JsonResponse
     {
-        $configuration = Configuration::where('cle', $cle)->firstOrFail();
-        return response()->json(new ConfigurationResource($configuration));
+        return response()->json([
+            'data' => Configuration::getValue($cle),
+        ]);
     }
 
+    /**
+     * Mise à jour “bulk” legacy: accepte configurations[].cle + configurations[].valeur.
+     * - Si cle contient "section.sous_cle", on écrit dans Configuration(section).data[sous_cle]
+     * - Sinon, on mappe les clés connues, ou on stocke dans un groupe "general".
+     */
     public function update(UpdateConfigurationRequest $request): JsonResponse
     {
         foreach ($request->configurations as $config) {
-            Configuration::updateOrCreate(
-                ['cle' => $config['cle']],
-                ['valeur' => $config['valeur']]
-            );
+            $cle = $config['cle'];
+            $valeur = $config['valeur'];
+
+            if (is_string($cle) && str_contains($cle, '.')) {
+                [$section, $subKey] = explode('.', $cle, 2);
+                Configuration::setValue($section, $subKey, $valeur);
+                continue;
+            }
+
+            // Mapping compatibilité
+            if ($cle === 'taux_tva') {
+                Configuration::setValue('taxes', 'tva_taux', $valeur);
+            } elseif ($cle === 'taux_css') {
+                Configuration::setValue('taxes', 'css_taux', $valeur);
+            } else {
+                Configuration::setValue('general', (string) $cle, $valeur);
+            }
         }
 
         Audit::log('update', 'configuration', 'Configurations mises à jour');
@@ -45,25 +84,18 @@ class ConfigurationController extends Controller
 
     public function taxes(): JsonResponse
     {
-        $taxes = [
-            'taux_tva' => Configuration::where('cle', 'taux_tva')->value('valeur') ?? 18,
-            'taux_css' => Configuration::where('cle', 'taux_css')->value('valeur') ?? 1,
-        ];
+        $taxes = Configuration::getValue('taxes') ?? [];
 
-        return response()->json($taxes);
+        return response()->json([
+            'taux_tva' => (float) ($taxes['tva_taux'] ?? 18),
+            'taux_css' => (float) ($taxes['css_taux'] ?? 1),
+        ]);
     }
 
     public function updateTaxes(UpdateTaxesRequest $request): JsonResponse
     {
-        Configuration::updateOrCreate(
-            ['cle' => 'taux_tva'],
-            ['valeur' => $request->taux_tva, 'groupe' => 'taxes', 'description' => 'Taux de TVA (%)']
-        );
-
-        Configuration::updateOrCreate(
-            ['cle' => 'taux_css'],
-            ['valeur' => $request->taux_css, 'groupe' => 'taxes', 'description' => 'Taux de CSS (%)']
-        );
+        Configuration::setValue('taxes', 'tva_taux', $request->taux_tva);
+        Configuration::setValue('taxes', 'css_taux', $request->taux_css);
 
         Audit::log('update', 'configuration', 'Taux de taxes mis à jour');
 
@@ -72,31 +104,20 @@ class ConfigurationController extends Controller
 
     public function numerotation(): JsonResponse
     {
-        $prefixes = [
-            'prefixe_devis' => Configuration::where('cle', 'prefixe_devis')->value('valeur') ?? 'DEV',
-            'prefixe_ordre' => Configuration::where('cle', 'prefixe_ordre')->value('valeur') ?? 'OT',
-            'prefixe_facture' => Configuration::where('cle', 'prefixe_facture')->value('valeur') ?? 'FAC',
-        ];
+        $numerotation = Configuration::getValue('numerotation') ?? [];
 
-        return response()->json($prefixes);
+        return response()->json([
+            'prefixe_devis' => $numerotation['prefixe_devis'] ?? 'DEV',
+            'prefixe_ordre' => $numerotation['prefixe_ordre'] ?? 'OT',
+            'prefixe_facture' => $numerotation['prefixe_facture'] ?? 'FAC',
+        ]);
     }
 
     public function updateNumerotation(UpdateNumerotationRequest $request): JsonResponse
     {
-        Configuration::updateOrCreate(
-            ['cle' => 'prefixe_devis'],
-            ['valeur' => $request->prefixe_devis, 'groupe' => 'numerotation', 'description' => 'Préfixe des devis']
-        );
-
-        Configuration::updateOrCreate(
-            ['cle' => 'prefixe_ordre'],
-            ['valeur' => $request->prefixe_ordre, 'groupe' => 'numerotation', 'description' => 'Préfixe des ordres de travail']
-        );
-
-        Configuration::updateOrCreate(
-            ['cle' => 'prefixe_facture'],
-            ['valeur' => $request->prefixe_facture, 'groupe' => 'numerotation', 'description' => 'Préfixe des factures']
-        );
+        Configuration::setValue('numerotation', 'prefixe_devis', $request->prefixe_devis);
+        Configuration::setValue('numerotation', 'prefixe_ordre', $request->prefixe_ordre);
+        Configuration::setValue('numerotation', 'prefixe_facture', $request->prefixe_facture);
 
         Audit::log('update', 'configuration', 'Préfixes de numérotation mis à jour');
 
@@ -105,29 +126,16 @@ class ConfigurationController extends Controller
 
     public function entreprise(): JsonResponse
     {
-        $entreprise = [
-            'nom' => Configuration::where('cle', 'entreprise_nom')->value('valeur') ?? '',
-            'adresse' => Configuration::where('cle', 'entreprise_adresse')->value('valeur') ?? '',
-            'telephone' => Configuration::where('cle', 'entreprise_telephone')->value('valeur') ?? '',
-            'email' => Configuration::where('cle', 'entreprise_email')->value('valeur') ?? '',
-            'nif' => Configuration::where('cle', 'entreprise_nif')->value('valeur') ?? '',
-            'rccm' => Configuration::where('cle', 'entreprise_rccm')->value('valeur') ?? '',
-            'logo' => Configuration::where('cle', 'entreprise_logo')->value('valeur') ?? '',
-        ];
-
-        return response()->json($entreprise);
+        return response()->json(Configuration::getValue('entreprise') ?? []);
     }
 
     public function updateEntreprise(UpdateEntrepriseRequest $request): JsonResponse
     {
-        $fields = ['nom', 'adresse', 'telephone', 'email', 'nif', 'rccm'];
+        $fields = ['nom', 'adresse', 'telephone', 'email', 'nif', 'rccm', 'logo'];
 
         foreach ($fields as $field) {
             if ($request->has($field)) {
-                Configuration::updateOrCreate(
-                    ['cle' => "entreprise_{$field}"],
-                    ['valeur' => $request->get($field), 'groupe' => 'entreprise']
-                );
+                Configuration::setValue('entreprise', $field, $request->get($field));
             }
         }
 
