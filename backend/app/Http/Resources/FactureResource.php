@@ -9,33 +9,39 @@ class FactureResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $montantPaye = $this->whenLoaded('paiements', fn() => $this->paiements->sum('montant'), 0);
-        
         return [
             'id' => $this->id,
             'numero' => $this->numero,
             'date' => $this->date?->toDateString(),
+            'date_facture' => $this->date?->toDateString(),
+            'date_creation' => $this->date?->toDateString(),
             'date_echeance' => $this->date_echeance?->toDateString(),
             'type_document' => $this->type_document,
+            'categorie' => $this->categorie,
             'statut' => $this->statut,
+            
+            // IDs partenaires
+            'client_id' => $this->client_id,
+            'ordre_id' => $this->ordre_id,
+            'armateur_id' => $this->armateur_id,
+            'transitaire_id' => $this->transitaire_id,
+            'representant_id' => $this->representant_id,
             
             // Informations navire
             'bl_numero' => $this->bl_numero,
+            'numero_bl' => $this->bl_numero,
             'navire' => $this->navire,
             'date_arrivee' => $this->date_arrivee?->toDateString(),
             
             // Montants
-            'montant_ht' => round($this->montant_ht, 2),
-            'montant_tva' => round($this->montant_tva, 2),
-            'montant_css' => round($this->montant_css, 2),
-            'montant_ttc' => round($this->montant_ttc, 2),
+            'montant_ht' => round((float) $this->montant_ht, 2),
+            'montant_tva' => round((float) $this->montant_tva, 2),
+            'montant_css' => round((float) $this->montant_css, 2),
+            'montant_ttc' => round((float) $this->montant_ttc, 2),
+            'montant_paye' => round((float) $this->montant_paye, 2),
+            'reste_a_payer' => round((float) ($this->montant_ttc - $this->montant_paye), 2),
             'taux_tva' => $this->taux_tva,
             'taux_css' => $this->taux_css,
-            
-            // Paiements
-            'montant_paye' => $this->when($this->montant_paye !== null, round($this->montant_paye, 2)),
-            'reste_a_payer' => $this->when($this->reste_a_payer !== null, round($this->reste_a_payer, 2)),
-            'jours_retard' => $this->when($this->jours_retard !== null, $this->jours_retard),
             
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
@@ -43,7 +49,9 @@ class FactureResource extends JsonResource
             
             // Relations
             'client' => new ClientResource($this->whenLoaded('client')),
+            'armateur' => new ArmateurResource($this->whenLoaded('armateur')),
             'transitaire' => new TransitaireResource($this->whenLoaded('transitaire')),
+            'representant' => new RepresentantResource($this->whenLoaded('representant')),
             'ordre_travail' => new OrdreTravailResource($this->whenLoaded('ordreTravail')),
             'lignes' => LigneFactureResource::collection($this->whenLoaded('lignes')),
             'conteneurs' => ConteneurFactureResource::collection($this->whenLoaded('conteneurs')),
