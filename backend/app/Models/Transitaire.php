@@ -15,6 +15,9 @@ class Transitaire extends Model
         'email',
         'telephone',
         'adresse',
+        'contact_principal',
+        'nif',
+        'rccm',
         'actif',
     ];
 

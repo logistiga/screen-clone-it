@@ -12,9 +12,12 @@ class Representant extends Model
 
     protected $fillable = [
         'nom',
+        'prenom',
         'email',
         'telephone',
         'adresse',
+        'zone',
+        'taux_commission',
         'actif',
     ];
 
