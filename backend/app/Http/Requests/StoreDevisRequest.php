@@ -19,10 +19,14 @@ class StoreDevisRequest extends FormRequest
             'representant_id' => 'nullable|exists:representants,id',
             'armateur_id' => 'nullable|exists:armateurs,id',
             'type_document' => 'required|in:Conteneur,Lot,Independant',
+            'type_operation' => 'nullable|string|in:import,export',
+            'type_operation_indep' => 'nullable|string|in:location,transport,manutention,double_relevage,stockage',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
             'date_arrivee' => 'nullable|date',
             'validite_jours' => 'nullable|integer|min:1|max:365',
+            'lieu_chargement' => 'nullable|string|max:255',
+            'lieu_dechargement' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:2000',
             
             // Lignes (opérations indépendantes)
@@ -49,9 +53,10 @@ class StoreDevisRequest extends FormRequest
             'conteneurs.*.operations.*.quantite' => 'nullable|numeric|min:0',
             'conteneurs.*.operations.*.prix_unitaire' => 'nullable|numeric|min:0',
             
-            // Lots
+            // Lots (accepte designation ou description)
             'lots' => 'nullable|array',
-            'lots.*.designation' => 'required_with:lots|string|max:255',
+            'lots.*.designation' => 'nullable|string|max:255',
+            'lots.*.description' => 'nullable|string|max:255',
             'lots.*.numero_lot' => 'nullable|string|max:50',
             'lots.*.quantite' => 'nullable|numeric|min:0',
             'lots.*.poids' => 'nullable|numeric|min:0',
@@ -69,7 +74,6 @@ class StoreDevisRequest extends FormRequest
             'type_document.in' => 'Le type de document doit être Conteneur, Lot ou Independant.',
             'lignes.*.date_fin.after_or_equal' => 'La date de fin doit être postérieure à la date de début.',
             'conteneurs.*.numero.required_with' => 'Le numéro du conteneur est obligatoire.',
-            'lots.*.designation.required_with' => 'La désignation du lot est obligatoire.',
         ];
     }
 }

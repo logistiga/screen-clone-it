@@ -112,13 +112,15 @@ export default function NouveauDevisPage() {
       data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
       data.armateur_id = conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null;
       data.bl_numero = conteneursData.numeroBL || null;
+      data.type_operation = conteneursData.typeOperation || "import";
       data.conteneurs = conteneursData.conteneurs.map(c => ({
         numero: c.numero,
-        type: c.description || "DRY",
+        type: "DRY",
         taille: c.taille === "20'" ? "20" : "40",
+        description: c.description || null,
         armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
         operations: c.operations.map(op => ({
-          type_operation: typesOperationConteneur[op.type]?.label || op.type,
+          type_operation: op.type, // Envoyer le code (arrivee, stockage...) pas le label
           description: op.description || "",
           quantite: op.quantite,
           prix_unitaire: op.prixUnitaire
@@ -128,23 +130,27 @@ export default function NouveauDevisPage() {
 
     if (categorie === "conventionnel" && conventionnelData) {
       data.bl_numero = conventionnelData.numeroBL || null;
+      data.lieu_chargement = conventionnelData.lieuChargement || null;
+      data.lieu_dechargement = conventionnelData.lieuDechargement || null;
       data.lots = conventionnelData.lots.map(l => ({
-        designation: l.description || `Lot ${l.numeroLot}`,
+        numero_lot: l.numeroLot || null,
+        description: l.description || `Lot ${l.numeroLot}`,
         quantite: l.quantite,
         prix_unitaire: l.prixUnitaire
       }));
     }
 
     if (categorie === "operations_independantes" && independantData) {
+      data.type_operation_indep = independantData.typeOperationIndep || null;
       data.lignes = independantData.prestations.map(p => ({
-        type_operation: independantData.typeOperationIndep || "autre",
-        description: p.description,
-        lieu_depart: independantData.lieuChargement || null,
-        lieu_arrivee: independantData.lieuDechargement || null,
+        type_operation: independantData.typeOperationIndep || "manutention",
+        description: p.description || "",
+        lieu_depart: p.lieuDepart || independantData.lieuChargement || null,
+        lieu_arrivee: p.lieuArrivee || independantData.lieuDechargement || null,
         date_debut: p.dateDebut || null,
         date_fin: p.dateFin || null,
-        quantite: p.quantite,
-        prix_unitaire: p.prixUnitaire
+        quantite: p.quantite || 1,
+        prix_unitaire: p.prixUnitaire || 0
       }));
     }
 
