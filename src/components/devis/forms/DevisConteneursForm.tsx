@@ -21,17 +21,17 @@ import {
 } from "@/types/documents";
 
 interface Armateur {
-  id: number;
+  id: string | number;
   nom: string;
 }
 
 interface Transitaire {
-  id: number;
+  id: string | number;
   nom: string;
 }
 
 interface Representant {
-  id: number;
+  id: string | number;
   nom: string;
 }
 
