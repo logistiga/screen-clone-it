@@ -6,7 +6,6 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use App\Services\DevisService;
 use App\Services\PaiementService;
 use App\Services\NoteDebutService;
 use App\Services\CaisseService;
@@ -43,9 +42,6 @@ use App\Services\OperationsIndependantes\OperationIndependanteFactory;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         // === Services Opérations Indépendantes (par type) ===
@@ -75,7 +71,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(FactureServiceFactory::class);
         
         // === Services utilitaires ===
-        $this->app->singleton(DevisService::class);
         $this->app->singleton(NoteDebutService::class);
         $this->app->singleton(CaisseService::class);
         $this->app->singleton(AnnulationService::class);
