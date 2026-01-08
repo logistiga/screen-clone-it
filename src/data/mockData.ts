@@ -415,7 +415,8 @@ export const configurationTaxes = {
 };
 
 // Fonctions utilitaires
-export const formatMontant = (montant: number): string => {
+export const formatMontant = (montant: number | undefined | null): string => {
+  if (montant === undefined || montant === null) return '0 FCFA';
   return montant.toLocaleString('fr-FR') + ' FCFA';
 };
 
