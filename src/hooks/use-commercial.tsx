@@ -21,6 +21,7 @@ import {
   PaiementData
 } from '@/lib/api/commercial';
 import { toast } from 'sonner';
+import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
 
 // Clients hooks
 export function useClients(params?: { search?: string; page?: number; per_page?: number }) {
@@ -107,26 +108,14 @@ export function useCreateDevis() {
       queryClient.invalidateQueries({ queryKey: ['devis'] });
       toast.success('Devis créé avec succès');
     },
-    onError: (error: any) => {
-      const responseData = error?.response?.data;
+    onError: (error: unknown) => {
+      const info = extractApiErrorInfo(error);
 
-      // Garder une trace exploitable côté navigateur pour diagnostiquer les 500 backend
-      console.error('Erreur création devis:', {
-        status: error?.response?.status,
-        data: responseData,
-        message: error?.message,
-      });
-      try {
-        console.error('Erreur création devis (json):', JSON.stringify(responseData, null, 2));
-      } catch {
-        // ignore
-      }
+      // Garder une trace exploitable côté navigateur pour diagnostiquer les erreurs backend / réseau
+      console.error('Erreur création devis:', info);
+      console.error('Erreur création devis (debug):', formatApiErrorDebug(info));
 
-      toast.error(
-        (typeof responseData === 'string' ? responseData : responseData?.error) ||
-          responseData?.message ||
-          'Erreur lors de la création du devis'
-      );
+      toast.error(info.message);
     },
   });
 }

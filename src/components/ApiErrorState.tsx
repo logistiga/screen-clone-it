@@ -8,9 +8,10 @@ type ApiErrorStateProps = {
   title: string;
   error: unknown;
   onRetry?: () => void;
+  variant?: "page" | "inline";
 };
 
-export function ApiErrorState({ title, error, onRetry }: ApiErrorStateProps) {
+export function ApiErrorState({ title, error, onRetry, variant = "page" }: ApiErrorStateProps) {
   const info = useMemo(() => extractApiErrorInfo(error), [error]);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -25,9 +26,12 @@ export function ApiErrorState({ title, error, onRetry }: ApiErrorStateProps) {
     }
   };
 
+  const wrapperClass = variant === "page" ? "flex justify-center px-4 py-12" : "";
+  const cardClass = variant === "page" ? "w-full max-w-3xl" : "w-full";
+
   return (
-    <div className="flex justify-center px-4 py-12">
-      <Card className="w-full max-w-3xl">
+    <div className={wrapperClass}>
+      <Card className={cardClass}>
         <CardHeader>
           <CardTitle className="text-base">{title}</CardTitle>
         </CardHeader>
@@ -38,6 +42,7 @@ export function ApiErrorState({ title, error, onRetry }: ApiErrorStateProps) {
                 {info.status ? `HTTP ${info.status} — ` : ""}
                 {info.message}
               </p>
+              {info.hint && <p className="text-xs text-muted-foreground">{info.hint}</p>}
               {(info.method || info.url) && (
                 <p className="text-xs text-muted-foreground break-words">
                   {info.method ? `${info.method} ` : ""}
@@ -53,11 +58,7 @@ export function ApiErrorState({ title, error, onRetry }: ApiErrorStateProps) {
               <Button variant="outline" onClick={handleCopy}>
                 Copier les détails
               </Button>
-              {onRetry && (
-                <Button onClick={onRetry}>
-                  Réessayer
-                </Button>
-              )}
+              {onRetry && <Button onClick={onRetry}>Réessayer</Button>}
             </div>
 
             {showDetails && (
