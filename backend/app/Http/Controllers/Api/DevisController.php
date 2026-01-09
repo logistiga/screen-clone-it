@@ -26,7 +26,7 @@ class DevisController extends Controller
     {
         $query = Devis::with(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
@@ -34,19 +34,25 @@ class DevisController extends Controller
             });
         }
 
-        if ($request->has('statut')) {
+        if ($request->filled('statut')) {
             $query->where('statut', $request->get('statut'));
         }
 
-        if ($request->has('client_id')) {
+        if ($request->filled('client_id')) {
             $query->where('client_id', $request->get('client_id'));
         }
 
-        if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date', [$request->get('date_debut'), $request->get('date_fin')]);
+        if ($request->filled('date_debut') && $request->filled('date_fin')) {
+            $query->whereBetween('date_creation', [
+                $request->get('date_debut'),
+                $request->get('date_fin')
+            ]);
         }
 
-        $devis = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = max(1, min($perPage, 100));
+
+        $devis = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json(DevisResource::collection($devis)->response()->getData(true));
     }
