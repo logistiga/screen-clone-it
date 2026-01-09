@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ApiErrorState } from "@/components/ApiErrorState";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useConfiguration } from "@/hooks/use-commercial";
 import { CategorieDocument, getCategoriesLabels, typesOperationConteneur } from "@/types/documents";
 import {
@@ -190,9 +191,20 @@ export default function NouveauDevisPage() {
             <p className="text-muted-foreground text-sm">Créer un nouveau devis client</p>
           </div>
         </div>
-      </div>
+       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+       {createDevisMutation.error && (
+         <div className="mb-6">
+           <ApiErrorState
+             variant="inline"
+             title="Erreur lors de la création du devis"
+             error={createDevisMutation.error}
+             onRetry={() => createDevisMutation.reset()}
+           />
+         </div>
+       )}
+
+       <form onSubmit={handleSubmit} className="space-y-6">
         {!categorie && <CategorieSelector onSelect={handleCategorieChange} />}
 
         {categorie && (
