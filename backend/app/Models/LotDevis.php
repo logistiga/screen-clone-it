@@ -16,12 +16,16 @@ class LotDevis extends Model
         'numero_lot',
         'description',
         'quantite',
+        'poids',
+        'volume',
         'prix_unitaire',
         'prix_total',
     ];
 
     protected $casts = [
         'quantite' => 'decimal:2',
+        'poids' => 'decimal:2',
+        'volume' => 'decimal:2',
         'prix_unitaire' => 'decimal:2',
         'prix_total' => 'decimal:2',
     ];
@@ -38,7 +42,7 @@ class LotDevis extends Model
         parent::boot();
 
         static::saving(function ($lot) {
-            $lot->prix_total = $lot->quantite * $lot->prix_unitaire;
+            $lot->prix_total = (float) ($lot->quantite ?? 1) * (float) ($lot->prix_unitaire ?? 0);
         });
     }
 }

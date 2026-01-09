@@ -43,7 +43,7 @@ class LigneDevis extends Model
         parent::boot();
 
         static::saving(function ($ligne) {
-            $ligne->montant_ht = $ligne->quantite * $ligne->prix_unitaire;
+            $ligne->montant_ht = (float) ($ligne->quantite ?? 1) * (float) ($ligne->prix_unitaire ?? 0);
         });
     }
 }
