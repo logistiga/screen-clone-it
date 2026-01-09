@@ -24,7 +24,7 @@ class FactureConventionnelService
         } else {
             foreach ($data['lots'] as $index => $lot) {
                 if (empty($lot['designation']) && empty($lot['description'])) {
-                    $errors[] = "Lot #{$index}: désignation ou description requise";
+                    $errors[] = "Lot #" . ($index + 1) . ": désignation ou description requise";
                 }
             }
         }
@@ -71,30 +71,50 @@ class FactureConventionnelService
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
         $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
+        $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
+        $cssActif = $taxesConfig->data['css_actif'] ?? true;
         
-        // Appliquer taxes selon catégorie
-        if ($facture->categorie === 'non_assujetti') {
-            $montantTVA = 0;
-            $montantCSS = 0;
-        } else {
-            $montantTVA = $montantHT * ($tauxTVA / 100);
-            $montantCSS = $montantHT * ($tauxCSS / 100);
-        }
-        
+        // Calculer les taxes
+        $montantTVA = $tvaActif ? $montantHT * ($tauxTVA / 100) : 0;
+        $montantCSS = $cssActif ? $montantHT * ($tauxCSS / 100) : 0;
         $montantTTC = $montantHT + $montantTVA + $montantCSS;
         
+        // Utiliser les bons noms de colonnes (tva, css)
         $facture->update([
-            'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
-            'montant_ttc' => $montantTTC,
+            'montant_ht' => round($montantHT, 2),
+            'tva' => round($montantTVA, 2),
+            'css' => round($montantCSS, 2),
+            'montant_ttc' => round($montantTTC, 2),
         ]);
         
         Log::info('Totaux conventionnel facture calculés', [
             'facture_id' => $facture->id,
             'nb_lots' => $facture->lots->count(),
             'montant_ht' => $montantHT,
+            'montant_ttc' => $montantTTC,
         ]);
+    }
+
+    /**
+     * Préparer les données pour la conversion vers facture
+     */
+    public function preparerPourConversion($document): array
+    {
+        $lots = [];
+        
+        foreach ($document->lots as $lot) {
+            $lots[] = [
+                'numero_lot' => $lot->numero_lot,
+                'description' => $lot->description,
+                'quantite' => $lot->quantite,
+                'poids' => $lot->poids ?? null,
+                'volume' => $lot->volume ?? null,
+                'prix_unitaire' => $lot->prix_unitaire,
+                'prix_total' => $lot->quantite * $lot->prix_unitaire,
+            ];
+        }
+        
+        return ['lots' => $lots];
     }
 
     /**
@@ -116,6 +136,7 @@ class FactureConventionnelService
         // Valeurs par défaut
         $data['quantite'] = $data['quantite'] ?? 1;
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
+        $data['prix_total'] = $data['quantite'] * $data['prix_unitaire'];
         
         return $data;
     }
