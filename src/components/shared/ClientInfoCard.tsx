@@ -96,12 +96,12 @@ export function ClientInfoCard({
           {onTransitaireChange && (
             <div className="space-y-2">
               <Label htmlFor="transitaire">Transitaire</Label>
-              <Select value={transitaireId || "none"} onValueChange={(val) => onTransitaireChange(val === "none" ? "" : val)}>
+              <Select value={transitaireId || ""} onValueChange={onTransitaireChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un transitaire" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Aucun</SelectItem>
+                  <SelectItem value="">Aucun</SelectItem>
                   {transitaires.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.nom}
@@ -115,12 +115,12 @@ export function ClientInfoCard({
           {onRepresentantChange && (
             <div className="space-y-2">
               <Label htmlFor="representant">Représentant</Label>
-              <Select value={representantId || "none"} onValueChange={(val) => onRepresentantChange(val === "none" ? "" : val)}>
+              <Select value={representantId || ""} onValueChange={onRepresentantChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un représentant" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Aucun</SelectItem>
+                  <SelectItem value="">Aucun</SelectItem>
                   {representants.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.prenom} {r.nom}

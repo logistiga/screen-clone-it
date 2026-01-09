@@ -21,31 +21,11 @@ export interface Client {
   updated_at: string;
 }
 
+// Devis type - à reconstruire ultérieurement
 export interface Devis {
   id: string;
   numero: string;
-  client_id: string;
-  client?: Client;
-  transitaire_id?: string;
-  representant_id?: string;
-  armateur_id?: string;
-  date_creation?: string;
-  date_validite?: string;
-  categorie?: string;
-  type_document?: string;
-  montant_ht: number;
-  montant_tva?: number;
-  montant_css?: number;
-  montant_ttc: number;
-  tva?: number;
-  css?: number;
-  statut: string;
-  notes?: string;
-  lignes?: any[];
-  conteneurs?: any[];
-  lots?: any[];
-  created_at?: string;
-  updated_at?: string;
+  // Supprimé - à reconstruire
 }
 
 export interface OrdreTravail {

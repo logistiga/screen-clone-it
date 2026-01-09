@@ -80,78 +80,55 @@ export function useDeleteClient() {
   });
 }
 
-// Devis hooks - frontend prêt, en attente du backend
-export function useDevis(params?: { search?: string; statut?: string; client_id?: string; page?: number; per_page?: number }) {
+// Devis hooks - supprimés, à reconstruire
+export function useDevis(_params?: any) {
   return useQuery({
-    queryKey: ['devis', params],
-    queryFn: () => devisApi.getAll(params),
-    retry: 0,
-    refetchOnWindowFocus: false,
+    queryKey: ['devis', _params],
+    queryFn: () => devisApi.getAll(_params),
+    enabled: false, // Désactivé
   });
 }
 
-export function useDevisById(id: string) {
+export function useDevisById(_id: string) {
   return useQuery({
-    queryKey: ['devis', id],
-    queryFn: () => devisApi.getById(id),
-    enabled: !!id,
-    retry: 0,
+    queryKey: ['devis', _id],
+    queryFn: () => devisApi.getById(_id),
+    enabled: false, // Désactivé
   });
 }
 
 export function useCreateDevis() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      toast.success('Devis créé avec succès');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Erreur lors de la création du devis');
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
 
 export function useUpdateDevis() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => devisApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      toast.success('Devis modifié avec succès');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Erreur lors de la modification du devis');
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
 
 export function useDeleteDevis() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      toast.success('Devis supprimé avec succès');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Erreur lors de la suppression du devis');
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
 
 export function useConvertDevisToOrdre() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.convertToOrdre,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      queryClient.invalidateQueries({ queryKey: ['ordres'] });
-      toast.success('Devis converti en ordre de travail');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Erreur lors de la conversion');
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
