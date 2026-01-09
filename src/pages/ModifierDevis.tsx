@@ -175,7 +175,7 @@ export default function ModifierDevisPage() {
 
     try {
       await updateDevisMutation.mutateAsync({ id: id!, data });
-      navigate(`/devis/${id}`);
+      navigate("/devis");
     } catch (error) {
       // Error handled by mutation
     }
