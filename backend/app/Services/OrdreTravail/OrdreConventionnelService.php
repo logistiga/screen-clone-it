@@ -85,8 +85,8 @@ class OrdreConventionnelService
         
         $ordre->update([
             'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
+            'tva' => $montantTVA,
+            'css' => $montantCSS,
             'montant_ttc' => $montantTTC,
         ]);
         

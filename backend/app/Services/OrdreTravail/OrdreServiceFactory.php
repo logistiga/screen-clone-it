@@ -62,8 +62,11 @@ class OrdreServiceFactory
         }
         unset($data['bl_numero'], $data['type_document']);
 
-        // Date par défaut
-        $data['date'] = $data['date'] ?? now()->toDateString();
+        // Date par défaut -> date_creation
+        if (!isset($data['date_creation'])) {
+            $data['date_creation'] = $data['date'] ?? now()->toDateString();
+        }
+        unset($data['date']);
 
         return $data;
     }
