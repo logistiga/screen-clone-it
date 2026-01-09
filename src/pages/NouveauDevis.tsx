@@ -134,6 +134,7 @@ export default function NouveauDevisPage() {
       data.lieu_dechargement = conventionnelData.lieuDechargement || null;
       data.lots = conventionnelData.lots.map(l => ({
         numero_lot: l.numeroLot || null,
+        designation: l.description || `Lot ${l.numeroLot}`,
         description: l.description || `Lot ${l.numeroLot}`,
         quantite: l.quantite,
         prix_unitaire: l.prixUnitaire
