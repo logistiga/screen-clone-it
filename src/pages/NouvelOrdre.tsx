@@ -171,7 +171,16 @@ export default function NouvelOrdrePage() {
       toast.success("Ordre de travail créé avec succès");
       navigate("/ordres");
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Erreur lors de la création de l'ordre");
+      const apiMessage = error?.response?.data?.message;
+      const apiError = error?.response?.data?.error;
+
+      if (apiError) {
+        toast.error(apiMessage || "Erreur lors de la création de l'ordre", {
+          description: String(apiError),
+        });
+      } else {
+        toast.error(apiMessage || "Erreur lors de la création de l'ordre");
+      }
     }
   };
 
