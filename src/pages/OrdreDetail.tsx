@@ -55,13 +55,13 @@ export default function OrdreDetailPage() {
   if (error || !ordre) {
     return (
       <MainLayout title="Ordre non trouvé">
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
           <AlertCircle className="h-16 w-16 text-destructive mb-4" />
           <h2 className="text-xl font-semibold mb-2">Ordre de travail non trouvé</h2>
           <p className="text-muted-foreground mb-4">
             L'ordre demandé n'existe pas ou a été supprimé.
           </p>
-          <Button onClick={() => navigate("/ordres")}>Retour aux ordres</Button>
+          <Button onClick={() => navigate("/ordres")} className="transition-all duration-200 hover:scale-105">Retour aux ordres</Button>
         </div>
       </MainLayout>
     );
@@ -81,13 +81,33 @@ export default function OrdreDetailPage() {
   };
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      en_cours: "outline",
-      termine: "default",
-      facture: "default",
-      annule: "destructive",
+    const configs: Record<string, { label: string; className: string }> = {
+      en_cours: { 
+        label: getStatutLabel(statut), 
+        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700" 
+      },
+      termine: { 
+        label: getStatutLabel(statut), 
+        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700" 
+      },
+      facture: { 
+        label: getStatutLabel(statut), 
+        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700" 
+      },
+      annule: { 
+        label: getStatutLabel(statut), 
+        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
+      },
     };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
+    return (
+      <Badge 
+        variant="outline" 
+        className={`${config.className} transition-all duration-200 hover:scale-105`}
+      >
+        {config.label}
+      </Badge>
+    );
   };
 
   const getTypeBadge = (type: string) => {
@@ -96,7 +116,7 @@ export default function OrdreDetailPage() {
       Lot: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
       Independant: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     };
-    return <Badge className={colors[type] || "bg-gray-100"}>{type}</Badge>;
+    return <Badge className={`${colors[type] || "bg-gray-100"} transition-all duration-200 hover:scale-105`}>{type}</Badge>;
   };
 
   // Traçabilité mock (à remplacer par l'API audit si disponible)
@@ -114,11 +134,11 @@ export default function OrdreDetailPage() {
 
   return (
     <MainLayout title={`Ordre ${ordre.numero}`}>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Header avec actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")} className="transition-all duration-200 hover:scale-110">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -135,7 +155,7 @@ export default function OrdreDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 transition-all duration-200 hover:scale-105"
               onClick={() => window.open(`/ordres/${id}/pdf`, "_blank")}
             >
               <FileText className="h-4 w-4" />
@@ -145,19 +165,19 @@ export default function OrdreDetailPage() {
               <>
                 <Button
                   variant="outline"
-                  className="gap-2"
+                  className="gap-2 transition-all duration-200 hover:scale-105"
                   onClick={() => navigate(`/ordres/${id}/modifier`)}
                 >
                   <Edit className="h-4 w-4" />
                   Modifier
                 </Button>
                 {resteAPayer > 0 && (
-                  <Button variant="outline" className="gap-2 text-green-600" onClick={() => setPaiementModalOpen(true)}>
+                  <Button variant="outline" className="gap-2 text-green-600 transition-all duration-200 hover:scale-105 hover:bg-green-50" onClick={() => setPaiementModalOpen(true)}>
                     <Wallet className="h-4 w-4" />
                     Paiement
                   </Button>
                 )}
-                <Button className="gap-2" onClick={handleConvertToFacture} disabled={convertMutation.isPending}>
+                <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={handleConvertToFacture} disabled={convertMutation.isPending}>
                   {convertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                   Facturer
                 </Button>
@@ -179,7 +199,7 @@ export default function OrdreDetailPage() {
           <TabsContent value="details" className="space-y-6 mt-6">
             {/* Infos client + récap */}
             <div className="grid gap-6 md:grid-cols-2">
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <User className="h-5 w-5 text-primary" />
@@ -196,7 +216,7 @@ export default function OrdreDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Ship className="h-5 w-5 text-primary" />
@@ -238,7 +258,7 @@ export default function OrdreDetailPage() {
 
             {/* Infos BL */}
             {ordre.bl_numero && (
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle>Informations BL</CardTitle>
                 </CardHeader>
@@ -267,7 +287,7 @@ export default function OrdreDetailPage() {
 
             {/* Lignes de l'ordre */}
             {ordre.lignes && ordre.lignes.length > 0 && (
-              <Card>
+              <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
                 <CardHeader>
                   <CardTitle>Lignes de l'ordre</CardTitle>
                 </CardHeader>
@@ -282,8 +302,12 @@ export default function OrdreDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {ordre.lignes.map((ligne: any) => (
-                        <TableRow key={ligne.id}>
+                      {ordre.lignes.map((ligne: any, index: number) => (
+                        <TableRow 
+                          key={ligne.id} 
+                          className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <TableCell>{ligne.description || ligne.type_operation}</TableCell>
                           <TableCell className="text-center">{ligne.quantite}</TableCell>
                           <TableCell className="text-right">
@@ -302,7 +326,7 @@ export default function OrdreDetailPage() {
 
             {/* Conteneurs */}
             {ordre.conteneurs && ordre.conteneurs.length > 0 && (
-              <Card>
+              <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
                 <CardHeader>
                   <CardTitle>Conteneurs</CardTitle>
                 </CardHeader>
@@ -317,8 +341,12 @@ export default function OrdreDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {ordre.conteneurs.map((conteneur: any) => (
-                        <TableRow key={conteneur.id}>
+                      {ordre.conteneurs.map((conteneur: any, index: number) => (
+                        <TableRow 
+                          key={conteneur.id}
+                          className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <TableCell className="font-mono">{conteneur.numero}</TableCell>
                           <TableCell>{conteneur.type}</TableCell>
                           <TableCell>{conteneur.taille}</TableCell>
@@ -335,7 +363,7 @@ export default function OrdreDetailPage() {
 
             {/* Lots */}
             {ordre.lots && ordre.lots.length > 0 && (
-              <Card>
+              <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
                 <CardHeader>
                   <CardTitle>Lots</CardTitle>
                 </CardHeader>
@@ -350,8 +378,12 @@ export default function OrdreDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {ordre.lots.map((lot: any) => (
-                        <TableRow key={lot.id}>
+                      {ordre.lots.map((lot: any, index: number) => (
+                        <TableRow 
+                          key={lot.id}
+                          className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <TableCell>{lot.designation}</TableCell>
                           <TableCell className="text-center">{lot.quantite}</TableCell>
                           <TableCell className="text-right">
@@ -370,7 +402,7 @@ export default function OrdreDetailPage() {
 
             {/* Notes */}
             {ordre.notes && (
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle>Notes</CardTitle>
                 </CardHeader>
@@ -382,7 +414,7 @@ export default function OrdreDetailPage() {
           </TabsContent>
 
           <TabsContent value="tracabilite" className="mt-6">
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" />
@@ -393,16 +425,20 @@ export default function OrdreDetailPage() {
                 <div className="relative">
                   <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                   <div className="space-y-6">
-                    {tracabilite.map((action) => {
+                    {tracabilite.map((action, index) => {
                       const IconComponent = action.icon;
                       return (
-                        <div key={action.id} className="relative flex gap-4 pl-10">
+                        <div 
+                          key={action.id} 
+                          className="relative flex gap-4 pl-10 animate-fade-in"
+                          style={{ animationDelay: `${index * 100}ms` }}
+                        >
                           <div
-                            className={`absolute left-0 p-2 rounded-full bg-background border-2 ${action.color.replace("text-", "border-")}`}
+                            className={`absolute left-0 p-2 rounded-full bg-background border-2 ${action.color.replace("text-", "border-")} transition-all duration-200 hover:scale-110`}
                           >
                             <IconComponent className={`h-4 w-4 ${action.color}`} />
                           </div>
-                          <div className="flex-1 bg-muted/30 rounded-lg p-4">
+                          <div className="flex-1 bg-muted/30 rounded-lg p-4 transition-all duration-200 hover:bg-muted/50">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-semibold">{action.action}</span>
                               <span className="text-sm text-muted-foreground">{formatDate(action.date)}</span>
