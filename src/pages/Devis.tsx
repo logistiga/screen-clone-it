@@ -113,7 +113,7 @@ export default function DevisPage() {
   const [categorieFilter, setCategorieFilter] = useState<string>("all");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   // Filtrer les devis
   const filteredDevis = mockDevis.filter((devis) => {
@@ -127,10 +127,11 @@ export default function DevisPage() {
     return matchSearch && matchCategorie && matchStatut;
   });
 
-  const totalPages = Math.ceil(filteredDevis.length / itemsPerPage);
+  const totalItems = filteredDevis.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
   const paginatedDevis = filteredDevis.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
   );
 
   const handleAction = (action: string, devis: DocumentCommercial) => {
@@ -409,7 +410,13 @@ export default function DevisPage() {
               <TablePagination
                 currentPage={currentPage}
                 totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
                 onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
               />
             </div>
           )}

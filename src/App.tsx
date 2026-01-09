@@ -14,6 +14,9 @@ import ClientDetailPage from "./pages/ClientDetail";
 import NouveauClientPage from "./pages/NouveauClient";
 import DevisPage from "./pages/Devis";
 import NouveauDevisPage from "./pages/NouveauDevis";
+import DevisDetailPage from "./pages/DevisDetail";
+import DevisPDFPage from "./pages/DevisPDF";
+import ModifierDevisPage from "./pages/ModifierDevis";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
 import OrdreDetailPage from "./pages/OrdreDetail";
@@ -71,6 +74,9 @@ const App = () => (
               <Route path="/clients/:id/modifier" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
               <Route path="/devis" element={<ProtectedRoute><DevisPage /></ProtectedRoute>} />
               <Route path="/devis/nouveau" element={<ProtectedRoute><NouveauDevisPage /></ProtectedRoute>} />
+              <Route path="/devis/:id" element={<ProtectedRoute><DevisDetailPage /></ProtectedRoute>} />
+              <Route path="/devis/:id/modifier" element={<ProtectedRoute><ModifierDevisPage /></ProtectedRoute>} />
+              <Route path="/devis/:id/pdf" element={<ProtectedRoute><DevisPDFPage /></ProtectedRoute>} />
               <Route path="/ordres" element={<ProtectedRoute><OrdresTravailPage /></ProtectedRoute>} />
               <Route path="/ordres/nouveau" element={<ProtectedRoute><NouvelOrdrePage /></ProtectedRoute>} />
               <Route path="/ordres/:id" element={<ProtectedRoute><OrdreDetailPage /></ProtectedRoute>} />
