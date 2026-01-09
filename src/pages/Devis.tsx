@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ApiErrorState } from "@/components/ApiErrorState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,38 +138,17 @@ export default function DevisPage() {
   }
 
   if (error) {
-    // Affiche un message exploitable si le backend renvoie un 500/401 avec payload JSON
-    const errAny = error as any;
-    const status = errAny?.response?.status;
-    const data = errAny?.response?.data;
-
-    const details =
-      (typeof data === 'string' ? data : data?.message || data?.error) ||
-      errAny?.message ||
-      undefined;
-
-    console.error('Erreur chargement devis:', {
-      status,
-      data,
-      message: errAny?.message,
-    });
-
     return (
       <MainLayout title="Devis">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-destructive">Erreur lors du chargement des devis{status ? ` (HTTP ${status})` : ''}</p>
-          {details && (
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground break-words">
-              {details}
-            </p>
-          )}
-          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
-            Réessayer
-          </Button>
-        </div>
+        <ApiErrorState
+          title="Erreur lors du chargement des devis"
+          error={error}
+          onRetry={() => window.location.reload()}
+        />
       </MainLayout>
     );
   }
+
   // État vide
   if (devisList.length === 0 && !searchTerm && statutFilter === "all") {
     return (
