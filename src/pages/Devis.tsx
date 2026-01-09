@@ -103,14 +103,20 @@ export default function DevisPage() {
   const devisEnAttente = devisList.filter(d => d.statut === 'envoye').length;
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      brouillon: "secondary",
-      envoye: "outline",
-      accepte: "default",
-      refuse: "destructive",
-      expire: "destructive",
+    const config: Record<string, { className: string }> = {
+      brouillon: { className: "bg-gray-100 text-gray-700 border-gray-300" },
+      envoye: { className: "bg-blue-100 text-blue-700 border-blue-300" },
+      accepte: { className: "bg-green-100 text-green-700 border-green-300" },
+      refuse: { className: "bg-red-100 text-red-700 border-red-300" },
+      expire: { className: "bg-orange-100 text-orange-700 border-orange-300" },
+      converti: { className: "bg-purple-100 text-purple-700 border-purple-300" },
     };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const style = config[statut] || config.brouillon;
+    return (
+      <Badge variant="outline" className={`${style.className} transition-all duration-200 hover:scale-105`}>
+        {getStatutLabel(statut)}
+      </Badge>
+    );
   };
 
   const getCategorieBadge = (typeDocument: string) => {
@@ -183,10 +189,10 @@ export default function DevisPage() {
 
   return (
     <MainLayout title="Devis">
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Devis</CardTitle>
             </CardHeader>
@@ -194,7 +200,7 @@ export default function DevisPage() {
               <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
             </CardHeader>
@@ -202,7 +208,7 @@ export default function DevisPage() {
               <div className="text-2xl font-bold">{formatMontant(totalDevis)}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-green-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Acceptés</CardTitle>
             </CardHeader>
@@ -210,7 +216,7 @@ export default function DevisPage() {
               <div className="text-2xl font-bold text-green-600">{devisAcceptes}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-orange-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">En attente</CardTitle>
             </CardHeader>
@@ -241,14 +247,14 @@ export default function DevisPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2" onClick={() => navigate("/devis/nouveau")}>
+          <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/devis/nouveau")}>
             <Plus className="h-4 w-4" />
             Nouveau devis
           </Button>
         </div>
 
         {/* Table */}
-        <Card>
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -264,8 +270,12 @@ export default function DevisPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {devisList.map((d) => (
-                  <TableRow key={d.id} className="hover:bg-muted/50">
+                {devisList.map((d, index) => (
+                  <TableRow 
+                    key={d.id} 
+                    className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
+                    style={{ animationDelay: `${index * 30}ms` }}
+                  >
                     <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/devis/${d.id}`)}>
                       {d.numero}
                     </TableCell>
@@ -282,40 +292,40 @@ export default function DevisPage() {
                     <TableCell>{getStatutBadge(d.statut)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/devis/${d.id}`)}>
+                        <Button variant="ghost" size="icon" title="Voir" className="transition-all duration-200 hover:scale-110" onClick={() => navigate(`/devis/${d.id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
-                          <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
+                          <Button variant="ghost" size="icon" title="Modifier" className="transition-all duration-200 hover:scale-110" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
+                        <Button variant="ghost" size="icon" title="PDF" className="transition-all duration-200 hover:scale-110" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
                           <FileText className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Envoyer par email" className="text-blue-600"
+                        <Button variant="ghost" size="icon" title="Envoyer par email" className="text-blue-600 transition-all duration-200 hover:scale-110"
                           onClick={() => setEmailModal({ numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
                           <Mail className="h-4 w-4" />
                         </Button>
                         {(d.statut === 'brouillon' || d.statut === 'envoye') && (
-                          <Button variant="ghost" size="icon" title="Valider le devis" className="text-green-600"
+                          <Button variant="ghost" size="icon" title="Valider le devis" className="text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-50"
                             onClick={() => setConfirmAction({ type: 'valider', id: d.id, numero: d.numero })}>
                             <Check className="h-4 w-4" />
                           </Button>
                         )}
                         {d.statut === 'accepte' && (
-                          <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary"
+                          <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary transition-all duration-200 hover:scale-110"
                             onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         )}
                         {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
-                          <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600"
+                          <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-50"
                             onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}>
                             <Ban className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive"
+                        <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-50"
                           onClick={() => setConfirmAction({ type: 'supprimer', id: d.id, numero: d.numero })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
