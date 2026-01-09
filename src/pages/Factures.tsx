@@ -96,16 +96,45 @@ export default function FacturesPage() {
   const totalImpaye = totalFactures - totalPaye;
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      brouillon: "outline",
-      emise: "outline",
-      validee: "secondary",
-      payee: "default",
-      partiellement_payee: "secondary",
-      impayee: "destructive",
-      annulee: "destructive",
+    const configs: Record<string, { label: string; className: string }> = {
+      brouillon: { 
+        label: getStatutLabel(statut), 
+        className: "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-700" 
+      },
+      emise: { 
+        label: getStatutLabel(statut), 
+        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700" 
+      },
+      validee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-700" 
+      },
+      payee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700" 
+      },
+      partiellement_payee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700" 
+      },
+      impayee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-200 dark:border-orange-700" 
+      },
+      annulee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
+      },
     };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
+    return (
+      <Badge 
+        variant="outline" 
+        className={`${config.className} transition-all duration-200 hover:scale-105`}
+      >
+        {config.label}
+      </Badge>
+    );
   };
 
   const getCategorieBadge = (categorie?: string) => {
@@ -116,7 +145,7 @@ export default function FacturesPage() {
     };
     const config = configs[categorie || ''] || { label: categorie || 'N/A', icon: null, className: "bg-gray-100 text-gray-800" };
     return (
-      <Badge className={`${config.className} flex items-center gap-1`}>
+      <Badge className={`${config.className} flex items-center gap-1 transition-all duration-200 hover:scale-105`}>
         {config.icon}
         {config.label}
       </Badge>
@@ -136,9 +165,9 @@ export default function FacturesPage() {
   if (error) {
     return (
       <MainLayout title="Factures">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
           <p className="text-destructive">Erreur lors du chargement des factures</p>
-          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4 transition-all duration-200 hover:scale-105">
             Réessayer
           </Button>
         </div>
@@ -150,13 +179,13 @@ export default function FacturesPage() {
   if (facturesList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return (
       <MainLayout title="Factures">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
           <Receipt className="h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-2xl font-semibold mb-2">Aucune facture</h2>
           <p className="text-muted-foreground mb-6 max-w-md">
             Commencez par créer votre première facture pour gérer vos encaissements.
           </p>
-          <Button className="gap-2" onClick={() => navigate("/factures/nouvelle")}>
+          <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/factures/nouvelle")}>
             <Plus className="h-4 w-4" />
             Nouvelle facture
           </Button>
@@ -167,10 +196,10 @@ export default function FacturesPage() {
 
   return (
     <MainLayout title="Factures">
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Factures</CardTitle>
             </CardHeader>
@@ -178,7 +207,7 @@ export default function FacturesPage() {
               <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
             </CardHeader>
@@ -186,7 +215,7 @@ export default function FacturesPage() {
               <div className="text-2xl font-bold">{formatMontant(totalFactures)}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Encaissé</CardTitle>
             </CardHeader>
@@ -194,7 +223,7 @@ export default function FacturesPage() {
               <div className="text-2xl font-bold text-green-600">{formatMontant(totalPaye)}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Impayé</CardTitle>
             </CardHeader>
@@ -242,15 +271,15 @@ export default function FacturesPage() {
             </Select>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => setPaiementGlobalOpen(true)}>
+            <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}>
               <CreditCard className="h-4 w-4" />
               Paiement global
             </Button>
-            <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
+            <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setExportOpen(true)}>
               <Download className="h-4 w-4" />
               Exporter
             </Button>
-            <Button className="gap-2" onClick={() => navigate("/factures/nouvelle")}>
+            <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/factures/nouvelle")}>
               <Plus className="h-4 w-4" />
               Nouvelle facture
             </Button>
@@ -258,7 +287,7 @@ export default function FacturesPage() {
         </div>
 
         {/* Table */}
-        <Card>
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -274,10 +303,14 @@ export default function FacturesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {facturesList.map((facture) => {
+                {facturesList.map((facture, index) => {
                   const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
                   return (
-                    <TableRow key={facture.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow 
+                      key={facture.id} 
+                      className="cursor-pointer hover:bg-muted/50 transition-all duration-200 animate-fade-in"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
                       <TableCell 
                         className="font-medium text-primary hover:underline cursor-pointer"
                         onClick={() => navigate(`/factures/${facture.id}`)}
@@ -301,11 +334,11 @@ export default function FacturesPage() {
                       <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/factures/${facture.id}`)}>
+                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/factures/${facture.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
                             <Eye className="h-4 w-4" />
                           </Button>
                           {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
-                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/factures/${facture.id}/modifier`)}>
+                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/factures/${facture.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10">
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
@@ -314,7 +347,7 @@ export default function FacturesPage() {
                               variant="ghost" 
                               size="icon" 
                               title="Paiement" 
-                              className="text-green-600"
+                              className="text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10"
                               onClick={() => setPaiementModal({ id: facture.id, numero: facture.numero, montantRestant: resteAPayer })}
                             >
                               <Wallet className="h-4 w-4" />
@@ -324,7 +357,7 @@ export default function FacturesPage() {
                             variant="ghost" 
                             size="icon" 
                             title="Email"
-                            className="text-blue-600"
+                            className="text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
                             onClick={() => setEmailModal({
                               open: true,
                               documentNumero: facture.numero,
@@ -334,7 +367,7 @@ export default function FacturesPage() {
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}>
+                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
                             <FileText className="h-4 w-4" />
                           </Button>
                           {facture.statut !== 'annulee' && (
@@ -342,7 +375,7 @@ export default function FacturesPage() {
                               variant="ghost" 
                               size="icon" 
                               title="Annuler"
-                              className="text-orange-600"
+                              className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
                               onClick={() => setAnnulationModal({
                                 id: facture.id,
                                 numero: facture.numero,
@@ -358,7 +391,7 @@ export default function FacturesPage() {
                             variant="ghost" 
                             size="icon" 
                             title="Supprimer"
-                            className="text-destructive"
+                            className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
                             onClick={() => setConfirmDelete({ id: facture.id, numero: facture.numero })}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -384,7 +417,7 @@ export default function FacturesPage() {
 
       {/* Modal suppression */}
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="animate-scale-in">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
@@ -401,43 +434,62 @@ export default function FacturesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal Email */}
-      <EmailModal
-        open={!!emailModal}
-        onOpenChange={(open) => !open && setEmailModal(null)}
-        documentType="facture"
-        documentNumero={emailModal?.documentNumero || ""}
-        clientEmail={emailModal?.clientEmail || ""}
-        clientNom={emailModal?.clientNom || ""}
-      />
+      {/* Modal email */}
+      {emailModal && (
+        <EmailModal
+          open={emailModal.open}
+          onOpenChange={(open) => !open && setEmailModal(null)}
+          documentType="facture"
+          documentNumero={emailModal.documentNumero}
+          clientEmail={emailModal.clientEmail}
+          clientNom={emailModal.clientNom}
+        />
+      )}
 
-      {/* Modal Paiement */}
-      <PaiementModal
-        open={!!paiementModal}
-        onOpenChange={(open) => !open && setPaiementModal(null)}
-        documentType="facture"
-        documentId={paiementModal?.id || ""}
-        documentNumero={paiementModal?.numero || ""}
-        montantRestant={paiementModal?.montantRestant || 0}
+      {/* Modal paiement */}
+      {paiementModal && (
+        <PaiementModal
+          open={!!paiementModal}
+          onOpenChange={(open) => !open && setPaiementModal(null)}
+          documentType="facture"
+          documentId={paiementModal.id}
+          documentNumero={paiementModal.numero}
+          montantRestant={paiementModal.montantRestant}
+          onSuccess={() => {
+            setPaiementModal(null);
+            refetch();
+          }}
+        />
+      )}
+
+      {/* Modal annulation */}
+      {annulationModal && (
+        <AnnulationModal
+          open={!!annulationModal}
+          onOpenChange={(open) => !open && setAnnulationModal(null)}
+          factureId={annulationModal.id}
+          factureNumero={annulationModal.numero}
+          montantTTC={annulationModal.montantTTC}
+          montantPaye={annulationModal.montantPaye}
+          clientNom={annulationModal.clientNom}
+          onSuccess={() => {
+            setAnnulationModal(null);
+            refetch();
+          }}
+        />
+      )}
+
+      {/* Modal paiement global */}
+      <PaiementGlobalModal
+        open={paiementGlobalOpen}
+        onOpenChange={setPaiementGlobalOpen}
         onSuccess={() => refetch()}
       />
 
-      {/* Modal Paiement Global */}
-      <PaiementGlobalModal open={paiementGlobalOpen} onOpenChange={setPaiementGlobalOpen} />
-
-      {/* Modal Export */}
-      <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
-
-      {/* Modal Annulation */}
-      <AnnulationModal
-        open={!!annulationModal}
-        onOpenChange={(open) => !open && setAnnulationModal(null)}
-        documentType="facture"
-        documentNumero={annulationModal?.numero || ""}
-        montantTTC={annulationModal?.montantTTC || 0}
-        montantPaye={annulationModal?.montantPaye || 0}
-        clientNom={annulationModal?.clientNom || ""}
-        onSuccess={() => navigate("/annulations")}
+      {/* Modal export */}
+      <ExportModal
+        open={exportOpen}
+        onOpenChange={setExportOpen}
       />
     </MainLayout>
   );

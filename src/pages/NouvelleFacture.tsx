@@ -163,9 +163,9 @@ export default function NouvelleFacturePage() {
 
   return (
     <MainLayout title="Nouvelle facture">
-      <div className="mb-6">
+      <div className="mb-6 animate-fade-in">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/factures")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-110">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -178,10 +178,10 @@ export default function NouvelleFacturePage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         {/* Sélection catégorie */}
         {!categorie && (
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg">
             <CardHeader><CardTitle className="text-lg">Catégorie de facture</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -190,7 +190,7 @@ export default function NouvelleFacturePage() {
                     key={key}
                     type="button"
                     onClick={() => handleCategorieChange(key)}
-                    className="p-4 rounded-lg border-2 text-left transition-all border-border hover:border-primary/50 hover:bg-muted/50"
+                    className="p-4 rounded-lg border-2 text-left transition-all duration-300 border-border hover:border-primary/50 hover:bg-muted/50 hover:shadow-md hover:-translate-y-1"
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <div className="text-muted-foreground">{categoriesLabels[key].icon}</div>
@@ -205,12 +205,12 @@ export default function NouvelleFacturePage() {
         )}
 
         {categorie && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+          <div className="flex items-center gap-3 animate-fade-in">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
               {categoriesLabels[categorie].icon}
               <span>{categoriesLabels[categorie].label}</span>
             </Badge>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground transition-all duration-200 hover:scale-105">
               Changer
             </Button>
           </div>
@@ -218,7 +218,7 @@ export default function NouvelleFacturePage() {
 
         {/* Client et date échéance */}
         {categorie && (
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5 text-primary" />
@@ -250,25 +250,31 @@ export default function NouvelleFacturePage() {
 
         {/* Formulaires par catégorie */}
         {categorie === "conteneurs" && (
-          <FactureConteneursForm
-            armateurs={armateurs}
-            transitaires={transitaires}
-            representants={representants}
-            onDataChange={setConteneursData}
-          />
+          <div className="animate-fade-in">
+            <FactureConteneursForm
+              armateurs={armateurs}
+              transitaires={transitaires}
+              representants={representants}
+              onDataChange={setConteneursData}
+            />
+          </div>
         )}
 
         {categorie === "conventionnel" && (
-          <FactureConventionnelForm onDataChange={setConventionnelData} />
+          <div className="animate-fade-in">
+            <FactureConventionnelForm onDataChange={setConventionnelData} />
+          </div>
         )}
 
         {categorie === "operations_independantes" && (
-          <FactureIndependantForm onDataChange={setIndependantData} />
+          <div className="animate-fade-in">
+            <FactureIndependantForm onDataChange={setIndependantData} />
+          </div>
         )}
 
         {/* Notes */}
         {categorie && (
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
             <CardHeader><CardTitle className="text-lg">Notes / Observations</CardTitle></CardHeader>
             <CardContent>
               <Textarea
@@ -283,21 +289,23 @@ export default function NouvelleFacturePage() {
 
         {/* Récapitulatif */}
         {categorie && (
-          <RecapitulatifCard
-            montantHT={montantHT}
-            tva={tva}
-            css={css}
-            montantTTC={montantTTC}
-            tauxTva={Math.round(TAUX_TVA * 100)}
-            tauxCss={Math.round(TAUX_CSS * 100)}
-          />
+          <div className="animate-fade-in">
+            <RecapitulatifCard
+              montantHT={montantHT}
+              tva={tva}
+              css={css}
+              montantTTC={montantTTC}
+              tauxTva={Math.round(TAUX_TVA * 100)}
+              tauxCss={Math.round(TAUX_CSS * 100)}
+            />
+          </div>
         )}
 
         {/* Boutons */}
         {categorie && (
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/factures")}>Annuler</Button>
-            <Button type="submit" disabled={createFactureMutation.isPending} className="gap-2">
+          <div className="flex justify-end gap-4 animate-fade-in">
+            <Button type="button" variant="outline" onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-105">Annuler</Button>
+            <Button type="submit" disabled={createFactureMutation.isPending} className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md">
               {createFactureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Créer la facture
             </Button>

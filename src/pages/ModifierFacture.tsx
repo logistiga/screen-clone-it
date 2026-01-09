@@ -106,14 +106,41 @@ export default function ModifierFacturePage() {
   const montantTTC = montantHT + tva + css;
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      emise: "outline",
-      payee: "default",
-      partielle: "secondary",
-      impayee: "destructive",
-      annulee: "destructive",
+    const configs: Record<string, { label: string; className: string }> = {
+      brouillon: { 
+        label: getStatutLabel(statut), 
+        className: "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-700" 
+      },
+      emise: { 
+        label: getStatutLabel(statut), 
+        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700" 
+      },
+      payee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700" 
+      },
+      partielle: { 
+        label: getStatutLabel(statut), 
+        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700" 
+      },
+      impayee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-200 dark:border-orange-700" 
+      },
+      annulee: { 
+        label: getStatutLabel(statut), 
+        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
+      },
     };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
+    return (
+      <Badge 
+        variant="outline" 
+        className={`${config.className} transition-all duration-200 hover:scale-105`}
+      >
+        {config.label}
+      </Badge>
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,7 +203,8 @@ export default function ModifierFacturePage() {
 
     try {
       await updateFactureMutation.mutateAsync({ id: id!, data });
-      navigate(`/factures/${id}`);
+      toast.success("Facture modifiée avec succès");
+      navigate("/factures");
     } catch (error) {
       // Error handled by mutation
     }
@@ -197,9 +225,9 @@ export default function ModifierFacturePage() {
   if (!factureData) {
     return (
       <MainLayout title="Facture non trouvée">
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
           <h2 className="text-xl font-semibold mb-2">Facture non trouvée</h2>
-          <Button onClick={() => navigate("/factures")}>Retour aux factures</Button>
+          <Button onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-105">Retour aux factures</Button>
         </div>
       </MainLayout>
     );
@@ -207,7 +235,7 @@ export default function ModifierFacturePage() {
 
   return (
     <MainLayout title={`Modifier ${factureData.numero}`}>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -216,6 +244,7 @@ export default function ModifierFacturePage() {
               variant="ghost"
               size="icon"
               onClick={() => navigate(`/factures/${id}`)}
+              className="transition-all duration-200 hover:scale-110"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -232,7 +261,7 @@ export default function ModifierFacturePage() {
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={updateFactureMutation.isPending}>
+          <Button type="submit" disabled={updateFactureMutation.isPending} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
             {updateFactureMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -244,8 +273,8 @@ export default function ModifierFacturePage() {
 
         {/* Catégorie (lecture seule) */}
         {categorie && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+          <div className="flex items-center gap-3 animate-fade-in">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
               {categoriesLabels[categorie]?.icon}
               <span>{categoriesLabels[categorie]?.label}</span>
             </Badge>
@@ -254,7 +283,7 @@ export default function ModifierFacturePage() {
         )}
 
         {/* Client et date échéance */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="h-5 w-5 text-primary" />
@@ -293,24 +322,30 @@ export default function ModifierFacturePage() {
 
         {/* Formulaires par catégorie */}
         {categorie === "conteneurs" && (
-          <FactureConteneursForm
-            armateurs={armateurs}
-            transitaires={transitaires}
-            representants={representants}
-            onDataChange={setConteneursData}
-          />
+          <div className="animate-fade-in">
+            <FactureConteneursForm
+              armateurs={armateurs}
+              transitaires={transitaires}
+              representants={representants}
+              onDataChange={setConteneursData}
+            />
+          </div>
         )}
 
         {categorie === "conventionnel" && (
-          <FactureConventionnelForm onDataChange={setConventionnelData} />
+          <div className="animate-fade-in">
+            <FactureConventionnelForm onDataChange={setConventionnelData} />
+          </div>
         )}
 
         {categorie === "operations_independantes" && (
-          <FactureIndependantForm onDataChange={setIndependantData} />
+          <div className="animate-fade-in">
+            <FactureIndependantForm onDataChange={setIndependantData} />
+          </div>
         )}
 
         {/* Notes */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Notes / Observations</CardTitle>
           </CardHeader>
@@ -325,14 +360,16 @@ export default function ModifierFacturePage() {
         </Card>
 
         {/* Récapitulatif */}
-        <RecapitulatifCard
-          montantHT={montantHT}
-          tva={tva}
-          css={css}
-          montantTTC={montantTTC}
-          tauxTva={Math.round(TAUX_TVA * 100)}
-          tauxCss={Math.round(TAUX_CSS * 100)}
-        />
+        <div className="animate-fade-in">
+          <RecapitulatifCard
+            montantHT={montantHT}
+            tva={tva}
+            css={css}
+            montantTTC={montantTTC}
+            tauxTva={Math.round(TAUX_TVA * 100)}
+            tauxCss={Math.round(TAUX_CSS * 100)}
+          />
+        </div>
 
         {/* Boutons */}
         <div className="flex justify-end gap-4 pb-6">
@@ -341,10 +378,11 @@ export default function ModifierFacturePage() {
             variant="outline" 
             onClick={() => navigate(`/factures/${id}`)} 
             disabled={updateFactureMutation.isPending}
+            className="transition-all duration-200 hover:scale-105"
           >
             Annuler
           </Button>
-          <Button type="submit" className="gap-2" disabled={updateFactureMutation.isPending}>
+          <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={updateFactureMutation.isPending}>
             {updateFactureMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
