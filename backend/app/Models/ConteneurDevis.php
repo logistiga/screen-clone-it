@@ -15,10 +15,8 @@ class ConteneurDevis extends Model
         'devis_id',
         'numero',
         'taille',
-        'type',
         'description',
         'prix_unitaire',
-        'armateur_id',
     ];
 
     protected $casts = [
@@ -29,11 +27,6 @@ class ConteneurDevis extends Model
     public function devis()
     {
         return $this->belongsTo(Devis::class);
-    }
-
-    public function armateur()
-    {
-        return $this->belongsTo(Armateur::class);
     }
 
     public function operations()
