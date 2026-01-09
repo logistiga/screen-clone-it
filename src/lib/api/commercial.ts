@@ -183,23 +183,36 @@ export const clientsApi = {
   },
   
   getById: async (id: string) => {
-    const response = await api.get<{ data: Client }>(`/clients/${id}`);
-    return response.data.data;
+    const response = await api.get(`/clients/${id}`);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Client;
   },
   
   create: async (data: Partial<Client>) => {
-    const response = await api.post<{ data: Client }>('/clients', data);
-    return response.data.data;
+    const response = await api.post('/clients', data);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Client;
   },
   
   update: async (id: string, data: Partial<Client>) => {
-    const response = await api.put<{ data: Client }>(`/clients/${id}`, data);
-    return response.data.data;
+    const response = await api.put(`/clients/${id}`, data);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Client;
   },
   
   delete: async (id: string) => {
     await api.delete(`/clients/${id}`);
   },
+};
+
+// Helper to unwrap API responses (handles both { data: ... } and direct object)
+const unwrapResponse = <T>(response: any): T => {
+  const payload = response.data;
+  const result = payload?.data ?? payload;
+  if (result === undefined || result === null) {
+    throw new Error('API returned undefined data');
+  }
+  return result as T;
 };
 
 // Devis API
@@ -210,18 +223,18 @@ export const devisApi = {
   },
   
   getById: async (id: string) => {
-    const response = await api.get<{ data: Devis }>(`/devis/${id}`);
-    return response.data.data;
+    const response = await api.get(`/devis/${id}`);
+    return unwrapResponse<Devis>(response);
   },
   
   create: async (data: any) => {
-    const response = await api.post<{ data: Devis }>('/devis', data);
-    return response.data.data;
+    const response = await api.post('/devis', data);
+    return unwrapResponse<Devis>(response);
   },
   
   update: async (id: string, data: any) => {
-    const response = await api.put<{ data: Devis }>(`/devis/${id}`, data);
-    return response.data.data;
+    const response = await api.put(`/devis/${id}`, data);
+    return unwrapResponse<Devis>(response);
   },
   
   delete: async (id: string) => {
@@ -234,8 +247,8 @@ export const devisApi = {
   },
   
   duplicate: async (id: string) => {
-    const response = await api.post<{ data: Devis }>(`/devis/${id}/duplicate`);
-    return response.data.data;
+    const response = await api.post(`/devis/${id}/duplicate`);
+    return unwrapResponse<Devis>(response);
   },
   
   sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }) => {
@@ -252,18 +265,21 @@ export const ordresApi = {
   },
   
   getById: async (id: string) => {
-    const response = await api.get<{ data: OrdreTravail }>(`/ordres-travail/${id}`);
-    return response.data.data;
+    const response = await api.get(`/ordres-travail/${id}`);
+    const payload = response.data;
+    return (payload?.data ?? payload) as OrdreTravail;
   },
   
   create: async (data: any) => {
-    const response = await api.post<{ data: OrdreTravail }>('/ordres-travail', data);
-    return response.data.data;
+    const response = await api.post('/ordres-travail', data);
+    const payload = response.data;
+    return (payload?.data ?? payload) as OrdreTravail;
   },
   
   update: async (id: string, data: any) => {
-    const response = await api.put<{ data: OrdreTravail }>(`/ordres-travail/${id}`, data);
-    return response.data.data;
+    const response = await api.put(`/ordres-travail/${id}`, data);
+    const payload = response.data;
+    return (payload?.data ?? payload) as OrdreTravail;
   },
   
   delete: async (id: string) => {
@@ -284,18 +300,21 @@ export const facturesApi = {
   },
   
   getById: async (id: string) => {
-    const response = await api.get<{ data: Facture }>(`/factures/${id}`);
-    return response.data.data;
+    const response = await api.get(`/factures/${id}`);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Facture;
   },
   
   create: async (data: any) => {
-    const response = await api.post<{ data: Facture }>('/factures', data);
-    return response.data.data;
+    const response = await api.post('/factures', data);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Facture;
   },
   
   update: async (id: string, data: any) => {
-    const response = await api.put<{ data: Facture }>(`/factures/${id}`, data);
-    return response.data.data;
+    const response = await api.put(`/factures/${id}`, data);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Facture;
   },
   
   delete: async (id: string) => {
@@ -308,8 +327,9 @@ export const facturesApi = {
   },
   
   duplicate: async (id: string) => {
-    const response = await api.post<{ data: Facture }>(`/factures/${id}/duplicate`);
-    return response.data.data;
+    const response = await api.post(`/factures/${id}/duplicate`);
+    const payload = response.data;
+    return (payload?.data ?? payload) as Facture;
   },
   
   sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }) => {
@@ -319,7 +339,8 @@ export const facturesApi = {
   
   getImpayes: async (clientId?: string) => {
     const response = await api.get<{ data: Facture[] }>('/factures/impayes', { params: { client_id: clientId } });
-    return response.data.data;
+    const payload = response.data;
+    return (payload?.data ?? payload) as Facture[];
   },
 };
 

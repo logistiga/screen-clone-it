@@ -35,11 +35,21 @@ interface Representant {
   nom: string;
 }
 
+export interface DevisConteneursInitialData {
+  typeOperation?: TypeOperation | "";
+  numeroBL?: string;
+  armateurId?: string;
+  transitaireId?: string;
+  representantId?: string;
+  conteneurs?: LigneConteneur[];
+}
+
 interface DevisConteneursFormProps {
   armateurs: Armateur[];
   transitaires: Transitaire[];
   representants: Representant[];
   onDataChange: (data: DevisConteneursData) => void;
+  initialData?: DevisConteneursInitialData;
 }
 
 export interface DevisConteneursData {
@@ -61,13 +71,34 @@ export default function DevisConteneursForm({
   transitaires,
   representants,
   onDataChange,
+  initialData,
 }: DevisConteneursFormProps) {
-  const [typeOperation, setTypeOperation] = useState<TypeOperation | "">("");
-  const [numeroBL, setNumeroBL] = useState("");
-  const [armateurId, setArmateurId] = useState("");
-  const [transitaireId, setTransitaireId] = useState("");
-  const [representantId, setRepresentantId] = useState("");
-  const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
+  const [typeOperation, setTypeOperation] = useState<TypeOperation | "">(initialData?.typeOperation || "");
+  const [numeroBL, setNumeroBL] = useState(initialData?.numeroBL || "");
+  const [armateurId, setArmateurId] = useState(initialData?.armateurId || "");
+  const [transitaireId, setTransitaireId] = useState(initialData?.transitaireId || "");
+  const [representantId, setRepresentantId] = useState(initialData?.representantId || "");
+  const [conteneurs, setConteneurs] = useState<LigneConteneur[]>(
+    initialData?.conteneurs?.length ? initialData.conteneurs : [getInitialConteneur()]
+  );
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Notify parent on mount with initial data
+  useState(() => {
+    if (initialData && !isInitialized) {
+      const montantHT = calculateTotalConteneurs(conteneurs);
+      onDataChange({
+        typeOperation: initialData.typeOperation || "",
+        numeroBL: initialData.numeroBL || "",
+        armateurId: initialData.armateurId || "",
+        transitaireId: initialData.transitaireId || "",
+        representantId: initialData.representantId || "",
+        conteneurs,
+        montantHT,
+      });
+      setIsInitialized(true);
+    }
+  });
 
   const updateParent = (newConteneurs: LigneConteneur[]) => {
     const montantHT = calculateTotalConteneurs(newConteneurs);

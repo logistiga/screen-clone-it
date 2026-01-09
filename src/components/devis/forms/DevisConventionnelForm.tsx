@@ -10,8 +10,16 @@ import {
   calculateTotalLots,
 } from "@/types/documents";
 
+export interface DevisConventionnelInitialData {
+  numeroBL?: string;
+  lieuChargement?: string;
+  lieuDechargement?: string;
+  lots?: LigneLot[];
+}
+
 interface DevisConventionnelFormProps {
   onDataChange: (data: DevisConventionnelData) => void;
+  initialData?: DevisConventionnelInitialData;
 }
 
 export interface DevisConventionnelData {
@@ -26,11 +34,29 @@ const formatMontant = (montant: number) => {
   return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
 };
 
-export default function DevisConventionnelForm({ onDataChange }: DevisConventionnelFormProps) {
-  const [numeroBL, setNumeroBL] = useState("");
-  const [lieuChargement, setLieuChargement] = useState("");
-  const [lieuDechargement, setLieuDechargement] = useState("");
-  const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
+export default function DevisConventionnelForm({ onDataChange, initialData }: DevisConventionnelFormProps) {
+  const [numeroBL, setNumeroBL] = useState(initialData?.numeroBL || "");
+  const [lieuChargement, setLieuChargement] = useState(initialData?.lieuChargement || "");
+  const [lieuDechargement, setLieuDechargement] = useState(initialData?.lieuDechargement || "");
+  const [lots, setLots] = useState<LigneLot[]>(
+    initialData?.lots?.length ? initialData.lots : [getInitialLot()]
+  );
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Notify parent on mount with initial data
+  useState(() => {
+    if (initialData && !isInitialized) {
+      const montantHT = calculateTotalLots(lots);
+      onDataChange({
+        numeroBL: initialData.numeroBL || "",
+        lieuChargement: initialData.lieuChargement || "",
+        lieuDechargement: initialData.lieuDechargement || "",
+        lots,
+        montantHT,
+      });
+      setIsInitialized(true);
+    }
+  });
 
   const updateParent = (newLots: LigneLot[]) => {
     const montantHT = calculateTotalLots(newLots);

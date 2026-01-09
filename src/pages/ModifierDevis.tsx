@@ -23,9 +23,10 @@ import {
   DevisIndependantForm,
 } from "@/components/devis";
 import { getCategoriesLabels, CategorieDocument } from "@/types/documents";
-import type { DevisConteneursData } from "@/components/devis/forms/DevisConteneursForm";
-import type { DevisConventionnelData } from "@/components/devis/forms/DevisConventionnelForm";
-import type { DevisIndependantData } from "@/components/devis/forms/DevisIndependantForm";
+import type { DevisConteneursData, DevisConteneursInitialData } from "@/components/devis/forms/DevisConteneursForm";
+import type { DevisConventionnelData, DevisConventionnelInitialData } from "@/components/devis/forms/DevisConventionnelForm";
+import type { DevisIndependantData, DevisIndependantInitialData } from "@/components/devis/forms/DevisIndependantForm";
+import { typesOperationConteneur, TypeOperationConteneur } from "@/types/documents";
 
 export default function ModifierDevisPage() {
   const navigate = useNavigate();
@@ -258,21 +259,76 @@ export default function ModifierDevisPage() {
           clients={clients}
         />
 
-        {categorie === "conteneurs" && (
+        {categorie === "conteneurs" && devisData && (
           <DevisConteneursForm
             armateurs={armateurs}
             transitaires={transitaires}
             representants={representants}
             onDataChange={setConteneursData}
+            initialData={{
+              typeOperation: (devisData.type_operation as any) || "",
+              numeroBL: devisData.numero_bl || devisData.bl_numero || "",
+              armateurId: devisData.armateur_id ? String(devisData.armateur_id) : "",
+              transitaireId: devisData.transitaire_id ? String(devisData.transitaire_id) : "",
+              representantId: devisData.representant_id ? String(devisData.representant_id) : "",
+              conteneurs: devisData.conteneurs?.map((c: any) => ({
+                id: String(c.id),
+                numero: c.numero || "",
+                description: c.description || "",
+                taille: c.taille === "20" ? "20'" : "40'",
+                prixUnitaire: 0,
+                operations: (c.operations || []).map((op: any) => ({
+                  id: String(op.id),
+                  type: op.type_operation as TypeOperationConteneur,
+                  description: op.description || "",
+                  quantite: op.quantite || 1,
+                  prixUnitaire: op.prix_unitaire || 0,
+                  prixTotal: (op.quantite || 1) * (op.prix_unitaire || 0),
+                })),
+              })) || [],
+            }}
           />
         )}
 
-        {categorie === "conventionnel" && (
-          <DevisConventionnelForm onDataChange={setConventionnelData} />
+        {categorie === "conventionnel" && devisData && (
+          <DevisConventionnelForm 
+            onDataChange={setConventionnelData}
+            initialData={{
+              numeroBL: devisData.numero_bl || devisData.bl_numero || "",
+              lieuChargement: (devisData as any).lieu_chargement || "",
+              lieuDechargement: (devisData as any).lieu_dechargement || "",
+              lots: devisData.lots?.map((l: any) => ({
+                id: String(l.id),
+                numeroLot: l.numero_lot || "",
+                description: l.description || l.designation || "",
+                quantite: l.quantite || 1,
+                prixUnitaire: l.prix_unitaire || 0,
+                prixTotal: (l.quantite || 1) * (l.prix_unitaire || 0),
+              })) || [],
+            }}
+          />
         )}
 
-        {categorie === "operations_independantes" && (
-          <DevisIndependantForm onDataChange={setIndependantData} />
+        {categorie === "operations_independantes" && devisData && (
+          <DevisIndependantForm 
+            onDataChange={setIndependantData}
+            initialData={{
+              typeOperationIndep: (devisData as any).type_operation_indep || "",
+              lieuChargement: (devisData as any).lieu_chargement || "",
+              lieuDechargement: (devisData as any).lieu_dechargement || "",
+              prestations: devisData.lignes?.map((l: any) => ({
+                id: String(l.id),
+                description: l.description || "",
+                lieuDepart: l.lieu_depart || "",
+                lieuArrivee: l.lieu_arrivee || "",
+                dateDebut: l.date_debut || "",
+                dateFin: l.date_fin || "",
+                quantite: l.quantite || 1,
+                prixUnitaire: l.prix_unitaire || 0,
+                montantHT: (l.quantite || 1) * (l.prix_unitaire || 0),
+              })) || [],
+            }}
+          />
         )}
 
         {categorie && (
