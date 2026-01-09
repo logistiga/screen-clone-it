@@ -94,23 +94,20 @@ export default function ModifierDevisPage() {
   const montantTTC = montantHT + tva + css;
 
   const getStatutBadge = (statut: string) => {
-    const labels: Record<string, string> = {
-      brouillon: "Brouillon",
-      envoye: "Envoyé",
-      accepte: "Accepté",
-      refuse: "Refusé",
-      expire: "Expiré",
-      converti: "Converti",
+    const config: Record<string, { className: string; label: string }> = {
+      brouillon: { className: "bg-gray-100 text-gray-700 border-gray-300", label: "Brouillon" },
+      envoye: { className: "bg-blue-100 text-blue-700 border-blue-300", label: "Envoyé" },
+      accepte: { className: "bg-green-100 text-green-700 border-green-300", label: "Accepté" },
+      refuse: { className: "bg-red-100 text-red-700 border-red-300", label: "Refusé" },
+      expire: { className: "bg-orange-100 text-orange-700 border-orange-300", label: "Expiré" },
+      converti: { className: "bg-purple-100 text-purple-700 border-purple-300", label: "Converti" },
     };
-    const colors: Record<string, string> = {
-      brouillon: "bg-gray-100 text-gray-800",
-      envoye: "bg-blue-100 text-blue-800",
-      accepte: "bg-green-100 text-green-800",
-      refuse: "bg-red-100 text-red-800",
-      expire: "bg-orange-100 text-orange-800",
-      converti: "bg-purple-100 text-purple-800",
-    };
-    return <Badge className={colors[statut] || "bg-gray-100"}>{labels[statut] || statut}</Badge>;
+    const style = config[statut] || config.brouillon;
+    return (
+      <Badge variant="outline" className={`${style.className} transition-all duration-200 hover:scale-105`}>
+        {style.label}
+      </Badge>
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,7 +203,7 @@ export default function ModifierDevisPage() {
 
   return (
     <MainLayout title={`Modifier ${devisData.numero}`}>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -214,7 +211,8 @@ export default function ModifierDevisPage() {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/devis/${id}`)}
+              onClick={() => navigate("/devis")}
+              className="transition-all duration-200 hover:scale-110"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -231,7 +229,7 @@ export default function ModifierDevisPage() {
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={updateDevisMutation.isPending}>
+          <Button type="submit" disabled={updateDevisMutation.isPending} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
             {updateDevisMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -361,12 +359,13 @@ export default function ModifierDevisPage() {
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => navigate(`/devis/${id}`)} 
+            onClick={() => navigate("/devis")} 
             disabled={updateDevisMutation.isPending}
+            className="transition-all duration-200 hover:scale-105"
           >
             Annuler
           </Button>
-          <Button type="submit" className="gap-2" disabled={updateDevisMutation.isPending}>
+          <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={updateDevisMutation.isPending}>
             {updateDevisMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

@@ -72,23 +72,20 @@ export default function DevisDetailPage() {
   }
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      brouillon: "secondary",
-      envoye: "outline",
-      accepte: "default",
-      refuse: "destructive",
-      expire: "destructive",
-      converti: "default",
+    const config: Record<string, { className: string; label: string }> = {
+      brouillon: { className: "bg-gray-100 text-gray-700 border-gray-300", label: "Brouillon" },
+      envoye: { className: "bg-blue-100 text-blue-700 border-blue-300", label: "Envoyé" },
+      accepte: { className: "bg-green-100 text-green-700 border-green-300", label: "Accepté" },
+      refuse: { className: "bg-red-100 text-red-700 border-red-300", label: "Refusé" },
+      expire: { className: "bg-orange-100 text-orange-700 border-orange-300", label: "Expiré" },
+      converti: { className: "bg-purple-100 text-purple-700 border-purple-300", label: "Converti" },
     };
-    const labels: Record<string, string> = {
-      brouillon: "Brouillon",
-      envoye: "Envoyé",
-      accepte: "Accepté",
-      refuse: "Refusé",
-      expire: "Expiré",
-      converti: "Converti",
-    };
-    return <Badge variant={variants[statut] || "secondary"}>{labels[statut] || statut}</Badge>;
+    const style = config[statut] || config.brouillon;
+    return (
+      <Badge variant="outline" className={`${style.className} transition-all duration-200 hover:scale-105`}>
+        {style.label}
+      </Badge>
+    );
   };
 
   const handleConvertToOrdre = async () => {
@@ -103,11 +100,11 @@ export default function DevisDetailPage() {
 
   return (
     <MainLayout title={`Devis ${devisData.numero}`}>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Header avec actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/devis")}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/devis")} className="transition-all duration-200 hover:scale-110">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -124,7 +121,7 @@ export default function DevisDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 transition-all duration-200 hover:scale-105"
               onClick={() => window.open(`/devis/${id}/pdf`, "_blank")}
             >
               <Download className="h-4 w-4" />
@@ -132,20 +129,20 @@ export default function DevisDetailPage() {
             </Button>
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 transition-all duration-200 hover:scale-105"
               onClick={() => navigate(`/devis/${id}/modifier`)}
               disabled={devisData.statut === 'converti'}
             >
               <Edit className="h-4 w-4" />
               Modifier
             </Button>
-            <Button variant="outline" className="gap-2 text-blue-600">
+            <Button variant="outline" className="gap-2 text-blue-600 transition-all duration-200 hover:scale-105 hover:bg-blue-50">
               <Mail className="h-4 w-4" />
               Envoyer
             </Button>
             {devisData.statut !== 'converti' && devisData.statut !== 'refuse' && (
               <Button 
-                className="gap-2" 
+                className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" 
                 onClick={handleConvertToOrdre}
                 disabled={convertMutation.isPending}
               >
@@ -173,7 +170,7 @@ export default function DevisDetailPage() {
           <TabsContent value="details" className="space-y-6 mt-6">
             {/* Infos client */}
             <div className="grid gap-6 md:grid-cols-2">
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <User className="h-5 w-5 text-primary" />
@@ -190,7 +187,7 @@ export default function DevisDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-primary" />

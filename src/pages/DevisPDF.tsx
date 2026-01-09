@@ -2,41 +2,54 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { devis, clients, formatMontant, formatDate } from "@/data/mockData";
+import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
+import { useDevisById } from "@/hooks/use-commercial";
 import logoLojistiga from "@/assets/lojistiga-logo.png";
 
 export default function DevisPDFPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const devisData = devis.find((d) => d.id === id);
-  const client = devisData ? clients.find((c) => c.id === devisData.clientId) : null;
+  // Utiliser les vraies données de l'API
+  const { data: devisData, isLoading } = useDevisById(id || '');
 
   const { contentRef, downloadPdf } = usePdfDownload({ 
     filename: `Devis_${devisData?.numero || 'unknown'}` 
   });
 
-  // Téléchargement automatique au chargement
+  // Téléchargement automatique au chargement (après le chargement des données)
   useEffect(() => {
-    if (devisData) {
+    if (devisData && !isLoading) {
       const timer = setTimeout(() => {
         downloadPdf();
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [devisData, downloadPdf]);
+  }, [devisData, isLoading, downloadPdf]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Génération du PDF...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!devisData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center animate-fade-in">
           <h2 className="text-xl font-semibold mb-2">Devis non trouvé</h2>
-          <Button onClick={() => navigate("/devis")}>Retour aux devis</Button>
+          <Button onClick={() => navigate("/devis")} className="transition-all duration-200 hover:scale-105">
+            Retour aux devis
+          </Button>
         </div>
       </div>
     );
@@ -47,16 +60,71 @@ export default function DevisPDFPage() {
   };
 
   const isAnnule = devisData.statut === "refuse" || devisData.statut === "expire";
+  const client = devisData.client;
+  
+  // Construire les lignes à afficher (depuis lignes, conteneurs ou lots)
+  const getLignesAffichage = () => {
+    // Lignes directes (opérations indépendantes)
+    if (devisData.lignes && devisData.lignes.length > 0) {
+      return devisData.lignes.map((l: any) => ({
+        id: l.id,
+        description: l.description || l.type_operation || 'Prestation',
+        quantite: l.quantite || 1,
+        prixUnitaire: l.prix_unitaire || 0,
+        montantHT: l.montant_ht || (l.quantite * l.prix_unitaire) || 0,
+      }));
+    }
+    
+    // Conteneurs avec opérations
+    if (devisData.conteneurs && devisData.conteneurs.length > 0) {
+      const lignes: any[] = [];
+      devisData.conteneurs.forEach((c: any) => {
+        if (c.operations && c.operations.length > 0) {
+          c.operations.forEach((op: any) => {
+            lignes.push({
+              id: op.id,
+              description: `${c.numero || 'Conteneur'} ${c.taille}' - ${op.description || op.type}`,
+              quantite: op.quantite || 1,
+              prixUnitaire: op.prix_unitaire || 0,
+              montantHT: op.prix_total || (op.quantite * op.prix_unitaire) || 0,
+            });
+          });
+        } else {
+          lignes.push({
+            id: c.id,
+            description: `Conteneur ${c.numero || ''} ${c.taille}'`,
+            quantite: 1,
+            prixUnitaire: c.prix_unitaire || 0,
+            montantHT: c.prix_unitaire || 0,
+          });
+        }
+      });
+      return lignes;
+    }
+    
+    // Lots (conventionnel)
+    if (devisData.lots && devisData.lots.length > 0) {
+      return devisData.lots.map((l: any) => ({
+        id: l.id,
+        description: l.description || l.numero_lot || 'Lot',
+        quantite: l.quantite || 1,
+        prixUnitaire: l.prix_unitaire || 0,
+        montantHT: l.prix_total || (l.quantite * l.prix_unitaire) || 0,
+      }));
+    }
+    
+    return [];
+  };
+  
+  const lignesAffichage = getLignesAffichage();
   
   // Données pour le QR code de vérification
   const qrPayload = {
     type: "DEVIS",
     numero: devisData.numero,
-    date: devisData.dateCreation,
+    date: devisData.date_creation || devisData.date,
     client: client?.nom,
-    montantTTC: devisData.montantTTC,
-    montantPaye: 0,
-    reste: devisData.montantTTC,
+    montantTTC: devisData.montant_ttc,
     statut: devisData.statut,
     url: `${window.location.origin}/devis/${id}`
   };
@@ -64,20 +132,20 @@ export default function DevisPDFPage() {
   const qrData = `${window.location.origin}/verification?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 animate-fade-in">
       {/* Toolbar - hidden when printing */}
       <div className="print:hidden sticky top-0 z-50 bg-background border-b">
         <div className="container py-3 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/devis")} className="gap-2">
+          <Button variant="ghost" onClick={() => navigate("/devis")} className="gap-2 transition-all duration-200 hover:scale-105">
             <ArrowLeft className="h-4 w-4" />
             Retour
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handlePrint} className="gap-2">
+            <Button variant="outline" onClick={handlePrint} className="gap-2 transition-all duration-200 hover:scale-105">
               <Printer className="h-4 w-4" />
               Imprimer
             </Button>
-            <Button className="gap-2" onClick={downloadPdf}>
+            <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={downloadPdf}>
               <Download className="h-4 w-4" />
               Télécharger PDF
             </Button>
@@ -123,8 +191,8 @@ export default function DevisPDFPage() {
           {/* Infos document */}
           <div className="flex justify-between text-xs mb-4">
             <div>
-              <p><span className="font-semibold">Date:</span> {formatDate(devisData.dateCreation)}</p>
-              <p><span className="font-semibold">Validité:</span> {formatDate(devisData.dateValidite)}</p>
+              <p><span className="font-semibold">Date:</span> {formatDate(devisData.date_creation || devisData.date)}</p>
+              <p><span className="font-semibold">Validité:</span> {formatDate(devisData.date_validite)}</p>
             </div>
           </div>
 
@@ -152,7 +220,7 @@ export default function DevisPDFPage() {
               </tr>
             </thead>
             <tbody>
-              {devisData.lignes.map((ligne, index) => (
+              {lignesAffichage.map((ligne, index) => (
                 <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
                   <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
                   <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
@@ -163,8 +231,8 @@ export default function DevisPDFPage() {
                   </td>
                 </tr>
               ))}
-              {/* Lignes vides pour remplir (min 10 lignes) */}
-              {Array.from({ length: Math.max(0, 10 - devisData.lignes.length) }).map((_, i) => (
+              {/* Lignes vides pour remplir (min 8 lignes) */}
+              {Array.from({ length: Math.max(0, 8 - lignesAffichage.length) }).map((_, i) => (
                 <tr key={`empty-${i}`} className="h-6">
                   <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
                   <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
@@ -181,19 +249,19 @@ export default function DevisPDFPage() {
             <div className="w-56 border text-xs">
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>Total HT</span>
-                <span className="font-medium">{formatMontant(devisData.montantHT)}</span>
+                <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>TVA (18%)</span>
-                <span>{formatMontant(devisData.tva)}</span>
+                <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>CSS (1%)</span>
-                <span>{formatMontant(devisData.css)}</span>
+                <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
               </div>
               <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
                 <span>Total TTC</span>
-                <span>{formatMontant(devisData.montantTTC)}</span>
+                <span>{formatMontant(devisData.montant_ttc || 0)}</span>
               </div>
             </div>
           </div>
@@ -210,7 +278,7 @@ export default function DevisPDFPage() {
           <div className="border-t pt-3 text-xs mb-4">
             <h3 className="font-bold mb-1">Conditions</h3>
             <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-              <li>Ce devis est valable jusqu&apos;au {formatDate(devisData.dateValidite)}</li>
+              <li>Ce devis est valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
               <li>Paiement: 50% à la commande, 50% à la livraison</li>
               <li>Délai de réalisation: selon disponibilité</li>
             </ul>
