@@ -26,11 +26,11 @@ export default function NouveauDevisPage() {
   const navigate = useNavigate();
   
   // API hooks
-  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
-  const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
-  const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
-  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants();
-  const { data: config } = useConfiguration();
+  const { data: clientsData, isLoading: loadingClients, error: clientsError } = useClients({ per_page: 100 });
+  const { data: armateursData, isLoading: loadingArmateurs, error: armateursError } = useArmateurs();
+  const { data: transitairesData, isLoading: loadingTransitaires, error: transitairesError } = useTransitaires();
+  const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants();
+  const { data: config, error: configError } = useConfiguration();
   const createDevisMutation = useCreateDevis();
 
   const clients = clientsData?.data || [];
@@ -166,6 +166,7 @@ export default function NouveauDevisPage() {
   };
 
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
+  const loadError = clientsError || armateursError || transitairesError || representantsError || configError;
 
   if (isLoading) {
     return (
@@ -173,6 +174,18 @@ export default function NouveauDevisPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      </MainLayout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <MainLayout title="Nouveau devis">
+        <ApiErrorState
+          title="Impossible de charger les données (API / CORS)"
+          error={loadError}
+          onRetry={() => window.location.reload()}
+        />
       </MainLayout>
     );
   }
