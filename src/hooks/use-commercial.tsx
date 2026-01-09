@@ -80,121 +80,55 @@ export function useDeleteClient() {
   });
 }
 
-// Devis hooks
-export function useDevis(params?: { search?: string; statut?: string; client_id?: string; page?: number; per_page?: number }) {
+// Devis hooks - supprimés, à reconstruire
+export function useDevis(_params?: any) {
   return useQuery({
-    queryKey: ['devis', params],
-    queryFn: () => devisApi.getAll(params),
-    // Évite de marteler le backend en cas d'erreur (et de spammer la console)
-    retry: 0,
-    refetchOnWindowFocus: false,
+    queryKey: ['devis', _params],
+    queryFn: () => devisApi.getAll(_params),
+    enabled: false, // Désactivé
   });
 }
 
-export function useDevisById(id: string) {
+export function useDevisById(_id: string) {
   return useQuery({
-    queryKey: ['devis', id],
-    queryFn: () => devisApi.getById(id),
-    enabled: !!id,
+    queryKey: ['devis', _id],
+    queryFn: () => devisApi.getById(_id),
+    enabled: false, // Désactivé
   });
 }
 
 export function useCreateDevis() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      toast.success('Devis créé avec succès');
-    },
-    onError: (error: any) => {
-      const responseData = error?.response?.data;
-
-      // Garder une trace exploitable côté navigateur pour diagnostiquer les 500 backend
-      console.error('Erreur création devis:', {
-        status: error?.response?.status,
-        data: responseData,
-        message: error?.message,
-      });
-      try {
-        console.error('Erreur création devis (json):', JSON.stringify(responseData, null, 2));
-      } catch {
-        // ignore
-      }
-
-      toast.error(
-        (typeof responseData === 'string' ? responseData : responseData?.error) ||
-          responseData?.message ||
-          'Erreur lors de la création du devis'
-      );
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
 
 export function useUpdateDevis() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => devisApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      toast.success('Devis modifié avec succès');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la modification du devis');
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
 
 export function useDeleteDevis() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      toast.success('Devis supprimé avec succès');
-    },
-    onError: (error: any) => {
-      const status = error?.response?.status;
-      const responseData = error?.response?.data;
-
-      // Si le devis n'existe plus côté backend, on considère que l'état est déjà "supprimé"
-      if (status === 404) {
-        queryClient.invalidateQueries({ queryKey: ['devis'] });
-        toast.success('Devis déjà supprimé');
-        return;
-      }
-
-      console.error('Erreur suppression devis:', {
-        status,
-        data: responseData,
-        message: error?.message,
-      });
-      try {
-        console.error('Erreur suppression devis (json):', JSON.stringify(responseData, null, 2));
-      } catch {
-        // ignore
-      }
-
-      toast.error(
-        (typeof responseData === 'string' ? responseData : responseData?.error) ||
-          responseData?.message ||
-          'Erreur lors de la suppression du devis'
-      );
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }
 
 export function useConvertDevisToOrdre() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.convertToOrdre,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devis'] });
-      queryClient.invalidateQueries({ queryKey: ['ordres'] });
-      toast.success('Devis converti en ordre de travail');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la conversion');
+    onError: () => {
+      toast.error('Module Devis supprimé - à reconstruire');
     },
   });
 }

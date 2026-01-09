@@ -21,38 +21,11 @@ export interface Client {
   updated_at: string;
 }
 
+// Devis type - à reconstruire ultérieurement
 export interface Devis {
   id: string;
   numero: string;
-  client_id: string;
-  client?: Client;
-  transitaire_id?: string;
-  representant_id?: string;
-  armateur_id?: string;
-  date: string;
-  date_creation: string;
-  date_validite: string;
-  categorie?: string;
-  type_document?: string;
-  type_operation?: string;
-  reference_client?: string;
-  navire?: string;
-  numero_bl?: string;
-  bl_numero?: string;
-  montant_ht: number;
-  montant_tva: number;
-  montant_css: number;
-  montant_ttc: number;
-  tva: number;
-  css: number;
-  statut: 'brouillon' | 'envoye' | 'accepte' | 'refuse' | 'expire' | 'converti';
-  conditions?: string;
-  notes?: string;
-  conteneurs?: any[];
-  lots?: any[];
-  lignes?: any[];
-  created_at: string;
-  updated_at: string;
+  // Supprimé - à reconstruire
 }
 
 export interface OrdreTravail {
@@ -215,45 +188,32 @@ const unwrapResponse = <T>(response: any): T => {
   return result as T;
 };
 
-// Devis API
+// Devis API - supprimé, à reconstruire
 export const devisApi = {
-  getAll: async (params?: { search?: string; statut?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) => {
-    const response = await api.get<PaginatedResponse<Devis>>('/devis', { params });
-    return response.data;
+  getAll: async (_params?: any) => {
+    console.warn('Devis API supprimé - à reconstruire');
+    return { data: [], meta: { current_page: 1, last_page: 1, per_page: 10, total: 0 } };
   },
-  
-  getById: async (id: string) => {
-    const response = await api.get(`/devis/${id}`);
-    return unwrapResponse<Devis>(response);
+  getById: async (_id: string): Promise<Devis> => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
-  
-  create: async (data: any) => {
-    const response = await api.post('/devis', data);
-    return unwrapResponse<Devis>(response);
+  create: async (_data: any): Promise<Devis> => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
-  
-  update: async (id: string, data: any) => {
-    const response = await api.put(`/devis/${id}`, data);
-    return unwrapResponse<Devis>(response);
+  update: async (_id: string, _data: any): Promise<Devis> => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
-  
-  delete: async (id: string) => {
-    await api.delete(`/devis/${id}`);
+  delete: async (_id: string) => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
-  
-  convertToOrdre: async (id: string) => {
-    const response = await api.post<{ data: OrdreTravail; message: string }>(`/devis/${id}/convert-ordre`);
-    return response.data;
+  convertToOrdre: async (_id: string) => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
-  
-  duplicate: async (id: string) => {
-    const response = await api.post(`/devis/${id}/duplicate`);
-    return unwrapResponse<Devis>(response);
+  duplicate: async (_id: string): Promise<Devis> => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
-  
-  sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }) => {
-    const response = await api.post(`/notifications/devis/${id}/envoyer`, data);
-    return response.data;
+  sendEmail: async (_id: string, _data: any) => {
+    throw new Error('Devis API supprimé - à reconstruire');
   },
 };
 

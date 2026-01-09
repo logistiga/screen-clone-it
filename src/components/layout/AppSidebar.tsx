@@ -44,7 +44,6 @@ const menuItems = {
     items: [
       { title: "Clients", url: "/clients", icon: Users },
       { title: "Partenaires", url: "/partenaires", icon: Handshake },
-      { title: "Devis", url: "/devis", icon: FileText },
       { title: "Ordres de travail", url: "/ordres", icon: ClipboardList },
       { title: "Factures", url: "/factures", icon: Receipt },
       { title: "Notes de début", url: "/notes-debut", icon: FileStack },

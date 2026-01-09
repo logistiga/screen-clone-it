@@ -29,7 +29,7 @@ import {
   FactureConventionnelData,
   FactureIndependantData,
 } from "@/components/factures/forms";
-import { RecapitulatifCard } from "@/components/devis/shared";
+import { RecapitulatifCard } from "@/components/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture, useConfiguration } from "@/hooks/use-commercial";
 import { formatMontant } from "@/data/mockData";
 
