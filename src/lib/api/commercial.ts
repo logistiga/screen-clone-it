@@ -66,6 +66,7 @@ export interface OrdreTravail {
   devis_id?: string;
   type_document: string;
   categorie?: string;
+  type_operation?: string;
   bl_numero?: string;
   numero_bl?: string;
   navire?: string;
