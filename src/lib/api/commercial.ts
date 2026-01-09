@@ -242,7 +242,7 @@ export const devisApi = {
   },
   
   convertToOrdre: async (id: string) => {
-    const response = await api.post<{ data: OrdreTravail; message: string }>(`/devis/${id}/convert-to-ordre`);
+    const response = await api.post<{ data: OrdreTravail; message: string }>(`/devis/${id}/convert-ordre`);
     return response.data;
   },
   
@@ -252,7 +252,7 @@ export const devisApi = {
   },
   
   sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }) => {
-    const response = await api.post(`/devis/${id}/send-email`, data);
+    const response = await api.post(`/notifications/devis/${id}/envoyer`, data);
     return response.data;
   },
 };
@@ -333,7 +333,7 @@ export const facturesApi = {
   },
   
   sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }) => {
-    const response = await api.post(`/factures/${id}/send-email`, data);
+    const response = await api.post(`/notifications/facture/${id}/envoyer`, data);
     return response.data;
   },
   

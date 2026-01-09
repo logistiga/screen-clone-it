@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ApiErrorState } from "@/components/ApiErrorState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +23,8 @@ import {
   ArrowRight,
   Clock,
   User,
-  AlertCircle,
   Loader2,
   Download,
-  Copy,
 } from "lucide-react";
 import { useDevisById, useConvertDevisToOrdre } from "@/hooks/use-commercial";
 
@@ -56,11 +55,22 @@ export default function DevisDetailPage() {
     );
   }
 
-  if (error || !devisData) {
+  if (error) {
+    return (
+      <MainLayout title="Erreur">
+        <ApiErrorState
+          title="Erreur lors du chargement du devis"
+          error={error}
+          onRetry={() => window.location.reload()}
+        />
+      </MainLayout>
+    );
+  }
+
+  if (!devisData) {
     return (
       <MainLayout title="Devis non trouvé">
         <div className="flex flex-col items-center justify-center py-20">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
           <h2 className="text-xl font-semibold mb-2">Devis non trouvé</h2>
           <p className="text-muted-foreground mb-4">
             Le devis demandé n'existe pas ou a été supprimé.
