@@ -2,10 +2,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { factures, clients, formatMontant, formatDate } from "@/data/mockData";
+import { useFactureById } from "@/hooks/use-commercial";
+import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter, DocumentBankDetails } from "@/components/documents/DocumentLayout";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import logoLojistiga from "@/assets/lojistiga-logo.png";
@@ -14,8 +14,7 @@ export default function FacturePDFPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const facture = factures.find((f) => f.id === id);
-  const client = facture ? clients.find((c) => c.id === facture.clientId) : null;
+  const { data: facture, isLoading, error } = useFactureById(id || "");
 
   const { contentRef, downloadPdf } = usePdfDownload({ 
     filename: `Facture_${facture?.numero || 'unknown'}` 
@@ -31,32 +30,100 @@ export default function FacturePDFPage() {
     }
   }, [facture, downloadPdf]);
 
-  if (!facture) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Facture non trouvée</h2>
-          <Button onClick={() => navigate("/factures")}>Retour aux factures</Button>
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Chargement du document...</p>
         </div>
       </div>
     );
   }
 
+  if (error || !facture) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <h2 className="text-xl font-semibold mb-2">Facture non trouvée</h2>
+          <Button onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-105">Retour aux factures</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const client = facture.client;
   const handlePrint = () => {
     window.print();
   };
 
   const isAnnulee = facture.statut === "annulee";
-  const resteAPayer = facture.montantTTC - facture.montantPaye;
+  const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
+
+  // Construire les lignes pour le PDF
+  const buildLignes = () => {
+    const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montantHT: number }> = [];
+    
+    // Lignes directes
+    if (facture.lignes && facture.lignes.length > 0) {
+      facture.lignes.forEach((ligne: any) => {
+        lignes.push({
+          description: ligne.description || ligne.type_operation || 'Prestation',
+          quantite: ligne.quantite || 1,
+          prixUnitaire: ligne.prix_unitaire || 0,
+          montantHT: ligne.montant_ht || (ligne.quantite * ligne.prix_unitaire) || 0
+        });
+      });
+    }
+    
+    // Conteneurs avec leurs opérations
+    if (facture.conteneurs && facture.conteneurs.length > 0) {
+      facture.conteneurs.forEach((conteneur: any) => {
+        if (conteneur.operations && conteneur.operations.length > 0) {
+          conteneur.operations.forEach((op: any) => {
+            lignes.push({
+              description: `${conteneur.numero} - ${op.description || op.type_operation}`,
+              quantite: op.quantite || 1,
+              prixUnitaire: op.prix_unitaire || 0,
+              montantHT: op.montant_ht || (op.quantite * op.prix_unitaire) || 0
+            });
+          });
+        } else {
+          lignes.push({
+            description: `Conteneur ${conteneur.numero} (${conteneur.taille})`,
+            quantite: 1,
+            prixUnitaire: conteneur.montant_ht || 0,
+            montantHT: conteneur.montant_ht || 0
+          });
+        }
+      });
+    }
+    
+    // Lots
+    if (facture.lots && facture.lots.length > 0) {
+      facture.lots.forEach((lot: any) => {
+        lignes.push({
+          description: lot.designation || `Lot`,
+          quantite: lot.quantite || 1,
+          prixUnitaire: lot.prix_unitaire || 0,
+          montantHT: lot.montant_ht || (lot.quantite * lot.prix_unitaire) || 0
+        });
+      });
+    }
+    
+    return lignes;
+  };
+
+  const lignes = buildLignes();
   
   // Données pour le QR code de vérification
   const qrPayload = {
     type: "FACTURE",
     numero: facture.numero,
-    date: facture.dateCreation,
+    date: facture.date_facture || facture.created_at,
     client: client?.nom,
-    montantTTC: facture.montantTTC,
-    montantPaye: facture.montantPaye,
+    montantTTC: facture.montant_ttc,
+    montantPaye: facture.montant_paye || 0,
     reste: resteAPayer,
     statut: facture.statut,
     url: `${window.location.origin}/factures/${id}`
@@ -69,16 +136,16 @@ export default function FacturePDFPage() {
       {/* Toolbar */}
       <div className="print:hidden sticky top-0 z-50 bg-background border-b">
         <div className="container py-3 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/factures")} className="gap-2">
+          <Button variant="ghost" onClick={() => navigate("/factures")} className="gap-2 transition-all duration-200 hover:scale-105">
             <ArrowLeft className="h-4 w-4" />
             Retour
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handlePrint} className="gap-2">
+            <Button variant="outline" onClick={handlePrint} className="gap-2 transition-all duration-200 hover:scale-105">
               <Printer className="h-4 w-4" />
               Imprimer
             </Button>
-            <Button className="gap-2" onClick={downloadPdf}>
+            <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={downloadPdf}>
               <Download className="h-4 w-4" />
               Télécharger PDF
             </Button>
@@ -87,7 +154,7 @@ export default function FacturePDFPage() {
       </div>
 
       {/* PDF Content - A4 Format */}
-      <div className="container py-8 print:py-0 flex justify-center">
+      <div className="container py-8 print:py-0 flex justify-center animate-fade-in">
         <Card 
           ref={contentRef} 
           className="bg-white print:shadow-none print:border-none relative"
@@ -124,8 +191,11 @@ export default function FacturePDFPage() {
           {/* Infos document */}
           <div className="flex justify-between text-xs mb-4">
             <div>
-              <p><span className="font-semibold">Date:</span> {formatDate(facture.dateCreation)}</p>
-              <p><span className="font-semibold">Échéance:</span> {formatDate(facture.dateEcheance)}</p>
+              <p><span className="font-semibold">Date:</span> {formatDate(facture.date_facture || facture.created_at)}</p>
+              <p><span className="font-semibold">Échéance:</span> {formatDate(facture.date_echeance)}</p>
+              {facture.bl_numero && (
+                <p><span className="font-semibold">N° BL:</span> {facture.bl_numero}</p>
+              )}
             </div>
           </div>
 
@@ -153,8 +223,8 @@ export default function FacturePDFPage() {
               </tr>
             </thead>
             <tbody>
-              {facture.lignes.map((ligne, index) => (
-                <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+              {lignes.map((ligne, index) => (
+                <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
                   <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
                   <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
                   <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
@@ -165,7 +235,7 @@ export default function FacturePDFPage() {
                 </tr>
               ))}
               {/* Lignes vides pour remplir (min 10 lignes) */}
-              {Array.from({ length: Math.max(0, 10 - facture.lignes.length) }).map((_, i) => (
+              {Array.from({ length: Math.max(0, 10 - lignes.length) }).map((_, i) => (
                 <tr key={`empty-${i}`} className="h-6">
                   <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
                   <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
@@ -192,23 +262,23 @@ export default function FacturePDFPage() {
             <div className="w-56 border text-xs">
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>Total HT</span>
-                <span className="font-medium">{formatMontant(facture.montantHT)}</span>
+                <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
-                <span>TVA (18%)</span>
-                <span>{formatMontant(facture.tva)}</span>
+                <span>TVA ({facture.taux_tva || 18}%)</span>
+                <span>{formatMontant(facture.montant_tva)}</span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
-                <span>CSS (1%)</span>
-                <span>{formatMontant(facture.css)}</span>
+                <span>CSS ({facture.taux_css || 1}%)</span>
+                <span>{formatMontant(facture.montant_css)}</span>
               </div>
               <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold border-b">
                 <span>Total TTC</span>
-                <span>{formatMontant(facture.montantTTC)}</span>
+                <span>{formatMontant(facture.montant_ttc)}</span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>Payé</span>
-                <span className="text-green-600 font-medium">{formatMontant(facture.montantPaye)}</span>
+                <span className="text-green-600 font-medium">{formatMontant(facture.montant_paye || 0)}</span>
               </div>
               <div className="flex justify-between py-1.5 px-3 font-bold">
                 <span>Reste à payer</span>
