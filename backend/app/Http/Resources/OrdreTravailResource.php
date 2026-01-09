@@ -16,6 +16,7 @@ class OrdreTravailResource extends JsonResource
             'date_creation' => $this->date?->toDateString(),
             'type_document' => $this->type_document,
             'categorie' => $this->categorie,
+            'type_operation' => $this->type_operation,
             'statut' => $this->statut,
             
             // IDs partenaires

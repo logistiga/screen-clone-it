@@ -298,8 +298,7 @@ export default function OrdresTravailPage() {
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Catégorie</TableHead>
-                  <TableHead className="text-right">Montant TTC</TableHead>
-                  <TableHead className="text-right">Payé</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="w-40">Actions</TableHead>
                 </TableRow>
@@ -319,10 +318,11 @@ export default function OrdresTravailPage() {
                       <TableCell>{ordre.client?.nom}</TableCell>
                       <TableCell>{formatDate(ordre.date || ordre.date_creation || ordre.created_at)}</TableCell>
                       <TableCell>{getCategorieBadge(ordre.categorie, ordre.type_operation)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
-                        <span className={(ordre.montant_paye || 0) > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montant_paye)}</span>
-                        {resteAPayer > 0 && <div className="text-xs text-muted-foreground">Reste: {formatMontant(resteAPayer)}</div>}
+                        <div className="font-medium">{formatMontant(ordre.montant_ttc)}</div>
+                        {(ordre.montant_paye || 0) > 0 && (
+                          <div className="text-sm text-green-600 font-medium">{formatMontant(ordre.montant_paye)}</div>
+                        )}
                       </TableCell>
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       <TableCell>
