@@ -42,7 +42,14 @@ export function extractApiErrorInfo(error: unknown): ApiErrorInfo {
   const backendMessage =
     (typeof responseData === "string" ? responseData : responseData?.message || responseData?.error) || undefined;
 
-  const message = backendMessage || anyErr?.message || "Erreur inconnue";
+  // Quand la requête est bloquée (CORS) ou que le serveur est injoignable, Axios remonte souvent un "Network Error"
+  const isNetworkError = !response && (anyErr?.message === "Network Error" || anyErr?.code === "ERR_NETWORK");
+
+  const message =
+    backendMessage ||
+    (isNetworkError ? "Erreur réseau (CORS ou serveur inaccessible)" : undefined) ||
+    anyErr?.message ||
+    "Erreur inconnue";
 
   return {
     message,
