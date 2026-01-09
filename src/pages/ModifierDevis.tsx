@@ -135,6 +135,7 @@ export default function ModifierDevisPage() {
         type: "DRY",
         taille: c.taille === "20'" ? "20" : "40",
         description: c.description || null,
+        prix_unitaire: c.prixUnitaire || 0,
         armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
         operations: c.operations.map(op => ({
           type_operation: op.type,
@@ -271,21 +272,21 @@ export default function ModifierDevisPage() {
               armateurId: devisData.armateur_id ? String(devisData.armateur_id) : "",
               transitaireId: devisData.transitaire_id ? String(devisData.transitaire_id) : "",
               representantId: devisData.representant_id ? String(devisData.representant_id) : "",
-              conteneurs: devisData.conteneurs?.map((c: any) => ({
-                id: String(c.id),
-                numero: c.numero || "",
-                description: c.description || "",
-                taille: c.taille === "20" ? "20'" : "40'",
-                prixUnitaire: 0,
-                operations: (c.operations || []).map((op: any) => ({
-                  id: String(op.id),
-                  type: op.type_operation as TypeOperationConteneur,
-                  description: op.description || "",
-                  quantite: op.quantite || 1,
-                  prixUnitaire: op.prix_unitaire || 0,
-                  prixTotal: (op.quantite || 1) * (op.prix_unitaire || 0),
-                })),
-              })) || [],
+               conteneurs: devisData.conteneurs?.map((c: any) => ({
+                 id: String(c.id),
+                 numero: c.numero || "",
+                 description: c.description || "",
+                 taille: c.taille === "20" ? "20'" : "40'",
+                 prixUnitaire: c.prix_unitaire || 0,
+                 operations: (c.operations || []).map((op: any) => ({
+                   id: String(op.id),
+                   type: op.type_operation as TypeOperationConteneur,
+                   description: op.description || "",
+                   quantite: op.quantite || 1,
+                   prixUnitaire: op.prix_unitaire || 0,
+                   prixTotal: (op.quantite || 1) * (op.prix_unitaire || 0),
+                 })),
+               })) || [],
             }}
           />
         )}

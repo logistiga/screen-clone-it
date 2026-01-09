@@ -62,13 +62,17 @@ class DevisConteneursService
     public function calculerTotalHT(Devis $devis): float
     {
         $total = 0;
-        
+
         foreach ($devis->conteneurs as $conteneur) {
+            // Prix du conteneur (saisi dans le formulaire)
+            $total += (float) ($conteneur->prix_unitaire ?? 0);
+
+            // + total des opérations
             foreach ($conteneur->operations as $operation) {
-                $total += $operation->quantite * $operation->prix_unitaire;
+                $total += (float) $operation->quantite * (float) $operation->prix_unitaire;
             }
         }
-        
+
         return $total;
     }
 
