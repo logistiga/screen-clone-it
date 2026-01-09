@@ -15,12 +15,10 @@ use Illuminate\Http\JsonResponse;
 
 class DevisController extends Controller
 {
-    protected DevisServiceFactory $devisFactory;
+    // Note: on n'injecte plus la factory dans le constructeur.
+    // L'endpoint GET /api/devis (index) n'en a pas besoin et ne doit pas échouer
+    // si la résolution DI de la factory pose problème.
 
-    public function __construct(DevisServiceFactory $devisFactory)
-    {
-        $this->devisFactory = $devisFactory;
-    }
 
     public function index(Request $request): JsonResponse
     {
@@ -74,10 +72,10 @@ class DevisController extends Controller
             return response()->json($payload, 500);
         }
     }
-    public function store(StoreDevisRequest $request): JsonResponse
+    public function store(StoreDevisRequest $request, DevisServiceFactory $devisFactory): JsonResponse
     {
         try {
-            $devis = $this->devisFactory->creer($request->validated());
+            $devis = $devisFactory->creer($request->validated());
 
             Audit::log('create', 'devis', "Devis créé: {$devis->numero}", $devis->id);
 
@@ -117,14 +115,14 @@ class DevisController extends Controller
         }
     }
 
-    public function update(UpdateDevisRequest $request, Devis $devis): JsonResponse
+    public function update(UpdateDevisRequest $request, Devis $devis, DevisServiceFactory $devisFactory): JsonResponse
     {
         if ($devis->statut === 'Converti') {
             return response()->json(['message' => 'Impossible de modifier un devis converti'], 422);
         }
 
         try {
-            $devis = $this->devisFactory->modifier($devis, $request->validated());
+            $devis = $devisFactory->modifier($devis, $request->validated());
 
             Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis->id);
 
@@ -192,14 +190,14 @@ class DevisController extends Controller
         }
     }
 
-    public function convertToOrdre(Devis $devis): JsonResponse
+    public function convertToOrdre(Devis $devis, DevisServiceFactory $devisFactory): JsonResponse
     {
         if ($devis->statut === 'Converti') {
             return response()->json(['message' => 'Ce devis a déjà été converti'], 422);
         }
 
         try {
-            $ordre = $this->devisFactory->convertirEnOrdre($devis);
+            $ordre = $devisFactory->convertirEnOrdre($devis);
 
             Audit::log('convert', 'devis', "Devis converti en ordre: {$devis->numero} -> {$ordre->numero}", $devis->id);
 
@@ -223,10 +221,10 @@ class DevisController extends Controller
         }
     }
 
-    public function duplicate(Devis $devis): JsonResponse
+    public function duplicate(Devis $devis, DevisServiceFactory $devisFactory): JsonResponse
     {
         try {
-            $newDevis = $this->devisFactory->dupliquer($devis);
+            $newDevis = $devisFactory->dupliquer($devis);
 
             Audit::log('duplicate', 'devis', "Devis dupliqué: {$devis->numero} -> {$newDevis->numero}", $newDevis->id);
 
