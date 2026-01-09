@@ -11,9 +11,18 @@ class DevisResource extends JsonResource
     {
         $dateCreation = $this->date_creation;
         $dateValidite = $this->date_validite;
-        $validiteJours = ($dateCreation && $dateValidite)
-            ? max(1, (int) $dateCreation->diffInDays($dateValidite))
-            : null;
+        
+        // S'assurer que ce sont des objets Carbon avant d'appeler diffInDays
+        $validiteJours = null;
+        if ($dateCreation && $dateValidite) {
+            try {
+                $dc = $dateCreation instanceof \Carbon\Carbon ? $dateCreation : \Carbon\Carbon::parse($dateCreation);
+                $dv = $dateValidite instanceof \Carbon\Carbon ? $dateValidite : \Carbon\Carbon::parse($dateValidite);
+                $validiteJours = max(1, (int) $dc->diffInDays($dv));
+            } catch (\Exception $e) {
+                $validiteJours = null;
+            }
+        }
 
         return [
             'id' => $this->id,
