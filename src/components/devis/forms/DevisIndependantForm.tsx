@@ -9,8 +9,16 @@ import {
 } from "@/types/documents";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
 
+export interface DevisIndependantInitialData {
+  typeOperationIndep?: TypeOperationIndep | "";
+  lieuChargement?: string;
+  lieuDechargement?: string;
+  prestations?: LignePrestationEtendue[];
+}
+
 interface DevisIndependantFormProps {
   onDataChange: (data: DevisIndependantData) => void;
+  initialData?: DevisIndependantInitialData;
 }
 
 export interface DevisIndependantData {
@@ -21,11 +29,29 @@ export interface DevisIndependantData {
   montantHT: number;
 }
 
-export default function DevisIndependantForm({ onDataChange }: DevisIndependantFormProps) {
-  const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
-  const [lieuChargement, setLieuChargement] = useState("");
-  const [lieuDechargement, setLieuDechargement] = useState("");
-  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
+export default function DevisIndependantForm({ onDataChange, initialData }: DevisIndependantFormProps) {
+  const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">(initialData?.typeOperationIndep || "");
+  const [lieuChargement, setLieuChargement] = useState(initialData?.lieuChargement || "");
+  const [lieuDechargement, setLieuDechargement] = useState(initialData?.lieuDechargement || "");
+  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>(
+    initialData?.prestations?.length ? initialData.prestations : [getInitialPrestationEtendue()]
+  );
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Notify parent on mount with initial data
+  useState(() => {
+    if (initialData && !isInitialized) {
+      const montantHT = prestations.reduce((sum, p) => sum + p.montantHT, 0);
+      onDataChange({
+        typeOperationIndep: initialData.typeOperationIndep || "",
+        lieuChargement: initialData.lieuChargement || "",
+        lieuDechargement: initialData.lieuDechargement || "",
+        prestations,
+        montantHT,
+      });
+      setIsInitialized(true);
+    }
+  });
 
   const operationsIndepLabels = getOperationsIndepLabels();
 

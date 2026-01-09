@@ -140,6 +140,12 @@ class DevisServiceFactory
             $categorie = $devis->categorie;
             $service = $this->getService($categorie);
 
+            // Normaliser les champs API -> DB (sans écraser date_creation)
+            if (isset($data['bl_numero']) && !isset($data['numero_bl'])) {
+                $data['numero_bl'] = $data['bl_numero'];
+            }
+            unset($data['bl_numero'], $data['date_creation'], $data['numero']);
+
             $devis->update($data);
 
             // Remplacer les conteneurs si fournis
