@@ -99,8 +99,8 @@ export const getCategoriesLabels = (): Record<CategorieDocument, { label: string
 
 // Labels pour les opérations indépendantes
 export const getOperationsIndepLabels = (): Record<TypeOperationIndep, { label: string; icon: React.ReactNode }> => ({
-  location: { label: "Location véhicule/équipement", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
-  transport: { label: "Transport hors Libreville", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
+  location: { label: "Location", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
+  transport: { label: "Transport", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
   manutention: { label: "Manutention", icon: React.createElement(Forklift, { className: "h-6 w-6" }) },
   double_relevage: { label: "Double relevage", icon: React.createElement(ArrowLeftRight, { className: "h-6 w-6" }) },
   stockage: { label: "Stockage", icon: React.createElement(Warehouse, { className: "h-6 w-6" }) },
