@@ -93,10 +93,10 @@ class OrdreIndependantService
         $montantTTC = $montantHT + $montantTVA + $montantCSS;
         
         $ordre->update([
-            'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
-            'montant_ttc' => $montantTTC,
+            'montant_ht' => round($montantHT, 2),
+            'tva' => round($montantTVA, 2),
+            'css' => round($montantCSS, 2),
+            'montant_ttc' => round($montantTTC, 2),
         ]);
         
         Log::info('Totaux opérations indépendantes OT calculés', [
