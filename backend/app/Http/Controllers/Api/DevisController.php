@@ -247,7 +247,7 @@ class DevisController extends Controller
                     'numero' => OrdreTravail::genererNumero(),
                     'devis_id' => $devis->id,
                     'client_id' => $devis->client_id,
-                    'date_creation' => now(),
+                    'date_creation' => now()->toDateString(),
                     'categorie' => $devis->categorie,
                     'type_operation' => $devis->type_operation,
                     'type_operation_indep' => $devis->type_operation_indep,
