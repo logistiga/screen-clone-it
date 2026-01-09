@@ -244,7 +244,7 @@ export const devisApi = {
   },
   
   convertToOrdre: async (id: string) => {
-    const response = await api.post<{ data: OrdreTravail; message: string }>(`/devis/${id}/convert-to-ordre`);
+    const response = await api.post<{ data: OrdreTravail; message: string }>(`/devis/${id}/convert-ordre`);
     return response.data;
   },
   
