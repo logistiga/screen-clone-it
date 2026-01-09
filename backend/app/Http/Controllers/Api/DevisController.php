@@ -76,8 +76,22 @@ class DevisController extends Controller
 
     public function show(Devis $devis): JsonResponse
     {
-        $devis->load(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'conteneurs.armateur', 'lots']);
-        return response()->json(new DevisResource($devis));
+        try {
+            $devis->load(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
+            return response()->json(new DevisResource($devis));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur affichage devis', [
+                'devis_id' => $devis->id ?? null,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors du chargement du devis',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
+        }
     }
 
     public function update(UpdateDevisRequest $request, Devis $devis): JsonResponse
