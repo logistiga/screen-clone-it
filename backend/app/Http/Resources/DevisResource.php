@@ -9,15 +9,23 @@ class DevisResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $dateCreation = $this->date_creation;
-        $dateValidite = $this->date_validite;
+        // Parsing sécurisé des dates (évite Call to a member function on string)
+        $dc = $this->date_creation 
+            ? ($this->date_creation instanceof \Carbon\Carbon 
+                ? $this->date_creation 
+                : \Carbon\Carbon::parse($this->date_creation)) 
+            : null;
         
-        // S'assurer que ce sont des objets Carbon avant d'appeler diffInDays
+        $dv = $this->date_validite 
+            ? ($this->date_validite instanceof \Carbon\Carbon 
+                ? $this->date_validite 
+                : \Carbon\Carbon::parse($this->date_validite)) 
+            : null;
+        
+        // Calcul validité en jours
         $validiteJours = null;
-        if ($dateCreation && $dateValidite) {
+        if ($dc && $dv) {
             try {
-                $dc = $dateCreation instanceof \Carbon\Carbon ? $dateCreation : \Carbon\Carbon::parse($dateCreation);
-                $dv = $dateValidite instanceof \Carbon\Carbon ? $dateValidite : \Carbon\Carbon::parse($dateValidite);
                 $validiteJours = max(1, (int) $dc->diffInDays($dv));
             } catch (\Exception $e) {
                 $validiteJours = null;
@@ -27,9 +35,9 @@ class DevisResource extends JsonResource
         return [
             'id' => $this->id,
             'numero' => $this->numero,
-            'date' => $dateCreation?->toDateString(),
-            'date_creation' => $dateCreation?->toDateString(),
-            'date_validite' => $dateValidite?->toDateString(),
+            'date' => $dc?->toDateString(),
+            'date_creation' => $dc?->toDateString(),
+            'date_validite' => $dv?->toDateString(),
 
             // Catégorie et type
             'categorie' => $this->categorie,
@@ -43,7 +51,7 @@ class DevisResource extends JsonResource
             'type_operation_indep' => $this->type_operation_indep,
             'statut' => $this->statut,
             'validite_jours' => $validiteJours,
-            'date_expiration' => $dateValidite?->toDateString(),
+            'date_expiration' => $dv?->toDateString(),
 
             // Informations navire
             'bl_numero' => $this->numero_bl,
