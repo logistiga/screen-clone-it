@@ -85,6 +85,9 @@ export function useDevis(params?: { search?: string; statut?: string; client_id?
   return useQuery({
     queryKey: ['devis', params],
     queryFn: () => devisApi.getAll(params),
+    // Évite de marteler le backend en cas d'erreur (et de spammer la console)
+    retry: 0,
+    refetchOnWindowFocus: false,
   });
 }
 
