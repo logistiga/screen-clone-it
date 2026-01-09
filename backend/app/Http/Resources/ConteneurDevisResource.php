@@ -14,11 +14,9 @@ class ConteneurDevisResource extends JsonResource
         return [
             'id' => $this->id,
             'numero' => $this->numero,
-            'type' => $this->type ?? 'DRY',
             'taille' => $this->taille,
             'description' => $this->description,
-            'armateur_id' => $this->armateur_id,
-            'armateur' => new ArmateurResource($this->whenLoaded('armateur')),
+            'prix_unitaire' => round((float) ($this->prix_unitaire ?? 0), 2),
             'operations' => OperationConteneurDevisResource::collection($operations),
             'montant_total' => $this->when($this->relationLoaded('operations'), fn() => 
                 round((float) $this->operations->sum('prix_total'), 2)

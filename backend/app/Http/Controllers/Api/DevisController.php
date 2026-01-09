@@ -284,10 +284,8 @@ class DevisController extends Controller
                     $newConteneur = $ordre->conteneurs()->create([
                         'numero' => $conteneur->numero,
                         'taille' => $conteneur->taille,
-                        'type' => $conteneur->type,
                         'description' => $conteneur->description,
                         'prix_unitaire' => $conteneur->prix_unitaire,
-                        'armateur_id' => $conteneur->armateur_id,
                     ]);
 
                     foreach ($conteneur->operations as $op) {
@@ -368,7 +366,7 @@ class DevisController extends Controller
                 }
 
                 foreach ($devis->conteneurs as $conteneur) {
-                    $newConteneur = $newDevis->conteneurs()->create($conteneur->only(['numero', 'taille', 'type', 'description', 'prix_unitaire', 'armateur_id']));
+                    $newConteneur = $newDevis->conteneurs()->create($conteneur->only(['numero', 'taille', 'description', 'prix_unitaire']));
                     foreach ($conteneur->operations as $op) {
                         $newConteneur->operations()->create($op->only(['type', 'description', 'quantite', 'prix_unitaire']));
                     }
@@ -459,13 +457,20 @@ class DevisController extends Controller
     {
         foreach ($conteneurs as $conteneurData) {
             $operations = $conteneurData['operations'] ?? [];
-            unset($conteneurData['operations']);
+            unset($conteneurData['operations'], $conteneurData['type'], $conteneurData['armateur_id']);
 
-            // Normaliser
+            // Normaliser - ne garder que les colonnes existantes
             $conteneurData['taille'] = str_replace("'", "", $conteneurData['taille'] ?? '20');
-            $conteneurData['type'] = $conteneurData['type'] ?? 'DRY';
+            $conteneurData['numero'] = $conteneurData['numero'] ?? '';
+            $conteneurData['description'] = $conteneurData['description'] ?? '';
+            $conteneurData['prix_unitaire'] = $conteneurData['prix_unitaire'] ?? 0;
 
-            $conteneur = $devis->conteneurs()->create($conteneurData);
+            $conteneur = $devis->conteneurs()->create([
+                'numero' => $conteneurData['numero'],
+                'taille' => $conteneurData['taille'],
+                'description' => $conteneurData['description'],
+                'prix_unitaire' => $conteneurData['prix_unitaire'],
+            ]);
 
             foreach ($operations as $opData) {
                 // API: type_operation -> DB: type
