@@ -156,18 +156,48 @@ class Facture extends Model
         $this->client->calculerSolde();
     }
 
-    public static function genererNumero()
+    public static function genererNumero(): string
     {
-        $config = Configuration::getOrCreate('numerotation');
-        $prefixe = $config->data['prefixe_facture'] ?? 'FAC';
         $annee = date('Y');
-        $prochain = $config->data['prochain_numero_facture'] ?? 1;
 
-        $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochain);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
 
-        $config->data['prochain_numero_facture'] = $prochain + 1;
-        $config->save();
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'] ?? [
+                        'prefixe_facture' => 'FAC',
+                        'prochain_numero_facture' => 1,
+                    ],
+                ]);
+            }
 
-        return $numero;
+            $data = $config->data;
+            $prefixe = $data['prefixe_facture'] ?? 'FAC';
+
+            $maxNumero = self::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
+
+            $prochainNumero = max(
+                ($maxNumero ?? 0) + 1,
+                $data['prochain_numero_facture'] ?? 1
+            );
+
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+
+            while (self::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            }
+
+            $data['prochain_numero_facture'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return $numero;
+        });
     }
 }
