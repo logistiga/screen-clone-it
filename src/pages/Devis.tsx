@@ -36,6 +36,7 @@ import { EmailModal } from "@/components/EmailModal";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
+import { getOperationsIndepLabels, TypeOperationIndep } from "@/types/documents";
 
 export default function DevisPage() {
   const navigate = useNavigate();
@@ -125,6 +126,18 @@ export default function DevisPage() {
         {cat.label}
       </Badge>
     );
+  };
+
+  const getTypeOperationLabel = (typeDoc: string, typeOp?: string | null) => {
+    if (typeDoc === 'Conteneur') {
+      // Pour les conteneurs, type_operation est "Import" ou "Export"
+      return typeOp || '-';
+    }
+    if (typeDoc === 'Independant' && typeOp) {
+      const labels = getOperationsIndepLabels();
+      return labels[typeOp as TypeOperationIndep]?.label || typeOp;
+    }
+    return '-';
   };
 
   if (isLoading) {
@@ -258,7 +271,7 @@ export default function DevisPage() {
                     </TableCell>
                     <TableCell>{d.client?.nom}</TableCell>
                     <TableCell>{getCategorieBadge(d.type_document)}</TableCell>
-                    <TableCell className="capitalize">{d.type_operation || '-'}</TableCell>
+                    <TableCell>{getTypeOperationLabel(d.type_document, d.type_operation)}</TableCell>
                     <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
                     <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
                     <TableCell>{getStatutBadge(d.statut)}</TableCell>
