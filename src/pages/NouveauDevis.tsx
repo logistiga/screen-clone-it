@@ -168,16 +168,8 @@ export default function NouveauDevisPage() {
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
   const loadError = clientsError || armateursError || transitairesError || representantsError || configError;
 
-  if (isLoading) {
-    return (
-      <MainLayout title="Nouveau devis">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </MainLayout>
-    );
-  }
-
+  // Important: en cas de CORS, React Query peut "re-try" et laisser isLoading=true.
+  // On préfère afficher l'erreur dès qu'elle existe.
   if (loadError) {
     return (
       <MainLayout title="Nouveau devis">
@@ -186,6 +178,16 @@ export default function NouveauDevisPage() {
           error={loadError}
           onRetry={() => window.location.reload()}
         />
+      </MainLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Nouveau devis">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </MainLayout>
     );
   }
