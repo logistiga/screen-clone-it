@@ -194,9 +194,9 @@ export default function NouveauDevisPage() {
 
   return (
     <MainLayout title="Nouveau devis">
-      <div className="mb-6">
+      <div className="mb-6 animate-fade-in">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/devis")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/devis")} className="transition-all duration-200 hover:scale-110">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -209,7 +209,7 @@ export default function NouveauDevisPage() {
        </div>
 
        {createDevisMutation.error && (
-         <div className="mb-6">
+         <div className="mb-6 animate-fade-in">
            <ApiErrorState
              variant="inline"
              title="Erreur lors de la création du devis"
@@ -223,12 +223,12 @@ export default function NouveauDevisPage() {
         {!categorie && <CategorieSelector onSelect={handleCategorieChange} />}
 
         {categorie && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+          <div className="flex items-center gap-3 animate-fade-in">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
               {categoriesLabels[categorie].icon}
               <span>{categoriesLabels[categorie].label}</span>
             </Badge>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground transition-all duration-200 hover:text-primary">
               Changer
             </Button>
           </div>
@@ -289,11 +289,11 @@ export default function NouveauDevisPage() {
         )}
 
         {categorie && (
-          <div className="flex justify-end gap-4 pb-6">
-            <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending}>
+          <div className="flex justify-end gap-4 pb-6 animate-fade-in">
+            <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending} className="transition-all duration-200 hover:scale-105">
               Annuler
             </Button>
-            <Button type="submit" className="gap-2" disabled={createDevisMutation.isPending}>
+            <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={createDevisMutation.isPending}>
               {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Créer le devis
             </Button>
