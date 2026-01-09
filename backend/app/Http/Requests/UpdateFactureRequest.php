@@ -14,17 +14,19 @@ class UpdateFactureRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'client_id' => 'sometimes|required|exists:clients,id',
+            'client_id' => 'sometimes|exists:clients,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
-            'type_document' => 'sometimes|required|in:Conteneur,Lot,Independant',
+            'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
             'date_echeance' => 'nullable|date',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
             'date_arrivee' => 'nullable|date',
+            'lieu_chargement' => 'nullable|string|max:255',
+            'lieu_dechargement' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:2000',
-            'statut' => 'sometimes|in:Brouillon,Envoyée,Partiellement payée,Payée,Annulée',
+            'statut' => 'sometimes|in:emise,payee,partielle,impayee,annulee',
             
-            // Lignes
+            // Lignes (Opérations indépendantes)
             'lignes' => 'nullable|array',
             'lignes.*.type_operation' => 'required_with:lignes|string|max:100',
             'lignes.*.description' => 'nullable|string|max:500',
@@ -38,8 +40,9 @@ class UpdateFactureRequest extends FormRequest
             // Conteneurs
             'conteneurs' => 'nullable|array',
             'conteneurs.*.numero' => 'required_with:conteneurs|string|max:50',
-            'conteneurs.*.type' => 'required_with:conteneurs|string|max:50',
-            'conteneurs.*.taille' => 'required_with:conteneurs|string|max:20',
+            'conteneurs.*.type' => 'nullable|string|max:50',
+            'conteneurs.*.taille' => 'nullable|string|max:20',
+            'conteneurs.*.description' => 'nullable|string|max:500',
             'conteneurs.*.armateur_id' => 'nullable|exists:armateurs,id',
             'conteneurs.*.operations' => 'nullable|array',
             'conteneurs.*.operations.*.type_operation' => 'required|string|max:100',
@@ -49,7 +52,9 @@ class UpdateFactureRequest extends FormRequest
             
             // Lots
             'lots' => 'nullable|array',
-            'lots.*.designation' => 'required_with:lots|string|max:255',
+            'lots.*.designation' => 'nullable|string|max:255',
+            'lots.*.description' => 'nullable|string|max:500',
+            'lots.*.numero_lot' => 'nullable|string|max:100',
             'lots.*.quantite' => 'nullable|numeric|min:0',
             'lots.*.poids' => 'nullable|numeric|min:0',
             'lots.*.volume' => 'nullable|numeric|min:0',
