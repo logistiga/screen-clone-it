@@ -11,11 +11,6 @@ import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/Dashboard";
 import ClientsPage from "./pages/Clients";
 import ClientDetailPage from "./pages/ClientDetail";
-import DevisPage from "./pages/Devis";
-import NouveauDevisPage from "./pages/NouveauDevis";
-import DevisDetailPage from "./pages/DevisDetail";
-import DevisPDFPage from "./pages/DevisPDF";
-import ModifierDevisPage from "./pages/ModifierDevis";
 import NouveauClientPage from "./pages/NouveauClient";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
@@ -75,11 +70,6 @@ const App = () => (
               <Route path="/clients/nouveau" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
               <Route path="/clients/:id" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
               <Route path="/clients/:id/modifier" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
-              <Route path="/devis" element={<ProtectedRoute><DevisPage /></ProtectedRoute>} />
-              <Route path="/devis/nouveau" element={<ProtectedRoute><NouveauDevisPage /></ProtectedRoute>} />
-              <Route path="/devis/:id" element={<ProtectedRoute><DevisDetailPage /></ProtectedRoute>} />
-              <Route path="/devis/:id/pdf" element={<ProtectedRoute><DevisPDFPage /></ProtectedRoute>} />
-              <Route path="/devis/:id/modifier" element={<ProtectedRoute><ModifierDevisPage /></ProtectedRoute>} />
               <Route path="/ordres" element={<ProtectedRoute><OrdresTravailPage /></ProtectedRoute>} />
               <Route path="/ordres/nouveau" element={<ProtectedRoute><NouvelOrdrePage /></ProtectedRoute>} />
               <Route path="/ordres/:id" element={<ProtectedRoute><OrdreDetailPage /></ProtectedRoute>} />

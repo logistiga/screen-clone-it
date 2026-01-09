@@ -28,7 +28,7 @@ import {
   OrdreConventionnelData,
   OrdreIndependantData,
 } from "@/components/ordres/forms";
-import { RecapitulatifCard } from "@/components/devis/shared";
+import { RecapitulatifCard } from "@/components/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre, useConfiguration } from "@/hooks/use-commercial";
 
 export default function NouvelOrdrePage() {

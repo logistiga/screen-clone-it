@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 // Controllers
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientController;
-use App\Http\Controllers\Api\DevisController;
+
 use App\Http\Controllers\Api\OrdreTravailController;
 use App\Http\Controllers\Api\FactureController;
 use App\Http\Controllers\Api\PaiementController;
@@ -82,24 +82,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
-    // DEVIS
+    // DEVIS (supprimé - à reconstruire)
     // ============================================
-    Route::prefix('devis')->middleware('audit')->group(function () {
-        Route::get('/', [DevisController::class, 'index'])
-            ->middleware('permission:devis.voir');
-        Route::post('/', [DevisController::class, 'store'])
-            ->middleware('permission:devis.creer');
-        Route::get('{devis}', [DevisController::class, 'show'])
-            ->middleware('permission:devis.voir');
-        Route::put('{devis}', [DevisController::class, 'update'])
-            ->middleware('permission:devis.modifier');
-        Route::delete('{devis}', [DevisController::class, 'destroy'])
-            ->middleware('permission:devis.supprimer');
-        Route::post('{devis}/convert-ordre', [DevisController::class, 'convertToOrdre'])
-            ->middleware('permission:ordres.creer');
-        Route::post('{devis}/duplicate', [DevisController::class, 'duplicate'])
-            ->middleware('permission:devis.creer');
-    });
 
     // ============================================
     // ORDRES DE TRAVAIL

@@ -24,7 +24,7 @@ import {
   useRepresentants, 
   useConfiguration 
 } from "@/hooks/use-commercial";
-import { RecapitulatifCard } from "@/components/devis/shared";
+import { RecapitulatifCard } from "@/components/shared";
 import { 
   FactureConteneursForm, 
   FactureConventionnelForm, 
