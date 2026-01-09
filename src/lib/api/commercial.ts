@@ -35,6 +35,7 @@ export interface Devis {
   categorie?: string;
   type_document?: string;
   type_operation?: string;
+  type_operation_indep?: string;
   reference_client?: string;
   navire?: string;
   numero_bl?: string;

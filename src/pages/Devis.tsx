@@ -271,7 +271,12 @@ export default function DevisPage() {
                     </TableCell>
                     <TableCell>{d.client?.nom}</TableCell>
                     <TableCell>{getCategorieBadge(d.type_document)}</TableCell>
-                    <TableCell>{getTypeOperationLabel(d.type_document, d.type_operation)}</TableCell>
+                    <TableCell>
+                      {getTypeOperationLabel(
+                        d.type_document,
+                        d.type_operation_indep ?? d.type_operation ?? d.lignes?.[0]?.type_operation
+                      )}
+                    </TableCell>
                     <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
                     <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
                     <TableCell>{getStatutBadge(d.statut)}</TableCell>
