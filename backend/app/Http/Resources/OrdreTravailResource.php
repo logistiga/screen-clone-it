@@ -12,11 +12,17 @@ class OrdreTravailResource extends JsonResource
         return [
             'id' => $this->id,
             'numero' => $this->numero,
-            'date' => $this->date?->toDateString(),
-            'date_creation' => $this->date?->toDateString(),
-            'type_document' => $this->type_document,
+            'date' => $this->date_creation?->toDateString(),
+            'date_creation' => $this->date_creation?->toDateString(),
+            'type_document' => match ($this->categorie) {
+                'conteneurs' => 'Conteneur',
+                'conventionnel' => 'Lot',
+                'operations_independantes' => 'Independant',
+                default => $this->categorie,
+            },
             'categorie' => $this->categorie,
             'type_operation' => $this->type_operation,
+            'type_operation_indep' => $this->type_operation_indep,
             'statut' => $this->statut,
             
             // IDs partenaires
@@ -26,17 +32,20 @@ class OrdreTravailResource extends JsonResource
             'representant_id' => $this->representant_id,
             
             // Informations navire
-            'bl_numero' => $this->bl_numero,
-            'numero_bl' => $this->bl_numero,
+            'bl_numero' => $this->numero_bl,
+            'numero_bl' => $this->numero_bl,
             'navire' => $this->navire,
-            'date_arrivee' => $this->date_arrivee?->toDateString(),
             
-            // Montants
+            // Montants - utiliser les colonnes de la DB (tva, css)
             'montant_ht' => round((float) $this->montant_ht, 2),
-            'montant_tva' => round((float) $this->montant_tva, 2),
-            'montant_css' => round((float) $this->montant_css, 2),
+            'montant_tva' => round((float) $this->tva, 2),
+            'montant_css' => round((float) $this->css, 2),
             'montant_ttc' => round((float) $this->montant_ttc, 2),
             'montant_paye' => round((float) $this->montant_paye, 2),
+            
+            // Alias pour compatibilité
+            'tva' => round((float) $this->tva, 2),
+            'css' => round((float) $this->css, 2),
             'taux_tva' => $this->taux_tva,
             'taux_css' => $this->taux_css,
             
