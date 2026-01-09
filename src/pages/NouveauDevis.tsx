@@ -118,6 +118,7 @@ export default function NouveauDevisPage() {
         type: "DRY",
         taille: c.taille === "20'" ? "20" : "40",
         description: c.description || null,
+        prix_unitaire: c.prixUnitaire || 0,
         armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
         operations: c.operations.map(op => ({
           type_operation: op.type, // Envoyer le code (arrivee, stockage...) pas le label
