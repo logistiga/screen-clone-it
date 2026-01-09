@@ -1,7 +1,7 @@
 import { Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LignePrestationEtendue, calculateDaysBetween } from "@/types/documents";
+import { LignePrestationEtendue } from "@/types/documents";
 
 interface StockageFormFieldsProps {
   prestation: LignePrestationEtendue;
@@ -13,16 +13,8 @@ export default function StockageFormFields({
   onPrestationChange,
 }: StockageFormFieldsProps) {
   const handleDateChange = (field: 'dateDebut' | 'dateFin', value: string) => {
+    // Une seule mise à jour : le parent calcule quantité/montant.
     onPrestationChange(prestation.id, field, value);
-    
-    const dateDebut = field === 'dateDebut' ? value : prestation.dateDebut || '';
-    const dateFin = field === 'dateFin' ? value : prestation.dateFin || '';
-    
-    if (dateDebut && dateFin) {
-      const days = calculateDaysBetween(dateDebut, dateFin);
-      onPrestationChange(prestation.id, 'quantite', days);
-      onPrestationChange(prestation.id, 'montantHT', days * prestation.prixUnitaire);
-    }
   };
 
   return (

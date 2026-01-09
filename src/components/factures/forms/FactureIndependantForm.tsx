@@ -67,6 +67,7 @@ export default function FactureIndependantForm({
           const dateFin = field === 'dateFin' ? String(value) : updated.dateFin || '';
           if (dateDebut && dateFin) {
             updated.quantite = calculateDaysBetween(dateDebut, dateFin);
+            updated.montantHT = updated.quantite * updated.prixUnitaire;
           }
         }
         if (field === 'quantite' || field === 'prixUnitaire') {
