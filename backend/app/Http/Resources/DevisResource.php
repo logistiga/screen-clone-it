@@ -4,48 +4,36 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\Carbon;
 
 class DevisResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $parseDate = function ($value) {
-            if (!$value) return null;
-
-            if ($value instanceof \Carbon\CarbonInterface) {
-                return $value;
-            }
-
-            try {
-                return \Carbon\Carbon::parse($value);
-            } catch (\Throwable $e) {
-                return null;
-            }
-        };
-
-        // Parsing sécurisé des dates (évite Call to a member function on string)
-        $dc = $parseDate($this->date_creation);
-        $dv = $parseDate($this->date_validite);
+        // Parsing sécurisé des dates
+        $dateCreation = $this->parseDate($this->date_creation);
+        $dateValidite = $this->parseDate($this->date_validite);
 
         // Calcul validité en jours
         $validiteJours = null;
-        if ($dc && $dv) {
+        if ($dateCreation && $dateValidite) {
             try {
-                $validiteJours = max(1, (int) $dc->diffInDays($dv));
+                $validiteJours = max(1, (int) $dateCreation->diffInDays($dateValidite));
             } catch (\Exception $e) {
                 $validiteJours = null;
             }
         }
+
         return [
             'id' => $this->id,
             'numero' => $this->numero,
-            'date' => $dc?->toDateString(),
-            'date_creation' => $dc?->toDateString(),
-            'date_validite' => $dv?->toDateString(),
+            'date' => $dateCreation?->toDateString(),
+            'date_creation' => $dateCreation?->toDateString(),
+            'date_validite' => $dateValidite?->toDateString(),
 
             // Catégorie et type
             'categorie' => $this->categorie,
-            'type_document' => match($this->categorie) {
+            'type_document' => match ($this->categorie) {
                 'conteneurs' => 'Conteneur',
                 'conventionnel' => 'Lot',
                 'operations_independantes' => 'Independant',
@@ -55,13 +43,12 @@ class DevisResource extends JsonResource
             'type_operation_indep' => $this->type_operation_indep,
             'statut' => $this->statut,
             'validite_jours' => $validiteJours,
-            'date_expiration' => $dv?->toDateString(),
+            'date_expiration' => $dateValidite?->toDateString(),
 
             // Informations navire
             'bl_numero' => $this->numero_bl,
             'numero_bl' => $this->numero_bl,
             'navire' => $this->navire,
-            'date_arrivee' => null,
 
             // IDs partenaires
             'client_id' => $this->client_id,
@@ -92,5 +79,25 @@ class DevisResource extends JsonResource
             'conteneurs' => ConteneurDevisResource::collection($this->whenLoaded('conteneurs')),
             'lots' => LotDevisResource::collection($this->whenLoaded('lots')),
         ];
+    }
+
+    /**
+     * Parser une date de façon sécurisée
+     */
+    private function parseDate($value): ?Carbon
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

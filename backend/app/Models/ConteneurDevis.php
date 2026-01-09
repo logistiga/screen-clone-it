@@ -15,8 +15,10 @@ class ConteneurDevis extends Model
         'devis_id',
         'numero',
         'taille',
+        'type',
         'description',
         'prix_unitaire',
+        'armateur_id',
     ];
 
     protected $casts = [
@@ -29,14 +31,19 @@ class ConteneurDevis extends Model
         return $this->belongsTo(Devis::class);
     }
 
+    public function armateur()
+    {
+        return $this->belongsTo(Armateur::class);
+    }
+
     public function operations()
     {
         return $this->hasMany(OperationConteneurDevis::class, 'conteneur_id');
     }
 
     // Accessors
-    public function getTotalAttribute()
+    public function getTotalAttribute(): float
     {
-        return $this->prix_unitaire + $this->operations->sum('prix_total');
+        return (float) ($this->prix_unitaire ?? 0) + $this->operations->sum('prix_total');
     }
 }

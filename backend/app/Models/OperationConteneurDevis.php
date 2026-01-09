@@ -38,7 +38,7 @@ class OperationConteneurDevis extends Model
         parent::boot();
 
         static::saving(function ($operation) {
-            $operation->prix_total = $operation->quantite * $operation->prix_unitaire;
+            $operation->prix_total = (float) ($operation->quantite ?? 1) * (float) ($operation->prix_unitaire ?? 0);
         });
     }
 }
