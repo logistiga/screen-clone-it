@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ApiErrorState } from "@/components/ApiErrorState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -19,259 +22,204 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Plus,
-  Search,
-  Filter,
-  FileText,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  Copy,
-  Send,
-  Printer,
-  ClipboardList,
-  Trash2,
-  History,
-  Download,
-  RefreshCw,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck, Loader2, Check, Container, Package, Wrench } from "lucide-react";
+import { EmailModal } from "@/components/EmailModal";
+import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
-import {
-  DocumentCommercial,
-  CategorieDocument,
-  categoriesConfig,
-  formatMontant,
-  formatDate,
-  getStatutLabel,
-  getStatutVariant,
-} from "@/types/commercial";
-
-// Données mock pour le développement
-const mockDevis: DocumentCommercial[] = [
-  {
-    id: "1",
-    numero: "DEV-2025-0001",
-    type: "devis",
-    categorie: "conteneurs",
-    clientId: "1",
-    clientNom: "TOTAL GABON",
-    date: "2025-01-08",
-    dateValidite: "2025-02-08",
-    statut: "envoye",
-    montantHT: 1500000,
-    montantTVA: 270000,
-    montantCSS: 15000,
-    montantTTC: 1785000,
-    montantPaye: 0,
-  },
-  {
-    id: "2",
-    numero: "DEV-2025-0002",
-    type: "devis",
-    categorie: "conventionnel",
-    clientId: "2",
-    clientNom: "CIMGABON",
-    date: "2025-01-07",
-    dateValidite: "2025-02-07",
-    statut: "brouillon",
-    montantHT: 850000,
-    montantTVA: 153000,
-    montantCSS: 8500,
-    montantTTC: 1011500,
-    montantPaye: 0,
-  },
-  {
-    id: "3",
-    numero: "DEV-2025-0003",
-    type: "devis",
-    categorie: "operations_independantes",
-    clientId: "3",
-    clientNom: "OLAM GABON",
-    date: "2025-01-06",
-    dateValidite: "2025-02-06",
-    statut: "accepte",
-    montantHT: 2100000,
-    montantTVA: 378000,
-    montantCSS: 21000,
-    montantTTC: 2499000,
-    montantPaye: 0,
-  },
-];
 
 export default function DevisPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [categorieFilter, setCategorieFilter] = useState<string>("all");
+  
+  const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  // Filtrer les devis
-  const filteredDevis = mockDevis.filter((devis) => {
-    const matchSearch =
-      devis.numero.toLowerCase().includes(search.toLowerCase()) ||
-      devis.clientNom?.toLowerCase().includes(search.toLowerCase());
-    const matchCategorie =
-      categorieFilter === "all" || devis.categorie === categorieFilter;
-    const matchStatut =
-      statutFilter === "all" || devis.statut === statutFilter;
-    return matchSearch && matchCategorie && matchStatut;
+  
+  // API hooks
+  const { data: devisData, isLoading, error } = useDevis({
+    search: searchTerm || undefined,
+    statut: statutFilter !== "all" ? statutFilter : undefined,
+    page: currentPage,
+    per_page: pageSize,
   });
+  
+  const deleteDevisMutation = useDeleteDevis();
+  const convertMutation = useConvertDevisToOrdre();
+  const updateDevisMutation = useUpdateDevis();
+  
+  // États modales consolidés
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'annuler' | 'supprimer' | 'convertir' | 'valider' | null;
+    id: string;
+    numero: string;
+  } | null>(null);
+  const [emailModal, setEmailModal] = useState<{
+    numero: string;
+    clientEmail: string;
+    clientNom: string;
+  } | null>(null);
 
-  const totalItems = filteredDevis.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
-  const paginatedDevis = filteredDevis.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // Handlers consolidés
+  const handleAction = async () => {
+    if (!confirmAction) return;
 
-  const handleAction = (action: string, devis: DocumentCommercial) => {
-    switch (action) {
-      case "view":
-        navigate(`/devis/${devis.id}`);
-        break;
-      case "edit":
-        navigate(`/devis/${devis.id}/modifier`);
-        break;
-      case "duplicate":
-        console.log("Dupliquer", devis.id);
-        break;
-      case "send":
-        console.log("Envoyer", devis.id);
-        break;
-      case "print":
-        navigate(`/devis/${devis.id}/pdf`);
-        break;
-      case "convert":
-        console.log("Convertir en ordre", devis.id);
-        break;
-      case "history":
-        console.log("Historique", devis.id);
-        break;
-      case "delete":
-        console.log("Supprimer", devis.id);
-        break;
+    try {
+      if (confirmAction.type === 'annuler') {
+        await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'refuse' } });
+      } else if (confirmAction.type === 'valider') {
+        await updateDevisMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'accepte' } });
+      } else if (confirmAction.type === 'supprimer') {
+        await deleteDevisMutation.mutateAsync(confirmAction.id);
+      } else if (confirmAction.type === 'convertir') {
+        await convertMutation.mutateAsync(confirmAction.id);
+        navigate("/ordres");
+      }
+    } catch {
+      // noop: les mutations gèrent déjà le toast d'erreur dans onError
+    } finally {
+      // Fermer la modale même si la requête échoue
+      setConfirmAction(null);
     }
   };
 
-  return (
-    <MainLayout
-      title="Devis"
-      actions={
-        <Button onClick={() => navigate("/devis/nouveau")} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nouveau devis
-        </Button>
-      }
-    >
-      {/* Statistiques */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{mockDevis.length}</p>
-                <p className="text-sm text-muted-foreground">Total devis</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900">
-                <Send className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {mockDevis.filter((d) => d.statut === "envoye").length}
-                </p>
-                <p className="text-sm text-muted-foreground">En attente</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                <ClipboardList className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {mockDevis.filter((d) => d.statut === "accepte").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Acceptés</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <RefreshCw className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {formatMontant(
-                    mockDevis.reduce((sum, d) => sum + d.montantTTC, 0)
-                  )}
-                </p>
-                <p className="text-sm text-muted-foreground">Volume total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+  const devisList = devisData?.data || [];
+  const totalPages = devisData?.meta?.last_page || 1;
+  const totalItems = devisData?.meta?.total || 0;
 
-      {/* Filtres */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par numéro ou client..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+  // Statistiques
+  const totalDevis = devisList.reduce((sum, d) => sum + (d.montant_ttc || 0), 0);
+  const devisAcceptes = devisList.filter(d => d.statut === 'accepte').length;
+  const devisEnAttente = devisList.filter(d => d.statut === 'envoye').length;
+
+  const getStatutBadge = (statut: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      brouillon: "secondary",
+      envoye: "outline",
+      accepte: "default",
+      refuse: "destructive",
+      expire: "destructive",
+    };
+    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+  };
+
+  const getCategorieBadge = (typeDocument: string) => {
+    const config: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      Conteneur: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800" },
+      Lot: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-amber-100 text-amber-800" },
+      Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800" },
+    };
+    const cat = config[typeDocument] || config.Conteneur;
+    return (
+      <Badge variant="outline" className={`${cat.className} flex items-center gap-1`}>
+        {cat.icon}
+        {cat.label}
+      </Badge>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Devis">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Devis">
+        <ApiErrorState
+          title="Erreur lors du chargement des devis"
+          error={error}
+          onRetry={() => window.location.reload()}
+        />
+      </MainLayout>
+    );
+  }
+
+  // État vide
+  if (devisList.length === 0 && !searchTerm && statutFilter === "all") {
+    return (
+      <MainLayout title="Devis">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <FileCheck className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Aucun devis</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Commencez par créer votre premier devis pour proposer vos services.
+          </p>
+          <Button onClick={() => navigate("/devis/nouveau")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nouveau devis
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout title="Devis">
+      <div className="space-y-6">
+        {/* Stats */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Devis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalItems}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatMontant(totalDevis)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Acceptés</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{devisAcceptes}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">En attente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-500">{devisEnAttente}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
             </div>
-            <Select value={categorieFilter} onValueChange={setCategorieFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes catégories</SelectItem>
-                {(Object.keys(categoriesConfig) as CategorieDocument[]).map(
-                  (key) => (
-                    <SelectItem key={key} value={key}>
-                      {categoriesConfig[key].label}
-                    </SelectItem>
-                  )
-                )}
-              </SelectContent>
-            </Select>
             <Select value={statutFilter} onValueChange={setStatutFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Statut" />
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous statuts</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
                 <SelectItem value="brouillon">Brouillon</SelectItem>
                 <SelectItem value="envoye">Envoyé</SelectItem>
                 <SelectItem value="accepte">Accepté</SelectItem>
@@ -280,148 +228,178 @@ export default function DevisPage() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+          <Button className="gap-2" onClick={() => navigate("/devis/nouveau")}>
+            <Plus className="h-4 w-4" />
+            Nouveau devis
+          </Button>
+        </div>
 
-      {/* Tableau */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Numéro</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Catégorie</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Validité</TableHead>
-                <TableHead className="text-right">Montant TTC</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="w-[70px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedDevis.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">Aucun devis trouvé</p>
-                  </TableCell>
+        {/* Table */}
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Numéro</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead>Type d'opération</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Montant TTC</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
-              ) : (
-                paginatedDevis.map((devis) => (
-                  <TableRow
-                    key={devis.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/devis/${devis.id}`)}
-                  >
-                    <TableCell className="font-mono font-medium">
-                      {devis.numero}
+              </TableHeader>
+              <TableBody>
+                {devisList.map((d) => (
+                  <TableRow key={d.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/devis/${d.id}`)}>
+                      {d.numero}
                     </TableCell>
-                    <TableCell>{devis.clientNom}</TableCell>
+                    <TableCell>{d.client?.nom}</TableCell>
+                    <TableCell>{getCategorieBadge(d.type_document)}</TableCell>
+                    <TableCell className="capitalize">{d.type_operation || '-'}</TableCell>
+                    <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
+                    <TableCell>{getStatutBadge(d.statut)}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={categoriesConfig[devis.categorie].className}
-                      >
-                        {categoriesConfig[devis.categorie].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(devis.date)}</TableCell>
-                    <TableCell>{formatDate(devis.dateValidite)}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatMontant(devis.montantTTC)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatutVariant(devis.statut)}>
-                        {getStatutLabel(devis.statut)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/devis/${d.id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
+                          <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleAction("view", devis)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Voir détails
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleAction("edit", devis)}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Modifier
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleAction("duplicate", devis)}
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            Dupliquer
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleAction("send", devis)}
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            Envoyer par email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleAction("print", devis)}
-                          >
-                            <Printer className="h-4 w-4 mr-2" />
-                            Imprimer / PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleAction("convert", devis)}
-                          >
-                            <ClipboardList className="h-4 w-4 mr-2" />
-                            Convertir en ordre
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleAction("history", devis)}
-                          >
-                            <History className="h-4 w-4 mr-2" />
-                            Historique
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleAction("delete", devis)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                        <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Envoyer par email" className="text-blue-600"
+                          onClick={() => setEmailModal({ numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                        {(d.statut === 'brouillon' || d.statut === 'envoye') && (
+                          <Button variant="ghost" size="icon" title="Valider le devis" className="text-green-600"
+                            onClick={() => setConfirmAction({ type: 'valider', id: d.id, numero: d.numero })}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {d.statut === 'accepte' && (
+                          <Button variant="ghost" size="icon" title="Convertir en ordre" className="text-primary"
+                            onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
+                          <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600"
+                            onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}>
+                            <Ban className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive"
+                          onClick={() => setConfirmAction({ type: 'supprimer', id: d.id, numero: d.numero })}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ))}
+              </TableBody>
+            </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
-          {totalPages > 1 && (
-            <div className="border-t p-4">
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                totalItems={totalItems}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Modal Annulation */}
+      <AlertDialog open={confirmAction?.type === 'annuler'} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir annuler le devis <strong>{confirmAction?.numero}</strong> ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700" disabled={updateDevisMutation.isPending}>
+              {updateDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Suppression */}
+      <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le devis <strong>{confirmAction?.numero}</strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90" disabled={deleteDevisMutation.isPending}>
+              {deleteDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Validation */}
+      <AlertDialog open={confirmAction?.type === 'valider'} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Valider le devis</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous valider le devis <strong>{confirmAction?.numero}</strong> ? Le statut passera à "Accepté".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction} className="bg-green-600 hover:bg-green-700" disabled={updateDevisMutation.isPending}>
+              {updateDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Conversion */}
+      <AlertDialog open={confirmAction?.type === 'convertir'} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convertir en ordre de travail</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous convertir le devis <strong>{confirmAction?.numero}</strong> en ordre de travail ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAction} disabled={convertMutation.isPending}>
+              {convertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Convertir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Email */}
+      <EmailModal
+        open={!!emailModal}
+        onOpenChange={(open) => !open && setEmailModal(null)}
+        documentType="devis"
+        documentNumero={emailModal?.numero || ""}
+        clientEmail={emailModal?.clientEmail || ""}
+        clientNom={emailModal?.clientNom || ""}
+      />
     </MainLayout>
   );
 }

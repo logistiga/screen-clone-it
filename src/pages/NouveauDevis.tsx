@@ -1,279 +1,278 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MainLayout } from "@/components/layout/MainLayout";
+import { ArrowLeft, FileText, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Save, Send, FileText, User, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useConfiguration } from "@/hooks/use-commercial";
+import { CategorieDocument, getCategoriesLabels, typesOperationConteneur } from "@/types/documents";
 import {
-  CategorieDocument,
-  categoriesConfig,
-  ConteneursFormData,
-  ConventionnelFormData,
-  IndependantFormData,
-  formatMontant,
-} from "@/types/commercial";
-import { ConteneursForm, ConventionnelForm, IndependantForm } from "@/components/documents/forms";
-
-// Mock data clients
-const mockClients = [
-  { id: "1", nom: "TOTAL GABON" },
-  { id: "2", nom: "CIMGABON" },
-  { id: "3", nom: "OLAM GABON" },
-  { id: "4", nom: "SETRAG" },
-];
-
-// Mock partenaires
-const mockArmateurs = [
-  { id: "1", nom: "MSC" },
-  { id: "2", nom: "MAERSK" },
-  { id: "3", nom: "CMA CGM" },
-];
-const mockTransitaires = [
-  { id: "1", nom: "GETMA" },
-  { id: "2", nom: "SDV" },
-];
-const mockRepresentants = [
-  { id: "1", nom: "Jean Dupont" },
-  { id: "2", nom: "Marie Koumba" },
-];
-
-// Taxes par défaut
-const TAUX_TVA = 0.18;
-const TAUX_CSS = 0.01;
+  CategorieSelector,
+  ClientInfoCard,
+  RecapitulatifCard,
+  DevisConteneursForm,
+  DevisConventionnelForm,
+  DevisIndependantForm,
+} from "@/components/devis";
+import type { DevisConteneursData } from "@/components/devis/forms/DevisConteneursForm";
+import type { DevisConventionnelData } from "@/components/devis/forms/DevisConventionnelForm";
+import type { DevisIndependantData } from "@/components/devis/forms/DevisIndependantForm";
 
 export default function NouveauDevisPage() {
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // API hooks
+  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
+  const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
+  const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
+  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants();
+  const { data: config } = useConfiguration();
+  const createDevisMutation = useCreateDevis();
 
-  // État principal
-  const [clientId, setClientId] = useState("");
+  const clients = clientsData?.data || [];
+  const armateurs = armateursData || [];
+  const transitaires = transitairesData || [];
+  const representants = representantsData || [];
+  
+  const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
+  const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
+  
+  const categoriesLabels = getCategoriesLabels();
+
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
-  const [dateValidite, setDateValidite] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [dateValidite, setDateValidite] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
+  });
   const [notes, setNotes] = useState("");
+  
+  // Form data from child components
+  const [conteneursData, setConteneursData] = useState<DevisConteneursData | null>(null);
+  const [conventionnelData, setConventionnelData] = useState<DevisConventionnelData | null>(null);
+  const [independantData, setIndependantData] = useState<DevisIndependantData | null>(null);
 
-  // États des formulaires par catégorie
-  const [conteneursData, setConteneursData] = useState<ConteneursFormData | null>(null);
-  const [conventionnelData, setConventionnelData] = useState<ConventionnelFormData | null>(null);
-  const [independantData, setIndependantData] = useState<IndependantFormData | null>(null);
-
-  // Calcul des totaux
   const getMontantHT = (): number => {
-    switch (categorie) {
-      case "conteneurs":
-        return conteneursData?.montantHT || 0;
-      case "conventionnel":
-        return conventionnelData?.montantHT || 0;
-      case "operations_independantes":
-        return independantData?.montantHT || 0;
-      default:
-        return 0;
-    }
+    if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
+    if (categorie === "conventionnel" && conventionnelData) return conventionnelData.montantHT;
+    if (categorie === "operations_independantes" && independantData) return independantData.montantHT;
+    return 0;
   };
 
   const montantHT = getMontantHT();
-  const montantTVA = montantHT * TAUX_TVA;
-  const montantCSS = montantHT * TAUX_CSS;
-  const montantTTC = montantHT + montantTVA + montantCSS;
+  const tva = Math.round(montantHT * TAUX_TVA);
+  const css = Math.round(montantHT * TAUX_CSS);
+  const montantTTC = montantHT + tva + css;
 
-  const handleSubmit = async (action: "save" | "send") => {
-    if (!clientId) {
-      toast.error("Veuillez sélectionner un client");
-      return;
+  const handleCategorieChange = (value: CategorieDocument) => {
+    setCategorie(value);
+    setConteneursData(null);
+    setConventionnelData(null);
+    setIndependantData(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientId) { toast.error("Veuillez sélectionner un client"); return; }
+    if (!categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
+    
+    if (categorie === "conteneurs" && !conteneursData?.numeroBL) {
+      toast.error("Veuillez saisir le numéro de BL"); return;
     }
-    if (!categorie) {
-      toast.error("Veuillez sélectionner une catégorie");
-      return;
+    if (categorie === "conventionnel" && !conventionnelData?.numeroBL) {
+      toast.error("Veuillez saisir le numéro de BL"); return;
+    }
+    if (categorie === "operations_independantes" && !independantData?.typeOperationIndep) {
+      toast.error("Veuillez sélectionner un type d'opération"); return;
     }
 
-    setIsSubmitting(true);
+    const typeDocumentMap: Record<CategorieDocument, string> = {
+      conteneurs: "Conteneur",
+      conventionnel: "Lot",
+      operations_independantes: "Independant"
+    };
+
+    const data: any = {
+      client_id: parseInt(clientId),
+      type_document: typeDocumentMap[categorie as CategorieDocument],
+      date_arrivee: new Date().toISOString().split('T')[0],
+      validite_jours: Math.ceil((new Date(dateValidite).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+      notes: notes || null,
+      lignes: [],
+      conteneurs: [],
+      lots: [],
+    };
+
+    if (categorie === "conteneurs" && conteneursData) {
+      data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
+      data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
+      data.armateur_id = conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null;
+      data.bl_numero = conteneursData.numeroBL || null;
+      data.type_operation = conteneursData.typeOperation || "import";
+      data.conteneurs = conteneursData.conteneurs.map(c => ({
+        numero: c.numero,
+        type: "DRY",
+        taille: c.taille === "20'" ? "20" : "40",
+        description: c.description || null,
+        prix_unitaire: c.prixUnitaire || 0,
+        armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
+        operations: c.operations.map(op => ({
+          type_operation: op.type, // Envoyer le code (arrivee, stockage...) pas le label
+          description: op.description || "",
+          quantite: op.quantite,
+          prix_unitaire: op.prixUnitaire
+        }))
+      }));
+    }
+
+    if (categorie === "conventionnel" && conventionnelData) {
+      data.bl_numero = conventionnelData.numeroBL || null;
+      data.lieu_chargement = conventionnelData.lieuChargement || null;
+      data.lieu_dechargement = conventionnelData.lieuDechargement || null;
+      data.lots = conventionnelData.lots.map(l => ({
+        numero_lot: l.numeroLot || null,
+        designation: l.description || `Lot ${l.numeroLot}`,
+        description: l.description || `Lot ${l.numeroLot}`,
+        quantite: l.quantite,
+        prix_unitaire: l.prixUnitaire
+      }));
+    }
+
+    if (categorie === "operations_independantes" && independantData) {
+      data.type_operation_indep = independantData.typeOperationIndep || null;
+      data.lignes = independantData.prestations.map(p => ({
+        type_operation: independantData.typeOperationIndep || "manutention",
+        description: p.description || "",
+        lieu_depart: p.lieuDepart || independantData.lieuChargement || null,
+        lieu_arrivee: p.lieuArrivee || independantData.lieuDechargement || null,
+        date_debut: p.dateDebut || null,
+        date_fin: p.dateFin || null,
+        quantite: p.quantite || 1,
+        prix_unitaire: p.prixUnitaire || 0
+      }));
+    }
+
     try {
-      // Simulation sauvegarde
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (action === "save") {
-        toast.success("Devis enregistré en brouillon");
-      } else {
-        toast.success("Devis envoyé au client");
-      }
+      await createDevisMutation.mutateAsync(data);
       navigate("/devis");
     } catch (error) {
-      toast.error("Erreur lors de l'enregistrement");
-    } finally {
-      setIsSubmitting(false);
+      // Error handled by mutation
     }
   };
 
-  const renderCategorieForm = () => {
-    switch (categorie) {
-      case "conteneurs":
-        return (
-          <ConteneursForm
-            armateurs={mockArmateurs}
-            transitaires={mockTransitaires}
-            representants={mockRepresentants}
-            onDataChange={setConteneursData}
-          />
-        );
-      case "conventionnel":
-        return <ConventionnelForm onDataChange={setConventionnelData} />;
-      case "operations_independantes":
-        return <IndependantForm onDataChange={setIndependantData} />;
-      default:
-        return null;
-    }
-  };
+  const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Nouveau devis">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
-    <MainLayout
-      title="Nouveau devis"
-      actions={
-        <Button variant="outline" onClick={() => navigate("/devis")} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Retour
-        </Button>
-      }
-    >
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* En-tête : Client et catégorie */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Informations du devis
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Client *
-                </Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockClients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Catégorie *</Label>
-                <Select
-                  value={categorie}
-                  onValueChange={(v) => setCategorie(v as CategorieDocument)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type d'opération" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(categoriesConfig) as CategorieDocument[]).map((key) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          {categoriesConfig[key].icon}
-                          <span>{categoriesConfig[key].label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Date de validité
-                </Label>
-                <Input
-                  type="date"
-                  value={dateValidite}
-                  onChange={(e) => setDateValidite(e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Formulaire spécifique à la catégorie */}
-        {categorie && renderCategorieForm()}
-
-        {/* Notes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Notes ou observations pour ce devis..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Récapitulatif et actions */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">HT:</span>
-                  <span className="font-medium">{formatMontant(montantHT)}</span>
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">TVA (18%):</span>
-                  <span>{formatMontant(montantTVA)}</span>
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">CSS (1%):</span>
-                  <span>{formatMontant(montantCSS)}</span>
-                </div>
-                <div className="flex items-center gap-4 text-lg pt-2 border-t">
-                  <span className="font-semibold">Total TTC:</span>
-                  <span className="text-2xl font-bold text-primary">
-                    {formatMontant(montantTTC)}
-                  </span>
-                </div>
-              </div>
-              <div className="flex gap-3 w-full md:w-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => handleSubmit("save")}
-                  disabled={isSubmitting}
-                  className="gap-2 flex-1 md:flex-none"
-                >
-                  <Save className="h-4 w-4" />
-                  Enregistrer brouillon
-                </Button>
-                <Button
-                  onClick={() => handleSubmit("send")}
-                  disabled={isSubmitting}
-                  className="gap-2 flex-1 md:flex-none"
-                >
-                  <Send className="h-4 w-4" />
-                  Envoyer au client
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <MainLayout title="Nouveau devis">
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/devis")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <FileText className="h-6 w-6 text-primary" />Nouveau devis
+            </h1>
+            <p className="text-muted-foreground text-sm">Créer un nouveau devis client</p>
+          </div>
+        </div>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {!categorie && <CategorieSelector onSelect={handleCategorieChange} />}
+
+        {categorie && (
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+              {categoriesLabels[categorie].icon}
+              <span>{categoriesLabels[categorie].label}</span>
+            </Badge>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground">
+              Changer
+            </Button>
+          </div>
+        )}
+
+        {categorie && (
+          <ClientInfoCard
+            clientId={clientId}
+            setClientId={setClientId}
+            dateValidite={dateValidite}
+            setDateValidite={setDateValidite}
+            clients={clients}
+          />
+        )}
+
+        {categorie === "conteneurs" && (
+          <DevisConteneursForm
+            armateurs={armateurs}
+            transitaires={transitaires}
+            representants={representants}
+            onDataChange={setConteneursData}
+          />
+        )}
+
+        {categorie === "conventionnel" && (
+          <DevisConventionnelForm onDataChange={setConventionnelData} />
+        )}
+
+        {categorie === "operations_independantes" && (
+          <DevisIndependantForm onDataChange={setIndependantData} />
+        )}
+
+        {categorie && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Conditions et notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Conditions particulières, notes..."
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {categorie && (
+          <RecapitulatifCard
+            montantHT={montantHT}
+            tva={tva}
+            css={css}
+            montantTTC={montantTTC}
+            tauxTva={Math.round(TAUX_TVA * 100)}
+            tauxCss={Math.round(TAUX_CSS * 100)}
+          />
+        )}
+
+        {categorie && (
+          <div className="flex justify-end gap-4 pb-6">
+            <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending}>
+              Annuler
+            </Button>
+            <Button type="submit" className="gap-2" disabled={createDevisMutation.isPending}>
+              {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Créer le devis
+            </Button>
+          </div>
+        )}
+      </form>
     </MainLayout>
   );
 }

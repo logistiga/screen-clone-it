@@ -1,0 +1,247 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDevisRequest;
+use App\Http\Requests\UpdateDevisRequest;
+use App\Http\Resources\DevisResource;
+use App\Http\Resources\OrdreTravailResource;
+use App\Models\Devis;
+use App\Models\Audit;
+use App\Services\Devis\DevisServiceFactory;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class DevisController extends Controller
+{
+    // Note: on n'injecte plus la factory dans le constructeur.
+    // L'endpoint GET /api/devis (index) n'en a pas besoin et ne doit pas échouer
+    // si la résolution DI de la factory pose problème.
+
+
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            $query = Devis::with(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
+
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('numero', 'like', "%{$search}%")
+                      ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
+                });
+            }
+
+            if ($request->filled('statut')) {
+                $query->where('statut', $request->get('statut'));
+            }
+
+            if ($request->filled('client_id')) {
+                $query->where('client_id', $request->get('client_id'));
+            }
+
+            if ($request->filled('date_debut') && $request->filled('date_fin')) {
+                $query->whereBetween('date_creation', [
+                    $request->get('date_debut'),
+                    $request->get('date_fin')
+                ]);
+            }
+
+            $perPage = (int) $request->query('per_page', 15);
+            $perPage = max(1, min($perPage, 100));
+
+            $devis = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            return response()->json(DevisResource::collection($devis)->response()->getData(true));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur listing devis', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            $payload = [
+                'message' => 'Erreur lors du chargement des devis',
+            ];
+
+            if (config('app.debug')) {
+                $payload['error'] = $e->getMessage();
+                $payload['exception'] = get_class($e);
+            }
+
+            return response()->json($payload, 500);
+        }
+    }
+    public function store(StoreDevisRequest $request, DevisServiceFactory $devisFactory): JsonResponse
+    {
+        try {
+            $devis = $devisFactory->creer($request->validated());
+
+            Audit::log('create', 'devis', "Devis créé: {$devis->numero}", $devis->id);
+
+            return response()->json(new DevisResource($devis), 201);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur création devis', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la création du devis',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
+        }
+    }
+
+    public function show(Devis $devis): JsonResponse
+    {
+        try {
+            $devis->load(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
+            return response()->json(new DevisResource($devis));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur affichage devis', [
+                'devis_id' => $devis->id ?? null,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors du chargement du devis',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
+        }
+    }
+
+    public function update(UpdateDevisRequest $request, Devis $devis, DevisServiceFactory $devisFactory): JsonResponse
+    {
+        if ($devis->statut === 'Converti') {
+            return response()->json(['message' => 'Impossible de modifier un devis converti'], 422);
+        }
+
+        try {
+            $devis = $devisFactory->modifier($devis, $request->validated());
+
+            Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis->id);
+
+            return response()->json(new DevisResource($devis));
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur mise à jour devis', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
+        }
+    }
+
+    public function destroy(Devis $devis): JsonResponse
+    {
+        if ($devis->statut === 'Converti') {
+            return response()->json(['message' => 'Impossible de supprimer un devis converti'], 422);
+        }
+
+        $numero = $devis->numero;
+        $devisId = $devis->id;
+
+        try {
+            // Supprimer les relations en premier
+            $devis->conteneurs()->get()->each(fn($c) => $c->operations()->delete());
+            $devis->conteneurs()->delete();
+            $devis->lignes()->delete();
+            $devis->lots()->delete();
+
+            // Supprimer le devis
+            $devis->delete();
+
+            // Audit: ne doit jamais casser la suppression
+            try {
+                // Certains backends attendent un Model (pas un id). On passe donc le Model.
+                Audit::log('delete', 'devis', "Devis supprimé: {$numero}", $devis);
+            } catch (\Throwable $auditError) {
+                \Illuminate\Support\Facades\Log::warning('Audit delete devis échoué', [
+                    'devis_id' => $devisId,
+                    'exception' => get_class($auditError),
+                    'message' => $auditError->getMessage(),
+                ]);
+            }
+
+            return response()->json(['message' => 'Devis supprimé avec succès']);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur suppression devis', [
+                'devis_id' => $devisId,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la suppression du devis',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function convertToOrdre(Devis $devis, DevisServiceFactory $devisFactory): JsonResponse
+    {
+        if ($devis->statut === 'Converti') {
+            return response()->json(['message' => 'Ce devis a déjà été converti'], 422);
+        }
+
+        try {
+            $ordre = $devisFactory->convertirEnOrdre($devis);
+
+            Audit::log('convert', 'devis', "Devis converti en ordre: {$devis->numero} -> {$ordre->numero}", $devis->id);
+
+            return response()->json([
+                'message' => 'Devis converti en ordre de travail',
+                'ordre' => new OrdreTravailResource($ordre)
+            ]);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur conversion devis->ordre', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la conversion',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
+        }
+    }
+
+    public function duplicate(Devis $devis, DevisServiceFactory $devisFactory): JsonResponse
+    {
+        try {
+            $newDevis = $devisFactory->dupliquer($devis);
+
+            Audit::log('duplicate', 'devis', "Devis dupliqué: {$devis->numero} -> {$newDevis->numero}", $newDevis->id);
+
+            return response()->json(new DevisResource($newDevis), 201);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur duplication devis', [
+                'devis_id' => $devis->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de la duplication',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ], 500);
+        }
+    }
+}

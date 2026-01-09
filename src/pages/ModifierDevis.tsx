@@ -1,313 +1,381 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { MainLayout } from "@/components/layout/MainLayout";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Save, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Save, FileText, User, Calendar } from "lucide-react";
-import { toast } from "sonner";
-import {
-  CategorieDocument,
-  categoriesConfig,
-  ConteneursFormData,
-  ConventionnelFormData,
-  IndependantFormData,
-  formatMontant,
-} from "@/types/commercial";
-import { ConteneursForm, ConventionnelForm, IndependantForm } from "@/components/documents/forms";
-
-// Mock data clients
-const mockClients = [
-  { id: "1", nom: "TOTAL GABON" },
-  { id: "2", nom: "CIMGABON" },
-  { id: "3", nom: "OLAM GABON" },
-  { id: "4", nom: "SETRAG" },
-];
-
-// Mock partenaires
-const mockArmateurs = [
-  { id: "1", nom: "MSC" },
-  { id: "2", nom: "MAERSK" },
-  { id: "3", nom: "CMA CGM" },
-];
-const mockTransitaires = [
-  { id: "1", nom: "GETMA" },
-  { id: "2", nom: "SDV" },
-];
-const mockRepresentants = [
-  { id: "1", nom: "Jean Dupont" },
-  { id: "2", nom: "Marie Koumba" },
-];
-
-// Mock devis existant
-const mockDevisExistant = {
-  id: "1",
-  clientId: "1",
-  categorie: "conteneurs" as CategorieDocument,
-  dateValidite: "2025-02-08",
-  notes: "Devis pour transport de conteneurs - urgent",
-  conteneursData: {
-    typeOperation: "import" as const,
-    numeroBL: "MSCUAB123456",
-    armateurId: "1",
-    transitaireId: "1",
-    representantId: "1",
-    primeTransitaire: 0,
-    primeRepresentant: 0,
-    conteneurs: [
-      {
-        id: "1",
-        numero: "MSCU1234567",
-        taille: "40'" as const,
-        description: "Conteneur standard",
-        prixUnitaire: 500000,
-        operations: [],
-      },
-    ],
-    montantHT: 500000,
-  },
-};
-
-// Taxes
-const TAUX_TVA = 0.18;
-const TAUX_CSS = 0.01;
+import { MainLayout } from "@/components/layout/MainLayout";
+import { 
+  useDevisById, 
+  useUpdateDevis, 
+  useClients, 
+  useArmateurs, 
+  useTransitaires, 
+  useRepresentants, 
+  useConfiguration 
+} from "@/hooks/use-commercial";
+import { 
+  ClientInfoCard, 
+  RecapitulatifCard,
+  DevisConteneursForm,
+  DevisConventionnelForm,
+  DevisIndependantForm,
+} from "@/components/devis";
+import { getCategoriesLabels, CategorieDocument } from "@/types/documents";
+import type { DevisConteneursData, DevisConteneursInitialData } from "@/components/devis/forms/DevisConteneursForm";
+import type { DevisConventionnelData, DevisConventionnelInitialData } from "@/components/devis/forms/DevisConventionnelForm";
+import type { DevisIndependantData, DevisIndependantInitialData } from "@/components/devis/forms/DevisIndependantForm";
+import { typesOperationConteneur, TypeOperationConteneur } from "@/types/documents";
 
 export default function ModifierDevisPage() {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { id } = useParams<{ id: string }>();
 
-  // État principal
+  // Fetch data
+  const { data: devisData, isLoading: loadingDevis } = useDevisById(id || '');
+  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
+  const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
+  const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
+  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants();
+  const { data: config } = useConfiguration();
+  const updateDevisMutation = useUpdateDevis();
+
+  const clients = clientsData?.data || [];
+  const armateurs = armateursData || [];
+  const transitaires = transitairesData || [];
+  const representants = representantsData || [];
+  
+  const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
+  const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
+  
+  const categoriesLabels = getCategoriesLabels();
+
   const [clientId, setClientId] = useState("");
-  const [categorie, setCategorie] = useState<CategorieDocument | "">("");
   const [dateValidite, setDateValidite] = useState("");
   const [notes, setNotes] = useState("");
+  const [categorie, setCategorie] = useState<CategorieDocument | "">("");
+  
+  // Form data from child components
+  const [conteneursData, setConteneursData] = useState<DevisConteneursData | null>(null);
+  const [conventionnelData, setConventionnelData] = useState<DevisConventionnelData | null>(null);
+  const [independantData, setIndependantData] = useState<DevisIndependantData | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // États des formulaires par catégorie
-  const [conteneursData, setConteneursData] = useState<ConteneursFormData | null>(null);
-  const [conventionnelData, setConventionnelData] = useState<ConventionnelFormData | null>(null);
-  const [independantData, setIndependantData] = useState<IndependantFormData | null>(null);
-
-  // Charger les données existantes
+  // Populate form when data loads
   useEffect(() => {
-    // Simulation chargement
-    setClientId(mockDevisExistant.clientId);
-    setCategorie(mockDevisExistant.categorie);
-    setDateValidite(mockDevisExistant.dateValidite);
-    setNotes(mockDevisExistant.notes);
-    setConteneursData(mockDevisExistant.conteneursData);
-  }, [id]);
-
-  // Calcul des totaux
-  const getMontantHT = (): number => {
-    switch (categorie) {
-      case "conteneurs":
-        return conteneursData?.montantHT || 0;
-      case "conventionnel":
-        return conventionnelData?.montantHT || 0;
-      case "operations_independantes":
-        return independantData?.montantHT || 0;
-      default:
-        return 0;
+    if (devisData && !isInitialized) {
+      setClientId(String(devisData.client_id || ""));
+      setDateValidite(devisData.date_validite || "");
+      setNotes(devisData.notes || "");
+      
+      // Déterminer la catégorie
+      const cat = devisData.categorie || 
+        (devisData.conteneurs?.length > 0 ? 'conteneurs' : 
+         devisData.lots?.length > 0 ? 'conventionnel' : 
+         devisData.lignes?.length > 0 ? 'operations_independantes' : 'conteneurs');
+      setCategorie(cat as CategorieDocument);
+      
+      setIsInitialized(true);
     }
+  }, [devisData, isInitialized]);
+
+  const getMontantHT = (): number => {
+    if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
+    if (categorie === "conventionnel" && conventionnelData) return conventionnelData.montantHT;
+    if (categorie === "operations_independantes" && independantData) return independantData.montantHT;
+    // Fallback to existing data
+    return devisData?.montant_ht || 0;
   };
 
   const montantHT = getMontantHT();
-  const montantTVA = montantHT * TAUX_TVA;
-  const montantCSS = montantHT * TAUX_CSS;
-  const montantTTC = montantHT + montantTVA + montantCSS;
+  const tva = Math.round(montantHT * TAUX_TVA);
+  const css = Math.round(montantHT * TAUX_CSS);
+  const montantTTC = montantHT + tva + css;
 
-  const handleSubmit = async () => {
-    if (!clientId) {
-      toast.error("Veuillez sélectionner un client");
-      return;
-    }
-    if (!categorie) {
-      toast.error("Veuillez sélectionner une catégorie");
-      return;
+  const getStatutBadge = (statut: string) => {
+    const labels: Record<string, string> = {
+      brouillon: "Brouillon",
+      envoye: "Envoyé",
+      accepte: "Accepté",
+      refuse: "Refusé",
+      expire: "Expiré",
+      converti: "Converti",
+    };
+    const colors: Record<string, string> = {
+      brouillon: "bg-gray-100 text-gray-800",
+      envoye: "bg-blue-100 text-blue-800",
+      accepte: "bg-green-100 text-green-800",
+      refuse: "bg-red-100 text-red-800",
+      expire: "bg-orange-100 text-orange-800",
+      converti: "bg-purple-100 text-purple-800",
+    };
+    return <Badge className={colors[statut] || "bg-gray-100"}>{labels[statut] || statut}</Badge>;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!clientId) return;
+
+    const data: any = {
+      client_id: parseInt(clientId),
+      date_validite: dateValidite,
+      notes: notes || null,
+    };
+
+    if (categorie === "conteneurs" && conteneursData) {
+      data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
+      data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
+      data.armateur_id = conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null;
+      data.bl_numero = conteneursData.numeroBL || null;
+      data.type_operation = conteneursData.typeOperation || "import";
+      data.conteneurs = conteneursData.conteneurs.map(c => ({
+        numero: c.numero,
+        type: "DRY",
+        taille: c.taille === "20'" ? "20" : "40",
+        description: c.description || null,
+        prix_unitaire: c.prixUnitaire || 0,
+        armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
+        operations: c.operations.map(op => ({
+          type_operation: op.type,
+          description: op.description || "",
+          quantite: op.quantite,
+          prix_unitaire: op.prixUnitaire
+        }))
+      }));
     }
 
-    setIsSubmitting(true);
+    if (categorie === "conventionnel" && conventionnelData) {
+      data.bl_numero = conventionnelData.numeroBL || null;
+      data.lieu_chargement = conventionnelData.lieuChargement || null;
+      data.lieu_dechargement = conventionnelData.lieuDechargement || null;
+      data.lots = conventionnelData.lots.map(l => ({
+        numero_lot: l.numeroLot || null,
+        designation: l.description || `Lot ${l.numeroLot}`,
+        description: l.description || `Lot ${l.numeroLot}`,
+        quantite: l.quantite,
+        prix_unitaire: l.prixUnitaire
+      }));
+    }
+
+    if (categorie === "operations_independantes" && independantData) {
+      data.type_operation_indep = independantData.typeOperationIndep || null;
+      data.lignes = independantData.prestations.map(p => ({
+        type_operation: independantData.typeOperationIndep || "manutention",
+        description: p.description || "",
+        lieu_depart: p.lieuDepart || independantData.lieuChargement || null,
+        lieu_arrivee: p.lieuArrivee || independantData.lieuDechargement || null,
+        date_debut: p.dateDebut || null,
+        date_fin: p.dateFin || null,
+        quantite: p.quantite || 1,
+        prix_unitaire: p.prixUnitaire || 0
+      }));
+    }
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("Devis mis à jour avec succès");
+      await updateDevisMutation.mutateAsync({ id: id!, data });
       navigate(`/devis/${id}`);
     } catch (error) {
-      toast.error("Erreur lors de la mise à jour");
-    } finally {
-      setIsSubmitting(false);
+      // Error handled by mutation
     }
   };
 
-  const renderCategorieForm = () => {
-    switch (categorie) {
-      case "conteneurs":
-        return (
-          <ConteneursForm
-            armateurs={mockArmateurs}
-            transitaires={mockTransitaires}
-            representants={mockRepresentants}
-            onDataChange={setConteneursData}
-            initialData={conteneursData || undefined}
-          />
-        );
-      case "conventionnel":
-        return (
-          <ConventionnelForm
-            onDataChange={setConventionnelData}
-            initialData={conventionnelData || undefined}
-          />
-        );
-      case "operations_independantes":
-        return (
-          <IndependantForm
-            onDataChange={setIndependantData}
-            initialData={independantData || undefined}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+  const isLoading = loadingDevis || loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!devisData) {
+    return (
+      <MainLayout title="Devis non trouvé">
+        <div className="flex flex-col items-center justify-center py-20">
+          <h2 className="text-xl font-semibold mb-2">Devis non trouvé</h2>
+          <Button onClick={() => navigate("/devis")}>Retour aux devis</Button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
-    <MainLayout
-      title="Modifier le devis"
-      actions={
-        <Button variant="outline" onClick={() => navigate(`/devis/${id}`)} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Retour
-        </Button>
-      }
-    >
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* En-tête : Client et catégorie */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Informations du devis
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Client *
-                </Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockClients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+    <MainLayout title={`Modifier ${devisData.numero}`}>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/devis/${id}`)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-primary" />
+                  Modifier {devisData.numero}
+                </h1>
+                {getStatutBadge(devisData.statut)}
               </div>
-              <div className="space-y-2">
-                <Label>Catégorie *</Label>
-                <Select
-                  value={categorie}
-                  onValueChange={(v) => setCategorie(v as CategorieDocument)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type d'opération" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(categoriesConfig) as CategorieDocument[]).map((key) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          {categoriesConfig[key].icon}
-                          <span>{categoriesConfig[key].label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Date de validité
-                </Label>
-                <Input
-                  type="date"
-                  value={dateValidite}
-                  onChange={(e) => setDateValidite(e.target.value)}
-                />
-              </div>
+              <p className="text-muted-foreground text-sm">
+                Créé le {new Date(devisData.created_at).toLocaleDateString('fr-FR')}
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <Button type="submit" disabled={updateDevisMutation.isPending}>
+            {updateDevisMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Enregistrer
+          </Button>
+        </div>
 
-        {/* Formulaire spécifique à la catégorie */}
-        {categorie && renderCategorieForm()}
+        {/* Catégorie (lecture seule) */}
+        {categorie && (
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+              {categoriesLabels[categorie]?.icon}
+              <span>{categoriesLabels[categorie]?.label}</span>
+            </Badge>
+            <span className="text-sm text-muted-foreground">(non modifiable)</span>
+          </div>
+        )}
 
-        {/* Notes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Notes ou observations pour ce devis..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </CardContent>
-        </Card>
+        <ClientInfoCard
+          clientId={clientId}
+          setClientId={setClientId}
+          dateValidite={dateValidite}
+          setDateValidite={setDateValidite}
+          clients={clients}
+        />
 
-        {/* Récapitulatif et actions */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">HT:</span>
-                  <span className="font-medium">{formatMontant(montantHT)}</span>
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">TVA (18%):</span>
-                  <span>{formatMontant(montantTVA)}</span>
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">CSS (1%):</span>
-                  <span>{formatMontant(montantCSS)}</span>
-                </div>
-                <div className="flex items-center gap-4 text-lg pt-2 border-t">
-                  <span className="font-semibold">Total TTC:</span>
-                  <span className="text-2xl font-bold text-primary">
-                    {formatMontant(montantTTC)}
-                  </span>
-                </div>
-              </div>
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="gap-2 w-full md:w-auto"
-              >
-                <Save className="h-4 w-4" />
-                Enregistrer les modifications
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {categorie === "conteneurs" && devisData && (
+          <DevisConteneursForm
+            armateurs={armateurs}
+            transitaires={transitaires}
+            representants={representants}
+            onDataChange={setConteneursData}
+            initialData={{
+              typeOperation: (devisData.type_operation as any) || "",
+              numeroBL: devisData.numero_bl || devisData.bl_numero || "",
+              armateurId: devisData.armateur_id ? String(devisData.armateur_id) : "",
+              transitaireId: devisData.transitaire_id ? String(devisData.transitaire_id) : "",
+              representantId: devisData.representant_id ? String(devisData.representant_id) : "",
+               conteneurs: devisData.conteneurs?.map((c: any) => ({
+                 id: String(c.id),
+                 numero: c.numero || "",
+                 description: c.description || "",
+                 taille: c.taille === "20" ? "20'" : "40'",
+                 prixUnitaire: c.prix_unitaire || 0,
+                 operations: (c.operations || []).map((op: any) => ({
+                   id: String(op.id),
+                   type: op.type_operation as TypeOperationConteneur,
+                   description: op.description || "",
+                   quantite: op.quantite || 1,
+                   prixUnitaire: op.prix_unitaire || 0,
+                   prixTotal: (op.quantite || 1) * (op.prix_unitaire || 0),
+                 })),
+               })) || [],
+            }}
+          />
+        )}
+
+        {categorie === "conventionnel" && devisData && (
+          <DevisConventionnelForm 
+            onDataChange={setConventionnelData}
+            initialData={{
+              numeroBL: devisData.numero_bl || devisData.bl_numero || "",
+              lieuChargement: (devisData as any).lieu_chargement || "",
+              lieuDechargement: (devisData as any).lieu_dechargement || "",
+              lots: devisData.lots?.map((l: any) => ({
+                id: String(l.id),
+                numeroLot: l.numero_lot || "",
+                description: l.description || l.designation || "",
+                quantite: l.quantite || 1,
+                prixUnitaire: l.prix_unitaire || 0,
+                prixTotal: (l.quantite || 1) * (l.prix_unitaire || 0),
+              })) || [],
+            }}
+          />
+        )}
+
+        {categorie === "operations_independantes" && devisData && (
+          <DevisIndependantForm 
+            onDataChange={setIndependantData}
+            initialData={{
+              typeOperationIndep: (devisData as any).type_operation_indep || "",
+              lieuChargement: (devisData as any).lieu_chargement || "",
+              lieuDechargement: (devisData as any).lieu_dechargement || "",
+              prestations: devisData.lignes?.map((l: any) => ({
+                id: String(l.id),
+                description: l.description || "",
+                lieuDepart: l.lieu_depart || "",
+                lieuArrivee: l.lieu_arrivee || "",
+                dateDebut: l.date_debut || "",
+                dateFin: l.date_fin || "",
+                quantite: l.quantite || 1,
+                prixUnitaire: l.prix_unitaire || 0,
+                montantHT: (l.quantite || 1) * (l.prix_unitaire || 0),
+              })) || [],
+            }}
+          />
+        )}
+
+        {categorie && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Conditions et notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Conditions particulières, notes..."
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        <RecapitulatifCard
+          montantHT={montantHT}
+          tva={tva}
+          css={css}
+          montantTTC={montantTTC}
+          tauxTva={Math.round(TAUX_TVA * 100)}
+          tauxCss={Math.round(TAUX_CSS * 100)}
+        />
+
+        <div className="flex justify-end gap-4 pb-6">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => navigate(`/devis/${id}`)} 
+            disabled={updateDevisMutation.isPending}
+          >
+            Annuler
+          </Button>
+          <Button type="submit" className="gap-2" disabled={updateDevisMutation.isPending}>
+            {updateDevisMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Enregistrer les modifications
+          </Button>
+        </div>
+      </form>
     </MainLayout>
   );
 }

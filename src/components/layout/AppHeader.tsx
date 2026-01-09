@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, LogOut, KeyRound, Settings } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -19,10 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 
 interface AppHeaderProps {
   title: string;
-  actions?: ReactNode;
 }
 
-export function AppHeader({ title, actions }: AppHeaderProps) {
+export function AppHeader({ title }: AppHeaderProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { toast } = useToast();
@@ -49,8 +47,6 @@ export function AppHeader({ title, actions }: AppHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Actions personnalisées */}
-        {actions && <div className="hidden md:flex items-center gap-2 mr-2">{actions}</div>}
         {/* Notifications */}
         <NotificationCenter />
         
