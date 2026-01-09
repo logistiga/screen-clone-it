@@ -52,18 +52,34 @@ class Annulation extends Model
         return sprintf('ANN-%s-%04d', $annee, $dernier);
     }
 
-    public static function genererNumeroAvoir()
+    public static function genererNumeroAvoir(): string
     {
-        $config = Configuration::getOrCreate('numerotation');
-        $prefixe = $config->data['prefixe_avoir'] ?? 'AV';
         $annee = date('Y');
-        $prochain = $config->data['prochain_numero_avoir'] ?? 1;
 
-        $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochain);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
 
-        $config->data['prochain_numero_avoir'] = $prochain + 1;
-        $config->save();
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'] ?? [
+                        'prefixe_avoir' => 'AV',
+                        'prochain_numero_avoir' => 1,
+                    ],
+                ]);
+            }
 
-        return $numero;
+            $data = $config->data;
+            $prefixe = $data['prefixe_avoir'] ?? 'AV';
+
+            $prochainNumero = $data['prochain_numero_avoir'] ?? 1;
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+
+            $data['prochain_numero_avoir'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return $numero;
+        });
     }
 }
