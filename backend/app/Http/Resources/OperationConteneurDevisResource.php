@@ -11,11 +11,14 @@ class OperationConteneurDevisResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'type_operation' => $this->type_operation,
+            'type' => $this->type,
+            'type_operation' => $this->type,
             'description' => $this->description,
-            'quantite' => $this->quantite,
-            'prix_unitaire' => round($this->prix_unitaire, 2),
-            'montant_ht' => round($this->montant_ht, 2),
+            'quantite' => (float) $this->quantite,
+            'prix_unitaire' => round((float) $this->prix_unitaire, 2),
+            'prixUnitaire' => round((float) $this->prix_unitaire, 2),
+            'montant_ht' => round((float) ($this->prix_total ?? ($this->quantite * $this->prix_unitaire)), 2),
+            'prix_total' => round((float) ($this->prix_total ?? ($this->quantite * $this->prix_unitaire)), 2),
         ];
     }
 }
