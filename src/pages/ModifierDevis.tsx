@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Send, FileText, User, Calendar } from "lucide-react";
+import { ArrowLeft, Save, FileText, User, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import {
   CategorieDocument,
@@ -48,11 +48,41 @@ const mockRepresentants = [
   { id: "2", nom: "Marie Koumba" },
 ];
 
-// Taxes par défaut
+// Mock devis existant
+const mockDevisExistant = {
+  id: "1",
+  clientId: "1",
+  categorie: "conteneurs" as CategorieDocument,
+  dateValidite: "2025-02-08",
+  notes: "Devis pour transport de conteneurs - urgent",
+  conteneursData: {
+    typeOperation: "import" as const,
+    numeroBL: "MSCUAB123456",
+    armateurId: "1",
+    transitaireId: "1",
+    representantId: "1",
+    primeTransitaire: 0,
+    primeRepresentant: 0,
+    conteneurs: [
+      {
+        id: "1",
+        numero: "MSCU1234567",
+        taille: "40'" as const,
+        description: "Conteneur standard",
+        prixUnitaire: 500000,
+        operations: [],
+      },
+    ],
+    montantHT: 500000,
+  },
+};
+
+// Taxes
 const TAUX_TVA = 0.18;
 const TAUX_CSS = 0.01;
 
-export default function NouveauDevisPage() {
+export default function ModifierDevisPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,6 +96,16 @@ export default function NouveauDevisPage() {
   const [conteneursData, setConteneursData] = useState<ConteneursFormData | null>(null);
   const [conventionnelData, setConventionnelData] = useState<ConventionnelFormData | null>(null);
   const [independantData, setIndependantData] = useState<IndependantFormData | null>(null);
+
+  // Charger les données existantes
+  useEffect(() => {
+    // Simulation chargement
+    setClientId(mockDevisExistant.clientId);
+    setCategorie(mockDevisExistant.categorie);
+    setDateValidite(mockDevisExistant.dateValidite);
+    setNotes(mockDevisExistant.notes);
+    setConteneursData(mockDevisExistant.conteneursData);
+  }, [id]);
 
   // Calcul des totaux
   const getMontantHT = (): number => {
@@ -86,7 +126,7 @@ export default function NouveauDevisPage() {
   const montantCSS = montantHT * TAUX_CSS;
   const montantTTC = montantHT + montantTVA + montantCSS;
 
-  const handleSubmit = async (action: "save" | "send") => {
+  const handleSubmit = async () => {
     if (!clientId) {
       toast.error("Veuillez sélectionner un client");
       return;
@@ -98,17 +138,11 @@ export default function NouveauDevisPage() {
 
     setIsSubmitting(true);
     try {
-      // Simulation sauvegarde
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (action === "save") {
-        toast.success("Devis enregistré en brouillon");
-      } else {
-        toast.success("Devis envoyé au client");
-      }
-      navigate("/devis");
+      toast.success("Devis mis à jour avec succès");
+      navigate(`/devis/${id}`);
     } catch (error) {
-      toast.error("Erreur lors de l'enregistrement");
+      toast.error("Erreur lors de la mise à jour");
     } finally {
       setIsSubmitting(false);
     }
@@ -123,12 +157,23 @@ export default function NouveauDevisPage() {
             transitaires={mockTransitaires}
             representants={mockRepresentants}
             onDataChange={setConteneursData}
+            initialData={conteneursData || undefined}
           />
         );
       case "conventionnel":
-        return <ConventionnelForm onDataChange={setConventionnelData} />;
+        return (
+          <ConventionnelForm
+            onDataChange={setConventionnelData}
+            initialData={conventionnelData || undefined}
+          />
+        );
       case "operations_independantes":
-        return <IndependantForm onDataChange={setIndependantData} />;
+        return (
+          <IndependantForm
+            onDataChange={setIndependantData}
+            initialData={independantData || undefined}
+          />
+        );
       default:
         return null;
     }
@@ -136,9 +181,9 @@ export default function NouveauDevisPage() {
 
   return (
     <MainLayout
-      title="Nouveau devis"
+      title="Modifier le devis"
       actions={
-        <Button variant="outline" onClick={() => navigate("/devis")} className="gap-2">
+        <Button variant="outline" onClick={() => navigate(`/devis/${id}`)} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Retour
         </Button>
@@ -251,25 +296,14 @@ export default function NouveauDevisPage() {
                   </span>
                 </div>
               </div>
-              <div className="flex gap-3 w-full md:w-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => handleSubmit("save")}
-                  disabled={isSubmitting}
-                  className="gap-2 flex-1 md:flex-none"
-                >
-                  <Save className="h-4 w-4" />
-                  Enregistrer brouillon
-                </Button>
-                <Button
-                  onClick={() => handleSubmit("send")}
-                  disabled={isSubmitting}
-                  className="gap-2 flex-1 md:flex-none"
-                >
-                  <Send className="h-4 w-4" />
-                  Envoyer au client
-                </Button>
-              </div>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="gap-2 w-full md:w-auto"
+              >
+                <Save className="h-4 w-4" />
+                Enregistrer les modifications
+              </Button>
             </div>
           </CardContent>
         </Card>
