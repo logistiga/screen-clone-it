@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,10 @@ type ApiErrorStateProps = {
   variant?: "page" | "inline";
 };
 
-export function ApiErrorState({ title, error, onRetry, variant = "page" }: ApiErrorStateProps) {
+export const ApiErrorState = forwardRef<HTMLDivElement, ApiErrorStateProps>(function ApiErrorState(
+  { title, error, onRetry, variant = "page" },
+  ref
+) {
   const info = useMemo(() => extractApiErrorInfo(error), [error]);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -30,7 +33,7 @@ export function ApiErrorState({ title, error, onRetry, variant = "page" }: ApiEr
   const cardClass = variant === "page" ? "w-full max-w-3xl" : "w-full";
 
   return (
-    <div className={wrapperClass}>
+    <div ref={ref} className={wrapperClass}>
       <Card className={cardClass}>
         <CardHeader>
           <CardTitle className="text-base">{title}</CardTitle>
@@ -62,13 +65,11 @@ export function ApiErrorState({ title, error, onRetry, variant = "page" }: ApiEr
             </div>
 
             {showDetails && (
-              <pre className="max-h-80 overflow-auto rounded-md border bg-muted p-3 text-xs">
-                {debugText}
-              </pre>
+              <pre className="max-h-80 overflow-auto rounded-md border bg-muted p-3 text-xs">{debugText}</pre>
             )}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-}
+});
