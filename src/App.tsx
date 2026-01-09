@@ -12,6 +12,8 @@ import DashboardPage from "./pages/Dashboard";
 import ClientsPage from "./pages/Clients";
 import ClientDetailPage from "./pages/ClientDetail";
 import NouveauClientPage from "./pages/NouveauClient";
+import DevisPage from "./pages/Devis";
+import NouveauDevisPage from "./pages/NouveauDevis";
 import OrdresTravailPage from "./pages/OrdresTravail";
 import NouvelOrdrePage from "./pages/NouvelOrdre";
 import OrdreDetailPage from "./pages/OrdreDetail";
@@ -61,15 +63,14 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Route publique */}
               <Route path="/login" element={<LoginPage />} />
-              
-              {/* Routes protégées */}
               <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
               <Route path="/clients/nouveau" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
               <Route path="/clients/:id" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
               <Route path="/clients/:id/modifier" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
+              <Route path="/devis" element={<ProtectedRoute><DevisPage /></ProtectedRoute>} />
+              <Route path="/devis/nouveau" element={<ProtectedRoute><NouveauDevisPage /></ProtectedRoute>} />
               <Route path="/ordres" element={<ProtectedRoute><OrdresTravailPage /></ProtectedRoute>} />
               <Route path="/ordres/nouveau" element={<ProtectedRoute><NouvelOrdrePage /></ProtectedRoute>} />
               <Route path="/ordres/:id" element={<ProtectedRoute><OrdreDetailPage /></ProtectedRoute>} />

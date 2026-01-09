@@ -8,31 +8,20 @@ import {
   LigneLot,
   getInitialLot,
   calculateTotalLots,
-} from "@/types/documents";
+  formatMontant,
+  ConventionnelFormData,
+} from "@/types/commercial";
 
-interface FactureConventionnelFormProps {
-  onDataChange: (data: FactureConventionnelData) => void;
+interface ConventionnelFormProps {
+  onDataChange: (data: ConventionnelFormData) => void;
+  initialData?: Partial<ConventionnelFormData>;
 }
 
-export interface FactureConventionnelData {
-  numeroBL: string;
-  lieuChargement: string;
-  lieuDechargement: string;
-  lots: LigneLot[];
-  montantHT: number;
-}
-
-const formatMontant = (montant: number) => {
-  return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
-};
-
-export default function FactureConventionnelForm({
-  onDataChange,
-}: FactureConventionnelFormProps) {
-  const [numeroBL, setNumeroBL] = useState("");
-  const [lieuChargement, setLieuChargement] = useState("");
-  const [lieuDechargement, setLieuDechargement] = useState("");
-  const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
+export default function ConventionnelForm({ onDataChange, initialData }: ConventionnelFormProps) {
+  const [numeroBL, setNumeroBL] = useState(initialData?.numeroBL || "");
+  const [lieuChargement, setLieuChargement] = useState(initialData?.lieuChargement || "");
+  const [lieuDechargement, setLieuDechargement] = useState(initialData?.lieuDechargement || "");
+  const [lots, setLots] = useState<LigneLot[]>(initialData?.lots || [getInitialLot()]);
 
   const updateParent = (newLots: LigneLot[]) => {
     const montantHT = calculateTotalLots(newLots);
@@ -50,24 +39,24 @@ export default function FactureConventionnelForm({
   }, [numeroBL, lieuChargement, lieuDechargement]);
 
   const handleAddLot = () => {
-    const newLots = [...lots, { ...getInitialLot(), id: String(Date.now()) }];
+    const newLots = [...lots, getInitialLot()];
     setLots(newLots);
     updateParent(newLots);
   };
 
   const handleRemoveLot = (id: string) => {
     if (lots.length > 1) {
-      const newLots = lots.filter(l => l.id !== id);
+      const newLots = lots.filter((l) => l.id !== id);
       setLots(newLots);
       updateParent(newLots);
     }
   };
 
   const handleLotChange = (id: string, field: keyof LigneLot, value: string | number) => {
-    const newLots = lots.map(l => {
+    const newLots = lots.map((l) => {
       if (l.id === id) {
         const updated = { ...l, [field]: value };
-        if (field === 'quantite' || field === 'prixUnitaire') {
+        if (field === "quantite" || field === "prixUnitaire") {
           updated.prixTotal = updated.quantite * updated.prixUnitaire;
         }
         return updated;
@@ -82,6 +71,7 @@ export default function FactureConventionnelForm({
 
   return (
     <>
+      {/* Informations générales */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -91,7 +81,7 @@ export default function FactureConventionnelForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="max-w-md space-y-2">
-            <Label className="text-amber-600">Numéro BL *</Label>
+            <Label>Numéro BL *</Label>
             <Input
               placeholder="Ex: MSCUAB123456"
               value={numeroBL}
@@ -101,9 +91,9 @@ export default function FactureConventionnelForm({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
             <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-amber-600">
+              <Label className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Lieu de chargement *
+                Lieu de chargement
               </Label>
               <Input
                 placeholder="Ex: Port d'Owendo"
@@ -112,9 +102,9 @@ export default function FactureConventionnelForm({
               />
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-amber-600">
+              <Label className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Lieu de déchargement *
+                Lieu de déchargement
               </Label>
               <Input
                 placeholder="Ex: Entrepôt client"
@@ -126,6 +116,7 @@ export default function FactureConventionnelForm({
         </CardContent>
       </Card>
 
+      {/* Liste des lots */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -163,7 +154,7 @@ export default function FactureConventionnelForm({
                     <Input
                       placeholder="Ex: LOT-2024-001"
                       value={lot.numeroLot}
-                      onChange={(e) => handleLotChange(lot.id, 'numeroLot', e.target.value.toUpperCase())}
+                      onChange={(e) => handleLotChange(lot.id, "numeroLot", e.target.value.toUpperCase())}
                       className="font-mono"
                     />
                   </div>
@@ -172,7 +163,7 @@ export default function FactureConventionnelForm({
                     <Input
                       placeholder="Description de la marchandise"
                       value={lot.description}
-                      onChange={(e) => handleLotChange(lot.id, 'description', e.target.value)}
+                      onChange={(e) => handleLotChange(lot.id, "description", e.target.value)}
                     />
                   </div>
                 </div>
@@ -183,7 +174,7 @@ export default function FactureConventionnelForm({
                       type="number"
                       min="1"
                       value={lot.quantite}
-                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleLotChange(lot.id, "quantite", parseInt(e.target.value) || 0)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -193,21 +184,22 @@ export default function FactureConventionnelForm({
                       min="0"
                       placeholder="0"
                       value={lot.prixUnitaire || ""}
-                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleLotChange(lot.id, "prixUnitaire", parseInt(e.target.value) || 0)}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Prix total (FCFA)</Label>
-                    <Input value={lot.prixTotal} disabled className="bg-muted font-medium" />
+                    <Input value={formatMontant(lot.prixTotal)} disabled className="bg-muted font-medium" />
                   </div>
                 </div>
                 {index < lots.length - 1 && <div className="border-b my-4" />}
               </div>
             ))}
           </div>
+
           <div className="flex justify-end pt-4 border-t mt-6">
             <div className="text-right">
-              <span className="text-sm text-muted-foreground">Total: </span>
+              <span className="text-sm text-muted-foreground">Total HT: </span>
               <span className="text-xl font-bold text-primary">{formatMontant(montantHT)}</span>
             </div>
           </div>
