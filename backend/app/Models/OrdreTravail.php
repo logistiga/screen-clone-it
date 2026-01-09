@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class OrdreTravail extends Model
 {
@@ -191,18 +192,49 @@ class OrdreTravail extends Model
         return $facture;
     }
 
-    public static function genererNumero()
+    public static function genererNumero(): string
     {
-        $config = Configuration::getOrCreate('numerotation');
-        $prefixe = $config->data['prefixe_ordre'] ?? 'OT';
         $annee = date('Y');
-        $prochain = $config->data['prochain_numero_ordre'] ?? 1;
 
-        $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochain);
+        return DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
 
-        $config->data['prochain_numero_ordre'] = $prochain + 1;
-        $config->save();
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'] ?? [
+                        'prefixe_ordre' => 'OT',
+                        'prochain_numero_ordre' => 1,
+                    ],
+                ]);
+            }
 
-        return $numero;
+            $prefixe = $config->data['prefixe_ordre'] ?? 'OT';
+
+            // Trouver le numéro max existant (évite les doublons si le compteur est désynchronisé)
+            $maxNumero = self::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
+
+            $prochainNumero = max(
+                ($maxNumero ?? 0) + 1,
+                $config->data['prochain_numero_ordre'] ?? 1
+            );
+
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+
+            while (self::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            }
+
+            $data = $config->data;
+            $data['prochain_numero_ordre'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return $numero;
+        });
     }
 }
