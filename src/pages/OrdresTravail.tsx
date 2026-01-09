@@ -124,7 +124,28 @@ export default function OrdresTravailPage() {
     );
   };
 
-  const getCategorieBadge = (categorie?: string) => {
+  const getCategorieBadge = (categorie?: string, type_operation?: string) => {
+    // Types d'opérations indépendantes
+    const typeLabels: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      transport: { label: "Transport", icon: <Truck className="h-3 w-3" />, className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+      manutention: { label: "Manutention", icon: <Package className="h-3 w-3" />, className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+      stockage: { label: "Stockage", icon: <Container className="h-3 w-3" />, className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+      location: { label: "Location", icon: <Container className="h-3 w-3" />, className: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
+      double_relevage: { label: "Double Relevage", icon: <Package className="h-3 w-3" />, className: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200" },
+    };
+
+    // Si un type est défini, l'afficher directement
+    if (type_operation && typeLabels[type_operation]) {
+      const typeConfig = typeLabels[type_operation];
+      return (
+        <Badge className={`${typeConfig.className} flex items-center gap-1 transition-all duration-200 hover:scale-105`}>
+          {typeConfig.icon}
+          {typeConfig.label}
+        </Badge>
+      );
+    }
+
+    // Sinon afficher la catégorie
     const configs: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
       conteneurs: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
       conventionnel: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
@@ -297,7 +318,7 @@ export default function OrdresTravailPage() {
                       </TableCell>
                       <TableCell>{ordre.client?.nom}</TableCell>
                       <TableCell>{formatDate(ordre.date || ordre.date_creation || ordre.created_at)}</TableCell>
-                      <TableCell>{getCategorieBadge(ordre.categorie)}</TableCell>
+                      <TableCell>{getCategorieBadge(ordre.categorie, ordre.type_operation)}</TableCell>
                       <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
                         <span className={(ordre.montant_paye || 0) > 0 ? "text-green-600" : ""}>{formatMontant(ordre.montant_paye)}</span>
