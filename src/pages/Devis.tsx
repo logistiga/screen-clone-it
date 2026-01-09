@@ -243,8 +243,8 @@ export default function DevisPage() {
                   <TableHead>Numéro</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Catégorie</TableHead>
+                  <TableHead>Type d'opération</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Validité</TableHead>
                   <TableHead className="text-right">Montant TTC</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="w-48">Actions</TableHead>
@@ -258,8 +258,8 @@ export default function DevisPage() {
                     </TableCell>
                     <TableCell>{d.client?.nom}</TableCell>
                     <TableCell>{getCategorieBadge(d.type_document)}</TableCell>
+                    <TableCell className="capitalize">{d.type_operation || '-'}</TableCell>
                     <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
-                    <TableCell>{formatDate(d.date_validite)}</TableCell>
                     <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
                     <TableCell>{getStatutBadge(d.statut)}</TableCell>
                     <TableCell>
