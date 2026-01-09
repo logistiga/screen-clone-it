@@ -33,7 +33,7 @@ class FactureIndependantService
             foreach ($data['lignes'] as $index => $ligne) {
                 $ligneErrors = $this->operationFactory->validerLigne($ligne);
                 foreach ($ligneErrors as $error) {
-                    $errors[] = "Ligne #{$index}: {$error}";
+                    $errors[] = "Ligne #" . ($index + 1) . ": {$error}";
                 }
             }
         }
@@ -80,29 +80,50 @@ class FactureIndependantService
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
         $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
+        $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
+        $cssActif = $taxesConfig->data['css_actif'] ?? true;
         
-        // Appliquer taxes selon catégorie
-        if ($facture->categorie === 'non_assujetti') {
-            $montantTVA = 0;
-            $montantCSS = 0;
-        } else {
-            $montantTVA = $montantHT * ($tauxTVA / 100);
-            $montantCSS = $montantHT * ($tauxCSS / 100);
-        }
-        
+        // Calculer les taxes
+        $montantTVA = $tvaActif ? $montantHT * ($tauxTVA / 100) : 0;
+        $montantCSS = $cssActif ? $montantHT * ($tauxCSS / 100) : 0;
         $montantTTC = $montantHT + $montantTVA + $montantCSS;
         
+        // Utiliser les bons noms de colonnes (tva, css)
         $facture->update([
-            'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
-            'montant_ttc' => $montantTTC,
+            'montant_ht' => round($montantHT, 2),
+            'tva' => round($montantTVA, 2),
+            'css' => round($montantCSS, 2),
+            'montant_ttc' => round($montantTTC, 2),
         ]);
         
         Log::info('Totaux opérations indépendantes facture calculés', [
             'facture_id' => $facture->id,
             'nb_lignes' => $facture->lignes->count(),
             'montant_ht' => $montantHT,
+            'montant_ttc' => $montantTTC,
         ]);
+    }
+
+    /**
+     * Préparer les données pour la conversion vers facture
+     */
+    public function preparerPourConversion($document): array
+    {
+        $lignes = [];
+        
+        foreach ($document->lignes as $ligne) {
+            $lignes[] = [
+                'description' => $ligne->description,
+                'quantite' => $ligne->quantite,
+                'prix_unitaire' => $ligne->prix_unitaire,
+                'montant_ht' => $ligne->quantite * $ligne->prix_unitaire,
+                'lieu_depart' => $ligne->lieu_depart ?? null,
+                'lieu_arrivee' => $ligne->lieu_arrivee ?? null,
+                'date_debut' => $ligne->date_debut ?? null,
+                'date_fin' => $ligne->date_fin ?? null,
+            ];
+        }
+        
+        return ['lignes' => $lignes];
     }
 }

@@ -24,10 +24,10 @@ class OrdreConteneursService
         } else {
             foreach ($data['conteneurs'] as $index => $conteneur) {
                 if (empty($conteneur['numero'])) {
-                    $errors[] = "Conteneur #{$index}: numéro requis";
+                    $errors[] = "Conteneur #" . ($index + 1) . ": numéro requis";
                 }
                 if (empty($conteneur['taille'])) {
-                    $errors[] = "Conteneur #{$index}: taille requise";
+                    $errors[] = "Conteneur #" . ($index + 1) . ": taille requise";
                 }
             }
         }
@@ -64,8 +64,13 @@ class OrdreConteneursService
         $total = 0;
         
         foreach ($ordre->conteneurs as $conteneur) {
+            // Ajouter le prix de base du conteneur si défini
+            $total += (float) ($conteneur->prix_unitaire ?? 0);
+            
+            // Ajouter les opérations
             foreach ($conteneur->operations as $operation) {
-                $total += ($operation->quantite ?? 1) * ($operation->prix_unitaire ?? 0);
+                $prixTotal = ($operation->quantite ?? 1) * ($operation->prix_unitaire ?? 0);
+                $total += $prixTotal;
             }
         }
         
@@ -86,23 +91,20 @@ class OrdreConteneursService
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
         $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
+        $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
+        $cssActif = $taxesConfig->data['css_actif'] ?? true;
         
-        // Appliquer taxes selon catégorie
-        if ($ordre->categorie === 'non_assujetti') {
-            $montantTVA = 0;
-            $montantCSS = 0;
-        } else {
-            $montantTVA = $montantHT * ($tauxTVA / 100);
-            $montantCSS = $montantHT * ($tauxCSS / 100);
-        }
-        
+        // Calculer les taxes
+        $montantTVA = $tvaActif ? $montantHT * ($tauxTVA / 100) : 0;
+        $montantCSS = $cssActif ? $montantHT * ($tauxCSS / 100) : 0;
         $montantTTC = $montantHT + $montantTVA + $montantCSS;
         
+        // Utiliser les bons noms de colonnes (tva, css)
         $ordre->update([
-            'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
-            'montant_ttc' => $montantTTC,
+            'montant_ht' => round($montantHT, 2),
+            'tva' => round($montantTVA, 2),
+            'css' => round($montantCSS, 2),
+            'montant_ttc' => round($montantTTC, 2),
         ]);
         
         Log::info('Totaux conteneurs OT calculés', [
@@ -121,19 +123,17 @@ class OrdreConteneursService
             'conteneurs' => $ordre->conteneurs->map(function ($conteneur) {
                 return [
                     'numero' => $conteneur->numero,
-                    'type' => $conteneur->type,
+                    'type' => $conteneur->type ?? 'DRY',
                     'taille' => $conteneur->taille,
-                    'armateur_id' => $conteneur->armateur_id,
+                    'description' => $conteneur->description,
+                    'prix_unitaire' => $conteneur->prix_unitaire ?? 0,
                     'operations' => $conteneur->operations->map(function ($op) {
                         return [
-                            'type_operation' => $op->type_operation ?? $op->type,
+                            'type' => $op->type,
                             'description' => $op->description,
-                            'lieu_depart' => $op->lieu_depart,
-                            'lieu_arrivee' => $op->lieu_arrivee,
-                            'date_debut' => $op->date_debut,
-                            'date_fin' => $op->date_fin,
                             'quantite' => $op->quantite,
                             'prix_unitaire' => $op->prix_unitaire,
+                            'prix_total' => $op->quantite * $op->prix_unitaire,
                         ];
                     })->toArray(),
                 ];
@@ -156,6 +156,9 @@ class OrdreConteneursService
             $data['type'] = 'DRY';
         }
         
+        // Prix unitaire par défaut
+        $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
+        
         return $data;
     }
 
@@ -173,6 +176,7 @@ class OrdreConteneursService
         // Valeurs par défaut
         $data['quantite'] = $data['quantite'] ?? 1;
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
+        $data['prix_total'] = $data['quantite'] * $data['prix_unitaire'];
         
         return $data;
     }

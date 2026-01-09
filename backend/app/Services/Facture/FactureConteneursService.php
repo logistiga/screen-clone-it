@@ -24,10 +24,10 @@ class FactureConteneursService
         } else {
             foreach ($data['conteneurs'] as $index => $conteneur) {
                 if (empty($conteneur['numero'])) {
-                    $errors[] = "Conteneur #{$index}: numéro requis";
+                    $errors[] = "Conteneur #" . ($index + 1) . ": numéro requis";
                 }
                 if (empty($conteneur['taille'])) {
-                    $errors[] = "Conteneur #{$index}: taille requise";
+                    $errors[] = "Conteneur #" . ($index + 1) . ": taille requise";
                 }
             }
         }
@@ -64,8 +64,13 @@ class FactureConteneursService
         $total = 0;
         
         foreach ($facture->conteneurs as $conteneur) {
+            // Ajouter le prix de base du conteneur si défini
+            $total += (float) ($conteneur->prix_unitaire ?? 0);
+            
+            // Ajouter les opérations
             foreach ($conteneur->operations as $operation) {
-                $total += ($operation->quantite ?? 1) * ($operation->prix_unitaire ?? 0);
+                $prixTotal = ($operation->quantite ?? 1) * ($operation->prix_unitaire ?? 0);
+                $total += $prixTotal;
             }
         }
         
@@ -86,30 +91,60 @@ class FactureConteneursService
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
         $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
+        $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
+        $cssActif = $taxesConfig->data['css_actif'] ?? true;
         
-        // Appliquer taxes selon catégorie
-        if ($facture->categorie === 'non_assujetti') {
-            $montantTVA = 0;
-            $montantCSS = 0;
-        } else {
-            $montantTVA = $montantHT * ($tauxTVA / 100);
-            $montantCSS = $montantHT * ($tauxCSS / 100);
-        }
-        
+        // Calculer les taxes
+        $montantTVA = $tvaActif ? $montantHT * ($tauxTVA / 100) : 0;
+        $montantCSS = $cssActif ? $montantHT * ($tauxCSS / 100) : 0;
         $montantTTC = $montantHT + $montantTVA + $montantCSS;
         
         $facture->update([
-            'montant_ht' => $montantHT,
-            'montant_tva' => $montantTVA,
-            'montant_css' => $montantCSS,
-            'montant_ttc' => $montantTTC,
+            'montant_ht' => round($montantHT, 2),
+            'tva' => round($montantTVA, 2),
+            'css' => round($montantCSS, 2),
+            'montant_ttc' => round($montantTTC, 2),
         ]);
         
         Log::info('Totaux conteneurs facture calculés', [
             'facture_id' => $facture->id,
             'montant_ht' => $montantHT,
+            'tva' => $montantTVA,
+            'css' => $montantCSS,
             'montant_ttc' => $montantTTC,
         ]);
+    }
+
+    /**
+     * Préparer les données pour la conversion vers facture
+     */
+    public function preparerPourConversion($document): array
+    {
+        $conteneurs = [];
+        
+        foreach ($document->conteneurs as $conteneur) {
+            $conteneurData = [
+                'numero' => $conteneur->numero,
+                'taille' => $conteneur->taille,
+                'description' => $conteneur->description,
+                'prix_unitaire' => $conteneur->prix_unitaire,
+                'operations' => [],
+            ];
+            
+            foreach ($conteneur->operations as $op) {
+                $conteneurData['operations'][] = [
+                    'type' => $op->type,
+                    'description' => $op->description,
+                    'quantite' => $op->quantite,
+                    'prix_unitaire' => $op->prix_unitaire,
+                    'prix_total' => $op->quantite * $op->prix_unitaire,
+                ];
+            }
+            
+            $conteneurs[] = $conteneurData;
+        }
+        
+        return ['conteneurs' => $conteneurs];
     }
 
     /**
@@ -126,6 +161,9 @@ class FactureConteneursService
         if (empty($data['type'])) {
             $data['type'] = 'DRY';
         }
+        
+        // Prix unitaire par défaut
+        $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
         
         return $data;
     }
@@ -144,6 +182,7 @@ class FactureConteneursService
         // Valeurs par défaut
         $data['quantite'] = $data['quantite'] ?? 1;
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
+        $data['prix_total'] = $data['quantite'] * $data['prix_unitaire'];
         
         return $data;
     }
