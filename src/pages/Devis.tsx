@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck, Loader2, Check } from "lucide-react";
+import { Plus, Search, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, FileCheck, Loader2, Check, Container, Package, Wrench } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -109,6 +109,21 @@ export default function DevisPage() {
       expire: "destructive",
     };
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+  };
+
+  const getCategorieBadge = (typeDocument: string) => {
+    const config: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      Conteneur: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800" },
+      Lot: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-amber-100 text-amber-800" },
+      Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800" },
+    };
+    const cat = config[typeDocument] || config.Conteneur;
+    return (
+      <Badge variant="outline" className={`${cat.className} flex items-center gap-1`}>
+        {cat.icon}
+        {cat.label}
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -227,6 +242,7 @@ export default function DevisPage() {
                 <TableRow className="bg-muted/50">
                   <TableHead>Numéro</TableHead>
                   <TableHead>Client</TableHead>
+                  <TableHead>Catégorie</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Validité</TableHead>
                   <TableHead className="text-right">Montant TTC</TableHead>
@@ -241,6 +257,7 @@ export default function DevisPage() {
                       {d.numero}
                     </TableCell>
                     <TableCell>{d.client?.nom}</TableCell>
+                    <TableCell>{getCategorieBadge(d.type_document)}</TableCell>
                     <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
                     <TableCell>{formatDate(d.date_validite)}</TableCell>
                     <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
