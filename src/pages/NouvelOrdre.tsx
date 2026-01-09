@@ -177,9 +177,9 @@ export default function NouvelOrdrePage() {
 
   return (
     <MainLayout title="Nouvel ordre de travail">
-      <div className="mb-6">
+      <div className="mb-6 animate-fade-in">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")} className="transition-all duration-200 hover:scale-110">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -194,11 +194,11 @@ export default function NouvelOrdrePage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         
         {/* Sélection de catégorie */}
         {!categorie && (
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg">
             <CardHeader>
               <CardTitle className="text-lg">Catégorie d'ordre</CardTitle>
             </CardHeader>
@@ -211,7 +211,7 @@ export default function NouvelOrdrePage() {
                       key={key}
                       type="button"
                       onClick={() => handleCategorieChange(key)}
-                      className="p-4 rounded-lg border-2 text-left transition-all border-border hover:border-primary/50 hover:bg-muted/50"
+                      className="p-4 rounded-lg border-2 text-left transition-all duration-300 border-border hover:border-primary/50 hover:bg-muted/50 hover:shadow-md hover:-translate-y-1"
                     >
                       <div className="flex items-center gap-3 mb-2">
                         <div className="text-muted-foreground">{cat.icon}</div>
@@ -228,12 +228,12 @@ export default function NouvelOrdrePage() {
 
         {/* Badge catégorie sélectionnée */}
         {categorie && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+          <div className="flex items-center gap-3 animate-fade-in">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
               {categoriesLabels[categorie].icon}
               <span>{categoriesLabels[categorie].label}</span>
             </Badge>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground transition-all duration-200 hover:scale-105">
               Changer
             </Button>
           </div>
@@ -241,7 +241,7 @@ export default function NouvelOrdrePage() {
 
         {/* Section Client */}
         {categorie && (
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5 text-primary" />
@@ -268,27 +268,33 @@ export default function NouvelOrdrePage() {
 
         {/* Formulaire Conteneurs */}
         {categorie === "conteneurs" && (
-          <OrdreConteneursForm
-            armateurs={armateurs}
-            transitaires={transitaires}
-            representants={representants}
-            onDataChange={setConteneursData}
-          />
+          <div className="animate-fade-in">
+            <OrdreConteneursForm
+              armateurs={armateurs}
+              transitaires={transitaires}
+              representants={representants}
+              onDataChange={setConteneursData}
+            />
+          </div>
         )}
 
         {/* Formulaire Conventionnel */}
         {categorie === "conventionnel" && (
-          <OrdreConventionnelForm onDataChange={setConventionnelData} />
+          <div className="animate-fade-in">
+            <OrdreConventionnelForm onDataChange={setConventionnelData} />
+          </div>
         )}
 
         {/* Formulaire Opérations Indépendantes */}
         {categorie === "operations_independantes" && (
-          <OrdreIndependantForm onDataChange={setIndependantData} />
+          <div className="animate-fade-in">
+            <OrdreIndependantForm onDataChange={setIndependantData} />
+          </div>
         )}
 
         {/* Notes */}
         {categorie && (
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
             <CardHeader>
               <CardTitle className="text-lg">Notes / Observations</CardTitle>
             </CardHeader>
@@ -305,20 +311,22 @@ export default function NouvelOrdrePage() {
 
         {/* Récapitulatif */}
         {categorie && (
-          <RecapitulatifCard
-            montantHT={montantHT}
-            tauxTva={TAUX_TVA}
-            tauxCss={TAUX_CSS}
-            tva={tva}
-            css={css}
-            montantTTC={montantTTC}
-          />
+          <div className="animate-fade-in">
+            <RecapitulatifCard
+              montantHT={montantHT}
+              tauxTva={TAUX_TVA}
+              tauxCss={TAUX_CSS}
+              tva={tva}
+              css={css}
+              montantTTC={montantTTC}
+            />
+          </div>
         )}
 
         {/* Bouton de soumission */}
         {categorie && (
-          <div className="flex justify-end">
-            <Button type="submit" size="lg" disabled={createOrdreMutation.isPending}>
+          <div className="flex justify-end animate-fade-in">
+            <Button type="submit" size="lg" disabled={createOrdreMutation.isPending} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
               {createOrdreMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (

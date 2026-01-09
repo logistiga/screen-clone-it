@@ -103,13 +103,33 @@ export default function ModifierOrdrePage() {
   const montantTTC = montantHT + tva + css;
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      en_cours: "outline",
-      termine: "default",
-      facture: "default",
-      annule: "destructive",
+    const configs: Record<string, { label: string; className: string }> = {
+      en_cours: { 
+        label: getStatutLabel(statut), 
+        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700" 
+      },
+      termine: { 
+        label: getStatutLabel(statut), 
+        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700" 
+      },
+      facture: { 
+        label: getStatutLabel(statut), 
+        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700" 
+      },
+      annule: { 
+        label: getStatutLabel(statut), 
+        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
+      },
     };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
+    return (
+      <Badge 
+        variant="outline" 
+        className={`${config.className} transition-all duration-200 hover:scale-105`}
+      >
+        {config.label}
+      </Badge>
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,7 +191,8 @@ export default function ModifierOrdrePage() {
 
     try {
       await updateOrdreMutation.mutateAsync({ id: id!, data });
-      navigate(`/ordres/${id}`);
+      toast.success("Ordre modifié avec succès");
+      navigate("/ordres");
     } catch (error) {
       // Error handled by mutation
     }
@@ -192,9 +213,9 @@ export default function ModifierOrdrePage() {
   if (!ordreData) {
     return (
       <MainLayout title="Ordre non trouvé">
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
           <h2 className="text-xl font-semibold mb-2">Ordre non trouvé</h2>
-          <Button onClick={() => navigate("/ordres")}>Retour aux ordres</Button>
+          <Button onClick={() => navigate("/ordres")} className="transition-all duration-200 hover:scale-105">Retour aux ordres</Button>
         </div>
       </MainLayout>
     );
@@ -202,7 +223,7 @@ export default function ModifierOrdrePage() {
 
   return (
     <MainLayout title={`Modifier ${ordreData.numero}`}>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -211,6 +232,7 @@ export default function ModifierOrdrePage() {
               variant="ghost"
               size="icon"
               onClick={() => navigate(`/ordres/${id}`)}
+              className="transition-all duration-200 hover:scale-110"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -227,7 +249,7 @@ export default function ModifierOrdrePage() {
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={updateOrdreMutation.isPending}>
+          <Button type="submit" disabled={updateOrdreMutation.isPending} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
             {updateOrdreMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -239,8 +261,8 @@ export default function ModifierOrdrePage() {
 
         {/* Catégorie (lecture seule) */}
         {categorie && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+          <div className="flex items-center gap-3 animate-fade-in">
+            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
               {categoriesLabels[categorie]?.icon}
               <span>{categoriesLabels[categorie]?.label}</span>
             </Badge>
@@ -249,7 +271,7 @@ export default function ModifierOrdrePage() {
         )}
 
         {/* Client */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="h-5 w-5 text-primary" />
@@ -275,24 +297,30 @@ export default function ModifierOrdrePage() {
 
         {/* Formulaires par catégorie */}
         {categorie === "conteneurs" && (
-          <OrdreConteneursForm
-            armateurs={armateurs}
-            transitaires={transitaires}
-            representants={representants}
-            onDataChange={setConteneursData}
-          />
+          <div className="animate-fade-in">
+            <OrdreConteneursForm
+              armateurs={armateurs}
+              transitaires={transitaires}
+              representants={representants}
+              onDataChange={setConteneursData}
+            />
+          </div>
         )}
 
         {categorie === "conventionnel" && (
-          <OrdreConventionnelForm onDataChange={setConventionnelData} />
+          <div className="animate-fade-in">
+            <OrdreConventionnelForm onDataChange={setConventionnelData} />
+          </div>
         )}
 
         {categorie === "operations_independantes" && (
-          <OrdreIndependantForm onDataChange={setIndependantData} />
+          <div className="animate-fade-in">
+            <OrdreIndependantForm onDataChange={setIndependantData} />
+          </div>
         )}
 
         {/* Notes */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Notes / Observations</CardTitle>
           </CardHeader>
@@ -307,14 +335,16 @@ export default function ModifierOrdrePage() {
         </Card>
 
         {/* Récapitulatif */}
-        <RecapitulatifCard
-          montantHT={montantHT}
-          tva={tva}
-          css={css}
-          montantTTC={montantTTC}
-          tauxTva={Math.round(TAUX_TVA * 100)}
-          tauxCss={Math.round(TAUX_CSS * 100)}
-        />
+        <div className="animate-fade-in">
+          <RecapitulatifCard
+            montantHT={montantHT}
+            tva={tva}
+            css={css}
+            montantTTC={montantTTC}
+            tauxTva={Math.round(TAUX_TVA * 100)}
+            tauxCss={Math.round(TAUX_CSS * 100)}
+          />
+        </div>
 
         {/* Boutons */}
         <div className="flex justify-end gap-4 pb-6">
@@ -323,10 +353,11 @@ export default function ModifierOrdrePage() {
             variant="outline" 
             onClick={() => navigate(`/ordres/${id}`)} 
             disabled={updateOrdreMutation.isPending}
+            className="transition-all duration-200 hover:scale-105"
           >
             Annuler
           </Button>
-          <Button type="submit" className="gap-2" disabled={updateOrdreMutation.isPending}>
+          <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={updateOrdreMutation.isPending}>
             {updateOrdreMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
