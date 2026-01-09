@@ -432,12 +432,6 @@ export default function OrdresTravailPage() {
       <PaiementGlobalModal
         open={paiementGlobalOpen}
         onOpenChange={setPaiementGlobalOpen}
-        documents={ordresList.map(o => ({
-          id: o.id,
-          numero: o.numero,
-          montantRestant: (o.montant_ttc || 0) - (o.montant_paye || 0),
-          clientNom: o.client?.nom || '',
-        }))}
         onSuccess={() => refetch()}
       />
 
