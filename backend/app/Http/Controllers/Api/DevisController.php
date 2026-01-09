@@ -24,39 +24,56 @@ class DevisController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Devis::with(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
+        try {
+            $query = Devis::with(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
 
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('numero', 'like', "%{$search}%")
-                  ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
-            });
-        }
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('numero', 'like', "%{$search}%")
+                      ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
+                });
+            }
 
-        if ($request->filled('statut')) {
-            $query->where('statut', $request->get('statut'));
-        }
+            if ($request->filled('statut')) {
+                $query->where('statut', $request->get('statut'));
+            }
 
-        if ($request->filled('client_id')) {
-            $query->where('client_id', $request->get('client_id'));
-        }
+            if ($request->filled('client_id')) {
+                $query->where('client_id', $request->get('client_id'));
+            }
 
-        if ($request->filled('date_debut') && $request->filled('date_fin')) {
-            $query->whereBetween('date_creation', [
-                $request->get('date_debut'),
-                $request->get('date_fin')
+            if ($request->filled('date_debut') && $request->filled('date_fin')) {
+                $query->whereBetween('date_creation', [
+                    $request->get('date_debut'),
+                    $request->get('date_fin')
+                ]);
+            }
+
+            $perPage = (int) $request->query('per_page', 15);
+            $perPage = max(1, min($perPage, 100));
+
+            $devis = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            return response()->json(DevisResource::collection($devis)->response()->getData(true));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur listing devis', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
             ]);
+
+            $payload = [
+                'message' => 'Erreur lors du chargement des devis',
+            ];
+
+            if (config('app.debug')) {
+                $payload['error'] = $e->getMessage();
+                $payload['exception'] = get_class($e);
+            }
+
+            return response()->json($payload, 500);
         }
-
-        $perPage = (int) $request->query('per_page', 15);
-        $perPage = max(1, min($perPage, 100));
-
-        $devis = $query->orderBy('created_at', 'desc')->paginate($perPage);
-
-        return response()->json(DevisResource::collection($devis)->response()->getData(true));
     }
-
     public function store(StoreDevisRequest $request): JsonResponse
     {
         try {

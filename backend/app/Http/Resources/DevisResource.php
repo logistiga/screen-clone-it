@@ -9,19 +9,24 @@ class DevisResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $parseDate = function ($value) {
+            if (!$value) return null;
+
+            if ($value instanceof \Carbon\CarbonInterface) {
+                return $value;
+            }
+
+            try {
+                return \Carbon\Carbon::parse($value);
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
         // Parsing sécurisé des dates (évite Call to a member function on string)
-        $dc = $this->date_creation 
-            ? ($this->date_creation instanceof \Carbon\Carbon 
-                ? $this->date_creation 
-                : \Carbon\Carbon::parse($this->date_creation)) 
-            : null;
-        
-        $dv = $this->date_validite 
-            ? ($this->date_validite instanceof \Carbon\Carbon 
-                ? $this->date_validite 
-                : \Carbon\Carbon::parse($this->date_validite)) 
-            : null;
-        
+        $dc = $parseDate($this->date_creation);
+        $dv = $parseDate($this->date_validite);
+
         // Calcul validité en jours
         $validiteJours = null;
         if ($dc && $dv) {
@@ -31,7 +36,6 @@ class DevisResource extends JsonResource
                 $validiteJours = null;
             }
         }
-
         return [
             'id' => $this->id,
             'numero' => $this->numero,
