@@ -117,12 +117,12 @@ export default function DevisPage() {
                   />
                 </div>
               </div>
-              <Select value={statutFilter} onValueChange={setStatutFilter}>
+              <Select value={statutFilter || "all"} onValueChange={(val) => setStatutFilter(val === "all" ? "" : val)}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les statuts</SelectItem>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
                   <SelectItem value="brouillon">Brouillon</SelectItem>
                   <SelectItem value="envoye">Envoyé</SelectItem>
                   <SelectItem value="accepte">Accepté</SelectItem>
