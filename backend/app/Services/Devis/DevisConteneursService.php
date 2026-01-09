@@ -40,17 +40,25 @@ class DevisConteneursService
      */
     public function creerConteneurs(Devis $devis, array $conteneurs): void
     {
-        foreach ($conteneurs as $conteneurData) {
+        Log::info('Création conteneurs', ['count' => count($conteneurs)]);
+        
+        foreach ($conteneurs as $index => $conteneurData) {
             $operations = $conteneurData['operations'] ?? [];
             unset($conteneurData['operations']);
 
             // Normalisation des données
             $conteneurData = $this->normaliserConteneur($conteneurData);
 
+            Log::info("Conteneur #{$index}", [
+                'data' => $conteneurData,
+                'operations_count' => count($operations),
+            ]);
+
             $conteneur = $devis->conteneurs()->create($conteneurData);
 
-            foreach ($operations as $operation) {
+            foreach ($operations as $opIndex => $operation) {
                 $operation = $this->normaliserOperation($operation);
+                Log::info("Opération #{$opIndex}", ['data' => $operation]);
                 $conteneur->operations()->create($operation);
             }
         }
