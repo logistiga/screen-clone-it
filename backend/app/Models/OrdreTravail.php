@@ -44,7 +44,19 @@ class OrdreTravail extends Model
         'montant_paye' => 'decimal:2',
     ];
 
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $ordre) {
+            // Empêche les erreurs SQL si la colonne date_creation est NOT NULL sans défaut.
+            if (empty($ordre->date_creation)) {
+                $ordre->date_creation = now()->toDateString();
+            }
+        });
+    }
+
     // Relations
+
     public function client()
     {
         return $this->belongsTo(Client::class);
