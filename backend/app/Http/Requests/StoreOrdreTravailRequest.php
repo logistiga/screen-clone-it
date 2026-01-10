@@ -18,6 +18,8 @@ class StoreOrdreTravailRequest extends FormRequest
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'devis_id' => 'nullable|exists:devis,id',
             'type_document' => 'required|in:Conteneur,Lot,Independant',
+            'type_operation' => 'nullable|string|max:100',
+            'type_operation_indep' => 'nullable|string|max:100',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
             'date_arrivee' => 'nullable|date',

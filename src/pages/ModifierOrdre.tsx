@@ -143,11 +143,20 @@ export default function ModifierOrdrePage() {
     if (!ordreData || !ordreData.lignes) return undefined;
     
     // Déterminer le type d'opération depuis les données
-    const typeFromOrder = (ordreData as any).type_operation_indep || ordreData.type_operation || "";
-    console.log("Type operation from order:", typeFromOrder);
+    let typeFromOrder = (ordreData as any).type_operation_indep || ordreData.type_operation || "";
+    
+    // Si le type n'est pas défini au niveau de l'ordre, essayer de le récupérer depuis les lignes
+    if (!typeFromOrder && ordreData.lignes && ordreData.lignes.length > 0) {
+      const firstLigne = ordreData.lignes[0];
+      if (firstLigne.type_operation) {
+        typeFromOrder = firstLigne.type_operation;
+      }
+    }
+    
+    console.log("Type operation from order (with fallback):", typeFromOrder);
     
     return {
-      typeOperationIndep: typeFromOrder as any,
+      typeOperationIndep: typeFromOrder.toLowerCase() as any,
       prestations: ordreData.lignes.map((l: any) => ({
         id: String(l.id),
         description: l.description || "",
