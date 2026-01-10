@@ -187,6 +187,17 @@ export default function OrdresTravailPage() {
     );
   };
 
+  // Fonction pour déduire le type depuis les lignes de l'ordre
+  const getTypeFromLignes = (ordre: typeof ordresList[0]): string => {
+    if (ordre.lignes && ordre.lignes.length > 0) {
+      const firstLigne = ordre.lignes[0];
+      if (firstLigne.type_operation) {
+        return firstLigne.type_operation.toLowerCase();
+      }
+    }
+    return '';
+  };
+
   // Fonction améliorée pour obtenir le badge de type/catégorie
   // Affiche "Catégorie / Type" pour plus de clarté
   const getTypeBadge = (ordre: typeof ordresList[0]) => {
@@ -224,7 +235,14 @@ export default function OrdresTravailPage() {
 
     // 2. Opérations indépendantes → afficher "Indépendant / [type spécifique]"
     if (categorie === 'operations_independantes') {
-      const typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
+      // Essayer de récupérer le type depuis plusieurs sources
+      let typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
+      
+      // Si pas trouvé dans l'ordre, chercher dans les lignes
+      if (!typeIndep || !typeIndepConfigs[typeIndep]) {
+        typeIndep = getTypeFromLignes(ordre);
+      }
+      
       const config = typeIndepConfigs[typeIndep];
       if (config) {
         return (
@@ -234,9 +252,9 @@ export default function OrdresTravailPage() {
           </Badge>
         );
       }
-      // Fallback - afficher juste "Indépendant"
+      // Fallback - afficher juste "Indépendant" en orange
       return (
-        <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
+        <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
           <Truck className="h-3 w-3" />
           Indépendant
         </Badge>

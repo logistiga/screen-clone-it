@@ -134,6 +134,18 @@ export default function OrdreDetailPage() {
     return configs[statut] || { label: getStatutLabel(statut), className: "bg-muted text-muted-foreground", icon: null };
   };
 
+  // Fonction pour déduire le type depuis les lignes
+  const getTypeFromLignes = (ordre: any): string => {
+    if (ordre.lignes && ordre.lignes.length > 0) {
+      // Récupérer le type_operation de la première ligne
+      const firstLigne = ordre.lignes[0];
+      if (firstLigne.type_operation) {
+        return firstLigne.type_operation.toLowerCase();
+      }
+    }
+    return '';
+  };
+
   // Fonction améliorée pour obtenir le badge de type/catégorie
   // Affiche "Catégorie / Type" pour plus de clarté
   const getTypeBadge = (ordre: any) => {
@@ -170,7 +182,14 @@ export default function OrdreDetailPage() {
 
     // 2. Opérations indépendantes → afficher "Indépendant / [type spécifique]"
     if (categorie === 'operations_independantes') {
-      const typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
+      // Essayer de récupérer le type depuis plusieurs sources
+      let typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
+      
+      // Si pas trouvé, essayer de déduire depuis les lignes
+      if (!typeIndep || !typeIndepConfigs[typeIndep]) {
+        typeIndep = getTypeFromLignes(ordre);
+      }
+      
       const config = typeIndepConfigs[typeIndep];
       if (config) {
         return (
@@ -181,7 +200,7 @@ export default function OrdreDetailPage() {
         );
       }
       return (
-        <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 flex items-center gap-1.5 font-medium">
+        <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 flex items-center gap-1.5 font-medium">
           <Truck className="h-3.5 w-3.5" />
           Indépendant
         </Badge>
@@ -204,6 +223,25 @@ export default function OrdreDetailPage() {
         {ordre.type_document || categorie || 'N/A'}
       </Badge>
     );
+  };
+
+  // Fonction pour obtenir le type spécifique lisible
+  const getTypeSpecifique = (ordre: any): { label: string; icon: React.ReactNode } | null => {
+    const { categorie, type_operation, type_operation_indep } = ordre;
+    
+    if (categorie === 'operations_independantes') {
+      let typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || getTypeFromLignes(ordre);
+      const config = typeIndepConfigs[typeIndep];
+      return config ? { label: config.label, icon: config.icon } : null;
+    }
+    
+    if (categorie === 'conteneurs') {
+      const typeOp = type_operation?.toLowerCase() || '';
+      if (typeOp.includes('import')) return { label: 'Import', icon: <ArrowDownToLine className="h-4 w-4" /> };
+      if (typeOp.includes('export')) return { label: 'Export', icon: <ArrowUpFromLine className="h-4 w-4" /> };
+    }
+    
+    return null;
   };
 
   if (isLoading) {

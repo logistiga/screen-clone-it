@@ -17,6 +17,8 @@ class UpdateOrdreTravailRequest extends FormRequest
             'client_id' => 'sometimes|exists:clients,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
+            'type_operation' => 'nullable|string|max:100',
+            'type_operation_indep' => 'nullable|string|max:100',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
             'date_arrivee' => 'nullable|date',
