@@ -116,6 +116,7 @@ export default function NouvelOrdrePage() {
         taille: c.taille,
         description: c.description,
         armateur_id: conteneursData.armateurId || null,
+        prix_unitaire: c.prixUnitaire || 0, // <-- important pour le calcul HT
         operations: c.operations.map(op => ({
           type_operation: op.type,
           description: typesOperationConteneur[op.type]?.label || op.description,
