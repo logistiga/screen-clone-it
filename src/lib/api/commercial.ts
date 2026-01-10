@@ -463,7 +463,28 @@ export const paiementsApi = {
     return response.data;
   },
   
-  createGlobal: async (data: { client_id: string; montant: number; factures: { id: string; montant: number }[]; mode_paiement: string; reference?: string; banque_id?: string }) => {
+  // Paiement global pour factures uniquement
+  createGlobal: async (data: { 
+    client_id: string; 
+    montant: number; 
+    factures: { id: string; montant: number }[]; 
+    mode_paiement: string; 
+    reference?: string; 
+    banque_id?: string 
+  }) => {
+    const response = await api.post('/paiements/global', data);
+    return response.data;
+  },
+  
+  // Paiement global pour ordres de travail uniquement
+  createGlobalOrdres: async (data: { 
+    client_id: string; 
+    montant: number; 
+    ordres: { id: string; montant: number }[]; 
+    mode_paiement: string; 
+    reference?: string; 
+    banque_id?: string 
+  }) => {
     const response = await api.post('/paiements/global', data);
     return response.data;
   },

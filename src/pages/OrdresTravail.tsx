@@ -38,7 +38,7 @@ import {
   Warehouse, Calendar
 } from "lucide-react";
 import { PaiementModal } from "@/components/PaiementModal";
-import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
+import { PaiementGlobalOrdresModal } from "@/components/PaiementGlobalOrdresModal";
 import { ExportModal } from "@/components/ExportModal";
 import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture, useUpdateOrdre } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -739,8 +739,8 @@ export default function OrdresTravailPage() {
         />
       )}
 
-      {/* Modal Paiement Global */}
-      <PaiementGlobalModal
+      {/* Modal Paiement Global Ordres */}
+      <PaiementGlobalOrdresModal
         open={paiementGlobalOpen}
         onOpenChange={setPaiementGlobalOpen}
         onSuccess={() => refetch()}
