@@ -72,8 +72,26 @@ class OrdreTravailController extends Controller
 
     public function show(OrdreTravail $ordreTravail): JsonResponse
     {
-        $ordreTravail->load(['client', 'transitaire', 'devis', 'lignes', 'conteneurs.operations', 'conteneurs.armateur', 'lots', 'facture']);
-        return response()->json(new OrdreTravailResource($ordreTravail));
+        try {
+            $ordreTravail->load([
+                'client',
+                'transitaire',
+                'armateur',
+                'representant',
+                'devis',
+                'lignes',
+                'conteneurs.operations',
+                'lots',
+                'facture',
+            ]);
+
+            return response()->json(new OrdreTravailResource($ordreTravail));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => "Erreur lors du chargement de l'ordre",
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function update(UpdateOrdreTravailRequest $request, OrdreTravail $ordreTravail): JsonResponse

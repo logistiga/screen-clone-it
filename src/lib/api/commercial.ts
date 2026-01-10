@@ -440,8 +440,8 @@ export interface Banque {
 
 export const banquesApi = {
   getAll: async () => {
-    const response = await api.get<{ data: Banque[] }>('/banques');
-    return response.data.data;
+    const response = await api.get('/banques');
+    return unwrapResponse<Banque[]>(response);
   },
 };
 
