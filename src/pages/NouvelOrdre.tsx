@@ -157,6 +157,10 @@ export default function NouvelOrdrePage() {
     const data = {
       client_id: clientId,
       type_document: categorie === "conteneurs" ? "Conteneur" : categorie === "conventionnel" ? "Lot" : "Independant",
+      // Ajouter type_operation pour conteneurs (Import/Export)
+      type_operation: categorie === "conteneurs" && conteneursData ? conteneursData.typeOperation : null,
+      // Ajouter type_operation_indep pour opérations indépendantes
+      type_operation_indep: categorie === "operations_independantes" && independantData ? independantData.typeOperationIndep : null,
       bl_numero: numeroBL || null,
       navire: null,
       date_arrivee: null,

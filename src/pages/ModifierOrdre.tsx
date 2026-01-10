@@ -215,6 +215,8 @@ export default function ModifierOrdrePage() {
     if (categorie === "conteneurs" && conteneursData) {
       data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
       data.bl_numero = conteneursData.numeroBL || null;
+      // Ajouter type_operation (Import/Export)
+      data.type_operation = conteneursData.typeOperation || null;
       data.conteneurs = conteneursData.conteneurs.map(c => ({
         numero: c.numero,
         type: "DRY",
@@ -245,6 +247,8 @@ export default function ModifierOrdrePage() {
     }
 
     if (categorie === "operations_independantes" && independantData) {
+      // Ajouter type_operation_indep au niveau de l'ordre
+      data.type_operation_indep = independantData.typeOperationIndep || null;
       data.lignes = independantData.prestations.map(p => ({
         type_operation: independantData.typeOperationIndep || "manutention",
         description: p.description || "",

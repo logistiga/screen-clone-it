@@ -135,10 +135,11 @@ export default function OrdreDetailPage() {
   };
 
   // Fonction améliorée pour obtenir le badge de type/catégorie
+  // Affiche "Catégorie / Type" pour plus de clarté
   const getTypeBadge = (ordre: any) => {
     const { categorie, type_operation, type_operation_indep } = ordre;
 
-    // 1. Conteneurs → afficher Import/Export
+    // 1. Conteneurs → afficher "Conteneurs / Import" ou "Conteneurs / Export"
     if (categorie === 'conteneurs') {
       const typeOp = type_operation?.toLowerCase() || '';
       if (typeOp.includes('import') || typeOp === 'import') {
@@ -146,7 +147,7 @@ export default function OrdreDetailPage() {
         return (
           <Badge className={`${config.className} flex items-center gap-1.5 font-medium`}>
             {config.icon}
-            {config.label}
+            <span>Conteneurs / Import</span>
           </Badge>
         );
       }
@@ -155,7 +156,7 @@ export default function OrdreDetailPage() {
         return (
           <Badge className={`${config.className} flex items-center gap-1.5 font-medium`}>
             {config.icon}
-            {config.label}
+            <span>Conteneurs / Export</span>
           </Badge>
         );
       }
@@ -167,7 +168,7 @@ export default function OrdreDetailPage() {
       );
     }
 
-    // 2. Opérations indépendantes → afficher le type spécifique
+    // 2. Opérations indépendantes → afficher "Indépendant / [type spécifique]"
     if (categorie === 'operations_independantes') {
       const typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
       const config = typeIndepConfigs[typeIndep];
@@ -175,7 +176,7 @@ export default function OrdreDetailPage() {
         return (
           <Badge className={`${config.className} flex items-center gap-1.5 font-medium`}>
             {config.icon}
-            {config.label}
+            <span>Indépendant / {config.label}</span>
           </Badge>
         );
       }
