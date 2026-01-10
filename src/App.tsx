@@ -55,6 +55,8 @@ import VerificationDocumentPage from "./pages/VerificationDocument";
 import PartenairesPage from "./pages/Partenaires";
 import TransitaireDetailPage from "./pages/TransitaireDetail";
 import RepresentantDetailPage from "./pages/RepresentantDetail";
+import CategoriesDepensesPage from "./pages/CategoriesDepenses";
+import CategorieDepenseDetailPage from "./pages/CategorieDepenseDetail";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +117,8 @@ const App = () => (
               <Route path="/taxes" element={<ProtectedRoute><TaxesPage /></ProtectedRoute>} />
               <Route path="/banques" element={<ProtectedRoute><BanquesPage /></ProtectedRoute>} />
               <Route path="/numerotation" element={<ProtectedRoute><NumerotationPage /></ProtectedRoute>} />
+              <Route path="/categories-depenses" element={<ProtectedRoute><CategoriesDepensesPage /></ProtectedRoute>} />
+              <Route path="/categories-depenses/:id" element={<ProtectedRoute><CategorieDepenseDetailPage /></ProtectedRoute>} />
               <Route path="/verification" element={<ProtectedRoute><VerificationDocumentPage /></ProtectedRoute>} />
               <Route path="/partenaires" element={<ProtectedRoute><PartenairesPage /></ProtectedRoute>} />
               <Route path="/partenaires/transitaires/:id" element={<ProtectedRoute><TransitaireDetailPage /></ProtectedRoute>} />
