@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,76 +21,112 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ArrowUpCircle, ArrowDownCircle, Building2, CreditCard, Receipt } from "lucide-react";
-import { SortieCaisseModal } from "@/components/SortieCaisseModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { 
+  Search, 
+  ArrowUpCircle, 
+  ArrowDownCircle, 
+  Building2, 
+  CreditCard, 
+  Receipt,
+  Loader2,
+  CalendarIcon,
+  Eye
+} from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
-
-interface Banque {
-  id: string;
-  nom: string;
-  numeroCompte: string;
-  iban?: string;
-  swift?: string;
-  solde: number;
-  actif: boolean;
-}
-
-interface MouvementBanque {
-  id: string;
-  type: 'entree' | 'sortie';
-  montant: number;
-  date: string;
-  description: string;
-  modePaiement: 'virement' | 'cheque';
-  reference: string;
-  banqueId: string;
-  banqueNom: string;
-  documentNumero: string;
-  clientNom: string;
-}
+import { useBanques, usePaiements } from "@/hooks/use-commercial";
+import { TablePagination } from "@/components/TablePagination";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export default function BanquePage() {
-  // Données en mémoire uniquement
-  const [banques] = useState<Banque[]>([]);
-  const [mouvements] = useState<MouvementBanque[]>([]);
+  const navigate = useNavigate();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [banqueFilter, setBanqueFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [dateDebut, setDateDebut] = useState<Date | undefined>();
+  const [dateFin, setDateFin] = useState<Date | undefined>();
   const [activeTab, setActiveTab] = useState("mouvements");
-  const [sortieModalOpen, setSortieModalOpen] = useState(false);
-  const [selectedBanqueId, setSelectedBanqueId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
-  // Stats
-  const totalBanques = banques.reduce((sum, b) => sum + b.solde, 0);
-  const entrees = mouvements.filter(m => m.type === 'entree');
-  const sorties = mouvements.filter(m => m.type === 'sortie');
-  const totalEntrees = entrees.reduce((sum, m) => sum + m.montant, 0);
-  const totalSorties = sorties.reduce((sum, m) => sum + m.montant, 0);
-  const totalVirements = mouvements.filter(m => m.modePaiement === 'virement' && m.type === 'entree').reduce((sum, m) => sum + m.montant, 0);
-  const totalCheques = mouvements.filter(m => m.modePaiement === 'cheque' && m.type === 'entree').reduce((sum, m) => sum + m.montant, 0);
+  // Charger les banques
+  const { data: banques = [], isLoading: banquesLoading } = useBanques({ actif: true });
 
-  // Filtrage
-  const filteredMouvements = mouvements.filter(m => {
-    const matchSearch = m.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.reference.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchBanque = banqueFilter === "all" || m.banqueId === banqueFilter;
-    const matchType = typeFilter === "all" || m.type === typeFilter;
-    return matchSearch && matchBanque && matchType;
+  // Charger les paiements bancaires (virement et chèque seulement)
+  const { data: paiementsData, isLoading: paiementsLoading } = usePaiements({
+    search: searchTerm || undefined,
+    mode_paiement: 'Virement',
+    date_debut: dateDebut ? format(dateDebut, 'yyyy-MM-dd') : undefined,
+    date_fin: dateFin ? format(dateFin, 'yyyy-MM-dd') : undefined,
+    page: currentPage,
+    per_page: pageSize,
   });
 
-  const openSortieModal = (banqueId?: string) => { setSelectedBanqueId(banqueId || ""); setSortieModalOpen(true); };
+  // Charger aussi les chèques
+  const { data: chequesData } = usePaiements({
+    mode_paiement: 'Chèque',
+    date_debut: dateDebut ? format(dateDebut, 'yyyy-MM-dd') : undefined,
+    date_fin: dateFin ? format(dateFin, 'yyyy-MM-dd') : undefined,
+    per_page: 1000,
+  });
 
-  // État vide
-  if (banques.length === 0 && mouvements.length === 0) {
+  const isLoading = banquesLoading || paiementsLoading;
+  
+  const paiementsList = paiementsData?.data || [];
+  const chequesList = chequesData?.data || [];
+  const totalPages = paiementsData?.meta?.last_page || 1;
+  const totalItems = paiementsData?.meta?.total || 0;
+
+  // Combiner virements et chèques pour les stats
+  const allBankPayments = [...paiementsList, ...chequesList];
+
+  // Stats
+  const totalBanques = banques.reduce((sum, b) => sum + (b.solde || 0), 0);
+  const totalVirements = paiementsList.reduce((sum, p) => sum + (p.montant || 0), 0);
+  const totalCheques = chequesList.reduce((sum, p) => sum + (p.montant || 0), 0);
+  const totalEncaissements = totalVirements + totalCheques;
+
+  // Filtrer les paiements par banque si nécessaire
+  const filteredPaiements = banqueFilter === "all" 
+    ? paiementsList 
+    : paiementsList.filter(p => p.banque_id === banqueFilter);
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setBanqueFilter("all");
+    setDateDebut(undefined);
+    setDateFin(undefined);
+    setCurrentPage(1);
+  };
+
+  if (isLoading) {
     return (
       <MainLayout title="Banque">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // État vide
+  if (banques.length === 0 && paiementsList.length === 0) {
+    return (
+      <MainLayout title="Banque">
+        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
           <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-2xl font-semibold mb-2">Aucun mouvement bancaire</h2>
           <p className="text-muted-foreground mb-6 max-w-md">
-            Les virements et chèques reçus apparaîtront ici. Configurez d'abord vos comptes bancaires.
+            Les paiements par virement et chèque apparaîtront ici. 
+            Configurez d'abord vos comptes bancaires dans Paramétrage → Banques.
           </p>
+          <Button onClick={() => navigate('/banques')}>
+            <Building2 className="h-4 w-4 mr-2" />
+            Configurer les banques
+          </Button>
         </div>
       </MainLayout>
     );
@@ -97,35 +134,49 @@ export default function BanquePage() {
 
   return (
     <MainLayout title="Banque">
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card className="border-l-4 border-l-primary">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-l-4 border-l-primary transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4" />Solde Total
+                <Building2 className="h-4 w-4" />
+                Solde Total Banques
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatMontant(totalBanques)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{banques.filter(b => b.actif).length} comptes</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {banques.length} compte{banques.length > 1 ? 's' : ''} actif{banques.length > 1 ? 's' : ''}
+              </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><ArrowDownCircle className="h-4 w-4 text-green-600" />Total Entrées</CardTitle></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-green-600">{formatMontant(totalEntrees)}</div></CardContent>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <ArrowDownCircle className="h-4 w-4 text-green-600" />
+                Total Encaissements
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{formatMontant(totalEncaissements)}</div>
+            </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><ArrowUpCircle className="h-4 w-4 text-destructive" />Total Sorties</CardTitle></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-destructive">{formatMontant(totalSorties)}</div></CardContent>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Virements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">{formatMontant(totalVirements)}</div>
+            </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Virements</CardTitle></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-purple-600">{formatMontant(totalVirements)}</div></CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Chèques</CardTitle></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-blue-600">{formatMontant(totalCheques)}</div></CardContent>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Chèques</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{formatMontant(totalCheques)}</div>
+            </CardContent>
           </Card>
         </div>
 
@@ -136,114 +187,286 @@ export default function BanquePage() {
           </TabsList>
 
           <TabsContent value="mouvements" className="space-y-4 mt-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative w-full sm:w-72">
+            {/* Filters */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
                 <Select value={banqueFilter} onValueChange={setBanqueFilter}>
-                  <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Toutes les banques" /></SelectTrigger>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Toutes les banques" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les banques</SelectItem>
-                    {banques.filter(b => b.actif).map((banque) => (<SelectItem key={banque.id} value={banque.id}>{banque.nom}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    <SelectItem value="entree">Entrées</SelectItem>
-                    <SelectItem value="sortie">Sorties</SelectItem>
+                    {banques.map((banque) => (
+                      <SelectItem key={banque.id} value={banque.id}>
+                        {banque.nom}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10" onClick={() => openSortieModal()}>
-                <ArrowUpCircle className="h-4 w-4" />Nouvelle sortie
-              </Button>
+              
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "w-full sm:w-48 justify-start text-left font-normal",
+                        !dateDebut && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateDebut ? format(dateDebut, "dd/MM/yyyy", { locale: fr }) : "Date début"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar 
+                      mode="single" 
+                      selected={dateDebut} 
+                      onSelect={setDateDebut}
+                      initialFocus 
+                      locale={fr}
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "w-full sm:w-48 justify-start text-left font-normal",
+                        !dateFin && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFin ? format(dateFin, "dd/MM/yyyy", { locale: fr }) : "Date fin"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar 
+                      mode="single" 
+                      selected={dateFin} 
+                      onSelect={setDateFin}
+                      initialFocus 
+                      locale={fr}
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                {(searchTerm || banqueFilter !== "all" || dateDebut || dateFin) && (
+                  <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
+                    Réinitialiser les filtres
+                  </Button>
+                )}
+              </div>
             </div>
 
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" />Mouvements bancaires</CardTitle></CardHeader>
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  Encaissements bancaires
+                </CardTitle>
+              </CardHeader>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead>Date</TableHead><TableHead>Banque</TableHead><TableHead>Type</TableHead><TableHead>Mode</TableHead>
-                      <TableHead>Description</TableHead><TableHead>Référence</TableHead><TableHead className="text-right">Montant</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Document</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Banque</TableHead>
+                      <TableHead>Référence</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
+                      <TableHead className="w-16">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMouvements.map((mouvement) => (
-                      <TableRow key={mouvement.id}>
-                        <TableCell>{formatDate(mouvement.date)}</TableCell>
-                        <TableCell><Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" />{mouvement.banqueNom}</Badge></TableCell>
+                    {filteredPaiements.map((paiement, index) => (
+                      <TableRow 
+                        key={paiement.id}
+                        className="transition-all duration-200 animate-fade-in hover:bg-muted/50"
+                        style={{ animationDelay: `${index * 30}ms` }}
+                      >
+                        <TableCell>{formatDate(paiement.date)}</TableCell>
                         <TableCell>
-                          {mouvement.type === 'entree' ? (
-                            <Badge className="bg-green-100 text-green-800 gap-1"><ArrowDownCircle className="h-3 w-3" />Entrée</Badge>
-                          ) : (<Badge className="bg-red-100 text-red-800 gap-1"><ArrowUpCircle className="h-3 w-3" />Sortie</Badge>)}
+                          {paiement.client?.nom || 
+                            paiement.facture?.client?.nom || 
+                            paiement.ordre?.client?.nom || 
+                            '-'}
                         </TableCell>
                         <TableCell>
-                          {mouvement.modePaiement === 'virement' ? (
-                            <Badge variant="secondary" className="gap-1"><Building2 className="h-3 w-3" />Virement</Badge>
-                          ) : (<Badge variant="secondary" className="gap-1"><CreditCard className="h-3 w-3" />Chèque</Badge>)}
+                          {paiement.document_numero ? (
+                            <span 
+                              className="text-primary hover:underline cursor-pointer font-medium"
+                              onClick={() => {
+                                if (paiement.document_type === 'facture' && paiement.facture_id) {
+                                  navigate(`/factures/${paiement.facture_id}`);
+                                } else if (paiement.ordre_id) {
+                                  navigate(`/ordres/${paiement.ordre_id}`);
+                                }
+                              }}
+                            >
+                              {paiement.document_numero}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
-                        <TableCell>{mouvement.description}</TableCell>
-                        <TableCell>{mouvement.reference ? <code className="text-xs bg-muted px-2 py-1 rounded">{mouvement.reference}</code> : <span className="text-muted-foreground">-</span>}</TableCell>
-                        <TableCell className={`text-right font-medium ${mouvement.type === 'entree' ? 'text-green-600' : 'text-destructive'}`}>
-                          {mouvement.type === 'entree' ? '+' : '-'}{formatMontant(mouvement.montant)}
+                        <TableCell>
+                          {paiement.mode_paiement === 'Virement' ? (
+                            <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200">
+                              <Building2 className="h-3 w-3" />
+                              Virement
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                              <CreditCard className="h-3 w-3" />
+                              Chèque
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {paiement.banque?.nom ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {paiement.banque.nom}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {paiement.reference || paiement.numero_cheque ? (
+                            <code className="text-xs bg-muted px-2 py-1 rounded">
+                              {paiement.reference || paiement.numero_cheque}
+                            </code>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
+                          +{formatMontant(paiement.montant)}
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              if (paiement.document_type === 'facture' && paiement.facture_id) {
+                                navigate(`/factures/${paiement.facture_id}`);
+                              } else if (paiement.ordre_id) {
+                                navigate(`/ordres/${paiement.ordre_id}`);
+                              }
+                            }}
+                            className="transition-all duration-200 hover:scale-110 hover:bg-primary/10"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filteredMouvements.length === 0 && (<TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucun mouvement bancaire</TableCell></TableRow>)}
+                    {filteredPaiements.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                          Aucun encaissement bancaire trouvé
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="comptes" className="mt-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {banques.filter(b => b.actif).map((banque) => {
-                const mouvementsBanque = mouvements.filter(m => m.banqueId === banque.id);
-                const entreesBanqueCompte = mouvementsBanque.filter(m => m.type === 'entree');
-                const sortiesBanqueCompte = mouvementsBanque.filter(m => m.type === 'sortie');
-                return (
-                  <Card key={banque.id} className="overflow-hidden">
-                    <CardHeader className="bg-muted/30 pb-3">
-                      <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" />{banque.nom}</div>
-                        <Badge variant="default">Actif</Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="space-y-4">
-                        <div><p className="text-sm text-muted-foreground">Solde actuel</p><p className="text-3xl font-bold text-primary">{formatMontant(banque.solde)}</p></div>
-                        <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                          <div><p className="text-xs text-muted-foreground">Entrées</p><p className="text-sm font-semibold text-green-600">+{formatMontant(entreesBanqueCompte.reduce((s, m) => s + m.montant, 0))}</p></div>
-                          <div><p className="text-xs text-muted-foreground">Sorties</p><p className="text-sm font-semibold text-destructive">-{formatMontant(sortiesBanqueCompte.reduce((s, m) => s + m.montant, 0))}</p></div>
-                        </div>
-                        <div className="pt-2 border-t space-y-1 text-xs text-muted-foreground">
-                          <p><strong>N° Compte:</strong> {banque.numeroCompte}</p>
-                          {banque.iban && <p><strong>IBAN:</strong> {banque.iban}</p>}
-                        </div>
-                        <Button variant="outline" size="sm" className="w-full gap-2 text-destructive" onClick={() => openSortieModal(banque.id)}>
-                          <ArrowUpCircle className="h-4 w-4" />Nouvelle sortie
-                        </Button>
+              {banques.map((banque, index) => (
+                <Card 
+                  key={banque.id} 
+                  className="overflow-hidden transition-all duration-300 hover:shadow-lg animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <CardHeader className="bg-muted/30 pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-primary" />
+                        {banque.nom}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-              {banques.filter(b => b.actif).length === 0 && (
-                <div className="col-span-full text-center py-8 text-muted-foreground">Aucun compte bancaire actif</div>
+                      <Badge variant="default" className="bg-green-600">Actif</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Solde actuel</p>
+                        <p className="text-3xl font-bold text-primary">
+                          {formatMontant(banque.solde || 0)}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Paiements reçus</p>
+                          <p className="text-sm font-semibold text-green-600">
+                            {banque.paiements_count || 0}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Total encaissé</p>
+                          <p className="text-sm font-semibold text-primary">
+                            {formatMontant(banque.paiements_sum_montant || 0)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t space-y-1 text-xs text-muted-foreground">
+                        {banque.numero_compte && (
+                          <p><strong>N° Compte:</strong> {banque.numero_compte}</p>
+                        )}
+                        {banque.iban && <p><strong>IBAN:</strong> {banque.iban}</p>}
+                        {banque.swift && <p><strong>SWIFT:</strong> {banque.swift}</p>}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {banques.length === 0 && (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  Aucun compte bancaire actif.{" "}
+                  <span 
+                    className="text-primary hover:underline cursor-pointer"
+                    onClick={() => navigate('/banques')}
+                  >
+                    Configurer les banques
+                  </span>
+                </div>
               )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
-
-      <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="banque" banqueId={selectedBanqueId} />
     </MainLayout>
   );
 }

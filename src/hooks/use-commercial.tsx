@@ -467,10 +467,60 @@ export function useDeleteRepresentant() {
 }
 
 // Banques hooks
-export function useBanques() {
+export function useBanques(params?: { actif?: boolean; search?: string }) {
+  return useQuery<Banque[]>({
+    queryKey: ['banques', params],
+    queryFn: () => banquesApi.getAll(params),
+  });
+}
+
+export function useBanqueById(id: string) {
   return useQuery({
-    queryKey: ['banques'],
-    queryFn: banquesApi.getAll,
+    queryKey: ['banques', id],
+    queryFn: () => banquesApi.getById(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateBanque() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: banquesApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      toast.success('Banque créée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la création de la banque');
+    },
+  });
+}
+
+export function useUpdateBanque() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Banque> }) => banquesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      toast.success('Banque modifiée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification de la banque');
+    },
+  });
+}
+
+export function useDeleteBanque() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: banquesApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      toast.success('Banque supprimée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression de la banque');
+    },
   });
 }
 

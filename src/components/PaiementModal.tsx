@@ -89,7 +89,7 @@ export function PaiementModal({
     });
   };
 
-  const activeBanques = banques.filter(b => b.actif);
+  const activeBanques = (banques || []).filter(b => b.actif);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
