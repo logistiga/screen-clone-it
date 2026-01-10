@@ -19,13 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Wallet, Banknote, CreditCard, Building2, Receipt, FileText } from "lucide-react";
+import { Wallet, Banknote, CreditCard, Building2, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useClients, useBanques, useFactures } from "@/hooks/use-commercial";
+import { useClients, useBanques, useOrdres } from "@/hooks/use-commercial";
 import { paiementsApi } from "@/lib/api/commercial";
 import { formatMontant } from "@/data/mockData";
 
-interface PaiementGlobalModalProps {
+interface PaiementGlobalOrdresModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -33,27 +33,26 @@ interface PaiementGlobalModalProps {
 
 type MethodePaiement = "Espèces" | "Chèque" | "Virement";
 
-interface FactureSelectionne {
+interface OrdreSelectionne {
   id: string;
   numero: string;
-  numeroOrdre?: string;
   clientId: string;
   montantRestant: number;
 }
 
-export function PaiementGlobalModal({
+export function PaiementGlobalOrdresModal({
   open,
   onOpenChange,
   onSuccess,
-}: PaiementGlobalModalProps) {
+}: PaiementGlobalOrdresModalProps) {
   const { toast } = useToast();
   const { data: clientsData } = useClients();
   const { data: banquesData } = useBanques();
-  const { data: facturesData, refetch: refetchFactures } = useFactures({ per_page: 500 });
+  const { data: ordresData, refetch: refetchOrdres } = useOrdres({ per_page: 500 });
   
   const clients = clientsData?.data || [];
   const banques = banquesData || [];
-  const factures = facturesData?.data || [];
+  const ordres = ordresData?.data || [];
   
   const [clientId, setClientId] = useState<string>("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
@@ -77,31 +76,30 @@ export function PaiementGlobalModal({
     }
   }, [open]);
 
-  // Récupérer les factures non soldées pour le client sélectionné
-  const facturesClient = useMemo((): FactureSelectionne[] => {
+  // Récupérer les ordres non soldés pour le client sélectionné (exclure les facturés)
+  const ordresClient = useMemo((): OrdreSelectionne[] => {
     if (!clientId) return [];
 
-    return factures
-      .filter((f: any) => 
-        f.client_id?.toString() === clientId && 
-        f.statut !== "annulee" && 
-        f.statut !== "payee" &&
-        (f.montant_ttc - (f.montant_paye || 0)) > 0
+    return ordres
+      .filter((o: any) => 
+        o.client_id?.toString() === clientId && 
+        o.statut !== "annule" && 
+        o.statut !== "facture" &&  // Exclure les ordres déjà facturés
+        (o.montant_ttc - (o.montant_paye || 0)) > 0
       )
-      .map((f: any) => ({
-        id: f.id.toString(),
-        numero: f.numero,
-        numeroOrdre: f.ordre_travail?.numero || f.ordre?.numero,
-        clientId: f.client_id?.toString(),
-        montantRestant: f.montant_ttc - (f.montant_paye || 0),
+      .map((o: any) => ({
+        id: o.id.toString(),
+        numero: o.numero,
+        clientId: o.client_id?.toString(),
+        montantRestant: o.montant_ttc - (o.montant_paye || 0),
       }));
-  }, [clientId, factures]);
+  }, [clientId, ordres]);
 
   const totalSelectionne = useMemo(() => {
-    return facturesClient
-      .filter((f) => selectedDocs.includes(f.id))
-      .reduce((sum, f) => sum + f.montantRestant, 0);
-  }, [facturesClient, selectedDocs]);
+    return ordresClient
+      .filter((o) => selectedDocs.includes(o.id))
+      .reduce((sum, o) => sum + o.montantRestant, 0);
+  }, [ordresClient, selectedDocs]);
 
   const toggleDocument = (docId: string) => {
     setSelectedDocs((prev) =>
@@ -110,15 +108,15 @@ export function PaiementGlobalModal({
   };
 
   const selectAll = () => {
-    setSelectedDocs(facturesClient.map((f) => f.id));
-    setMontant(facturesClient.reduce((sum, f) => sum + f.montantRestant, 0));
+    setSelectedDocs(ordresClient.map((o) => o.id));
+    setMontant(ordresClient.reduce((sum, o) => sum + o.montantRestant, 0));
   };
 
   const handleSubmit = async () => {
     if (selectedDocs.length === 0) {
       toast({
         title: "Erreur",
-        description: "Veuillez sélectionner au moins une facture.",
+        description: "Veuillez sélectionner au moins un ordre de travail.",
         variant: "destructive",
       });
       return;
@@ -154,25 +152,25 @@ export function PaiementGlobalModal({
     setIsSaving(true);
 
     try {
-      // Répartir le montant entre les factures sélectionnées
-      const selectedFactures = facturesClient.filter((f) => selectedDocs.includes(f.id));
+      // Répartir le montant entre les ordres sélectionnés
+      const selectedOrdres = ordresClient.filter((o) => selectedDocs.includes(o.id));
       let montantRestant = montant;
-      const facturesRepartition: { id: string; montant: number }[] = [];
+      const ordresRepartition: { id: string; montant: number }[] = [];
 
-      for (const facture of selectedFactures) {
+      for (const ordre of selectedOrdres) {
         if (montantRestant <= 0) break;
-        const montantPourCeDoc = Math.min(montantRestant, facture.montantRestant);
-        facturesRepartition.push({
-          id: facture.id,
+        const montantPourCeDoc = Math.min(montantRestant, ordre.montantRestant);
+        ordresRepartition.push({
+          id: ordre.id,
           montant: montantPourCeDoc,
         });
         montantRestant -= montantPourCeDoc;
       }
 
-      await paiementsApi.createGlobal({
+      await paiementsApi.createGlobalOrdres({
         client_id: clientId,
         montant,
-        factures: facturesRepartition,
+        ordres: ordresRepartition,
         mode_paiement: methode,
         reference: methode === "Chèque" ? numeroCheque : reference || undefined,
         banque_id: banqueId || undefined,
@@ -182,10 +180,10 @@ export function PaiementGlobalModal({
 
       toast({
         title: "Paiement global enregistré",
-        description: `Paiement de ${formatMontant(montant)} enregistré pour ${client?.nom} (${facturesRepartition.length} facture(s)).`,
+        description: `Paiement de ${formatMontant(montant)} enregistré pour ${client?.nom} (${ordresRepartition.length} ordre(s)).`,
       });
 
-      refetchFactures();
+      refetchOrdres();
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -204,11 +202,11 @@ export function PaiementGlobalModal({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-primary" />
-            Paiement global - Factures
+            <ClipboardList className="h-5 w-5 text-primary" />
+            Paiement global - Ordres de travail
           </DialogTitle>
           <DialogDescription>
-            Enregistrer un paiement pour plusieurs factures d'un même client
+            Enregistrer un paiement pour plusieurs ordres de travail d'un même client
           </DialogDescription>
         </DialogHeader>
 
@@ -236,45 +234,39 @@ export function PaiementGlobalModal({
             </Select>
           </div>
 
-          {/* Liste des factures */}
+          {/* Liste des ordres */}
           {clientId && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Factures à payer</Label>
-                {facturesClient.length > 0 && (
+                <Label>Ordres de travail à payer</Label>
+                {ordresClient.length > 0 && (
                   <Button variant="link" size="sm" onClick={selectAll} className="p-0 h-auto">
                     Tout sélectionner
                   </Button>
                 )}
               </div>
 
-              {facturesClient.length === 0 ? (
+              {ordresClient.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  Aucune facture en attente de paiement pour ce client.
+                  Aucun ordre de travail en attente de paiement pour ce client.
                 </p>
               ) : (
                 <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
-                  {facturesClient.map((facture) => (
+                  {ordresClient.map((ordre) => (
                     <div
-                      key={facture.id}
+                      key={ordre.id}
                       className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
-                      onClick={() => toggleDocument(facture.id)}
+                      onClick={() => toggleDocument(ordre.id)}
                     >
                       <Checkbox
-                        checked={selectedDocs.includes(facture.id)}
-                        onCheckedChange={() => toggleDocument(facture.id)}
+                        checked={selectedDocs.includes(ordre.id)}
+                        onCheckedChange={() => toggleDocument(ordre.id)}
                       />
                       <div className="flex-1">
-                        <span className="font-medium">{facture.numero}</span>
-                        {facture.numeroOrdre && (
-                          <span className="text-xs text-muted-foreground ml-2 flex items-center gap-1 inline-flex">
-                            <FileText className="h-3 w-3" />
-                            OT: {facture.numeroOrdre}
-                          </span>
-                        )}
+                        <span className="font-medium">{ordre.numero}</span>
                       </div>
                       <span className="font-semibold text-primary">
-                        {formatMontant(facture.montantRestant)}
+                        {formatMontant(ordre.montantRestant)}
                       </span>
                     </div>
                   ))}
@@ -284,7 +276,7 @@ export function PaiementGlobalModal({
               {selectedDocs.length > 0 && (
                 <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm">
-                    {selectedDocs.length} facture(s) sélectionnée(s)
+                    {selectedDocs.length} ordre(s) sélectionné(s)
                   </span>
                   <span className="font-bold text-primary">
                     Total: {formatMontant(totalSelectionne)}
@@ -326,8 +318,8 @@ export function PaiementGlobalModal({
                       className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer ${methode === "Espèces" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
                       onClick={() => setMethode("Espèces")}
                     >
-                      <RadioGroupItem value="Espèces" id="g-especes" />
-                      <Label htmlFor="g-especes" className="flex items-center gap-1 cursor-pointer text-sm">
+                      <RadioGroupItem value="Espèces" id="o-especes" />
+                      <Label htmlFor="o-especes" className="flex items-center gap-1 cursor-pointer text-sm">
                         <Banknote className="h-4 w-4 text-green-600" />
                         Espèces
                       </Label>
@@ -336,8 +328,8 @@ export function PaiementGlobalModal({
                       className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer ${methode === "Chèque" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
                       onClick={() => setMethode("Chèque")}
                     >
-                      <RadioGroupItem value="Chèque" id="g-cheque" />
-                      <Label htmlFor="g-cheque" className="flex items-center gap-1 cursor-pointer text-sm">
+                      <RadioGroupItem value="Chèque" id="o-cheque" />
+                      <Label htmlFor="o-cheque" className="flex items-center gap-1 cursor-pointer text-sm">
                         <CreditCard className="h-4 w-4 text-blue-600" />
                         Chèque
                       </Label>
@@ -346,8 +338,8 @@ export function PaiementGlobalModal({
                       className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer ${methode === "Virement" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
                       onClick={() => setMethode("Virement")}
                     >
-                      <RadioGroupItem value="Virement" id="g-virement" />
-                      <Label htmlFor="g-virement" className="flex items-center gap-1 cursor-pointer text-sm">
+                      <RadioGroupItem value="Virement" id="o-virement" />
+                      <Label htmlFor="o-virement" className="flex items-center gap-1 cursor-pointer text-sm">
                         <Building2 className="h-4 w-4 text-purple-600" />
                         Virement
                       </Label>
@@ -377,9 +369,9 @@ export function PaiementGlobalModal({
 
                   {methode === "Chèque" && (
                     <div className="space-y-2">
-                      <Label htmlFor="g-numeroCheque">N° Chèque</Label>
+                      <Label htmlFor="o-numeroCheque">N° Chèque</Label>
                       <Input
-                        id="g-numeroCheque"
+                        id="o-numeroCheque"
                         placeholder="CHQ-123456"
                         value={numeroCheque}
                         onChange={(e) => setNumeroCheque(e.target.value)}
@@ -390,9 +382,9 @@ export function PaiementGlobalModal({
 
                   {methode === "Virement" && (
                     <div className="space-y-2">
-                      <Label htmlFor="g-reference">Référence</Label>
+                      <Label htmlFor="o-reference">Référence</Label>
                       <Input
-                        id="g-reference"
+                        id="o-reference"
                         placeholder="VIR-2026-001"
                         value={reference}
                         onChange={(e) => setReference(e.target.value)}

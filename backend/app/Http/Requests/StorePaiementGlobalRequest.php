@@ -19,9 +19,14 @@ class StorePaiementGlobalRequest extends FormRequest
             'mode_paiement' => 'required|in:Espèces,Chèque,Virement,Mobile Money',
             'reference' => 'nullable|string|max:100',
             'banque_id' => 'nullable|exists:banques,id',
-            'factures' => 'required|array|min:1',
-            'factures.*.id' => 'required|exists:factures,id',
-            'factures.*.montant' => 'required|numeric|min:0',
+            // Factures (optionnel si ordres présent)
+            'factures' => 'nullable|array',
+            'factures.*.id' => 'required_with:factures|exists:factures,id',
+            'factures.*.montant' => 'required_with:factures|numeric|min:0',
+            // Ordres (optionnel si factures présent)
+            'ordres' => 'nullable|array',
+            'ordres.*.id' => 'required_with:ordres|exists:ordres_travail,id',
+            'ordres.*.montant' => 'required_with:ordres|numeric|min:0',
         ];
     }
 
@@ -34,20 +39,30 @@ class StorePaiementGlobalRequest extends FormRequest
             'montant.min' => 'Le montant doit être supérieur à 0.',
             'mode_paiement.required' => 'Le mode de paiement est obligatoire.',
             'mode_paiement.in' => 'Le mode de paiement sélectionné n\'est pas valide.',
-            'factures.required' => 'Au moins une facture doit être sélectionnée.',
-            'factures.min' => 'Au moins une facture doit être sélectionnée.',
-            'factures.*.id.required' => 'L\'identifiant de la facture est obligatoire.',
             'factures.*.id.exists' => 'Une des factures sélectionnées n\'existe pas.',
-            'factures.*.montant.required' => 'Le montant pour chaque facture est obligatoire.',
+            'factures.*.montant.required_with' => 'Le montant pour chaque facture est obligatoire.',
+            'ordres.*.id.exists' => 'Un des ordres de travail sélectionnés n\'existe pas.',
+            'ordres.*.montant.required_with' => 'Le montant pour chaque ordre est obligatoire.',
         ];
     }
 
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $totalRepartition = collect($this->factures)->sum('montant');
+            $hasFactures = !empty($this->factures);
+            $hasOrdres = !empty($this->ordres);
+            
+            if (!$hasFactures && !$hasOrdres) {
+                $validator->errors()->add('factures', 'Au moins une facture ou un ordre de travail doit être sélectionné.');
+                return;
+            }
+            
+            $totalFactures = collect($this->factures ?? [])->sum('montant');
+            $totalOrdres = collect($this->ordres ?? [])->sum('montant');
+            $totalRepartition = $totalFactures + $totalOrdres;
+            
             if (abs($totalRepartition - $this->montant) > 0.01) {
-                $validator->errors()->add('factures', 'La somme des montants répartis doit correspondre au montant total.');
+                $validator->errors()->add('montant', 'La somme des montants répartis doit correspondre au montant total.');
             }
         });
     }
