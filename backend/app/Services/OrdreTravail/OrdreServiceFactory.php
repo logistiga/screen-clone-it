@@ -63,13 +63,17 @@ class OrdreServiceFactory
         unset($data['bl_numero'], $data['type_document']);
 
         // Date par défaut (API peut envoyer "date" ou "date_creation")
-        if (isset($data['date_creation'])) {
+        $dateCreation = $data['date_creation'] ?? null;
+        $date = $data['date'] ?? null;
+
+        if (!empty($dateCreation)) {
             // OK
-        } elseif (isset($data['date'])) {
-            $data['date_creation'] = $data['date'];
+        } elseif (!empty($date)) {
+            $data['date_creation'] = $date;
         } else {
             $data['date_creation'] = now()->toDateString();
         }
+
         unset($data['date']);
 
         return $data;
