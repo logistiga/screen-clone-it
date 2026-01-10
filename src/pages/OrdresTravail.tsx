@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,13 +31,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, Download, CreditCard, ClipboardList, Loader2, Container, Package, Truck } from "lucide-react";
+import { 
+  Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, 
+  Download, CreditCard, ClipboardList, Loader2, Container, Package, 
+  Truck, Ship, ArrowUpFromLine, ArrowDownToLine, Clock, RotateCcw, 
+  Warehouse, Calendar
+} from "lucide-react";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
 import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture, useUpdateOrdre } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
+
+// Types pour les badges
+interface TypeConfig {
+  label: string;
+  icon: React.ReactNode;
+  className: string;
+}
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
@@ -89,73 +102,160 @@ export default function OrdresTravailPage() {
   const totalPages = ordresData?.meta?.last_page || 1;
   const totalItems = ordresData?.meta?.total || 0;
 
-  // Statistiques
-  const totalOrdres = ordresList.reduce((sum, o) => sum + (o.montant_ttc || 0), 0);
-  const totalPaye = ordresList.reduce((sum, o) => sum + (o.montant_paye || 0), 0);
-  const ordresEnCours = ordresList.filter(o => o.statut === 'en_cours').length;
+  // Statistiques calculées avec useMemo pour optimisation
+  const stats = useMemo(() => ({
+    totalOrdres: ordresList.reduce((sum, o) => sum + (o.montant_ttc || 0), 0),
+    totalPaye: ordresList.reduce((sum, o) => sum + (o.montant_paye || 0), 0),
+    ordresEnCours: ordresList.filter(o => o.statut === 'en_cours').length
+  }), [ordresList]);
+
+  // Configuration des types d'opérations indépendantes
+  const typeIndepConfigs: Record<string, TypeConfig> = useMemo(() => ({
+    transport: { 
+      label: "Transport", 
+      icon: <Truck className="h-3 w-3" />, 
+      className: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700" 
+    },
+    manutention: { 
+      label: "Manutention", 
+      icon: <Package className="h-3 w-3" />, 
+      className: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700" 
+    },
+    stockage: { 
+      label: "Stockage", 
+      icon: <Warehouse className="h-3 w-3" />, 
+      className: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:border-indigo-700" 
+    },
+    location: { 
+      label: "Location", 
+      icon: <Calendar className="h-3 w-3" />, 
+      className: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700" 
+    },
+    double_relevage: { 
+      label: "Double Relevage", 
+      icon: <RotateCcw className="h-3 w-3" />, 
+      className: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700" 
+    },
+  }), []);
+
+  // Configuration des types de conteneurs (Import/Export)
+  const typeConteneurConfigs: Record<string, TypeConfig> = useMemo(() => ({
+    import: { 
+      label: "Import", 
+      icon: <ArrowDownToLine className="h-3 w-3" />, 
+      className: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700" 
+    },
+    export: { 
+      label: "Export", 
+      icon: <ArrowUpFromLine className="h-3 w-3" />, 
+      className: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-200 dark:border-cyan-700" 
+    },
+  }), []);
 
   const getStatutBadge = (statut: string) => {
-    const configs: Record<string, { label: string; className: string }> = {
+    const configs: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
       en_cours: { 
         label: getStatutLabel(statut), 
-        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700" 
+        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700",
+        icon: <Clock className="h-3 w-3" />
       },
       termine: { 
         label: getStatutLabel(statut), 
-        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700" 
+        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700",
+        icon: null
       },
       facture: { 
         label: getStatutLabel(statut), 
-        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700" 
+        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700",
+        icon: <FileText className="h-3 w-3" />
       },
       annule: { 
         label: getStatutLabel(statut), 
-        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
+        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700",
+        icon: <Ban className="h-3 w-3" />
       },
     };
-    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
+    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-muted text-muted-foreground", icon: null };
     return (
       <Badge 
         variant="outline" 
-        className={`${config.className} transition-all duration-200 hover:scale-105`}
+        className={`${config.className} flex items-center gap-1 transition-all duration-200 hover:scale-105`}
       >
+        {config.icon}
         {config.label}
       </Badge>
     );
   };
 
-  const getCategorieBadge = (categorie?: string, type_operation?: string) => {
-    // Types d'opérations indépendantes
-    const typeLabels: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
-      transport: { label: "Transport", icon: <Truck className="h-3 w-3" />, className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      manutention: { label: "Manutention", icon: <Package className="h-3 w-3" />, className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      stockage: { label: "Stockage", icon: <Container className="h-3 w-3" />, className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
-      location: { label: "Location", icon: <Container className="h-3 w-3" />, className: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
-      double_relevage: { label: "Double Relevage", icon: <Package className="h-3 w-3" />, className: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200" },
-    };
+  // Fonction améliorée pour obtenir le badge de type/catégorie
+  const getTypeBadge = (ordre: typeof ordresList[0]) => {
+    const { categorie, type_operation, type_operation_indep } = ordre;
 
-    // Si un type est défini, l'afficher directement
-    if (type_operation && typeLabels[type_operation]) {
-      const typeConfig = typeLabels[type_operation];
+    // 1. Conteneurs → afficher Import/Export
+    if (categorie === 'conteneurs') {
+      const typeOp = type_operation?.toLowerCase() || '';
+      if (typeOp.includes('import') || typeOp === 'import') {
+        const config = typeConteneurConfigs.import;
+        return (
+          <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
+            {config.icon}
+            {config.label}
+          </Badge>
+        );
+      }
+      if (typeOp.includes('export') || typeOp === 'export') {
+        const config = typeConteneurConfigs.export;
+        return (
+          <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
+            {config.icon}
+            {config.label}
+          </Badge>
+        );
+      }
+      // Fallback si pas de type_operation défini
       return (
-        <Badge className={`${typeConfig.className} flex items-center gap-1 transition-all duration-200 hover:scale-105`}>
-          {typeConfig.icon}
-          {typeConfig.label}
+        <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
+          <Container className="h-3 w-3" />
+          Conteneurs
         </Badge>
       );
     }
 
-    // Sinon afficher la catégorie
-    const configs: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
-      conteneurs: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-      conventionnel: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-      operations_independantes: { label: "Indépendant", icon: <Truck className="h-3 w-3" />, className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-    };
-    const config = configs[categorie || ''] || { label: categorie || 'N/A', icon: null, className: "bg-gray-100 text-gray-800" };
+    // 2. Opérations indépendantes → afficher le type spécifique
+    if (categorie === 'operations_independantes') {
+      const typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
+      const config = typeIndepConfigs[typeIndep];
+      if (config) {
+        return (
+          <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
+            {config.icon}
+            {config.label}
+          </Badge>
+        );
+      }
+      // Fallback
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
+          <Truck className="h-3 w-3" />
+          Indépendant
+        </Badge>
+      );
+    }
+
+    // 3. Conventionnel → garder "Conventionnel"
+    if (categorie === 'conventionnel') {
+      return (
+        <Badge className="bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
+          <Ship className="h-3 w-3" />
+          Conventionnel
+        </Badge>
+      );
+    }
+
+    // Fallback générique
     return (
-      <Badge className={`${config.className} flex items-center gap-1 transition-all duration-200 hover:scale-105`}>
-        {config.icon}
-        {config.label}
+      <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">
+        {categorie || 'N/A'}
       </Badge>
     );
   };
@@ -163,8 +263,20 @@ export default function OrdresTravailPage() {
   if (isLoading) {
     return (
       <MainLayout title="Ordres de Travail">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center justify-center py-16 gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          >
+            <Loader2 className="h-10 w-10 text-primary" />
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-muted-foreground"
+          >
+            Chargement des ordres...
+          </motion.p>
         </div>
       </MainLayout>
     );
@@ -173,12 +285,17 @@ export default function OrdresTravailPage() {
   if (error) {
     return (
       <MainLayout title="Ordres de Travail">
-        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <p className="text-destructive">Erreur lors du chargement des ordres</p>
-          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4 transition-all duration-200 hover:scale-105">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center py-16 text-center"
+        >
+          <p className="text-destructive mb-4">Erreur lors du chargement des ordres</p>
+          <Button variant="outline" onClick={() => refetch()} className="gap-2">
+            <RotateCcw className="h-4 w-4" />
             Réessayer
           </Button>
-        </div>
+        </motion.div>
       </MainLayout>
     );
   }
@@ -187,66 +304,121 @@ export default function OrdresTravailPage() {
   if (ordresList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return (
       <MainLayout title="Ordres de Travail">
-        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <ClipboardList className="h-16 w-16 text-muted-foreground mb-4" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-center justify-center py-16 text-center"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <ClipboardList className="h-20 w-20 text-muted-foreground/50 mb-6" />
+          </motion.div>
           <h2 className="text-2xl font-semibold mb-2">Aucun ordre de travail</h2>
           <p className="text-muted-foreground mb-6 max-w-md">
             Commencez par créer votre premier ordre de travail pour gérer vos opérations.
           </p>
-          <Button onClick={() => navigate("/ordres/nouveau")} className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md">
-            <Plus className="h-4 w-4" />
-            Nouvel ordre
-          </Button>
-        </div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button onClick={() => navigate("/ordres/nouveau")} className="gap-2" size="lg">
+              <Plus className="h-5 w-5" />
+              Créer un ordre
+            </Button>
+          </motion.div>
+        </motion.div>
       </MainLayout>
     );
   }
 
   return (
     <MainLayout title="Ordres de Travail">
-      <div className="space-y-6 animate-fade-in">
-        {/* Stats */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
+        {/* Stats Cards avec animation */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Ordres</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalItems}</div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatMontant(totalOrdres)}</div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Payé</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatMontant(totalPaye)}</div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">En cours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-500">{ordresEnCours}</div>
-            </CardContent>
-          </Card>
+          {[
+            { 
+              title: "Total Ordres", 
+              value: totalItems, 
+              icon: ClipboardList, 
+              color: "primary",
+              delay: 0 
+            },
+            { 
+              title: "Montant Total", 
+              value: formatMontant(stats.totalOrdres), 
+              icon: Wallet, 
+              color: "blue-500",
+              textColor: "text-blue-600 dark:text-blue-400",
+              delay: 0.1 
+            },
+            { 
+              title: "Total Payé", 
+              value: formatMontant(stats.totalPaye), 
+              icon: CreditCard, 
+              color: "green-500",
+              textColor: "text-green-600 dark:text-green-400",
+              delay: 0.2 
+            },
+            { 
+              title: "En cours", 
+              value: stats.ordresEnCours, 
+              icon: Clock, 
+              color: "orange-500",
+              textColor: "text-orange-500",
+              delay: 0.3 
+            },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: stat.delay, duration: 0.4 }}
+            >
+              <Card className={`group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-l-4 border-l-${stat.color}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <stat.icon className="h-4 w-4" />
+                    {stat.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <motion.div 
+                    className={`text-2xl md:text-3xl font-bold ${stat.textColor || ''}`}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: stat.delay + 0.2, duration: 0.3 }}
+                  >
+                    {stat.value}
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Filtres et Actions */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card/50 backdrop-blur-sm p-4 rounded-lg border"
+        >
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+              <Input 
+                placeholder="Rechercher..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className="pl-9 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
+              />
             </div>
             <Select value={statutFilter} onValueChange={setStatutFilter}>
               <SelectTrigger className="w-full sm:w-40">
@@ -273,117 +445,203 @@ export default function OrdresTravailPage() {
             </Select>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}>
-              <CreditCard className="h-4 w-4" />
-              Paiement global
-            </Button>
-            <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setExportOpen(true)}>
-              <Download className="h-4 w-4" />
-              Exporter
-            </Button>
-            <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/ordres/nouveau")}>
-              <Plus className="h-4 w-4" />
-              Nouvel ordre
-            </Button>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button variant="outline" className="gap-2" onClick={() => setPaiementGlobalOpen(true)}>
+                <CreditCard className="h-4 w-4" />
+                Paiement global
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
+                <Download className="h-4 w-4" />
+                Exporter
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button className="gap-2 shadow-md" onClick={() => navigate("/ordres/nouveau")}>
+                <Plus className="h-4 w-4" />
+                Nouvel ordre
+              </Button>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Table */}
-        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Numéro</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead className="text-right">Montant</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="w-40">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ordresList.map((ordre, index) => {
-                  const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
-                  return (
-                    <TableRow 
-                      key={ordre.id} 
-                      className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
-                      style={{ animationDelay: `${index * 30}ms` }}
-                    >
-                      <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/ordres/${ordre.id}`)}>
-                        {ordre.numero}
-                      </TableCell>
-                      <TableCell>{ordre.client?.nom}</TableCell>
-                      <TableCell>{formatDate(ordre.date || ordre.date_creation || ordre.created_at)}</TableCell>
-                      <TableCell>{getCategorieBadge(ordre.categorie, ordre.type_operation)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="font-medium">{formatMontant(ordre.montant_ttc)}</div>
-                        {(ordre.montant_paye || 0) > 0 && (
-                          <div className="text-sm text-green-600 font-medium">{formatMontant(ordre.montant_paye)}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
-                            <Button variant="ghost" size="icon" title="Paiement" className="text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10"
-                              onClick={() => setPaiementModal({ id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer })}>
-                              <Wallet className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button variant="ghost" size="icon" title="Facturer" className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
-                              onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
-                              onClick={() => setConfirmAction({ type: 'annuler', id: ordre.id, numero: ordre.numero })}>
-                              <Ban className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                            onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <TablePagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={totalItems}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-            />
-          </CardContent>
-        </Card>
-      </div>
+        {/* Table avec animations */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="font-semibold">Numéro</TableHead>
+                    <TableHead className="font-semibold">Client</TableHead>
+                    <TableHead className="font-semibold">Date</TableHead>
+                    <TableHead className="font-semibold">Type</TableHead>
+                    <TableHead className="text-right font-semibold">Montant</TableHead>
+                    <TableHead className="font-semibold">Statut</TableHead>
+                    <TableHead className="w-44 font-semibold">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <AnimatePresence mode="popLayout">
+                    {ordresList.map((ordre, index) => {
+                      const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
+                      return (
+                        <motion.tr
+                          key={ordre.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          transition={{ delay: index * 0.03, duration: 0.3 }}
+                          layout
+                          className="border-b transition-colors hover:bg-muted/50 group"
+                        >
+                          <TableCell 
+                            className="font-medium text-primary hover:underline cursor-pointer transition-colors" 
+                            onClick={() => navigate(`/ordres/${ordre.id}`)}
+                          >
+                            {ordre.numero}
+                          </TableCell>
+                          <TableCell className="font-medium">{ordre.client?.nom}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {formatDate(ordre.date || ordre.date_creation || ordre.created_at)}
+                          </TableCell>
+                          <TableCell>{getTypeBadge(ordre)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="font-semibold">{formatMontant(ordre.montant_ttc)}</div>
+                            {(ordre.montant_paye || 0) > 0 && (
+                              <div className="text-sm text-green-600 font-medium">
+                                Payé: {formatMontant(ordre.montant_paye)}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Voir" 
+                                  onClick={() => navigate(`/ordres/${ordre.id}`)} 
+                                  className="h-8 w-8 hover:bg-primary/10"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </motion.div>
+                              
+                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
+                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    title="Modifier" 
+                                    onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} 
+                                    className="h-8 w-8 hover:bg-blue-500/10"
+                                  >
+                                    <Edit className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                </motion.div>
+                              )}
+                              
+                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
+                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    title="Paiement" 
+                                    className="h-8 w-8 text-green-600 hover:bg-green-500/10"
+                                    onClick={() => setPaiementModal({ id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer })}
+                                  >
+                                    <Wallet className="h-4 w-4" />
+                                  </Button>
+                                </motion.div>
+                              )}
+                              
+                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
+                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    title="Facturer" 
+                                    className="h-8 w-8 text-primary hover:bg-primary/10"
+                                    onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
+                                  >
+                                    <ArrowRight className="h-4 w-4" />
+                                  </Button>
+                                </motion.div>
+                              )}
+                              
+                              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="PDF" 
+                                  onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} 
+                                  className="h-8 w-8 hover:bg-muted"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                              </motion.div>
+                              
+                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
+                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    title="Annuler" 
+                                    className="h-8 w-8 text-orange-600 hover:bg-orange-500/10"
+                                    onClick={() => setConfirmAction({ type: 'annuler', id: ordre.id, numero: ordre.numero })}
+                                  >
+                                    <Ban className="h-4 w-4" />
+                                  </Button>
+                                </motion.div>
+                              )}
+                              
+                              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Supprimer" 
+                                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                  onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </motion.div>
+                            </div>
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
+                </TableBody>
+              </Table>
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       {/* Modal Annulation */}
       <AlertDialog open={confirmAction?.type === 'annuler'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent className="animate-scale-in">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-orange-600" />
+              Confirmer l'annulation
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Êtes-vous sûr de vouloir annuler l'ordre <strong>{confirmAction?.numero}</strong> ?
             </AlertDialogDescription>
@@ -401,7 +659,10 @@ export default function OrdresTravailPage() {
       <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent className="animate-scale-in">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Confirmer la suppression
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Êtes-vous sûr de vouloir supprimer l'ordre <strong>{confirmAction?.numero}</strong> ? Cette action est irréversible.
             </AlertDialogDescription>
@@ -419,7 +680,10 @@ export default function OrdresTravailPage() {
       <AlertDialog open={confirmAction?.type === 'facturer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent className="animate-scale-in">
           <AlertDialogHeader>
-            <AlertDialogTitle>Convertir en facture</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Convertir en facture
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Voulez-vous convertir l'ordre <strong>{confirmAction?.numero}</strong> en facture ?
             </AlertDialogDescription>

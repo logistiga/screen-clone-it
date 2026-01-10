@@ -67,6 +67,7 @@ export interface OrdreTravail {
   type_document: string;
   categorie?: string;
   type_operation?: string;
+  type_operation_indep?: string;
   bl_numero?: string;
   numero_bl?: string;
   navire?: string;
