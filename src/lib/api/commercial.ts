@@ -691,3 +691,61 @@ export const configurationApi = {
     return response.data;
   },
 };
+
+// Categories de dépenses API
+export interface CategorieDepense {
+  id: string;
+  nom: string;
+  description?: string;
+  type: 'Entrée' | 'Sortie';
+  couleur?: string;
+  actif: boolean;
+  total_depenses?: number;
+  nombre_mouvements?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CategorieDepenseData {
+  nom: string;
+  description?: string;
+  type: 'Entrée' | 'Sortie';
+  couleur?: string;
+  actif?: boolean;
+}
+
+export const categoriesDepensesApi = {
+  getAll: async (params?: { search?: string; type?: string; actif?: boolean; with_stats?: boolean }) => {
+    const response = await api.get('/categories-depenses', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/categories-depenses/${id}`);
+    return response.data.data;
+  },
+
+  create: async (data: CategorieDepenseData) => {
+    const response = await api.post('/categories-depenses', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: Partial<CategorieDepenseData>) => {
+    const response = await api.put(`/categories-depenses/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/categories-depenses/${id}`);
+  },
+
+  getMouvements: async (id: string, params?: { date_debut?: string; date_fin?: string; source?: string; page?: number; per_page?: number }) => {
+    const response = await api.get(`/categories-depenses/${id}/mouvements`, { params });
+    return response.data;
+  },
+
+  getStats: async () => {
+    const response = await api.get('/categories-depenses/stats');
+    return response.data;
+  },
+};

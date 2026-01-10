@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowUpCircle, Building2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useBanques, useCreateMouvementCaisse } from "@/hooks/use-commercial";
+import { useBanques, useCreateMouvementCaisse, useCategoriesDepenses } from "@/hooks/use-commercial";
 import { formatMontant } from "@/data/mockData";
 
 interface SortieBancaireModalProps {
@@ -29,20 +29,6 @@ interface SortieBancaireModalProps {
   banqueId?: string;
   onSuccess?: () => void;
 }
-
-const CATEGORIES_SORTIE = [
-  'Frais de port',
-  'Frais de douane',
-  'Transport',
-  'Manutention',
-  'Salaires',
-  'Carburant',
-  'Fournitures',
-  'Entretien',
-  'Prime représentant',
-  'Remboursement',
-  'Autre sortie',
-];
 
 export function SortieBancaireModal({
   open,
@@ -59,7 +45,10 @@ export function SortieBancaireModal({
   const [beneficiaire, setBeneficiaire] = useState("");
 
   const { data: banques = [], isLoading: banquesLoading } = useBanques({ actif: true });
+  const { data: categoriesData } = useCategoriesDepenses({ type: 'Sortie', actif: true });
   const createMouvement = useCreateMouvementCaisse();
+
+  const categories = categoriesData?.data || [];
 
   const selectedBanque = banques.find(b => b.id === banqueId);
 
@@ -206,9 +195,9 @@ export function SortieBancaireModal({
                 <SelectValue placeholder="Sélectionner une catégorie" />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES_SORTIE.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                {categories.map((cat: any) => (
+                  <SelectItem key={cat.id} value={cat.nom}>
+                    {cat.nom}
                   </SelectItem>
                 ))}
               </SelectContent>

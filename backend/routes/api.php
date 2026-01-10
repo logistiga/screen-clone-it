@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PrimeController;
 use App\Http\Controllers\Api\NoteDebutController;
+use App\Http\Controllers\Api\CategorieDepenseController;
 
 /*
 |--------------------------------------------------------------------------
@@ -406,6 +407,26 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('entreprise', [ConfigurationController::class, 'entreprise']);
         Route::put('entreprise', [ConfigurationController::class, 'updateEntreprise'])
             ->middleware('permission:configuration.modifier');
+    });
+
+    // ============================================
+    // CATEGORIES DE DEPENSES
+    // ============================================
+    Route::prefix('categories-depenses')->middleware('audit')->group(function () {
+        Route::get('/', [CategorieDepenseController::class, 'index'])
+            ->middleware('permission:configuration.voir');
+        Route::post('/', [CategorieDepenseController::class, 'store'])
+            ->middleware('permission:configuration.modifier');
+        Route::get('stats', [CategorieDepenseController::class, 'stats'])
+            ->middleware('permission:configuration.voir');
+        Route::get('{categoriesDepense}', [CategorieDepenseController::class, 'show'])
+            ->middleware('permission:configuration.voir');
+        Route::put('{categoriesDepense}', [CategorieDepenseController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::delete('{categoriesDepense}', [CategorieDepenseController::class, 'destroy'])
+            ->middleware('permission:configuration.supprimer');
+        Route::get('{categoriesDepense}/mouvements', [CategorieDepenseController::class, 'mouvements'])
+            ->middleware('permission:caisse.voir');
     });
 
     // ============================================

@@ -11,6 +11,7 @@ import {
   banquesApi,
   configurationApi,
   mouvementsCaisseApi,
+  categoriesDepensesApi,
   Client,
   Devis,
   OrdreTravail,
@@ -23,7 +24,9 @@ import {
   Paiement,
   PaiementsParams,
   MouvementCaisseData,
-  MouvementCaisse
+  MouvementCaisse,
+  CategorieDepense,
+  CategorieDepenseData
 } from '@/lib/api/commercial';
 import { toast } from 'sonner';
 import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
@@ -658,5 +661,71 @@ export function useSoldeCaisse() {
   return useQuery({
     queryKey: ['caisse', 'solde'],
     queryFn: mouvementsCaisseApi.getSolde,
+  });
+}
+
+// Categories de dépenses hooks
+export function useCategoriesDepenses(params?: { search?: string; type?: string; actif?: boolean; with_stats?: boolean }) {
+  return useQuery({
+    queryKey: ['categories-depenses', params],
+    queryFn: () => categoriesDepensesApi.getAll(params),
+  });
+}
+
+export function useCategorieDepense(id: string) {
+  return useQuery({
+    queryKey: ['categories-depenses', id],
+    queryFn: () => categoriesDepensesApi.getById(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateCategorieDepense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CategorieDepenseData) => categoriesDepensesApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories-depenses'] });
+      toast.success('Catégorie créée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la création de la catégorie');
+    },
+  });
+}
+
+export function useUpdateCategorieDepense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CategorieDepenseData> }) => categoriesDepensesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories-depenses'] });
+      toast.success('Catégorie modifiée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification de la catégorie');
+    },
+  });
+}
+
+export function useDeleteCategorieDepense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: categoriesDepensesApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories-depenses'] });
+      toast.success('Catégorie supprimée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression de la catégorie');
+    },
+  });
+}
+
+export function useCategorieMouvements(id: string, params?: { date_debut?: string; date_fin?: string; source?: string; page?: number; per_page?: number }) {
+  return useQuery({
+    queryKey: ['categories-depenses', id, 'mouvements', params],
+    queryFn: () => categoriesDepensesApi.getMouvements(id, params),
+    enabled: !!id,
   });
 }
