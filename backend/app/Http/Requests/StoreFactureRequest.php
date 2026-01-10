@@ -18,6 +18,8 @@ class StoreFactureRequest extends FormRequest
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'ordre_travail_id' => 'nullable|exists:ordres_travail,id',
             'type_document' => 'required|in:Conteneur,Lot,Independant',
+            'type_operation' => 'nullable|string|max:100',
+            'type_operation_indep' => 'nullable|string|in:transport,manutention,stockage,location,double_relevage',
             'date_echeance' => 'nullable|date|after_or_equal:today',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
