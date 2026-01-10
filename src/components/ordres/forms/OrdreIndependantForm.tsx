@@ -26,48 +26,63 @@ export default function OrdreIndependantForm({
   onDataChange,
   initialData,
 }: OrdreIndependantFormProps) {
-  const hasInitialized = useRef(false);
+  const lastInitKey = useRef<string>("");
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
 
-  // Initialisation depuis initialData - une seule fois quand les données arrivent
+  // Synchroniser l'état interne avec initialData (sans écraser les edits si rien n'a changé)
   useEffect(() => {
-    if (initialData && !hasInitialized.current) {
-      console.log("OrdreIndependantForm - Initializing with data:", JSON.stringify(initialData, null, 2));
-      
-      if (initialData.typeOperationIndep) {
-        console.log("Setting typeOperationIndep to:", initialData.typeOperationIndep);
-        setTypeOperationIndep(initialData.typeOperationIndep);
-      }
-      
-      if (initialData.prestations && initialData.prestations.length > 0) {
-        console.log("Setting prestations:", initialData.prestations.length, "items");
-        setPrestations(initialData.prestations);
-      }
-      
-      hasInitialized.current = true;
+    if (!initialData) return;
+
+    const initKey = JSON.stringify({
+      typeOperationIndep: initialData.typeOperationIndep ?? "",
+      prestations: (initialData.prestations ?? []).map((p) => ({
+        id: p.id,
+        description: p.description,
+        lieuDepart: p.lieuDepart,
+        lieuArrivee: p.lieuArrivee,
+        dateDebut: p.dateDebut,
+        dateFin: p.dateFin,
+        quantite: p.quantite,
+        prixUnitaire: p.prixUnitaire,
+      })),
+    });
+
+    if (initKey === lastInitKey.current) return;
+
+    console.log("OrdreIndependantForm - Sync initialData:", initialData);
+
+    if (initialData.typeOperationIndep) {
+      setTypeOperationIndep(initialData.typeOperationIndep);
     }
+
+    if (initialData.prestations && initialData.prestations.length > 0) {
+      setPrestations(initialData.prestations);
+    }
+
+    lastInitKey.current = initKey;
   }, [initialData]);
-  
+
   const operationsIndepLabels = getOperationsIndepLabels();
 
-  const calculateTotalPrestations = (prestations: LignePrestationEtendue[]): number => {
-    return prestations.reduce((sum, p) => sum + p.montantHT, 0);
+  const calculateTotalPrestations = (items: LignePrestationEtendue[]): number => {
+    return items.reduce((sum, p) => sum + (p.montantHT || 0), 0);
   };
 
-  const updateParent = (newPrestations: LignePrestationEtendue[]) => {
-    const montantHT = calculateTotalPrestations(newPrestations);
+  const updateParent = (items: LignePrestationEtendue[]) => {
+    const montantHT = calculateTotalPrestations(items);
     onDataChange({
       typeOperationIndep,
-      prestations: newPrestations,
+      prestations: items,
       montantHT,
     });
   };
 
-  // Met à jour le parent quand le type change
+  // Toujours pousser vers le parent quand le type ou les lignes changent
   useEffect(() => {
     updateParent(prestations);
-  }, [typeOperationIndep]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeOperationIndep, prestations]);
 
   const handleAddPrestation = () => {
     const newPrestations = [...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }];

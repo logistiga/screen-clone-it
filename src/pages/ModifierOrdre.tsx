@@ -355,8 +355,8 @@ export default function ModifierOrdrePage() {
     try {
       await updateOrdreMutation.mutateAsync({ id: id!, data });
       toast.success("Ordre modifié avec succès");
-      // Retourner vers la page détail de l'OT, pas la liste
-      navigate(`/ordres/${id}`);
+      // Après modification, retourner vers la liste des ordres
+      navigate(`/ordres`);
     } catch (error) {
       // Error handled by mutation
     }
@@ -406,7 +406,7 @@ export default function ModifierOrdrePage() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate(`/ordres/${id}`)}
+                onClick={() => navigate(`/ordres`)}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -581,7 +581,7 @@ export default function ModifierOrdrePage() {
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => navigate(`/ordres/${id}`)} 
+              onClick={() => navigate(`/ordres`)} 
               disabled={updateOrdreMutation.isPending}
             >
               Annuler
