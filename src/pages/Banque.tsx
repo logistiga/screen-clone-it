@@ -32,14 +32,16 @@ import {
   Receipt,
   Loader2,
   CalendarIcon,
-  Eye
+  Eye,
+  Plus
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
-import { useBanques, usePaiements } from "@/hooks/use-commercial";
+import { useBanques, usePaiements, useMouvementsCaisse } from "@/hooks/use-commercial";
 import { TablePagination } from "@/components/TablePagination";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { SortieBancaireModal } from "@/components/SortieBancaireModal";
 
 export default function BanquePage() {
   const navigate = useNavigate();
@@ -51,6 +53,7 @@ export default function BanquePage() {
   const [activeTab, setActiveTab] = useState("mouvements");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+  const [showSortieModal, setShowSortieModal] = useState(false);
 
   // Charger les banques
   const { data: banques = [], isLoading: banquesLoading } = useBanques({ actif: true });
@@ -73,10 +76,21 @@ export default function BanquePage() {
     per_page: 1000,
   });
 
+  // Charger les décaissements bancaires (sorties)
+  const { data: decaissementsData, isLoading: decaissementsLoading, refetch: refetchDecaissements } = useMouvementsCaisse({
+    type: 'Sortie',
+    source: 'banque',
+    banque_id: banqueFilter !== 'all' ? banqueFilter : undefined,
+    date_debut: dateDebut ? format(dateDebut, 'yyyy-MM-dd') : undefined,
+    date_fin: dateFin ? format(dateFin, 'yyyy-MM-dd') : undefined,
+    per_page: 1000,
+  });
+
   const isLoading = banquesLoading || paiementsLoading;
   
   const paiementsList = paiementsData?.data || [];
   const chequesList = chequesData?.data || [];
+  const decaissementsList = decaissementsData?.data || [];
   const totalPages = paiementsData?.meta?.last_page || 1;
   const totalItems = paiementsData?.meta?.total || 0;
 
@@ -88,6 +102,7 @@ export default function BanquePage() {
   const totalVirements = paiementsList.reduce((sum, p) => sum + (p.montant || 0), 0);
   const totalCheques = chequesList.reduce((sum, p) => sum + (p.montant || 0), 0);
   const totalEncaissements = totalVirements + totalCheques;
+  const totalDecaissements = decaissementsList.reduce((sum: number, d: any) => sum + (d.montant || 0), 0);
 
   // Filtrer les paiements par banque si nécessaire
   const filteredPaiements = banqueFilter === "all" 
@@ -164,7 +179,18 @@ export default function BanquePage() {
           </Card>
           <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Virements</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <ArrowUpCircle className="h-4 w-4 text-red-600" />
+                Total Décaissements
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{formatMontant(totalDecaissements)}</div>
+            </CardContent>
+          </Card>
+          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Virements reçus</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">{formatMontant(totalVirements)}</div>
@@ -172,7 +198,7 @@ export default function BanquePage() {
           </Card>
           <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Chèques</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Chèques reçus</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">{formatMontant(totalCheques)}</div>
@@ -181,10 +207,17 @@ export default function BanquePage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="mouvements">Mouvements</TabsTrigger>
-            <TabsTrigger value="comptes">Comptes bancaires</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="mouvements">Encaissements</TabsTrigger>
+              <TabsTrigger value="decaissements">Décaissements</TabsTrigger>
+              <TabsTrigger value="comptes">Comptes bancaires</TabsTrigger>
+            </TabsList>
+            <Button onClick={() => setShowSortieModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nouvelle sortie bancaire
+            </Button>
+          </div>
 
           <TabsContent value="mouvements" className="space-y-4 mt-4">
             {/* Filters */}
@@ -402,6 +435,74 @@ export default function BanquePage() {
             )}
           </TabsContent>
 
+          {/* Onglet Décaissements */}
+          <TabsContent value="decaissements" className="space-y-4 mt-4">
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowUpCircle className="h-5 w-5 text-red-600" />
+                  Décaissements bancaires (Sorties)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Catégorie</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Bénéficiaire</TableHead>
+                      <TableHead>Banque</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {decaissementsList.map((mouvement: any, index: number) => (
+                      <TableRow 
+                        key={mouvement.id}
+                        className="transition-all duration-200 animate-fade-in hover:bg-muted/50"
+                        style={{ animationDelay: `${index * 30}ms` }}
+                      >
+                        <TableCell>{formatDate(mouvement.date || mouvement.created_at)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {mouvement.categorie}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {mouvement.description}
+                        </TableCell>
+                        <TableCell>
+                          {mouvement.beneficiaire || <span className="text-muted-foreground">-</span>}
+                        </TableCell>
+                        <TableCell>
+                          {mouvement.banque?.nom ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {mouvement.banque.nom}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-red-600">
+                          -{formatMontant(mouvement.montant)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {decaissementsList.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Aucun décaissement bancaire trouvé
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="comptes" className="mt-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {banques.map((banque, index) => (
@@ -467,6 +568,15 @@ export default function BanquePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal Sortie Bancaire */}
+      <SortieBancaireModal
+        open={showSortieModal}
+        onOpenChange={setShowSortieModal}
+        onSuccess={() => {
+          refetchDecaissements();
+        }}
+      />
     </MainLayout>
   );
 }
