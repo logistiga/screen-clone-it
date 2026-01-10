@@ -181,14 +181,15 @@ class OrdreServiceFactory
             $factureData = [
                 'client_id' => $ordre->client_id,
                 'ordre_id' => $ordre->id,
+                'date_creation' => $ordre->date_creation?->toDateString() ?? now()->toDateString(),
                 'armateur_id' => $ordre->armateur_id,
                 'transitaire_id' => $ordre->transitaire_id,
                 'representant_id' => $ordre->representant_id,
-                'type_document' => $ordre->type_document,
                 'categorie' => $categorie,
-                'bl_numero' => $ordre->numero_bl,
+                'type_operation' => $ordre->type_operation,
+                'type_operation_indep' => $ordre->type_operation_indep,
+                'numero_bl' => $ordre->numero_bl,
                 'navire' => $ordre->navire,
-                'date_arrivee' => $ordre->date_arrivee,
                 'notes' => $ordre->notes,
                 'statut' => 'brouillon',
             ];

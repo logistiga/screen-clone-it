@@ -62,13 +62,20 @@ class FactureServiceFactory
         }
         unset($data['bl_numero'], $data['type_document']);
 
-        // Dates par défaut
-        $data['date'] = $data['date'] ?? now()->toDateString();
-        $data['date_facture'] = $data['date_facture'] ?? now()->toDateString();
-        
+        // Dates (DB: date_creation, date_echeance)
+        $dateCreation = $data['date_creation']
+            ?? $data['date_facture']
+            ?? $data['date']
+            ?? null;
+
+        $data['date_creation'] = !empty($dateCreation) ? $dateCreation : now()->toDateString();
+
+        // Nettoyer les alias API
+        unset($data['date'], $data['date_facture']);
+
         if (!isset($data['date_echeance'])) {
             $echeanceJours = 30; // Par défaut 30 jours
-            $data['date_echeance'] = now()->addDays($echeanceJours)->toDateString();
+            $data['date_echeance'] = \Carbon\Carbon::parse($data['date_creation'])->addDays($echeanceJours)->toDateString();
         }
 
         return $data;
