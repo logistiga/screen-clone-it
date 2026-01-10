@@ -77,11 +77,11 @@ export default function ModifierOrdrePage() {
       
       // Déterminer la catégorie basée sur type_document
       let cat: CategorieDocument = 'conteneurs';
-      if (ordreData.type_document === 'Conteneur' || ordreData.conteneurs?.length > 0) {
+      if (ordreData.type_document === 'Conteneur' || ordreData.categorie === 'conteneurs' || ordreData.conteneurs?.length > 0) {
         cat = 'conteneurs';
-      } else if (ordreData.type_document === 'Lot' || ordreData.lots?.length > 0) {
+      } else if (ordreData.type_document === 'Lot' || ordreData.categorie === 'conventionnel' || ordreData.lots?.length > 0) {
         cat = 'conventionnel';
-      } else if (ordreData.type_document === 'Independant' || ordreData.lignes?.length > 0) {
+      } else if (ordreData.type_document === 'Independant' || ordreData.categorie === 'operations_independantes' || ordreData.lignes?.length > 0) {
         cat = 'operations_independantes';
       }
       setCategorie(cat);
@@ -89,6 +89,73 @@ export default function ModifierOrdrePage() {
       setIsInitialized(true);
     }
   }, [ordreData, isInitialized]);
+
+  // Préparer les données initiales pour les formulaires enfants
+  const getConteneursInitialData = () => {
+    if (!ordreData || !ordreData.conteneurs) return undefined;
+    return {
+      typeOperation: (ordreData.type_operation as any) || "",
+      numeroBL: ordreData.numero_bl || "",
+      armateurId: String(ordreData.armateur_id || ""),
+      transitaireId: String(ordreData.transitaire_id || ""),
+      representantId: String(ordreData.representant_id || ""),
+      primeTransitaire: 0,
+      primeRepresentant: 0,
+      conteneurs: ordreData.conteneurs.map((c: any) => ({
+        id: String(c.id),
+        numero: c.numero || "",
+        taille: c.taille === "20" ? "20'" : c.taille === "40" ? "40'" : (c.taille || "20'"),
+        description: c.description || "",
+        prixUnitaire: parseFloat(String(c.prix_unitaire)) || 0,
+        operations: (c.operations || []).map((op: any) => ({
+          id: String(op.id),
+          type: op.type || op.type_operation || "arrivee",
+          description: op.description || "",
+          quantite: op.quantite || 1,
+          prixUnitaire: parseFloat(String(op.prix_unitaire)) || 0,
+          prixTotal: (op.quantite || 1) * (parseFloat(String(op.prix_unitaire)) || 0),
+        })),
+      })),
+      montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
+    };
+  };
+
+  const getConventionnelInitialData = () => {
+    if (!ordreData || !ordreData.lots) return undefined;
+    return {
+      numeroBL: ordreData.numero_bl || "",
+      lieuChargement: (ordreData as any).lieu_chargement || "",
+      lieuDechargement: (ordreData as any).lieu_dechargement || "",
+      lots: ordreData.lots.map((l: any) => ({
+        id: String(l.id),
+        numeroLot: l.numero_lot || l.designation || "",
+        description: l.description || l.designation || "",
+        quantite: l.quantite || 1,
+        prixUnitaire: parseFloat(String(l.prix_unitaire)) || 0,
+        prixTotal: (l.quantite || 1) * (parseFloat(String(l.prix_unitaire)) || 0),
+      })),
+      montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
+    };
+  };
+
+  const getIndependantInitialData = () => {
+    if (!ordreData || !ordreData.lignes) return undefined;
+    return {
+      typeOperationIndep: ((ordreData as any).type_operation_indep as any) || (ordreData.type_operation as any) || "",
+      prestations: ordreData.lignes.map((l: any) => ({
+        id: String(l.id),
+        description: l.description || "",
+        lieuDepart: l.lieu_depart || "",
+        lieuArrivee: l.lieu_arrivee || "",
+        dateDebut: l.date_debut || "",
+        dateFin: l.date_fin || "",
+        quantite: l.quantite || 1,
+        prixUnitaire: parseFloat(String(l.prix_unitaire)) || 0,
+        montantHT: (l.quantite || 1) * (parseFloat(String(l.prix_unitaire)) || 0),
+      })),
+      montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
+    };
+  };
 
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -154,6 +221,7 @@ export default function ModifierOrdrePage() {
         taille: c.taille === "20'" ? "20" : "40",
         description: c.description || null,
         armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
+        prix_unitaire: c.prixUnitaire || 0,
         operations: c.operations.map(op => ({
           type_operation: op.type,
           description: typesOperationConteneur[op.type]?.label || op.description || "",
@@ -296,26 +364,33 @@ export default function ModifierOrdrePage() {
         </Card>
 
         {/* Formulaires par catégorie */}
-        {categorie === "conteneurs" && (
+        {categorie === "conteneurs" && isInitialized && (
           <div className="animate-fade-in">
             <OrdreConteneursForm
               armateurs={armateurs}
               transitaires={transitaires}
               representants={representants}
               onDataChange={setConteneursData}
+              initialData={getConteneursInitialData()}
             />
           </div>
         )}
 
-        {categorie === "conventionnel" && (
+        {categorie === "conventionnel" && isInitialized && (
           <div className="animate-fade-in">
-            <OrdreConventionnelForm onDataChange={setConventionnelData} />
+            <OrdreConventionnelForm 
+              onDataChange={setConventionnelData} 
+              initialData={getConventionnelInitialData()}
+            />
           </div>
         )}
 
-        {categorie === "operations_independantes" && (
+        {categorie === "operations_independantes" && isInitialized && (
           <div className="animate-fade-in">
-            <OrdreIndependantForm onDataChange={setIndependantData} />
+            <OrdreIndependantForm 
+              onDataChange={setIndependantData} 
+              initialData={getIndependantInitialData()}
+            />
           </div>
         )}
 
