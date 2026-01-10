@@ -65,6 +65,10 @@ class PaiementController extends Controller
                 $query->where('ordre_id', $request->get('ordre_id'));
             }
 
+            if ($request->filled('banque_id')) {
+                $query->where('banque_id', $request->get('banque_id'));
+            }
+
             if ($request->filled('date_debut')) {
                 $query->where('date', '>=', $request->get('date_debut'));
             }

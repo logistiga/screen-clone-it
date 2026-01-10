@@ -36,12 +36,23 @@ import {
   Plus
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
-import { useBanques, usePaiements, useMouvementsCaisse } from "@/hooks/use-commercial";
+import { useBanques, usePaiements, useMouvementsCaisse, useDeleteMouvementCaisse } from "@/hooks/use-commercial";
 import { TablePagination } from "@/components/TablePagination";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { SortieBancaireModal } from "@/components/SortieBancaireModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Pencil } from "lucide-react";
 
 export default function BanquePage() {
   const navigate = useNavigate();
@@ -54,26 +65,20 @@ export default function BanquePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [showSortieModal, setShowSortieModal] = useState(false);
+  const [editingMouvement, setEditingMouvement] = useState<any>(null);
+  const [deletingMouvement, setDeletingMouvement] = useState<any>(null);
 
   // Charger les banques
   const { data: banques = [], isLoading: banquesLoading } = useBanques({ actif: true });
 
-  // Charger les paiements bancaires (virement et chèque seulement)
+  // Charger tous les paiements bancaires (virement ET chèque)
   const { data: paiementsData, isLoading: paiementsLoading } = usePaiements({
     search: searchTerm || undefined,
-    mode_paiement: 'Virement',
+    banque_id: banqueFilter !== 'all' ? banqueFilter : undefined,
     date_debut: dateDebut ? format(dateDebut, 'yyyy-MM-dd') : undefined,
     date_fin: dateFin ? format(dateFin, 'yyyy-MM-dd') : undefined,
     page: currentPage,
     per_page: pageSize,
-  });
-
-  // Charger aussi les chèques
-  const { data: chequesData } = usePaiements({
-    mode_paiement: 'Chèque',
-    date_debut: dateDebut ? format(dateDebut, 'yyyy-MM-dd') : undefined,
-    date_fin: dateFin ? format(dateFin, 'yyyy-MM-dd') : undefined,
-    per_page: 1000,
   });
 
   // Charger les décaissements bancaires (sorties)
@@ -86,28 +91,25 @@ export default function BanquePage() {
     per_page: 1000,
   });
 
+  const deleteMouvement = useDeleteMouvementCaisse();
   const isLoading = banquesLoading || paiementsLoading;
   
-  const paiementsList = paiementsData?.data || [];
-  const chequesList = chequesData?.data || [];
+  const allPaiements = paiementsData?.data || [];
   const decaissementsList = decaissementsData?.data || [];
   const totalPages = paiementsData?.meta?.last_page || 1;
   const totalItems = paiementsData?.meta?.total || 0;
 
-  // Combiner virements et chèques pour les stats
-  const allBankPayments = [...paiementsList, ...chequesList];
+  // Filtrer uniquement les paiements bancaires (virement et chèque)
+  const bankPaiements = allPaiements.filter((p: any) => 
+    p.mode_paiement === 'Virement' || p.mode_paiement === 'Chèque'
+  );
 
   // Stats
   const totalBanques = banques.reduce((sum, b) => sum + (b.solde || 0), 0);
-  const totalVirements = paiementsList.reduce((sum, p) => sum + (p.montant || 0), 0);
-  const totalCheques = chequesList.reduce((sum, p) => sum + (p.montant || 0), 0);
-  const totalEncaissements = totalVirements + totalCheques;
+  const totalVirements = bankPaiements.filter((p: any) => p.mode_paiement === 'Virement').reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+  const totalCheques = bankPaiements.filter((p: any) => p.mode_paiement === 'Chèque').reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+  const totalEncaissements = bankPaiements.reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
   const totalDecaissements = decaissementsList.reduce((sum: number, d: any) => sum + (d.montant || 0), 0);
-
-  // Filtrer les paiements par banque si nécessaire
-  const filteredPaiements = banqueFilter === "all" 
-    ? paiementsList 
-    : paiementsList.filter(p => p.banque_id === banqueFilter);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -115,6 +117,22 @@ export default function BanquePage() {
     setDateDebut(undefined);
     setDateFin(undefined);
     setCurrentPage(1);
+  };
+
+  const handleDeleteMouvement = async () => {
+    if (!deletingMouvement) return;
+    try {
+      await deleteMouvement.mutateAsync(deletingMouvement.id);
+      setDeletingMouvement(null);
+      refetchDecaissements();
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleEditMouvement = (mouvement: any) => {
+    setEditingMouvement(mouvement);
+    setShowSortieModal(true);
   };
 
   if (isLoading) {
@@ -128,7 +146,7 @@ export default function BanquePage() {
   }
 
   // État vide
-  if (banques.length === 0 && paiementsList.length === 0) {
+  if (banques.length === 0 && bankPaiements.length === 0) {
     return (
       <MainLayout title="Banque">
         <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
@@ -326,7 +344,7 @@ export default function BanquePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPaiements.map((paiement, index) => (
+                    {bankPaiements.map((paiement: any, index: number) => (
                       <TableRow 
                         key={paiement.id}
                         className="transition-all duration-200 animate-fade-in hover:bg-muted/50"
@@ -410,7 +428,7 @@ export default function BanquePage() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filteredPaiements.length === 0 && (
+                    {bankPaiements.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                           Aucun encaissement bancaire trouvé
@@ -454,6 +472,7 @@ export default function BanquePage() {
                       <TableHead>Bénéficiaire</TableHead>
                       <TableHead>Banque</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
+                      <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -488,11 +507,23 @@ export default function BanquePage() {
                         <TableCell className="text-right font-medium text-red-600">
                           -{formatMontant(mouvement.montant)}
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => setDeletingMouvement(mouvement)}
+                              className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10 text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {decaissementsList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                           Aucun décaissement bancaire trouvé
                         </TableCell>
                       </TableRow>
@@ -572,11 +603,40 @@ export default function BanquePage() {
       {/* Modal Sortie Bancaire */}
       <SortieBancaireModal
         open={showSortieModal}
-        onOpenChange={setShowSortieModal}
+        onOpenChange={(open) => {
+          setShowSortieModal(open);
+          if (!open) setEditingMouvement(null);
+        }}
         onSuccess={() => {
           refetchDecaissements();
+          setEditingMouvement(null);
         }}
       />
+
+      {/* Dialogue de confirmation de suppression */}
+      <AlertDialog open={!!deletingMouvement} onOpenChange={(open) => !open && setDeletingMouvement(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce décaissement de{' '}
+              <strong>{deletingMouvement && formatMontant(deletingMouvement.montant)}</strong> ?
+              <br />
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteMouvement}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={deleteMouvement.isPending}
+            >
+              {deleteMouvement.isPending ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

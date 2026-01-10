@@ -531,6 +531,7 @@ export interface PaiementsParams {
   type?: 'facture' | 'ordre';
   mode_paiement?: string;
   client_id?: string;
+  banque_id?: string;
   date_debut?: string;
   date_fin?: string;
   page?: number;
