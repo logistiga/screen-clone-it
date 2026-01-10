@@ -11,6 +11,7 @@ import OperationsIndependantesForm from "@/components/operations/OperationsIndep
 
 interface OrdreIndependantFormProps {
   onDataChange: (data: OrdreIndependantData) => void;
+  initialData?: Partial<OrdreIndependantData>;
 }
 
 export interface OrdreIndependantData {
@@ -21,9 +22,22 @@ export interface OrdreIndependantData {
 
 export default function OrdreIndependantForm({
   onDataChange,
+  initialData,
 }: OrdreIndependantFormProps) {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
+
+  // Initialisation depuis initialData
+  useEffect(() => {
+    if (initialData && !isInitialized) {
+      if (initialData.typeOperationIndep) setTypeOperationIndep(initialData.typeOperationIndep);
+      if (initialData.prestations && initialData.prestations.length > 0) {
+        setPrestations(initialData.prestations);
+      }
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
   
   const operationsIndepLabels = getOperationsIndepLabels();
 

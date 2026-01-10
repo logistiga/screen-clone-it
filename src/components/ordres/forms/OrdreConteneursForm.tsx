@@ -40,6 +40,7 @@ interface OrdreConteneursFormProps {
   transitaires: Transitaire[];
   representants: Representant[];
   onDataChange: (data: OrdreConteneursData) => void;
+  initialData?: Partial<OrdreConteneursData>;
 }
 
 export interface OrdreConteneursData {
@@ -63,7 +64,9 @@ export default function OrdreConteneursForm({
   transitaires,
   representants,
   onDataChange,
+  initialData,
 }: OrdreConteneursFormProps) {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [typeOperation, setTypeOperation] = useState<TypeOperation | "">("");
   const [numeroBL, setNumeroBL] = useState("");
   const [armateurId, setArmateurId] = useState("");
@@ -72,6 +75,23 @@ export default function OrdreConteneursForm({
   const [primeTransitaire, setPrimeTransitaire] = useState<number>(0);
   const [primeRepresentant, setPrimeRepresentant] = useState<number>(0);
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
+
+  // Initialisation depuis initialData
+  useEffect(() => {
+    if (initialData && !isInitialized) {
+      if (initialData.typeOperation) setTypeOperation(initialData.typeOperation);
+      if (initialData.numeroBL) setNumeroBL(initialData.numeroBL);
+      if (initialData.armateurId) setArmateurId(initialData.armateurId);
+      if (initialData.transitaireId) setTransitaireId(initialData.transitaireId);
+      if (initialData.representantId) setRepresentantId(initialData.representantId);
+      if (initialData.primeTransitaire) setPrimeTransitaire(initialData.primeTransitaire);
+      if (initialData.primeRepresentant) setPrimeRepresentant(initialData.primeRepresentant);
+      if (initialData.conteneurs && initialData.conteneurs.length > 0) {
+        setConteneurs(initialData.conteneurs);
+      }
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
 
   const updateParent = (newConteneurs: LigneConteneur[]) => {
     const montantHT = calculateTotalConteneurs(newConteneurs);

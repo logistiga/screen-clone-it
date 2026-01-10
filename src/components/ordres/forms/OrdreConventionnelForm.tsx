@@ -12,6 +12,7 @@ import {
 
 interface OrdreConventionnelFormProps {
   onDataChange: (data: OrdreConventionnelData) => void;
+  initialData?: Partial<OrdreConventionnelData>;
 }
 
 export interface OrdreConventionnelData {
@@ -28,11 +29,26 @@ const formatMontant = (montant: number) => {
 
 export default function OrdreConventionnelForm({
   onDataChange,
+  initialData,
 }: OrdreConventionnelFormProps) {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [numeroBL, setNumeroBL] = useState("");
   const [lieuChargement, setLieuChargement] = useState("");
   const [lieuDechargement, setLieuDechargement] = useState("");
   const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
+
+  // Initialisation depuis initialData
+  useEffect(() => {
+    if (initialData && !isInitialized) {
+      if (initialData.numeroBL) setNumeroBL(initialData.numeroBL);
+      if (initialData.lieuChargement) setLieuChargement(initialData.lieuChargement);
+      if (initialData.lieuDechargement) setLieuDechargement(initialData.lieuDechargement);
+      if (initialData.lots && initialData.lots.length > 0) {
+        setLots(initialData.lots);
+      }
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
 
   const updateParent = (newLots: LigneLot[]) => {
     const montantHT = calculateTotalLots(newLots);
