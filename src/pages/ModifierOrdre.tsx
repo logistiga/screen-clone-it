@@ -139,11 +139,14 @@ export default function ModifierOrdrePage() {
     };
   };
 
-  const getIndependantInitialData = useMemo(() => {
-    if (!ordreData || !ordreData.lignes) return undefined;
+  const independantInitialData = useMemo(() => {
+    if (!ordreData || !ordreData.lignes || ordreData.lignes.length === 0) {
+      console.log("getIndependantInitialData - No data or no lignes");
+      return undefined;
+    }
     
     // Déterminer le type d'opération depuis les données
-    let typeFromOrder = (ordreData as any).type_operation_indep || ordreData.type_operation || "";
+    let typeFromOrder = (ordreData as any).type_operation_indep || "";
     
     // Si le type n'est pas défini au niveau de l'ordre, essayer de le récupérer depuis les lignes
     if (!typeFromOrder && ordreData.lignes && ordreData.lignes.length > 0) {
@@ -153,10 +156,14 @@ export default function ModifierOrdrePage() {
       }
     }
     
-    console.log("Type operation from order (with fallback):", typeFromOrder);
+    // Normaliser le type (lowercase et remplacer les espaces par underscore)
+    const normalizedType = typeFromOrder.toLowerCase().replace(/\s+/g, '_').replace('double relevage', 'double_relevage');
     
-    return {
-      typeOperationIndep: typeFromOrder.toLowerCase() as any,
+    console.log("getIndependantInitialData - typeFromOrder:", typeFromOrder, "normalized:", normalizedType);
+    console.log("getIndependantInitialData - lignes count:", ordreData.lignes.length);
+    
+    const result = {
+      typeOperationIndep: normalizedType as any,
       prestations: ordreData.lignes.map((l: any) => ({
         id: String(l.id),
         description: l.description || "",
@@ -164,12 +171,15 @@ export default function ModifierOrdrePage() {
         lieuArrivee: l.lieu_arrivee || "",
         dateDebut: l.date_debut || "",
         dateFin: l.date_fin || "",
-        quantite: l.quantite || 1,
+        quantite: parseFloat(String(l.quantite)) || 1,
         prixUnitaire: parseFloat(String(l.prix_unitaire)) || 0,
-        montantHT: (l.quantite || 1) * (parseFloat(String(l.prix_unitaire)) || 0),
+        montantHT: (parseFloat(String(l.quantite)) || 1) * (parseFloat(String(l.prix_unitaire)) || 0),
       })),
       montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
     };
+    
+    console.log("getIndependantInitialData - result:", JSON.stringify(result, null, 2));
+    return result;
   }, [ordreData]);
 
   const getMontantHT = (): number => {
@@ -505,7 +515,7 @@ export default function ModifierOrdrePage() {
             </motion.div>
           )}
 
-          {categorie === "operations_independantes" && isInitialized && (
+          {categorie === "operations_independantes" && isInitialized && independantInitialData && (
             <motion.div
               key="independant"
               initial={{ opacity: 0, y: 20 }}
@@ -515,7 +525,7 @@ export default function ModifierOrdrePage() {
             >
               <OrdreIndependantForm 
                 onDataChange={setIndependantData} 
-                initialData={getIndependantInitialData}
+                initialData={independantInitialData}
               />
             </motion.div>
           )}

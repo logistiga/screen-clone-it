@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,27 +26,28 @@ export default function OrdreIndependantForm({
   onDataChange,
   initialData,
 }: OrdreIndependantFormProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
+  const hasInitialized = useRef(false);
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
 
-  // Initialisation depuis initialData - utiliser useCallback pour stabiliser
-  const initializeFromData = useCallback(() => {
-    if (initialData && !isInitialized) {
-      console.log("Initializing OrdreIndependantForm with:", initialData);
+  // Initialisation depuis initialData - une seule fois quand les données arrivent
+  useEffect(() => {
+    if (initialData && !hasInitialized.current) {
+      console.log("OrdreIndependantForm - Initializing with data:", JSON.stringify(initialData, null, 2));
+      
       if (initialData.typeOperationIndep) {
+        console.log("Setting typeOperationIndep to:", initialData.typeOperationIndep);
         setTypeOperationIndep(initialData.typeOperationIndep);
       }
+      
       if (initialData.prestations && initialData.prestations.length > 0) {
+        console.log("Setting prestations:", initialData.prestations.length, "items");
         setPrestations(initialData.prestations);
       }
-      setIsInitialized(true);
+      
+      hasInitialized.current = true;
     }
-  }, [initialData, isInitialized]);
-
-  useEffect(() => {
-    initializeFromData();
-  }, [initializeFromData]);
+  }, [initialData]);
   
   const operationsIndepLabels = getOperationsIndepLabels();
 
