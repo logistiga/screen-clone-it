@@ -39,6 +39,16 @@ class PaiementController extends Controller
                 });
             }
 
+            // Filtre par type (facture ou ordre)
+            if ($request->filled('type')) {
+                $type = $request->get('type');
+                if ($type === 'facture') {
+                    $query->whereNotNull('facture_id');
+                } elseif ($type === 'ordre') {
+                    $query->whereNotNull('ordre_id')->whereNull('facture_id');
+                }
+            }
+
             if ($request->filled('mode_paiement')) {
                 $query->where('mode_paiement', $request->get('mode_paiement'));
             }
@@ -55,8 +65,12 @@ class PaiementController extends Controller
                 $query->where('ordre_id', $request->get('ordre_id'));
             }
 
-            if ($request->filled('date_debut') && $request->filled('date_fin')) {
-                $query->whereBetween('date', [$request->get('date_debut'), $request->get('date_fin')]);
+            if ($request->filled('date_debut')) {
+                $query->where('date', '>=', $request->get('date_debut'));
+            }
+
+            if ($request->filled('date_fin')) {
+                $query->where('date', '<=', $request->get('date_fin'));
             }
 
             $paiements = $query->orderBy('date', 'desc')->paginate($request->get('per_page', 15));
