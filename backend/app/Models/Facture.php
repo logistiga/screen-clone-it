@@ -59,9 +59,15 @@ class Facture extends Model
         return $this->belongsTo(Client::class);
     }
 
-    public function ordre()
+    public function ordreTravail()
     {
         return $this->belongsTo(OrdreTravail::class, 'ordre_id');
+    }
+
+    // Alias pour compatibilité
+    public function ordre()
+    {
+        return $this->ordreTravail();
     }
 
     public function armateur()
