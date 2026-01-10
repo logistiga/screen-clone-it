@@ -10,6 +10,7 @@ import {
   paiementsApi,
   banquesApi,
   configurationApi,
+  mouvementsCaisseApi,
   Client,
   Devis,
   OrdreTravail,
@@ -20,7 +21,9 @@ import {
   Banque,
   PaiementData,
   Paiement,
-  PaiementsParams
+  PaiementsParams,
+  MouvementCaisseData,
+  MouvementCaisse
 } from '@/lib/api/commercial';
 import { toast } from 'sonner';
 import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
@@ -599,5 +602,61 @@ export function useNumerotation() {
   return useQuery({
     queryKey: ['configuration', 'numerotation'],
     queryFn: configurationApi.getNumerotation,
+  });
+}
+
+// Mouvements Caisse hooks
+export function useMouvementsCaisse(params?: {
+  type?: string;
+  source?: string;
+  banque_id?: string;
+  categorie?: string;
+  date_debut?: string;
+  date_fin?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}) {
+  return useQuery({
+    queryKey: ['mouvements-caisse', params],
+    queryFn: () => mouvementsCaisseApi.getAll(params),
+  });
+}
+
+export function useCreateMouvementCaisse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: MouvementCaisseData) => mouvementsCaisseApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      toast.success('Mouvement enregistré avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement du mouvement');
+    },
+  });
+}
+
+export function useDeleteMouvementCaisse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: mouvementsCaisseApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      toast.success('Mouvement supprimé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression du mouvement');
+    },
+  });
+}
+
+export function useSoldeCaisse() {
+  return useQuery({
+    queryKey: ['caisse', 'solde'],
+    queryFn: mouvementsCaisseApi.getSolde,
   });
 }

@@ -590,6 +590,70 @@ export const paiementsApi = {
 };
 
 // Configuration API
+// Mouvements Caisse API
+export interface MouvementCaisseData {
+  type: 'Entrée' | 'Sortie';
+  source?: 'caisse' | 'banque';
+  montant: number;
+  description: string;
+  categorie: string;
+  banque_id?: string;
+  beneficiaire?: string;
+}
+
+export interface MouvementCaisse {
+  id: string;
+  type: string;
+  source: string;
+  montant: number;
+  description: string;
+  categorie: string;
+  beneficiaire?: string;
+  reference?: string;
+  date: string;
+  banque_id?: string;
+  banque?: Banque;
+  user?: { id: string; name: string };
+  created_at: string;
+}
+
+export const mouvementsCaisseApi = {
+  getAll: async (params?: {
+    type?: string;
+    source?: string;
+    banque_id?: string;
+    categorie?: string;
+    date_debut?: string;
+    date_fin?: string;
+    search?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const response = await api.get('/caisse', { params });
+    return response.data;
+  },
+
+  create: async (data: MouvementCaisseData) => {
+    const response = await api.post('/caisse', data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/caisse/${id}`);
+  },
+
+  getSolde: async () => {
+    const response = await api.get('/caisse/solde');
+    return response.data;
+  },
+
+  getCategories: async () => {
+    const response = await api.get('/caisse/categories');
+    return response.data;
+  },
+};
+
+// Configuration API
 export const configurationApi = {
   get: async () => {
     const response = await api.get('/configuration');
