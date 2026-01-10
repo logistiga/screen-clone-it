@@ -50,35 +50,42 @@ class CaisseController extends Controller
     public function store(StoreMouvementCaisseRequest $request): JsonResponse
     {
         try {
+            // Vérifier le solde selon la source
             if ($request->type === 'Sortie') {
-                $solde = $this->caisseService->getSoldeCaisse();
-                if ($request->montant > $solde) {
-                    return response()->json([
-                        'message' => 'Solde insuffisant',
-                        'solde_actuel' => $solde
-                    ], 422);
+                if ($request->source === 'caisse') {
+                    $solde = $this->caisseService->getSoldeCaisse();
+                    if ($request->montant > $solde) {
+                        return response()->json([
+                            'message' => 'Solde caisse insuffisant',
+                            'solde_actuel' => $solde
+                        ], 422);
+                    }
+                } elseif ($request->source === 'banque' && $request->banque_id) {
+                    $banque = \App\Models\Banque::find($request->banque_id);
+                    if ($banque && $request->montant > $banque->solde) {
+                        return response()->json([
+                            'message' => 'Solde bancaire insuffisant',
+                            'solde_actuel' => $banque->solde
+                        ], 422);
+                    }
                 }
             }
 
-            $mouvement = $request->type === 'Entrée' 
-                ? $this->caisseService->creerEntree([
-                    'montant' => $request->montant,
-                    'date' => now(),
-                    'description' => $request->description,
-                    'categorie' => $request->categorie,
-                    'banque_id' => $request->banque_id,
-                    'beneficiaire' => $request->beneficiaire,
-                ])
-                : $this->caisseService->creerSortie([
-                    'montant' => $request->montant,
-                    'date' => now(),
-                    'description' => $request->description,
-                    'categorie' => $request->categorie,
-                    'banque_id' => $request->banque_id,
-                    'beneficiaire' => $request->beneficiaire,
-                ]);
+            $data = [
+                'montant' => $request->montant,
+                'date' => now(),
+                'description' => $request->description,
+                'categorie' => $request->categorie,
+                'source' => $request->source,
+                'banque_id' => $request->source === 'banque' ? $request->banque_id : null,
+                'beneficiaire' => $request->beneficiaire,
+            ];
 
-            Audit::log('create', 'caisse', "Mouvement caisse: {$request->type} - {$request->montant}", $mouvement->id);
+            $mouvement = $request->type === 'Entrée' 
+                ? $this->caisseService->creerEntree($data)
+                : $this->caisseService->creerSortie($data);
+
+            Audit::log('create', 'caisse', "Mouvement {$request->source}: {$request->type} - {$request->montant}", $mouvement->id);
 
             return response()->json(new MouvementCaisseResource($mouvement), 201);
 

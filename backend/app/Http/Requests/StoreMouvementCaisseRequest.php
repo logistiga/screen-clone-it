@@ -15,10 +15,12 @@ class StoreMouvementCaisseRequest extends FormRequest
     {
         return [
             'type' => 'required|in:Entrée,Sortie',
+            'source' => 'required|in:caisse,banque',
             'categorie' => 'required|string|max:100',
             'montant' => 'required|numeric|min:0.01|max:999999999.99',
             'description' => 'required|string|max:500',
             'beneficiaire' => 'nullable|string|max:255',
+            'banque_id' => 'nullable|exists:banques,id',
         ];
     }
 
