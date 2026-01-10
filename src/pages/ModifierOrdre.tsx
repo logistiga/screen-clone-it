@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Ship, Loader2, Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Save, Ship, Loader2, Users, Container, Package, Truck, Warehouse, Calendar, RotateCcw, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -138,10 +139,15 @@ export default function ModifierOrdrePage() {
     };
   };
 
-  const getIndependantInitialData = () => {
+  const getIndependantInitialData = useMemo(() => {
     if (!ordreData || !ordreData.lignes) return undefined;
+    
+    // Déterminer le type d'opération depuis les données
+    const typeFromOrder = (ordreData as any).type_operation_indep || ordreData.type_operation || "";
+    console.log("Type operation from order:", typeFromOrder);
+    
     return {
-      typeOperationIndep: ((ordreData as any).type_operation_indep as any) || (ordreData.type_operation as any) || "",
+      typeOperationIndep: typeFromOrder as any,
       prestations: ordreData.lignes.map((l: any) => ({
         id: String(l.id),
         description: l.description || "",
@@ -155,7 +161,7 @@ export default function ModifierOrdrePage() {
       })),
       montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
     };
-  };
+  }, [ordreData]);
 
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -168,6 +174,72 @@ export default function ModifierOrdrePage() {
   const tva = Math.round(montantHT * TAUX_TVA);
   const css = Math.round(montantHT * TAUX_CSS);
   const montantTTC = montantHT + tva + css;
+
+  // Configuration des badges de type
+  const getTypeBadge = useMemo(() => {
+    if (categorie === 'conteneurs') {
+      const typeOp = ordreData?.type_operation?.toLowerCase() || '';
+      if (typeOp.includes('import')) {
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200 flex items-center gap-1.5">
+            <ArrowDownToLine className="h-3.5 w-3.5" />
+            Conteneurs / Import
+          </Badge>
+        );
+      }
+      if (typeOp.includes('export')) {
+        return (
+          <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 flex items-center gap-1.5">
+            <ArrowUpFromLine className="h-3.5 w-3.5" />
+            Conteneurs / Export
+          </Badge>
+        );
+      }
+      return (
+        <Badge className="bg-blue-100 text-blue-800 border-blue-200 flex items-center gap-1.5">
+          <Container className="h-3.5 w-3.5" />
+          Conteneurs
+        </Badge>
+      );
+    }
+    
+    if (categorie === 'operations_independantes') {
+      const typeIndep = ((ordreData as any)?.type_operation_indep || ordreData?.type_operation || '').toLowerCase();
+      const configs: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+        transport: { label: "Transport", icon: <Truck className="h-3.5 w-3.5" />, className: "bg-green-100 text-green-800" },
+        manutention: { label: "Manutention", icon: <Package className="h-3.5 w-3.5" />, className: "bg-orange-100 text-orange-800" },
+        stockage: { label: "Stockage", icon: <Warehouse className="h-3.5 w-3.5" />, className: "bg-indigo-100 text-indigo-800" },
+        location: { label: "Location", icon: <Calendar className="h-3.5 w-3.5" />, className: "bg-teal-100 text-teal-800" },
+        double_relevage: { label: "Double Relevage", icon: <RotateCcw className="h-3.5 w-3.5" />, className: "bg-pink-100 text-pink-800" },
+      };
+      const config = configs[typeIndep];
+      if (config) {
+        return (
+          <Badge className={`${config.className} flex items-center gap-1.5`}>
+            {config.icon}
+            Indépendant / {config.label}
+          </Badge>
+        );
+      }
+      return (
+        <Badge className="bg-green-100 text-green-800 flex items-center gap-1.5">
+          <Truck className="h-3.5 w-3.5" />
+          Indépendant
+        </Badge>
+      );
+    }
+    
+    if (categorie === 'conventionnel') {
+      return (
+        <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1.5">
+          <Ship className="h-3.5 w-3.5" />
+          Conventionnel
+        </Badge>
+      );
+    }
+    
+    return null;
+  }, [categorie, ordreData]);
 
   const getStatutBadge = (statut: string) => {
     const configs: Record<string, { label: string; className: string }> = {
@@ -264,7 +336,8 @@ export default function ModifierOrdrePage() {
     try {
       await updateOrdreMutation.mutateAsync({ id: id!, data });
       toast.success("Ordre modifié avec succès");
-      navigate("/ordres");
+      // Retourner vers la page détail de l'OT, pas la liste
+      navigate(`/ordres/${id}`);
     } catch (error) {
       // Error handled by mutation
     }
@@ -295,41 +368,55 @@ export default function ModifierOrdrePage() {
 
   return (
     <MainLayout title={`Modifier ${ordreData.numero}`}>
-      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+      <motion.form 
+        onSubmit={handleSubmit} 
+        className="space-y-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card/50 backdrop-blur-sm p-4 rounded-lg border"
+        >
           <div className="flex items-center gap-4">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(`/ordres/${id}`)}
-              className="transition-all duration-200 hover:scale-110"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(`/ordres/${id}`)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </motion.div>
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Ship className="h-6 w-6 text-primary" />
                   Modifier {ordreData.numero}
                 </h1>
                 {getStatutBadge(ordreData.statut)}
+                {getTypeBadge}
               </div>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-sm mt-1">
                 Créé le {formatDate(ordreData.date || ordreData.created_at)}
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={updateOrdreMutation.isPending} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
-            {updateOrdreMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Enregistrer
-          </Button>
-        </div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button type="submit" disabled={updateOrdreMutation.isPending} className="gap-2 shadow-md">
+              {updateOrdreMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Enregistrer
+            </Button>
+          </motion.div>
+        </motion.div>
 
         {/* Catégorie (lecture seule) */}
         {categorie && (
@@ -343,78 +430,117 @@ export default function ModifierOrdrePage() {
         )}
 
         {/* Client */}
-        <Card className="transition-all duration-300 hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-primary" />
-              Client
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-w-md space-y-2">
-              <Label>Nom du client *</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="h-5 w-5 text-primary" />
+                Client
+              </CardTitle>
+              <CardDescription>Sélectionnez le client pour cet ordre de travail</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="max-w-md space-y-2">
+                <Label>Nom du client *</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Sélectionner un client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Formulaires par catégorie */}
-        {categorie === "conteneurs" && isInitialized && (
-          <div className="animate-fade-in">
-            <OrdreConteneursForm
-              armateurs={armateurs}
-              transitaires={transitaires}
-              representants={representants}
-              onDataChange={setConteneursData}
-              initialData={getConteneursInitialData()}
-            />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {categorie === "conteneurs" && isInitialized && (
+            <motion.div
+              key="conteneurs"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.2 }}
+            >
+              <OrdreConteneursForm
+                armateurs={armateurs}
+                transitaires={transitaires}
+                representants={representants}
+                onDataChange={setConteneursData}
+                initialData={getConteneursInitialData()}
+              />
+            </motion.div>
+          )}
 
-        {categorie === "conventionnel" && isInitialized && (
-          <div className="animate-fade-in">
-            <OrdreConventionnelForm 
-              onDataChange={setConventionnelData} 
-              initialData={getConventionnelInitialData()}
-            />
-          </div>
-        )}
+          {categorie === "conventionnel" && isInitialized && (
+            <motion.div
+              key="conventionnel"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.2 }}
+            >
+              <OrdreConventionnelForm 
+                onDataChange={setConventionnelData} 
+                initialData={getConventionnelInitialData()}
+              />
+            </motion.div>
+          )}
 
-        {categorie === "operations_independantes" && isInitialized && (
-          <div className="animate-fade-in">
-            <OrdreIndependantForm 
-              onDataChange={setIndependantData} 
-              initialData={getIndependantInitialData()}
-            />
-          </div>
-        )}
+          {categorie === "operations_independantes" && isInitialized && (
+            <motion.div
+              key="independant"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.2 }}
+            >
+              <OrdreIndependantForm 
+                onDataChange={setIndependantData} 
+                initialData={getIndependantInitialData}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Notes */}
-        <Card className="transition-all duration-300 hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg">Notes / Observations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Conditions particulières, notes..."
-              rows={4}
-            />
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-transparent">
+              <CardTitle className="text-lg">Notes / Observations</CardTitle>
+              <CardDescription>Informations complémentaires pour cet ordre</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Conditions particulières, notes..."
+                rows={4}
+                className="resize-none"
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Récapitulatif */}
-        <div className="animate-fade-in">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
           <RecapitulatifCard
             montantHT={montantHT}
             tva={tva}
@@ -423,29 +549,37 @@ export default function ModifierOrdrePage() {
             tauxTva={Math.round(TAUX_TVA * 100)}
             tauxCss={Math.round(TAUX_CSS * 100)}
           />
-        </div>
+        </motion.div>
 
         {/* Boutons */}
-        <div className="flex justify-end gap-4 pb-6">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => navigate(`/ordres/${id}`)} 
-            disabled={updateOrdreMutation.isPending}
-            className="transition-all duration-200 hover:scale-105"
-          >
-            Annuler
-          </Button>
-          <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={updateOrdreMutation.isPending}>
-            {updateOrdreMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Enregistrer les modifications
-          </Button>
-        </div>
-      </form>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex justify-end gap-4 pb-6"
+        >
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => navigate(`/ordres/${id}`)} 
+              disabled={updateOrdreMutation.isPending}
+            >
+              Annuler
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button type="submit" className="gap-2 shadow-md" disabled={updateOrdreMutation.isPending}>
+              {updateOrdreMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Enregistrer les modifications
+            </Button>
+          </motion.div>
+        </motion.div>
+      </motion.form>
     </MainLayout>
   );
 }

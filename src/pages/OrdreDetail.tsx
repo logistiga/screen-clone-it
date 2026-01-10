@@ -552,7 +552,7 @@ export default function OrdreDetailPage() {
                 </motion.div>
               )}
 
-              {/* Lignes de l'ordre */}
+              {/* Lignes de l'ordre - Prestations indépendantes */}
               {ordre.lignes && ordre.lignes.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -560,10 +560,10 @@ export default function OrdreDetailPage() {
                   transition={{ delay: 0.4 }}
                 >
                   <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <CardHeader>
+                    <CardHeader className="bg-gradient-to-r from-green-500/5 to-transparent">
                       <CardTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-primary" />
-                        Lignes de l'ordre
+                        <Truck className="h-5 w-5 text-green-600" />
+                        Prestations
                         <Badge variant="secondary" className="ml-2">{ordre.lignes.length}</Badge>
                       </CardTitle>
                     </CardHeader>
@@ -572,8 +572,10 @@ export default function OrdreDetailPage() {
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>Description</TableHead>
-                            <TableHead className="text-center">Quantité</TableHead>
-                            <TableHead className="text-right">Prix unitaire</TableHead>
+                            <TableHead>Trajet / Lieu</TableHead>
+                            <TableHead>Période</TableHead>
+                            <TableHead className="text-center">Qté</TableHead>
+                            <TableHead className="text-right">Prix unit.</TableHead>
                             <TableHead className="text-right">Montant HT</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -586,13 +588,42 @@ export default function OrdreDetailPage() {
                               transition={{ delay: index * 0.05 }}
                               className="border-b hover:bg-muted/50 transition-colors"
                             >
-                              <TableCell>{ligne.description || ligne.type_operation}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{ligne.description || ligne.type_operation}</span>
+                                  {ligne.type_operation && ligne.description && (
+                                    <span className="text-xs text-muted-foreground capitalize">{ligne.type_operation}</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {(ligne.lieu_depart || ligne.lieu_arrivee) ? (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    {ligne.lieu_depart && <span>{ligne.lieu_depart}</span>}
+                                    {ligne.lieu_depart && ligne.lieu_arrivee && <span className="text-muted-foreground">→</span>}
+                                    {ligne.lieu_arrivee && <span>{ligne.lieu_arrivee}</span>}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {(ligne.date_debut || ligne.date_fin) ? (
+                                  <div className="text-sm">
+                                    {ligne.date_debut && <span>{formatDate(ligne.date_debut)}</span>}
+                                    {ligne.date_debut && ligne.date_fin && <span className="text-muted-foreground"> → </span>}
+                                    {ligne.date_fin && <span>{formatDate(ligne.date_fin)}</span>}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-center">{ligne.quantite}</TableCell>
                               <TableCell className="text-right">
                                 {formatMontant(ligne.prix_unitaire)}
                               </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatMontant(ligne.montant_ht)}
+                              <TableCell className="text-right font-medium text-primary">
+                                {formatMontant(ligne.montant_ht || ligne.quantite * ligne.prix_unitaire)}
                               </TableCell>
                             </motion.tr>
                           ))}
