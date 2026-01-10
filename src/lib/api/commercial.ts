@@ -433,16 +433,63 @@ export interface Banque {
   id: string;
   nom: string;
   code?: string;
+  numero_compte?: string;
+  rib?: string;
   iban?: string;
-  bic?: string;
+  swift?: string;
   solde?: number;
   actif: boolean;
+  paiements_count?: number;
+  paiements_sum_montant?: number;
 }
 
 export const banquesApi = {
-  getAll: async () => {
-    const response = await api.get('/banques');
+  getAll: async (params?: { actif?: boolean; search?: string }) => {
+    const response = await api.get('/banques', { params });
     return unwrapResponse<Banque[]>(response);
+  },
+  
+  getById: async (id: string) => {
+    const response = await api.get(`/banques/${id}`);
+    return response.data.data || response.data;
+  },
+  
+  create: async (data: Partial<Banque>) => {
+    const response = await api.post('/banques', data);
+    return response.data.data || response.data;
+  },
+  
+  update: async (id: string, data: Partial<Banque>) => {
+    const response = await api.put(`/banques/${id}`, data);
+    return response.data.data || response.data;
+  },
+  
+  delete: async (id: string) => {
+    await api.delete(`/banques/${id}`);
+  },
+  
+  getStats: async (id: string, params?: { date_debut?: string; date_fin?: string }) => {
+    const response = await api.get(`/banques/${id}/stats`, { params });
+    return response.data;
+  },
+
+  // Récupérer les mouvements bancaires (paiements par virement/chèque)
+  getMouvements: async (params?: { 
+    banque_id?: string; 
+    type?: 'entree' | 'sortie';
+    date_debut?: string;
+    date_fin?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    // On filtre les paiements par mode virement/chèque
+    const response = await api.get('/paiements', { 
+      params: {
+        ...params,
+        mode_paiement: 'Virement,Chèque'
+      }
+    });
+    return response.data;
   },
 };
 

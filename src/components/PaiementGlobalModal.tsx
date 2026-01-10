@@ -366,7 +366,7 @@ export function PaiementGlobalModal({
                         <SelectValue placeholder="Sélectionner" />
                       </SelectTrigger>
                       <SelectContent>
-                        {banques.filter((b: any) => b.actif).map((banque: any) => (
+                        {(banques || []).filter((b: any) => b.actif).map((banque: any) => (
                           <SelectItem key={banque.id} value={banque.id?.toString()}>
                             {banque.nom}
                           </SelectItem>
