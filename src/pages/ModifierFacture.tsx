@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, Receipt, Loader2, Users, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import {
 import type { FactureConteneursData } from "@/components/factures/forms/FactureConteneursForm";
 import type { FactureConventionnelData } from "@/components/factures/forms/FactureConventionnelForm";
 import type { FactureIndependantData } from "@/components/factures/forms/FactureIndependantForm";
-import { getCategoriesLabels, CategorieDocument, typesOperationConteneur } from "@/types/documents";
+import { getCategoriesLabels, CategorieDocument, typesOperationConteneur, TypeOperationIndep } from "@/types/documents";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
 
@@ -92,6 +92,44 @@ export default function ModifierFacturePage() {
       setIsInitialized(true);
     }
   }, [factureData, isInitialized]);
+
+  // Préparer les données initiales pour le formulaire indépendant
+  const independantInitialData = useMemo(() => {
+    if (!factureData || categorie !== "operations_independantes") return null;
+
+    const facture = factureData as any;
+
+    // Déduire le type_operation_indep depuis les lignes si non défini
+    let typeOp = facture.type_operation_indep || "";
+    if (!typeOp && facture.lignes?.length > 0) {
+      const rawType = facture.lignes[0].type_operation || "";
+      const normalized = rawType.toLowerCase().replace(/\s+/g, "_").replace("é", "e");
+      const validTypes: TypeOperationIndep[] = ["transport", "manutention", "stockage", "location", "double_relevage"];
+      if (validTypes.includes(normalized as TypeOperationIndep)) {
+        typeOp = normalized as TypeOperationIndep;
+      } else if (rawType.toLowerCase().includes("relevage")) {
+        typeOp = "double_relevage";
+      }
+    }
+
+    const prestations = (facture.lignes || []).map((l: any, idx: number) => ({
+      id: String(l.id || idx),
+      description: l.description || "",
+      lieuDepart: l.lieu_depart || "",
+      lieuArrivee: l.lieu_arrivee || "",
+      dateDebut: l.date_debut || "",
+      dateFin: l.date_fin || "",
+      quantite: parseFloat(l.quantite) || 1,
+      prixUnitaire: parseFloat(l.prix_unitaire) || 0,
+      montantHT: (parseFloat(l.quantite) || 1) * (parseFloat(l.prix_unitaire) || 0),
+    }));
+
+    return {
+      typeOperationIndep: typeOp as TypeOperationIndep | "",
+      prestations,
+      montantHT: prestations.reduce((sum: number, p: any) => sum + p.montantHT, 0),
+    };
+  }, [factureData, categorie]);
 
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -204,6 +242,7 @@ export default function ModifierFacturePage() {
     try {
       await updateFactureMutation.mutateAsync({ id: id!, data });
       toast.success("Facture modifiée avec succès");
+      // Retourner vers la liste des factures
       navigate("/factures");
     } catch (error) {
       // Error handled by mutation
@@ -243,7 +282,7 @@ export default function ModifierFacturePage() {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/factures/${id}`)}
+              onClick={() => navigate(`/factures`)}
               className="transition-all duration-200 hover:scale-110"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -340,7 +379,10 @@ export default function ModifierFacturePage() {
 
         {categorie === "operations_independantes" && (
           <div className="animate-fade-in">
-            <FactureIndependantForm onDataChange={setIndependantData} />
+            <FactureIndependantForm 
+              onDataChange={setIndependantData} 
+              initialData={independantInitialData}
+            />
           </div>
         )}
 
@@ -376,7 +418,7 @@ export default function ModifierFacturePage() {
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => navigate(`/factures/${id}`)} 
+            onClick={() => navigate(`/factures`)} 
             disabled={updateFactureMutation.isPending}
             className="transition-all duration-200 hover:scale-105"
           >
