@@ -92,8 +92,9 @@ class FactureServiceFactory
 
             // Générer le numéro
             $data['numero'] = $this->genererNumero();
-            $data['statut'] = $data['statut'] ?? 'brouillon';
-            $data['montant_paye'] = 0;
+            // Toute facture créée est directement "emise" (pas de brouillon)
+            $data['statut'] = $data['statut'] ?? 'emise';
+            $data['montant_paye'] = $data['montant_paye'] ?? 0;
 
             // Extraire les relations avant l'insert
             $lignes = $data['lignes'] ?? [];

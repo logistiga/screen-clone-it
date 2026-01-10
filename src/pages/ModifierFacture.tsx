@@ -93,6 +93,63 @@ export default function ModifierFacturePage() {
     }
   }, [factureData, isInitialized]);
 
+  // Préparer les données initiales pour le formulaire conteneurs
+  const conteneursInitialData = useMemo(() => {
+    if (!factureData || categorie !== "conteneurs") return null;
+    const facture = factureData as any;
+    
+    const conteneurs = (facture.conteneurs || []).map((c: any, idx: number) => ({
+      id: String(c.id || idx),
+      numero: c.numero || "",
+      description: c.description || "",
+      taille: c.taille === "20" ? "20'" : "40'",
+      prixUnitaire: parseFloat(c.prix_unitaire) || 0,
+      operations: (c.operations || []).map((op: any, opIdx: number) => ({
+        id: String(op.id || opIdx),
+        type: op.type_operation || "arrivee",
+        description: op.description || "",
+        quantite: parseFloat(op.quantite) || 1,
+        prixUnitaire: parseFloat(op.prix_unitaire) || 0,
+        prixTotal: (parseFloat(op.quantite) || 1) * (parseFloat(op.prix_unitaire) || 0),
+      })),
+    }));
+
+    return {
+      typeOperation: (facture.type_operation?.toLowerCase() || "") as "import" | "export" | "",
+      numeroBL: facture.numero_bl || facture.bl_numero || "",
+      armateurId: String(facture.armateur_id || ""),
+      transitaireId: String(facture.transitaire_id || ""),
+      representantId: String(facture.representant_id || ""),
+      conteneurs,
+      montantHT: conteneurs.reduce((sum: number, c: any) => 
+        sum + c.prixUnitaire + c.operations.reduce((opSum: number, op: any) => opSum + op.prixTotal, 0), 0
+      ),
+    };
+  }, [factureData, categorie]);
+
+  // Préparer les données initiales pour le formulaire conventionnel
+  const conventionnelInitialData = useMemo(() => {
+    if (!factureData || categorie !== "conventionnel") return null;
+    const facture = factureData as any;
+    
+    const lots = (facture.lots || []).map((l: any, idx: number) => ({
+      id: String(l.id || idx),
+      numeroLot: l.designation || l.numero_lot || `Lot ${idx + 1}`,
+      description: l.description || l.designation || "",
+      quantite: parseFloat(l.quantite) || 1,
+      prixUnitaire: parseFloat(l.prix_unitaire) || 0,
+      prixTotal: (parseFloat(l.quantite) || 1) * (parseFloat(l.prix_unitaire) || 0),
+    }));
+
+    return {
+      numeroBL: facture.numero_bl || facture.bl_numero || "",
+      lieuChargement: facture.lieu_chargement || "",
+      lieuDechargement: facture.lieu_dechargement || "",
+      lots,
+      montantHT: lots.reduce((sum: number, l: any) => sum + l.prixTotal, 0),
+    };
+  }, [factureData, categorie]);
+
   // Préparer les données initiales pour le formulaire indépendant
   const independantInitialData = useMemo(() => {
     if (!factureData || categorie !== "operations_independantes") return null;
@@ -367,13 +424,17 @@ export default function ModifierFacturePage() {
               transitaires={transitaires}
               representants={representants}
               onDataChange={setConteneursData}
+              initialData={conteneursInitialData}
             />
           </div>
         )}
 
         {categorie === "conventionnel" && (
           <div className="animate-fade-in">
-            <FactureConventionnelForm onDataChange={setConventionnelData} />
+            <FactureConventionnelForm 
+              onDataChange={setConventionnelData} 
+              initialData={conventionnelInitialData}
+            />
           </div>
         )}
 
