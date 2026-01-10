@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Package, FileText, Plus, Trash2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
 
 interface FactureConventionnelFormProps {
   onDataChange: (data: FactureConventionnelData) => void;
+  initialData?: FactureConventionnelData | null;
 }
 
 export interface FactureConventionnelData {
@@ -28,12 +29,28 @@ const formatMontant = (montant: number) => {
 
 export default function FactureConventionnelForm({
   onDataChange,
+  initialData,
 }: FactureConventionnelFormProps) {
+  const lastInitKey = useRef<string>("");
   const [numeroBL, setNumeroBL] = useState("");
   const [lieuChargement, setLieuChargement] = useState("");
   const [lieuDechargement, setLieuDechargement] = useState("");
   const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
 
+  // Sync initialData une seule fois
+  useEffect(() => {
+    if (!initialData) return;
+    const initKey = JSON.stringify(initialData);
+    if (initKey === lastInitKey.current) return;
+    
+    setNumeroBL(initialData.numeroBL || "");
+    setLieuChargement(initialData.lieuChargement || "");
+    setLieuDechargement(initialData.lieuDechargement || "");
+    if (initialData.lots?.length > 0) {
+      setLots(initialData.lots);
+    }
+    lastInitKey.current = initKey;
+  }, [initialData]);
   const updateParent = (newLots: LigneLot[]) => {
     const montantHT = calculateTotalLots(newLots);
     onDataChange({

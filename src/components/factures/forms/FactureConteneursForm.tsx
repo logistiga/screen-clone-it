@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Container, FileText, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ interface FactureConteneursFormProps {
   transitaires: Transitaire[];
   representants: Representant[];
   onDataChange: (data: FactureConteneursData) => void;
+  initialData?: FactureConteneursData | null;
 }
 
 export interface FactureConteneursData {
@@ -61,7 +62,9 @@ export default function FactureConteneursForm({
   transitaires,
   representants,
   onDataChange,
+  initialData,
 }: FactureConteneursFormProps) {
+  const lastInitKey = useRef<string>("");
   const [typeOperation, setTypeOperation] = useState<TypeOperation | "">("");
   const [numeroBL, setNumeroBL] = useState("");
   const [armateurId, setArmateurId] = useState("");
@@ -69,6 +72,22 @@ export default function FactureConteneursForm({
   const [representantId, setRepresentantId] = useState("");
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
 
+  // Sync initialData une seule fois
+  useEffect(() => {
+    if (!initialData) return;
+    const initKey = JSON.stringify(initialData);
+    if (initKey === lastInitKey.current) return;
+    
+    setTypeOperation(initialData.typeOperation || "");
+    setNumeroBL(initialData.numeroBL || "");
+    setArmateurId(initialData.armateurId || "");
+    setTransitaireId(initialData.transitaireId || "");
+    setRepresentantId(initialData.representantId || "");
+    if (initialData.conteneurs?.length > 0) {
+      setConteneurs(initialData.conteneurs);
+    }
+    lastInitKey.current = initKey;
+  }, [initialData]);
   const updateParent = (newConteneurs: LigneConteneur[]) => {
     const montantHT = calculateTotalConteneurs(newConteneurs);
     onDataChange({
