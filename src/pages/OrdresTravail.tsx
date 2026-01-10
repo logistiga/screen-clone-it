@@ -188,10 +188,11 @@ export default function OrdresTravailPage() {
   };
 
   // Fonction améliorée pour obtenir le badge de type/catégorie
+  // Affiche "Catégorie / Type" pour plus de clarté
   const getTypeBadge = (ordre: typeof ordresList[0]) => {
     const { categorie, type_operation, type_operation_indep } = ordre;
 
-    // 1. Conteneurs → afficher Import/Export
+    // 1. Conteneurs → afficher "Import" ou "Export" ou "Conteneurs / [type]"
     if (categorie === 'conteneurs') {
       const typeOp = type_operation?.toLowerCase() || '';
       if (typeOp.includes('import') || typeOp === 'import') {
@@ -199,7 +200,7 @@ export default function OrdresTravailPage() {
         return (
           <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
             {config.icon}
-            {config.label}
+            <span>Conteneurs / Import</span>
           </Badge>
         );
       }
@@ -208,7 +209,7 @@ export default function OrdresTravailPage() {
         return (
           <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
             {config.icon}
-            {config.label}
+            <span>Conteneurs / Export</span>
           </Badge>
         );
       }
@@ -221,7 +222,7 @@ export default function OrdresTravailPage() {
       );
     }
 
-    // 2. Opérations indépendantes → afficher le type spécifique
+    // 2. Opérations indépendantes → afficher "Indépendant / [type spécifique]"
     if (categorie === 'operations_independantes') {
       const typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
       const config = typeIndepConfigs[typeIndep];
@@ -229,11 +230,11 @@ export default function OrdresTravailPage() {
         return (
           <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
             {config.icon}
-            {config.label}
+            <span>Indépendant / {config.label}</span>
           </Badge>
         );
       }
-      // Fallback
+      // Fallback - afficher juste "Indépendant"
       return (
         <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
           <Truck className="h-3 w-3" />
