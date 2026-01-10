@@ -50,7 +50,7 @@ class FactureController extends Controller
         }
 
         if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date', [$request->get('date_debut'), $request->get('date_fin')]);
+            $query->whereBetween('date_creation', [$request->get('date_debut'), $request->get('date_fin')]);
         }
 
         if ($request->has('impayees')) {
