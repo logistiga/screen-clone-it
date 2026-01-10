@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpCircle, Building2 } from "lucide-react";
+import { ArrowUpCircle, Building2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { banques, formatMontant } from "@/data/mockData";
+import { useBanques, useCreateMouvementCaisse, useCategoriesDepenses, useSoldeCaisse } from "@/hooks/use-commercial";
+import { formatMontant } from "@/data/mockData";
 
 interface SortieCaisseModalProps {
   open: boolean;
@@ -42,7 +43,17 @@ export function SortieCaisseModal({
   const [description, setDescription] = useState("");
   const [banqueId, setBanqueId] = useState(initialBanqueId || "");
   const [reference, setReference] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [categorie, setCategorie] = useState("");
+  const [beneficiaire, setBeneficiaire] = useState("");
+
+  const { data: banques = [], isLoading: banquesLoading } = useBanques({ actif: true });
+  const { data: categoriesData } = useCategoriesDepenses({ type: 'Sortie', actif: true });
+  const { data: soldeData } = useSoldeCaisse();
+  const createMouvement = useCreateMouvementCaisse();
+
+  const categories = categoriesData?.data || [];
+  const selectedBanque = banques.find(b => b.id === banqueId);
+  const soldeCaisse = soldeData?.solde || 0;
 
   const handleSubmit = async () => {
     if (montant <= 0) {
@@ -72,38 +83,76 @@ export function SortieCaisseModal({
       return;
     }
 
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (!categorie) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner une catégorie.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const sortieData = {
-      type: "sortie",
-      source: type,
-      montant,
-      description,
-      banqueId: type === "banque" ? banqueId : null,
-      reference: reference || null,
-      date: new Date().toISOString(),
-    };
+    // Vérifier le solde
+    if (type === "caisse" && montant > soldeCaisse) {
+      toast({
+        title: "Solde insuffisant",
+        description: `Le solde de la caisse (${formatMontant(soldeCaisse)}) est insuffisant.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
-    console.log("Sortie enregistrée:", sortieData);
+    if (type === "banque" && selectedBanque && montant > (selectedBanque.solde || 0)) {
+      toast({
+        title: "Solde insuffisant",
+        description: `Le solde de ${selectedBanque.nom} (${formatMontant(selectedBanque.solde || 0)}) est insuffisant.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const banque = type === "banque" ? banques.find((b) => b.id === banqueId) : null;
+    try {
+      await createMouvement.mutateAsync({
+        type: 'Sortie',
+        source: type,
+        montant,
+        description,
+        categorie,
+        banque_id: type === "banque" ? banqueId : undefined,
+        beneficiaire: beneficiaire || undefined,
+      });
 
-    toast({
-      title: "Sortie enregistrée",
-      description: `Sortie de ${formatMontant(montant)} ${type === "banque" ? `(${banque?.nom})` : "(Caisse)"} enregistrée.`,
-    });
+      const banque = type === "banque" ? selectedBanque : null;
 
-    setIsSaving(false);
+      toast({
+        title: "Sortie enregistrée",
+        description: `Sortie de ${formatMontant(montant)} ${type === "banque" ? `(${banque?.nom})` : "(Caisse)"} enregistrée.`,
+      });
+
+      resetForm();
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const resetForm = () => {
     setMontant(0);
     setDescription("");
     setReference("");
-    onOpenChange(false);
-    onSuccess?.();
+    setCategorie("");
+    setBeneficiaire("");
+    if (!initialBanqueId) {
+      setBanqueId("");
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) resetForm();
+      onOpenChange(isOpen);
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -119,28 +168,71 @@ export function SortieCaisseModal({
           {/* Sélection banque si type banque */}
           {type === "banque" && (
             <div className="space-y-2">
-              <Label>Compte bancaire</Label>
-              <Select value={banqueId} onValueChange={setBanqueId}>
+              <Label>Compte bancaire *</Label>
+              <Select value={banqueId} onValueChange={setBanqueId} disabled={!!initialBanqueId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un compte" />
                 </SelectTrigger>
                 <SelectContent>
-                  {banques.filter((b) => b.actif).map((banque) => (
-                    <SelectItem key={banque.id} value={banque.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {banque.nom} - {formatMontant(banque.solde)}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {banquesLoading ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : (
+                    banques.map((banque) => (
+                      <SelectItem key={banque.id} value={banque.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {banque.nom} - {formatMontant(banque.solde || 0)}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {selectedBanque && (
+                <p className="text-xs text-muted-foreground">
+                  Solde disponible: {formatMontant(selectedBanque.solde || 0)}
+                </p>
+              )}
             </div>
           )}
 
+          {/* Solde caisse si type caisse */}
+          {type === "caisse" && (
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Solde disponible en caisse: <span className="font-semibold text-foreground">{formatMontant(soldeCaisse)}</span>
+              </p>
+            </div>
+          )}
+
+          {/* Catégorie */}
+          <div className="space-y-2">
+            <Label>Catégorie *</Label>
+            <Select value={categorie} onValueChange={setCategorie}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une catégorie" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    Aucune catégorie disponible
+                  </div>
+                ) : (
+                  categories.map((cat: any) => (
+                    <SelectItem key={cat.id} value={cat.nom}>
+                      {cat.nom}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Montant */}
           <div className="space-y-2">
-            <Label htmlFor="montant">Montant (FCFA)</Label>
+            <Label htmlFor="montant">Montant (FCFA) *</Label>
             <Input
               id="montant"
               type="number"
@@ -148,6 +240,17 @@ export function SortieCaisseModal({
               onChange={(e) => setMontant(parseFloat(e.target.value) || 0)}
               className="text-right text-lg font-semibold"
               placeholder="0"
+            />
+          </div>
+
+          {/* Bénéficiaire */}
+          <div className="space-y-2">
+            <Label htmlFor="beneficiaire">Bénéficiaire</Label>
+            <Input
+              id="beneficiaire"
+              placeholder="Nom du bénéficiaire"
+              value={beneficiaire}
+              onChange={(e) => setBeneficiaire(e.target.value)}
             />
           </div>
 
@@ -179,17 +282,17 @@ export function SortieCaisseModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={createMouvement.isPending}>
             Annuler
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={createMouvement.isPending}
             className="gap-2 bg-destructive hover:bg-destructive/90"
           >
-            {isSaving ? (
+            {createMouvement.isPending ? (
               <>
-                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Enregistrement...
               </>
             ) : (

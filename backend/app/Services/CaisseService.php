@@ -146,7 +146,10 @@ class CaisseService
         ]);
 
         if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
+            // Normaliser le type (Sortie -> sortie, Entrée -> entree)
+            $type = strtolower($filters['type']);
+            $type = str_replace(['é', 'è', 'ê', 'ë'], 'e', $type);
+            $query->where('type', $type);
         }
 
         if (!empty($filters['source'])) {
