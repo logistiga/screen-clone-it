@@ -43,6 +43,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture, useUpdateOrdre } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
+import { toast } from "sonner";
 
 // Types pour les badges
 interface TypeConfig {
@@ -86,16 +87,22 @@ export default function OrdresTravailPage() {
   // Handlers consolidés
   const handleAction = async () => {
     if (!confirmAction) return;
-    
-    if (confirmAction.type === 'annuler') {
-      await updateOrdreMutation.mutateAsync({ id: confirmAction.id, data: { statut: 'annule' } });
-    } else if (confirmAction.type === 'supprimer') {
-      await deleteOrdreMutation.mutateAsync(confirmAction.id);
-    } else if (confirmAction.type === 'facturer') {
-      await convertMutation.mutateAsync(confirmAction.id);
-      navigate("/factures");
+
+    try {
+      if (confirmAction.type === "annuler") {
+        await updateOrdreMutation.mutateAsync({ id: confirmAction.id, data: { statut: "annule" } });
+      } else if (confirmAction.type === "supprimer") {
+        await deleteOrdreMutation.mutateAsync(confirmAction.id);
+      } else if (confirmAction.type === "facturer") {
+        await convertMutation.mutateAsync(confirmAction.id);
+        toast.success("Ordre converti en facture");
+        navigate("/factures");
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Erreur lors de l'opération");
+    } finally {
+      setConfirmAction(null);
     }
-    setConfirmAction(null);
   };
 
   const ordresList = ordresData?.data || [];
