@@ -138,7 +138,12 @@ class CaisseService
      */
     public function getMouvements(array $filters = [])
     {
-        $query = MouvementCaisse::with(['banque', 'paiement']);
+        $query = MouvementCaisse::with([
+            'banque',
+            'paiement.ordre.client',
+            'paiement.facture.client',
+            'paiement.client',
+        ]);
 
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);

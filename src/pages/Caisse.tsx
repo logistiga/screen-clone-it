@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,60 +20,122 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt } from "lucide-react";
+import { Search, ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt, Loader2, ClipboardList } from "lucide-react";
 import { SortieCaisseModal } from "@/components/SortieCaisseModal";
 import { formatMontant, formatDate } from "@/data/mockData";
+import api from "@/lib/api";
+import { TablePagination } from "@/components/TablePagination";
 
 interface MouvementCaisse {
   id: string;
   type: 'entree' | 'sortie';
   montant: number;
   date: string;
+  date_mouvement: string;
   description: string;
-  source: 'paiement' | 'manuel';
-  documentNumero: string;
-  clientNom: string;
+  source: string;
+  categorie: string;
+  document_numero: string | null;
+  document_type: 'ordre' | 'facture' | null;
+  client_nom: string | null;
+  beneficiaire: string | null;
+  banque_id: number | null;
+}
+
+interface CaisseResponse {
+  data: MouvementCaisse[];
+  meta?: {
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+  };
+}
+
+interface SoldeResponse {
+  solde: number;
+  total_entrees: number;
+  total_sorties: number;
+  solde_banques: number;
+  solde_total: number;
 }
 
 export default function CaissePage() {
-  // Données en mémoire uniquement
-  const [mouvements] = useState<MouvementCaisse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [sortieModalOpen, setSortieModalOpen] = useState(false);
 
-  // Stats
-  const entrees = mouvements.filter(m => m.type === 'entree');
-  const sorties = mouvements.filter(m => m.type === 'sortie');
-  const totalEntrees = entrees.reduce((sum, m) => sum + m.montant, 0);
-  const totalSorties = sorties.reduce((sum, m) => sum + m.montant, 0);
-  const soldeCaisse = totalEntrees - totalSorties;
-
-  // Filtrage
-  const filteredMouvements = mouvements.filter(m => {
-    const matchSearch = m.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.documentNumero.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchType = typeFilter === "all" || m.type === typeFilter;
-    return matchSearch && matchType;
+  // Fetch mouvements from API
+  const { data: mouvementsData, isLoading, refetch } = useQuery({
+    queryKey: ['caisse-mouvements', currentPage, pageSize, searchTerm, typeFilter],
+    queryFn: async () => {
+      const params: Record<string, string | number> = {
+        page: currentPage,
+        per_page: pageSize,
+        source: 'caisse', // Only caisse movements (espèces)
+      };
+      if (searchTerm) params.search = searchTerm;
+      if (typeFilter !== 'all') params.type = typeFilter;
+      
+      const response = await api.get<CaisseResponse>('/caisse', { params });
+      return response.data;
+    },
   });
 
+  // Fetch solde
+  const { data: soldeData } = useQuery({
+    queryKey: ['caisse-solde'],
+    queryFn: async () => {
+      const response = await api.get<SoldeResponse>('/caisse/solde');
+      return response.data;
+    },
+  });
+
+  const mouvements = mouvementsData?.data || [];
+  const totalPages = mouvementsData?.meta?.last_page || 1;
+  const totalItems = mouvementsData?.meta?.total || 0;
+
+  const soldeCaisse = soldeData?.solde || 0;
+  const totalEntrees = soldeData?.total_entrees || 0;
+  const totalSorties = soldeData?.total_sorties || 0;
+
+  // Count by type in current page
+  const entreesCount = mouvements.filter(m => m.type === 'entree').length;
+  const sortiesCount = mouvements.filter(m => m.type === 'sortie').length;
+
+  const handleSortieSuccess = () => {
+    refetch();
+  };
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Caisse">
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Chargement des mouvements...</p>
+        </div>
+      </MainLayout>
+    );
+  }
+
   // État vide
-  if (mouvements.length === 0) {
+  if (mouvements.length === 0 && !searchTerm && typeFilter === 'all') {
     return (
       <MainLayout title="Caisse">
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Wallet className="h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-2xl font-semibold mb-2">Aucun mouvement de caisse</h2>
           <p className="text-muted-foreground mb-6 max-w-md">
-            Les paiements en espèces et sorties de caisse apparaîtront ici.
+            Les paiements en espèces sur les ordres de travail et sorties de caisse apparaîtront ici.
           </p>
           <Button variant="outline" className="gap-2 text-destructive border-destructive" onClick={() => setSortieModalOpen(true)}>
             <ArrowUpCircle className="h-4 w-4" />
             Nouvelle sortie
           </Button>
         </div>
-        <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" />
+        <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" onSuccess={handleSortieSuccess} />
       </MainLayout>
     );
   }
@@ -90,7 +153,9 @@ export default function CaissePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatMontant(soldeCaisse)}</div>
+              <div className={`text-2xl font-bold ${soldeCaisse >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {formatMontant(soldeCaisse)}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -102,7 +167,7 @@ export default function CaissePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{formatMontant(totalEntrees)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{entrees.length} paiements</p>
+              <p className="text-xs text-muted-foreground mt-1">Paiements reçus</p>
             </CardContent>
           </Card>
           <Card>
@@ -114,7 +179,7 @@ export default function CaissePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">{formatMontant(totalSorties)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{sorties.length} sorties</p>
+              <p className="text-xs text-muted-foreground mt-1">Dépenses</p>
             </CardContent>
           </Card>
           <Card>
@@ -122,7 +187,8 @@ export default function CaissePage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Opérations</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mouvements.length}</div>
+              <div className="text-2xl font-bold">{totalItems}</div>
+              <p className="text-xs text-muted-foreground mt-1">{entreesCount} entrées, {sortiesCount} sorties</p>
             </CardContent>
           </Card>
         </div>
@@ -132,9 +198,17 @@ export default function CaissePage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+              <Input 
+                placeholder="Rechercher (n° ordre, description)..." 
+                value={searchTerm} 
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }} 
+                className="pl-9" 
+              />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Tous les types" />
               </SelectTrigger>
@@ -166,46 +240,78 @@ export default function CaissePage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Document</TableHead>
+                  <TableHead>N° Ordre</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMouvements.map((mouvement) => (
+                {mouvements.map((mouvement) => (
                   <TableRow key={mouvement.id}>
-                    <TableCell>{formatDate(mouvement.date)}</TableCell>
+                    <TableCell>{formatDate(mouvement.date || mouvement.date_mouvement)}</TableCell>
                     <TableCell>
                       {mouvement.type === 'entree' ? (
-                        <Badge className="bg-green-100 text-green-800 gap-1"><ArrowDownCircle className="h-3 w-3" />Entrée</Badge>
+                        <Badge className="bg-green-100 text-green-800 gap-1 dark:bg-green-900/40 dark:text-green-200">
+                          <ArrowDownCircle className="h-3 w-3" />
+                          Entrée
+                        </Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-800 gap-1"><ArrowUpCircle className="h-3 w-3" />Sortie</Badge>
+                        <Badge className="bg-red-100 text-red-800 gap-1 dark:bg-red-900/40 dark:text-red-200">
+                          <ArrowUpCircle className="h-3 w-3" />
+                          Sortie
+                        </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{mouvement.description}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{mouvement.description}</TableCell>
                     <TableCell>
-                      {mouvement.documentNumero ? (
-                        <Badge variant="outline" className="gap-1"><FileText className="h-3 w-3" />{mouvement.documentNumero}</Badge>
-                      ) : <span className="text-muted-foreground">-</span>}
+                      {mouvement.document_numero ? (
+                        <Badge variant="outline" className="gap-1">
+                          {mouvement.document_type === 'ordre' ? (
+                            <ClipboardList className="h-3 w-3" />
+                          ) : (
+                            <FileText className="h-3 w-3" />
+                          )}
+                          {mouvement.document_numero}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
-                    <TableCell>{mouvement.clientNom || <span className="text-muted-foreground">-</span>}</TableCell>
+                    <TableCell>{mouvement.client_nom || mouvement.beneficiaire || <span className="text-muted-foreground">-</span>}</TableCell>
                     <TableCell className={`text-right font-medium ${mouvement.type === 'entree' ? 'text-green-600' : 'text-destructive'}`}>
                       {mouvement.type === 'entree' ? '+' : '-'}{formatMontant(mouvement.montant)}
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredMouvements.length === 0 && (
+                {mouvements.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucun mouvement de caisse</TableCell>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      Aucun mouvement trouvé
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+          />
+        )}
       </div>
 
-      <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" />
+      <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" onSuccess={handleSortieSuccess} />
     </MainLayout>
   );
 }
