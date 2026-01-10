@@ -18,7 +18,9 @@ import {
   Transitaire,
   Representant,
   Banque,
-  PaiementData
+  PaiementData,
+  Paiement,
+  PaiementsParams
 } from '@/lib/api/commercial';
 import { toast } from 'sonner';
 import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
@@ -473,11 +475,19 @@ export function useBanques() {
 }
 
 // Paiements hooks
+export function usePaiements(params?: PaiementsParams) {
+  return useQuery({
+    queryKey: ['paiements', params],
+    queryFn: () => paiementsApi.getAll(params),
+  });
+}
+
 export function useCreatePaiement() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: PaiementData) => paiementsApi.create(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
       queryClient.invalidateQueries({ queryKey: ['factures'] });
       queryClient.invalidateQueries({ queryKey: ['ordres'] });
       toast.success('Paiement enregistré avec succès');
@@ -488,11 +498,28 @@ export function useCreatePaiement() {
   });
 }
 
+export function useDeletePaiement() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: paiementsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      queryClient.invalidateQueries({ queryKey: ['ordres'] });
+      toast.success('Paiement supprimé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression du paiement');
+    },
+  });
+}
+
 export function useCreatePaiementGlobal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: paiementsApi.createGlobal,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
       queryClient.invalidateQueries({ queryKey: ['factures'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Paiement global enregistré avec succès');

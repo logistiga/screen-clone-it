@@ -457,9 +457,61 @@ export interface PaiementData {
   notes?: string;
 }
 
+export interface Paiement {
+  id: string;
+  montant: number;
+  mode_paiement: string;
+  reference?: string;
+  numero_cheque?: string;
+  date: string;
+  date_paiement?: string;
+  notes?: string;
+  document_numero?: string;
+  document_type?: 'facture' | 'ordre';
+  facture_id?: string;
+  ordre_id?: string;
+  client_id?: string;
+  banque_id?: string;
+  facture?: Facture;
+  ordre?: OrdreTravail;
+  client?: Client;
+  banque?: Banque;
+  created_at?: string;
+}
+
+export interface PaiementsParams {
+  search?: string;
+  type?: 'facture' | 'ordre';
+  mode_paiement?: string;
+  client_id?: string;
+  date_debut?: string;
+  date_fin?: string;
+  page?: number;
+  per_page?: number;
+}
+
 export const paiementsApi = {
+  getAll: async (params?: PaiementsParams) => {
+    const response = await api.get('/paiements', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/paiements/${id}`);
+    return response.data.data;
+  },
+
   create: async (data: PaiementData) => {
     const response = await api.post('/paiements', data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/paiements/${id}`);
+  },
+
+  getStats: async (params?: { date_debut?: string; date_fin?: string }) => {
+    const response = await api.get('/paiements/stats', { params });
     return response.data;
   },
   
