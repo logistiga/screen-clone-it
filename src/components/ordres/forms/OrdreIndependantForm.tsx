@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   TypeOperationIndep,
   LignePrestationEtendue,
@@ -28,16 +30,23 @@ export default function OrdreIndependantForm({
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
 
-  // Initialisation depuis initialData
-  useEffect(() => {
+  // Initialisation depuis initialData - utiliser useCallback pour stabiliser
+  const initializeFromData = useCallback(() => {
     if (initialData && !isInitialized) {
-      if (initialData.typeOperationIndep) setTypeOperationIndep(initialData.typeOperationIndep);
+      console.log("Initializing OrdreIndependantForm with:", initialData);
+      if (initialData.typeOperationIndep) {
+        setTypeOperationIndep(initialData.typeOperationIndep);
+      }
       if (initialData.prestations && initialData.prestations.length > 0) {
         setPrestations(initialData.prestations);
       }
       setIsInitialized(true);
     }
   }, [initialData, isInitialized]);
+
+  useEffect(() => {
+    initializeFromData();
+  }, [initializeFromData]);
   
   const operationsIndepLabels = getOperationsIndepLabels();
 
@@ -97,29 +106,62 @@ export default function OrdreIndependantForm({
   };
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Sélection du type d'opération */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Type d'opération indépendante</CardTitle>
+      <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Type d'opération indépendante
+                {typeOperationIndep && (
+                  <Badge variant="secondary" className="ml-2">
+                    {operationsIndepLabels[typeOperationIndep]?.label}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Sélectionnez le type d'opération pour cette prestation
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
               const op = operationsIndepLabels[key];
               const isSelected = typeOperationIndep === key;
               return (
-                <button
+                <motion.button
                   key={key}
                   type="button"
                   onClick={() => setTypeOperationIndep(key)}
-                  className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 text-center ${
-                    isSelected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 text-center relative overflow-hidden ${
+                    isSelected 
+                      ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20" 
+                      : "border-border hover:border-primary/50 hover:bg-muted/50"
                   }`}
                 >
-                  <div className={isSelected ? "text-primary" : "text-muted-foreground"}>{op.icon}</div>
-                  <span className={`text-sm font-medium ${isSelected ? "text-primary" : ""}`}>{op.label}</span>
-                </button>
+                  {isSelected && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-2 right-2 w-3 h-3 rounded-full bg-primary"
+                    />
+                  )}
+                  <motion.div 
+                    className={`p-3 rounded-full ${isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}
+                    animate={isSelected ? { scale: [1, 1.1, 1] } : {}}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {op.icon}
+                  </motion.div>
+                  <span className={`text-sm font-semibold ${isSelected ? "text-primary" : ""}`}>
+                    {op.label}
+                  </span>
+                </motion.button>
               );
             })}
           </div>
@@ -127,15 +169,25 @@ export default function OrdreIndependantForm({
       </Card>
 
       {/* Formulaire des prestations */}
-      {typeOperationIndep && (
-        <OperationsIndependantesForm
-          typeOperationIndep={typeOperationIndep}
-          prestations={prestations}
-          onAddPrestation={handleAddPrestation}
-          onRemovePrestation={handleRemovePrestation}
-          onPrestationChange={handlePrestationChange}
-        />
-      )}
-    </>
+      <AnimatePresence mode="wait">
+        {typeOperationIndep && (
+          <motion.div
+            key={typeOperationIndep}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <OperationsIndependantesForm
+              typeOperationIndep={typeOperationIndep}
+              prestations={prestations}
+              onAddPrestation={handleAddPrestation}
+              onRemovePrestation={handleRemovePrestation}
+              onPrestationChange={handlePrestationChange}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
