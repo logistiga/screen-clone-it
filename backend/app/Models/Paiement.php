@@ -48,36 +48,6 @@ class Paiement extends Model
         return $this->belongsTo(Banque::class);
     }
 
-    // Boot
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::created(function ($paiement) {
-            // Enregistrer le paiement sur la facture ou l'ordre
-            if ($paiement->facture_id) {
-                $paiement->facture->enregistrerPaiement($paiement->montant);
-            }
-            
-            if ($paiement->ordre_id) {
-                $paiement->ordre->enregistrerPaiement($paiement->montant);
-            }
-
-            // Créer le mouvement de caisse
-            MouvementCaisse::create([
-                'type' => 'entree',
-                'montant' => $paiement->montant,
-                'date' => $paiement->date,
-                'description' => 'Paiement ' . ($paiement->facture ? $paiement->facture->numero : $paiement->ordre->numero),
-                'paiement_id' => $paiement->id,
-                'source' => $paiement->banque_id ? 'banque' : 'caisse',
-                'banque_id' => $paiement->banque_id,
-            ]);
-
-            // Mettre à jour le solde bancaire si applicable
-            if ($paiement->banque_id) {
-                $paiement->banque->ajouterSolde($paiement->montant);
-            }
-        });
-    }
+    // Note: La logique de création de mouvement de caisse et mise à jour des montants
+    // est gérée exclusivement par PaiementService pour éviter les doublons
 }
