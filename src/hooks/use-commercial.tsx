@@ -26,7 +26,8 @@ import {
   MouvementCaisseData,
   MouvementCaisse,
   CategorieDepense,
-  CategorieDepenseData
+  CategorieDepenseData,
+  MouvementsBancairesParams
 } from '@/lib/api/commercial';
 import { toast } from 'sonner';
 import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
@@ -527,6 +528,14 @@ export function useDeleteBanque() {
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erreur lors de la suppression de la banque');
     },
+  });
+}
+
+// Hook pour les mouvements bancaires unifiés (encaissements + décaissements)
+export function useMouvementsBancaires(params?: MouvementsBancairesParams) {
+  return useQuery({
+    queryKey: ['mouvements-bancaires', params],
+    queryFn: () => banquesApi.getMouvementsUnifies(params),
   });
 }
 

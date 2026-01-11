@@ -166,6 +166,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('banques')->middleware('audit')->group(function () {
         Route::get('/', [BanqueController::class, 'index'])
             ->middleware('permission:banques.voir');
+        Route::get('mouvements', [BanqueController::class, 'mouvements'])
+            ->middleware('permission:banques.voir');
         Route::post('/', [BanqueController::class, 'store'])
             ->middleware('permission:banques.creer');
         Route::get('{banque}', [BanqueController::class, 'show'])

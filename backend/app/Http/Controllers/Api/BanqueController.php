@@ -7,9 +7,12 @@ use App\Http\Requests\StoreBanqueRequest;
 use App\Http\Requests\UpdateBanqueRequest;
 use App\Http\Resources\BanqueResource;
 use App\Models\Banque;
+use App\Models\Paiement;
+use App\Models\MouvementCaisse;
 use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BanqueController extends Controller
 {
@@ -97,5 +100,137 @@ class BanqueController extends Controller
         ];
 
         return response()->json($stats);
+    }
+
+    /**
+     * Endpoint unifié pour tous les mouvements bancaires (encaissements + décaissements)
+     */
+    public function mouvements(Request $request): JsonResponse
+    {
+        // Paramètres de filtrage
+        $banqueId = $request->get('banque_id');
+        $type = $request->get('type'); // 'entree' | 'sortie' | null (tous)
+        $dateDebut = $request->get('date_debut');
+        $dateFin = $request->get('date_fin');
+        $search = $request->get('search');
+        $page = (int) $request->get('page', 1);
+        $perPage = (int) $request->get('per_page', 20);
+
+        // === ENCAISSEMENTS (Paiements virement/chèque) ===
+        $encaissementsQuery = Paiement::with(['facture.client', 'ordre.client', 'client', 'banque'])
+            ->whereIn('mode_paiement', ['Virement', 'Chèque'])
+            ->when($banqueId, fn($q) => $q->where('banque_id', $banqueId))
+            ->when($dateDebut, fn($q) => $q->whereDate('date', '>=', $dateDebut))
+            ->when($dateFin, fn($q) => $q->whereDate('date', '<=', $dateFin))
+            ->when($search, function($q) use ($search) {
+                $q->where(function($sub) use ($search) {
+                    $sub->where('reference', 'like', "%{$search}%")
+                        ->orWhere('numero_cheque', 'like', "%{$search}%")
+                        ->orWhereHas('client', fn($c) => $c->where('nom', 'like', "%{$search}%"))
+                        ->orWhereHas('facture', fn($f) => $f->where('numero', 'like', "%{$search}%"))
+                        ->orWhereHas('facture.client', fn($c) => $c->where('nom', 'like', "%{$search}%"))
+                        ->orWhereHas('ordre', fn($o) => $o->where('numero', 'like', "%{$search}%"))
+                        ->orWhereHas('ordre.client', fn($c) => $c->where('nom', 'like', "%{$search}%"));
+                });
+            });
+
+        $encaissements = $encaissementsQuery->get()->map(function($p) {
+            $clientNom = $p->client?->nom 
+                ?? $p->facture?->client?->nom 
+                ?? $p->ordre?->client?->nom;
+            
+            return [
+                'id' => 'paiement_' . $p->id,
+                'type' => 'entree',
+                'date' => $p->date,
+                'montant' => (float) $p->montant,
+                'categorie' => $p->mode_paiement,
+                'description' => $p->facture?->numero ?? $p->ordre?->numero ?? null,
+                'tiers' => $clientNom,
+                'banque' => $p->banque ? [
+                    'id' => $p->banque->id,
+                    'nom' => $p->banque->nom,
+                ] : null,
+                'reference' => $p->reference ?? $p->numero_cheque,
+                'source_type' => 'paiement',
+                'source_id' => $p->id,
+                'document_type' => $p->facture_id ? 'facture' : ($p->ordre_id ? 'ordre' : null),
+                'document_id' => $p->facture_id ?? $p->ordre_id,
+            ];
+        });
+
+        // === DÉCAISSEMENTS (Mouvements caisse source=banque type=sortie) ===
+        $decaissementsQuery = MouvementCaisse::with(['banque'])
+            ->where('source', 'banque')
+            ->where('type', 'sortie')
+            ->when($banqueId, fn($q) => $q->where('banque_id', $banqueId))
+            ->when($dateDebut, fn($q) => $q->whereDate('date', '>=', $dateDebut))
+            ->when($dateFin, fn($q) => $q->whereDate('date', '<=', $dateFin))
+            ->when($search, function($q) use ($search) {
+                $q->where(function($sub) use ($search) {
+                    $sub->where('description', 'like', "%{$search}%")
+                        ->orWhere('categorie', 'like', "%{$search}%")
+                        ->orWhere('beneficiaire', 'like', "%{$search}%");
+                });
+            });
+
+        $decaissements = $decaissementsQuery->get()->map(function($m) {
+            return [
+                'id' => 'mouvement_' . $m->id,
+                'type' => 'sortie',
+                'date' => $m->date,
+                'montant' => (float) $m->montant,
+                'categorie' => $m->categorie,
+                'description' => $m->description,
+                'tiers' => $m->beneficiaire,
+                'banque' => $m->banque ? [
+                    'id' => $m->banque->id,
+                    'nom' => $m->banque->nom,
+                ] : null,
+                'reference' => null,
+                'source_type' => 'mouvement',
+                'source_id' => $m->id,
+                'document_type' => null,
+                'document_id' => null,
+            ];
+        });
+
+        // === FUSION ET TRI ===
+        $allMouvements = $encaissements->concat($decaissements);
+
+        // Filtrer par type si demandé
+        if ($type === 'entree') {
+            $allMouvements = $allMouvements->where('type', 'entree');
+        } elseif ($type === 'sortie') {
+            $allMouvements = $allMouvements->where('type', 'sortie');
+        }
+
+        // Trier par date décroissante
+        $allMouvements = $allMouvements->sortByDesc('date')->values();
+
+        // === STATISTIQUES ===
+        $stats = [
+            'total_encaissements' => $encaissements->sum('montant'),
+            'total_decaissements' => $decaissements->sum('montant'),
+            'nombre_encaissements' => $encaissements->count(),
+            'nombre_decaissements' => $decaissements->count(),
+            'solde_periode' => $encaissements->sum('montant') - $decaissements->sum('montant'),
+        ];
+
+        // === PAGINATION MANUELLE ===
+        $total = $allMouvements->count();
+        $lastPage = (int) ceil($total / $perPage);
+        $paginatedItems = $allMouvements->forPage($page, $perPage)->values();
+
+        return response()->json([
+            'data' => $paginatedItems,
+            'meta' => [
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
+                'total' => $total,
+            ],
+            'stats' => $stats,
+        ]);
     }
 }
