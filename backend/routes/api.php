@@ -352,6 +352,12 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:ordres.modifier');
         Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
             ->middleware('permission:devis.modifier');
+        
+        // Actions sur les annulations existantes
+        Route::post('{annulation}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
+            ->middleware('permission:factures.modifier');
+        Route::post('{annulation}/rembourser', [AnnulationController::class, 'rembourser'])
+            ->middleware('permission:caisse.creer');
     });
 
     // ============================================
