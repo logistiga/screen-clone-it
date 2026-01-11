@@ -443,6 +443,50 @@ export interface Banque {
   paiements_sum_montant?: number;
 }
 
+// Mouvement bancaire unifié (encaissement ou décaissement)
+export interface MouvementBancaire {
+  id: string;
+  type: 'entree' | 'sortie';
+  date: string;
+  montant: number;
+  categorie: string;
+  description: string | null;
+  tiers: string | null;
+  banque: { id: string; nom: string } | null;
+  reference: string | null;
+  source_type: 'paiement' | 'mouvement';
+  source_id: number;
+  document_type: 'facture' | 'ordre' | null;
+  document_id: string | null;
+}
+
+export interface MouvementsBancairesResponse {
+  data: MouvementBancaire[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+  stats: {
+    total_encaissements: number;
+    total_decaissements: number;
+    nombre_encaissements: number;
+    nombre_decaissements: number;
+    solde_periode: number;
+  };
+}
+
+export interface MouvementsBancairesParams {
+  banque_id?: string;
+  type?: 'entree' | 'sortie';
+  search?: string;
+  date_debut?: string;
+  date_fin?: string;
+  page?: number;
+  per_page?: number;
+}
+
 export const banquesApi = {
   getAll: async (params?: { actif?: boolean; search?: string }) => {
     const response = await api.get('/banques', { params });
@@ -473,22 +517,9 @@ export const banquesApi = {
     return response.data;
   },
 
-  // Récupérer les mouvements bancaires (paiements par virement/chèque)
-  getMouvements: async (params?: { 
-    banque_id?: string; 
-    type?: 'entree' | 'sortie';
-    date_debut?: string;
-    date_fin?: string;
-    page?: number;
-    per_page?: number;
-  }) => {
-    // On filtre les paiements par mode virement/chèque
-    const response = await api.get('/paiements', { 
-      params: {
-        ...params,
-        mode_paiement: 'Virement,Chèque'
-      }
-    });
+  // Nouvel endpoint unifié pour tous les mouvements bancaires
+  getMouvementsUnifies: async (params?: MouvementsBancairesParams): Promise<MouvementsBancairesResponse> => {
+    const response = await api.get('/banques/mouvements', { params });
     return response.data;
   },
 };
