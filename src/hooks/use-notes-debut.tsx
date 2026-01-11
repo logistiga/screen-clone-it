@@ -26,7 +26,22 @@ export function useCreateNoteDebut() {
       toast.success('Note créée avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la création de la note');
+      const apiMessage = error.response?.data?.message;
+      const apiError = error.response?.data?.error;
+      const status = error.response?.status;
+
+      // Helpful debug info (shows in browser console)
+      console.error('Erreur création note de début', {
+        status,
+        data: error.response?.data,
+        request: error.config,
+      });
+
+      toast.error(
+        apiError
+          ? `${apiMessage || 'Erreur lors de la création'}: ${apiError}`
+          : apiMessage || 'Erreur lors de la création de la note'
+      );
     },
   });
 }
