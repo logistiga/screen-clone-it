@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Users, User, Receipt } from "lucide-react";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Users, User, Receipt, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   clients, devis, ordresTravail, factures, paiements,
   formatMontant, formatDate, getStatutLabel 
 } from "@/data/mockData";
+import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
 
 // Mock contacts pour la démo
 const getClientContacts = (clientId: string) => [
@@ -62,6 +64,16 @@ export default function ClientDetailPage() {
   const clientOrdres = ordresTravail.filter(o => o.clientId === id);
   const clientFactures = factures.filter(f => f.clientId === id);
   const clientPaiements = paiements.filter(p => p.clientId === id);
+
+  // Charger les avoirs du client depuis l'API
+  const { data: avoirsData } = useQuery({
+    queryKey: ['client-avoirs', id],
+    queryFn: () => getAvoirsClient(Number(id)),
+    enabled: !!id,
+  });
+
+  const clientAvoirs = avoirsData?.avoirs || [];
+  const soldeAvoirsTotal = avoirsData?.solde_total || 0;
 
   const totalFacture = clientFactures.reduce((sum, f) => sum + f.montantTTC, 0);
   const totalPaye = clientPaiements.reduce((sum, p) => sum + p.montant, 0);
@@ -433,18 +445,73 @@ export default function ClientDetailPage() {
 
           <TabsContent value="avoirs" className="mt-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Receipt className="h-5 w-5 text-primary" />
                   Avoirs disponibles
                 </CardTitle>
+                {soldeAvoirsTotal > 0 && (
+                  <Badge variant="default" className="text-lg px-3 py-1">
+                    Solde: {formatMontant(soldeAvoirsTotal)}
+                  </Badge>
+                )}
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Receipt className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Aucun avoir disponible pour ce client</p>
-                  <p className="text-sm mt-1">Les avoirs sont générés lors de l'annulation de documents payés</p>
-                </div>
+                {clientAvoirs.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>N° Avoir</TableHead>
+                        <TableHead>Document annulé</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Montant initial</TableHead>
+                        <TableHead className="text-right">Solde disponible</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {clientAvoirs.map((avoir: Annulation) => (
+                        <TableRow key={avoir.id}>
+                          <TableCell className="font-medium text-primary">
+                            {avoir.numero_avoir}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              {avoir.document_numero}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(avoir.date)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatMontant(avoir.montant)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={avoir.solde_avoir > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>
+                              {formatMontant(avoir.solde_avoir)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/annulations/${avoir.id}/avoir`)}
+                              className="gap-1"
+                            >
+                              <Download className="h-4 w-4" />
+                              PDF
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Receipt className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Aucun avoir disponible pour ce client</p>
+                    <p className="text-sm mt-1">Les avoirs sont générés lors de l'annulation de documents payés</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

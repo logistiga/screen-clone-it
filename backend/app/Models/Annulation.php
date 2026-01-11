@@ -20,12 +20,20 @@ class Annulation extends Model
         'motif',
         'avoir_genere',
         'numero_avoir',
+        'rembourse',
+        'montant_rembourse',
+        'date_remboursement',
+        'solde_avoir',
     ];
 
     protected $casts = [
         'montant' => 'decimal:2',
         'date' => 'date',
         'avoir_genere' => 'boolean',
+        'rembourse' => 'boolean',
+        'montant_rembourse' => 'decimal:2',
+        'date_remboursement' => 'date',
+        'solde_avoir' => 'decimal:2',
     ];
 
     // Relations
