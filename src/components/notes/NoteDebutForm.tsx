@@ -66,10 +66,15 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
     return ordresResponse.data.filter((o: any) => String(o.client_id) === String(clientId));
   }, [ordresResponse?.data, clientId]);
 
+  // Get ordre details by id
+  const getOrdreById = (ordreId: string) => {
+    if (!ordreId || !ordresResponse?.data) return null;
+    return ordresResponse.data.find((o: any) => String(o.id) === String(ordreId));
+  };
+
   // Get the category/type of selected ordre for a line
   const getOrdreCategorie = (ordreId: string): string | null => {
-    if (!ordreId || !ordresResponse?.data) return null;
-    const ordre = ordresResponse.data.find((o: any) => String(o.id) === String(ordreId));
+    const ordre = getOrdreById(ordreId);
     return ordre?.categorie || null;
   };
 
@@ -79,11 +84,98 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
     return categorie === 'conventionnel';
   };
 
+  // Get containers or lots from an ordre
+  const getConteneursFromOrdre = (ordreId: string): { numero: string; blNumero?: string }[] => {
+    const ordre = getOrdreById(ordreId);
+    if (!ordre) return [];
+    
+    // For conteneurs category
+    if (ordre.conteneurs && ordre.conteneurs.length > 0) {
+      return ordre.conteneurs.map((c: any) => ({
+        numero: c.numero || c.numero_conteneur || '',
+        blNumero: c.bl_numero || ordre.bl_numero || ordre.numero_bl || ''
+      }));
+    }
+    
+    // For conventionnel category (lots)
+    if (ordre.lots && ordre.lots.length > 0) {
+      return ordre.lots.map((lot: any) => ({
+        numero: lot.numero || lot.numero_lot || '',
+        blNumero: lot.bl_numero || ordre.bl_numero || ordre.numero_bl || ''
+      }));
+    }
+    
+    return [];
+  };
+
   // Reset lignes ordre de travail when client changes
   const handleClientChange = (newClientId: string) => {
     setClientId(newClientId);
     // Reset ordre de travail in all lines when client changes - use functional update to avoid stale closure
-    setLignes(prev => prev.map(l => ({ ...l, ordreTravail: "" })));
+    setLignes(prev => prev.map(l => ({ ...l, ordreTravail: "", containerNumber: "", blNumber: "" })));
+  };
+
+  // Handle ordre selection - auto-fill containers/lots
+  const handleOrdreChange = (ligneId: string, ordreId: string) => {
+    const conteneurs = getConteneursFromOrdre(ordreId);
+    const ordre = getOrdreById(ordreId);
+    
+    if (conteneurs.length === 0) {
+      // No containers/lots, just update the ordre field
+      updateLigne(ligneId, "ordreTravail", ordreId);
+      // Still try to get BL from ordre
+      if (ordre?.bl_numero || ordre?.numero_bl) {
+        setLignes(prev => prev.map(l => 
+          l.id === ligneId 
+            ? { ...l, ordreTravail: ordreId, blNumber: ordre.bl_numero || ordre.numero_bl || '' }
+            : l
+        ));
+      }
+      return;
+    }
+    
+    if (conteneurs.length === 1) {
+      // Single container - just fill current line
+      setLignes(prev => prev.map(l => 
+        l.id === ligneId 
+          ? { 
+              ...l, 
+              ordreTravail: ordreId, 
+              containerNumber: conteneurs[0].numero,
+              blNumber: conteneurs[0].blNumero || ''
+            }
+          : l
+      ));
+    } else {
+      // Multiple containers - replace current line and add new lines for each container
+      setLignes(prev => {
+        const currentIndex = prev.findIndex(l => l.id === ligneId);
+        const currentLine = prev[currentIndex];
+        
+        // Create new lines for each container
+        const newLines: LigneNote[] = conteneurs.map((c, idx) => ({
+          id: idx === 0 ? ligneId : String(Date.now() + idx),
+          ordreTravail: ordreId,
+          containerNumber: c.numero,
+          blNumber: c.blNumero || '',
+          dateDebut: currentLine.dateDebut,
+          dateFin: currentLine.dateFin,
+          tarifJournalier: currentLine.tarifJournalier,
+        }));
+        
+        // Replace current line with new lines
+        return [
+          ...prev.slice(0, currentIndex),
+          ...newLines,
+          ...prev.slice(currentIndex + 1)
+        ];
+      });
+      
+      toast({
+        title: "Conteneurs pré-remplis",
+        description: `${conteneurs.length} ${isConventionnel(ordreId) ? 'lots' : 'conteneurs'} ont été ajoutés depuis l'ordre de travail.`,
+      });
+    }
   };
 
   const ajouterLigne = () => {
@@ -262,7 +354,7 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
                     <Label>Ordre de travail</Label>
                     <Select
                       value={ligne.ordreTravail}
-                      onValueChange={(v) => updateLigne(ligne.id, "ordreTravail", v)}
+                      onValueChange={(v) => handleOrdreChange(ligne.id, v)}
                       disabled={!clientId || isLoadingOrdres}
                     >
                       <SelectTrigger>
