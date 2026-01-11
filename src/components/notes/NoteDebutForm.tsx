@@ -66,6 +66,19 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
     return ordresResponse.data.filter((o: any) => String(o.client_id) === String(clientId));
   }, [ordresResponse?.data, clientId]);
 
+  // Get the category/type of selected ordre for a line
+  const getOrdreCategorie = (ordreId: string): string | null => {
+    if (!ordreId || !ordresResponse?.data) return null;
+    const ordre = ordresResponse.data.find((o: any) => String(o.id) === String(ordreId));
+    return ordre?.categorie || null;
+  };
+
+  // Check if the ordre is conventionnel (uses lot instead of container)
+  const isConventionnel = (ordreId: string): boolean => {
+    const categorie = getOrdreCategorie(ordreId);
+    return categorie === 'conventionnel';
+  };
+
   // Reset lignes ordre de travail when client changes
   const handleClientChange = (newClientId: string) => {
     setClientId(newClientId);
@@ -134,15 +147,15 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
       return;
     }
 
+    // Validation: only dates and tarif are required (N° Conteneur/Lot and N° BL are optional)
     const lignesValides = lignes.filter(
-      (l) => l.containerNumber.trim() && l.dateDebut && l.dateFin && l.tarifJournalier > 0
+      (l) => l.dateDebut && l.dateFin && l.tarifJournalier > 0
     );
 
     if (lignesValides.length === 0) {
       // Find what's missing to give a specific error
       const firstLigne = lignes[0];
       const missing: string[] = [];
-      if (!firstLigne.containerNumber.trim()) missing.push("N° Conteneur");
       if (!firstLigne.dateDebut) missing.push("Date début");
       if (!firstLigne.dateFin) missing.push("Date fin");
       if (!firstLigne.tarifJournalier || firstLigne.tarifJournalier <= 0) missing.push("Tarif journalier");
@@ -269,7 +282,7 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
                         ) : (
                           ordresForClient.map((ot: any) => (
                             <SelectItem key={ot.id} value={String(ot.id)}>
-                              {ot.numero}
+                              {ot.numero} {ot.categorie && `(${ot.categorie})`}
                             </SelectItem>
                           ))
                         )}
@@ -277,9 +290,11 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>N° Conteneur *</Label>
+                    <Label>
+                      {isConventionnel(ligne.ordreTravail) ? "N° Lot" : "N° Conteneur / Lot"}
+                    </Label>
                     <Input
-                      placeholder="MSKU1234567"
+                      placeholder={isConventionnel(ligne.ordreTravail) ? "LOT-001" : "MSKU1234567 ou LOT-001"}
                       value={ligne.containerNumber}
                       onChange={(e) =>
                         updateLigne(ligne.id, "containerNumber", e.target.value.toUpperCase())
