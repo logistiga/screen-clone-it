@@ -69,8 +69,8 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
   // Reset lignes ordre de travail when client changes
   const handleClientChange = (newClientId: string) => {
     setClientId(newClientId);
-    // Reset ordre de travail in all lines when client changes
-    setLignes(lignes.map(l => ({ ...l, ordreTravail: "" })));
+    // Reset ordre de travail in all lines when client changes - use functional update to avoid stale closure
+    setLignes(prev => prev.map(l => ({ ...l, ordreTravail: "" })));
   };
 
   const ajouterLigne = () => {
@@ -135,13 +135,23 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
     }
 
     const lignesValides = lignes.filter(
-      (l) => l.containerNumber && l.dateDebut && l.dateFin && l.tarifJournalier > 0
+      (l) => l.containerNumber.trim() && l.dateDebut && l.dateFin && l.tarifJournalier > 0
     );
 
     if (lignesValides.length === 0) {
+      // Find what's missing to give a specific error
+      const firstLigne = lignes[0];
+      const missing: string[] = [];
+      if (!firstLigne.containerNumber.trim()) missing.push("N° Conteneur");
+      if (!firstLigne.dateDebut) missing.push("Date début");
+      if (!firstLigne.dateFin) missing.push("Date fin");
+      if (!firstLigne.tarifJournalier || firstLigne.tarifJournalier <= 0) missing.push("Tarif journalier");
+
       toast({
         title: "Erreur",
-        description: "Veuillez remplir au moins une ligne valide",
+        description: missing.length > 0 
+          ? `Champs manquants: ${missing.join(", ")}` 
+          : "Veuillez remplir au moins une ligne valide",
         variant: "destructive",
       });
       return;
