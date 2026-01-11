@@ -342,8 +342,6 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:factures.voir');
         Route::get('client/{clientId}', [AnnulationController::class, 'historiqueClient'])
             ->middleware('permission:clients.voir');
-        Route::get('{annulation}', [AnnulationController::class, 'show'])
-            ->middleware('permission:factures.voir');
         
         // Routes d'annulation de documents
         Route::post('facture/{facture}', [AnnulationController::class, 'annulerFacture'])
@@ -353,11 +351,15 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
             ->middleware('permission:devis.modifier');
         
-        // Actions sur les annulations existantes
+        // Actions sur les annulations existantes (AVANT la route générique {annulation})
         Route::post('{annulation}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
             ->middleware('permission:factures.modifier');
         Route::post('{annulation}/rembourser', [AnnulationController::class, 'rembourser'])
             ->middleware('permission:caisse.creer');
+        
+        // Route générique en DERNIER
+        Route::get('{annulation}', [AnnulationController::class, 'show'])
+            ->middleware('permission:factures.voir');
     });
 
     // ============================================
