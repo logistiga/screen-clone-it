@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Save, Calendar, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { useClients, useOrdres } from "@/hooks/use-commercial";
+import { useCreateNoteDebut } from "@/hooks/use-notes-debut";
 
 interface NoteDebutFormProps {
   noteType: "ouverture_port" | "detention" | "reparation";
@@ -32,19 +34,6 @@ interface LigneNote {
   tarifJournalier: number;
 }
 
-const mockClients = [
-  { id: "1", nom: "MAERSK LINE" },
-  { id: "2", nom: "MSC" },
-  { id: "3", nom: "CMA CGM" },
-  { id: "4", nom: "HAPAG LLOYD" },
-];
-
-const mockOrdresTravail = [
-  { id: "OT-001", numero: "OT-2024-001", client: "MAERSK LINE" },
-  { id: "OT-002", numero: "OT-2024-002", client: "MSC" },
-  { id: "OT-003", numero: "OT-2024-003", client: "CMA CGM" },
-];
-
 export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps) {
   const navigate = useNavigate();
   const [clientId, setClientId] = useState("");
@@ -60,6 +49,29 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
       tarifJournalier: 0,
     },
   ]);
+
+  // Fetch clients from backend
+  const { data: clientsResponse, isLoading: isLoadingClients } = useClients({ per_page: 1000 });
+  const clients = clientsResponse?.data || [];
+
+  // Fetch ordres for selected client
+  const { data: ordresResponse, isLoading: isLoadingOrdres } = useOrdres(
+    clientId ? { client_id: clientId, per_page: 1000 } : { per_page: 1000 }
+  );
+  
+  // Filter ordres by selected client
+  const ordresForClient = useMemo(() => {
+    if (!ordresResponse?.data) return [];
+    if (!clientId) return ordresResponse.data;
+    return ordresResponse.data.filter((o: any) => String(o.client_id) === String(clientId));
+  }, [ordresResponse?.data, clientId]);
+
+  // Reset lignes ordre de travail when client changes
+  const handleClientChange = (newClientId: string) => {
+    setClientId(newClientId);
+    // Reset ordre de travail in all lines when client changes
+    setLignes(lignes.map(l => ({ ...l, ordreTravail: "" })));
+  };
 
   const ajouterLigne = () => {
     setLignes([
@@ -168,13 +180,13 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Client *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+                <Select value={clientId} onValueChange={handleClientChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un client" />
+                    <SelectValue placeholder={isLoadingClients ? "Chargement..." : "Sélectionner un client"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockClients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
+                    {clients.map((client: any) => (
+                      <SelectItem key={client.id} value={String(client.id)}>
                         {client.nom}
                       </SelectItem>
                     ))}
@@ -228,16 +240,29 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
                     <Select
                       value={ligne.ordreTravail}
                       onValueChange={(v) => updateLigne(ligne.id, "ordreTravail", v)}
+                      disabled={!clientId || isLoadingOrdres}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un OT" />
+                        <SelectValue placeholder={
+                          !clientId 
+                            ? "Sélectionnez d'abord un client" 
+                            : isLoadingOrdres 
+                              ? "Chargement..." 
+                              : "Sélectionner un OT"
+                        } />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockOrdresTravail.map((ot) => (
-                          <SelectItem key={ot.id} value={ot.id}>
-                            {ot.numero} - {ot.client}
+                        {ordresForClient.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Aucun ordre de travail pour ce client
                           </SelectItem>
-                        ))}
+                        ) : (
+                          ordresForClient.map((ot: any) => (
+                            <SelectItem key={ot.id} value={String(ot.id)}>
+                              {ot.numero}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
