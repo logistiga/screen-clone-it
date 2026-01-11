@@ -30,6 +30,7 @@ import FacturePDFPage from "./pages/FacturePDF";
 import ModifierFacturePage from "./pages/ModifierFacture";
 import PaiementsPage from "./pages/Paiements";
 import AnnulationsPage from "./pages/Annulations";
+import AvoirPDFPage from "./pages/AvoirPDF";
 import CaissePage from "./pages/Caisse";
 import BanquePage from "./pages/Banque";
 import CaisseGlobalePage from "./pages/CaisseGlobale";
@@ -96,6 +97,7 @@ const App = () => (
               <Route path="/factures/:id/modifier" element={<ProtectedRoute><ModifierFacturePage /></ProtectedRoute>} />
               <Route path="/paiements" element={<ProtectedRoute><PaiementsPage /></ProtectedRoute>} />
               <Route path="/annulations" element={<ProtectedRoute><AnnulationsPage /></ProtectedRoute>} />
+              <Route path="/annulations/:id/avoir" element={<ProtectedRoute><AvoirPDFPage /></ProtectedRoute>} />
               <Route path="/notes-debut" element={<ProtectedRoute><NotesDebutPage /></ProtectedRoute>} />
               <Route path="/notes-debut/nouvelle" element={<ProtectedRoute><NouvelleNoteDebutPage /></ProtectedRoute>} />
               <Route path="/notes-debut/ouverture-port" element={<ProtectedRoute><NouvelleNoteOuverturePortPage /></ProtectedRoute>} />

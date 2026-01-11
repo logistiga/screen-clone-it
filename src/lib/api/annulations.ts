@@ -10,6 +10,10 @@ export interface Annulation {
   client?: {
     id: number;
     nom: string;
+    adresse?: string;
+    ville?: string;
+    telephone?: string;
+    email?: string;
   };
   montant: number;
   date: string;

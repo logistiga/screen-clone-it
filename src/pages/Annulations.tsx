@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ban, Search, MoreHorizontal, FileText, RefreshCw, Loader2 } from "lucide-react";
+import { Ban, Search, MoreHorizontal, FileText, RefreshCw, Loader2, Download } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { useAnnulations, useAnnulationsStats, useGenererAvoir, useRembourserAnnulation } from "@/hooks/use-annulations";
 import { TablePagination } from "@/components/TablePagination";
@@ -33,6 +34,7 @@ import { RemboursementAnnulationModal } from "@/components/RemboursementAnnulati
 import type { Annulation } from "@/lib/api/annulations";
 
 export default function AnnulationsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -219,6 +221,14 @@ export default function AnnulationsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {annulation.avoir_genere && (
+                                <DropdownMenuItem
+                                  onClick={() => navigate(`/annulations/${annulation.id}/avoir`)}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Télécharger l'avoir PDF
+                                </DropdownMenuItem>
+                              )}
                               {!annulation.avoir_genere && (
                                 <DropdownMenuItem
                                   onClick={() => handleGenererAvoir(annulation)}
