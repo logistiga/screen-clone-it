@@ -20,6 +20,10 @@ export interface Annulation {
   motif: string;
   avoir_genere: boolean;
   numero_avoir?: string;
+  rembourse: boolean;
+  montant_rembourse: number;
+  date_remboursement?: string;
+  solde_avoir: number;
   created_at: string;
 }
 
@@ -136,5 +140,27 @@ export const getHistoriqueClient = async (clientId: number): Promise<{
   montant_total: number;
 }> => {
   const response = await api.get(`/annulations/client/${clientId}`);
+  return response.data;
+};
+
+// Avoirs d'un client
+export const getAvoirsClient = async (clientId: number): Promise<{
+  avoirs: Annulation[];
+  total_avoirs: number;
+  solde_total: number;
+}> => {
+  const response = await api.get(`/annulations/avoirs/client/${clientId}`);
+  return response.data;
+};
+
+// Utiliser un avoir pour payer une facture
+export const utiliserAvoir = async (
+  annulationId: number,
+  data: {
+    facture_id: number;
+    montant: number;
+  }
+): Promise<{ message: string; montant_utilise: number; solde_avoir_restant: number }> => {
+  const response = await api.post(`/annulations/${annulationId}/utiliser-avoir`, data);
   return response.data;
 };

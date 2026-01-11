@@ -178,8 +178,8 @@ export default function AnnulationsPage() {
                     <TableHead>Client</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Montant</TableHead>
-                    <TableHead>Motif</TableHead>
                     <TableHead>Avoir</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead className="w-[60px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -201,16 +201,33 @@ export default function AnnulationsPage() {
                         <TableCell className="text-right text-destructive font-medium">
                           -{formatMontant(annulation.montant)}
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={annulation.motif}>
-                          {annulation.motif}
-                        </TableCell>
                         <TableCell>
                           {annulation.avoir_genere ? (
-                            <Badge variant="default" className="bg-green-600">
-                              {annulation.numero_avoir || 'Généré'}
-                            </Badge>
+                            <div>
+                              <Badge variant="default" className="bg-green-600">
+                                {annulation.numero_avoir || 'Généré'}
+                              </Badge>
+                              {annulation.solde_avoir > 0 && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Solde: {formatMontant(annulation.solde_avoir)}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <Badge variant="outline">Non généré</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {annulation.rembourse ? (
+                            <Badge variant="default" className="bg-blue-600">
+                              Remboursé
+                            </Badge>
+                          ) : annulation.avoir_genere ? (
+                            <Badge variant="secondary">Avoir actif</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300">
+                              En attente
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -238,10 +255,12 @@ export default function AnnulationsPage() {
                                   Générer un avoir
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => handleRembourser(annulation)}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Rembourser le client
-                              </DropdownMenuItem>
+                              {!annulation.rembourse && (
+                                <DropdownMenuItem onClick={() => handleRembourser(annulation)}>
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Rembourser le client
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

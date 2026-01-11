@@ -21,6 +21,10 @@ class MouvementCaisse extends Model
         'banque_id',
         'categorie',
         'beneficiaire',
+        'mode_paiement',
+        'reference',
+        'client_id',
+        'annulation_id',
     ];
 
     protected $casts = [
@@ -37,6 +41,16 @@ class MouvementCaisse extends Model
     public function banque()
     {
         return $this->belongsTo(Banque::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    public function annulation()
+    {
+        return $this->belongsTo(Annulation::class);
     }
 
     // Scopes

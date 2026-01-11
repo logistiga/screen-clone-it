@@ -202,6 +202,7 @@ class AnnulationController extends Controller
                 $annulation->update([
                     'avoir_genere' => true,
                     'numero_avoir' => $numeroAvoir,
+                    'solde_avoir' => $annulation->montant, // Le solde de l'avoir est égal au montant
                 ]);
             });
 
@@ -231,25 +232,44 @@ class AnnulationController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
+        // Vérifier si c'est une banque requise
+        $needsBanque = in_array($request->mode_paiement, ['virement', 'cheque']);
+        if ($needsBanque && !$request->banque_id) {
+            return response()->json(['message' => 'Une banque est requise pour ce mode de paiement.'], 422);
+        }
+
         try {
             DB::transaction(function () use ($request, $annulation) {
+                // Déterminer la source
+                $source = $request->banque_id ? 'banque' : 'caisse';
+
                 // Créer le mouvement de caisse (sortie = remboursement)
                 MouvementCaisse::create([
                     'type' => 'sortie',
                     'montant' => $request->montant,
                     'date' => now(),
-                    'description' => "Remboursement - Annulation {$annulation->numero}",
-                    'source' => $request->banque_id ? 'banque' : 'caisse',
+                    'description' => "Remboursement - Annulation {$annulation->numero} - {$annulation->client->nom}",
+                    'source' => $source,
                     'banque_id' => $request->banque_id,
+                    'categorie' => 'Remboursement client',
+                    'beneficiaire' => $annulation->client->nom ?? 'Client',
                     'mode_paiement' => $request->mode_paiement,
                     'reference' => $request->reference,
                     'client_id' => $annulation->client_id,
+                    'annulation_id' => $annulation->id,
                 ]);
 
                 // Mettre à jour le solde bancaire si applicable
                 if ($request->banque_id) {
                     Banque::find($request->banque_id)->decrement('solde', $request->montant);
                 }
+
+                // Marquer l'annulation comme remboursée
+                $annulation->update([
+                    'rembourse' => true,
+                    'montant_rembourse' => $annulation->montant_rembourse + $request->montant,
+                    'date_remboursement' => now(),
+                ]);
             });
 
             Audit::log('create', 'remboursement', "Remboursement effectué: {$request->montant} FCFA - Annulation {$annulation->numero}", $annulation->id);
@@ -257,6 +277,87 @@ class AnnulationController extends Controller
             return response()->json([
                 'message' => 'Remboursement effectué avec succès',
                 'montant' => $request->montant,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Récupérer les avoirs d'un client
+     */
+    public function avoirsClient(int $clientId): JsonResponse
+    {
+        $avoirs = Annulation::with(['client'])
+            ->where('client_id', $clientId)
+            ->where('avoir_genere', true)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // Calculer le solde total disponible
+        $soldeTotal = $avoirs->sum('solde_avoir');
+
+        return response()->json([
+            'avoirs' => AnnulationResource::collection($avoirs),
+            'total_avoirs' => $avoirs->count(),
+            'solde_total' => $soldeTotal,
+        ]);
+    }
+
+    /**
+     * Utiliser un avoir pour payer une facture
+     */
+    public function utiliserAvoir(Request $request, Annulation $annulation): JsonResponse
+    {
+        $request->validate([
+            'facture_id' => 'required|exists:factures,id',
+            'montant' => 'required|numeric|min:0.01',
+        ]);
+
+        if (!$annulation->avoir_genere) {
+            return response()->json(['message' => 'Aucun avoir n\'a été généré pour cette annulation.'], 422);
+        }
+
+        if ($request->montant > $annulation->solde_avoir) {
+            return response()->json(['message' => 'Le montant dépasse le solde de l\'avoir disponible.'], 422);
+        }
+
+        try {
+            $facture = \App\Models\Facture::findOrFail($request->facture_id);
+
+            DB::transaction(function () use ($request, $annulation, $facture) {
+                // Créer le paiement
+                \App\Models\Paiement::create([
+                    'facture_id' => $facture->id,
+                    'client_id' => $facture->client_id,
+                    'montant' => $request->montant,
+                    'date' => now(),
+                    'mode_paiement' => 'Avoir',
+                    'reference' => $annulation->numero_avoir,
+                    'notes' => "Paiement par avoir {$annulation->numero_avoir}",
+                ]);
+
+                // Mettre à jour le montant payé de la facture
+                $facture->increment('montant_paye', $request->montant);
+
+                // Mettre à jour le statut de la facture si entièrement payée
+                if ($facture->montant_paye >= $facture->montant_ttc) {
+                    $facture->update(['statut' => 'payee']);
+                } else {
+                    $facture->update(['statut' => 'partielle']);
+                }
+
+                // Déduire le montant du solde de l'avoir
+                $annulation->decrement('solde_avoir', $request->montant);
+            });
+
+            Audit::log('create', 'paiement_avoir', "Paiement par avoir: {$request->montant} FCFA - Facture {$facture->numero}", $facture->id);
+
+            return response()->json([
+                'message' => 'Avoir utilisé avec succès',
+                'montant_utilise' => $request->montant,
+                'solde_avoir_restant' => $annulation->fresh()->solde_avoir,
             ]);
 
         } catch (\Exception $e) {

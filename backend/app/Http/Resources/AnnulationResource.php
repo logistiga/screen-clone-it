@@ -21,6 +21,10 @@ class AnnulationResource extends JsonResource
             'motif' => $this->motif,
             'avoir_genere' => (bool) $this->avoir_genere,
             'numero_avoir' => $this->numero_avoir,
+            'rembourse' => (bool) $this->rembourse,
+            'montant_rembourse' => (float) ($this->montant_rembourse ?? 0),
+            'date_remboursement' => $this->date_remboursement?->toDateString(),
+            'solde_avoir' => (float) ($this->solde_avoir ?? 0),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             
