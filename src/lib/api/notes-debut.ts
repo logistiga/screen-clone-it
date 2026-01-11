@@ -4,7 +4,7 @@ import { Client, Transitaire, Armateur } from './commercial';
 export interface NoteDebut {
   id: string;
   numero: string;
-  type: 'ouverture_port' | 'detention' | 'reparation';
+  type: 'ouverture_port' | 'detention' | 'reparation' | 'Ouverture Port' | 'Detention' | 'Reparation' | string;
   date?: string;
   date_creation?: string;
   

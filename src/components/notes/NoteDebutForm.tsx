@@ -264,6 +264,14 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
       return;
     }
 
+    // Map frontend type to backend format
+    const typeMapping: Record<string, string> = {
+      'ouverture_port': 'Ouverture Port',
+      'detention': 'Detention',
+      'reparation': 'Reparation',
+    };
+    const backendType = typeMapping[noteType] || noteType;
+
     // Create notes for each valid ligne
     try {
       for (const ligne of lignesValides) {
@@ -271,7 +279,7 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
         const montantHt = jours * ligne.tarifJournalier;
         
         await createNote.mutateAsync({
-          type: noteType,
+          type: backendType,
           client_id: clientId,
           ordre_id: ligne.ordreTravail || undefined,
           conteneur_numero: ligne.containerNumber || undefined,
