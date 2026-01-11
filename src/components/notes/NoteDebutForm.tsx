@@ -229,7 +229,9 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
     }).format(value);
   };
 
-  const handleSubmit = () => {
+  const createNote = useCreateNoteDebut();
+
+  const handleSubmit = async () => {
     if (!clientId) {
       toast({
         title: "Erreur",
@@ -262,12 +264,31 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
       return;
     }
 
-    toast({
-      title: "Note créée",
-      description: `La note de ${noteType === "ouverture_port" ? "ouverture de port" : noteType === "detention" ? "détention" : "réparation"} a été créée avec succès.`,
-    });
-
-    navigate("/notes-debut");
+    // Create notes for each valid ligne
+    try {
+      for (const ligne of lignesValides) {
+        const jours = calculerJours(ligne.dateDebut, ligne.dateFin);
+        const montantHt = jours * ligne.tarifJournalier;
+        
+        await createNote.mutateAsync({
+          type: noteType,
+          client_id: clientId,
+          ordre_id: ligne.ordreTravail || undefined,
+          conteneur_numero: ligne.containerNumber || undefined,
+          bl_numero: ligne.blNumber || undefined,
+          date_debut: ligne.dateDebut,
+          date_fin: ligne.dateFin,
+          nombre_jours: jours,
+          tarif_journalier: ligne.tarifJournalier,
+          montant_ht: montantHt,
+          description: description || undefined,
+        });
+      }
+      
+      navigate("/notes-debut");
+    } catch (error) {
+      // Error is handled by the hook
+    }
   };
 
   return (
@@ -456,12 +477,16 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
 
         {/* Actions */}
         <div className="flex justify-end gap-4">
-          <Button variant="outline" onClick={() => navigate("/notes-debut")}>
+          <Button variant="outline" onClick={() => navigate("/notes-debut")} disabled={createNote.isPending}>
             Annuler
           </Button>
-          <Button onClick={handleSubmit}>
-            <Save className="h-4 w-4 mr-2" />
-            Enregistrer la note
+          <Button onClick={handleSubmit} disabled={createNote.isPending}>
+            {createNote.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {createNote.isPending ? "Enregistrement..." : "Enregistrer la note"}
           </Button>
         </div>
       </div>
