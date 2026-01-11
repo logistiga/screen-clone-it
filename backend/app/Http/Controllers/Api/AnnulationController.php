@@ -27,6 +27,9 @@ class AnnulationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Synchroniser automatiquement les documents annulés sans enregistrement
+        $this->synchroniserAnnulationsManquantes();
+
         $query = Annulation::with(['client']);
 
         if ($request->has('search')) {
@@ -54,6 +57,60 @@ class AnnulationController extends Controller
         $annulations = $query->orderBy('date', 'desc')->paginate($request->get('per_page', 15));
 
         return response()->json(AnnulationResource::collection($annulations)->response()->getData(true));
+    }
+
+    /**
+     * Synchronise automatiquement les documents annulés sans enregistrement d'annulation
+     */
+    protected function synchroniserAnnulationsManquantes(): void
+    {
+        // Ordres annulés sans enregistrement d'annulation
+        $ordresAnnules = OrdreTravail::where('statut', 'annule')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('annulations')
+                    ->whereColumn('annulations.document_id', 'ordres_travail.id')
+                    ->where('annulations.type', 'ordre');
+            })
+            ->get();
+
+        foreach ($ordresAnnules as $ordre) {
+            Annulation::create([
+                'numero' => Annulation::genererNumero(),
+                'type' => 'ordre',
+                'document_id' => $ordre->id,
+                'document_numero' => $ordre->numero,
+                'client_id' => $ordre->client_id,
+                'montant' => $ordre->montant_ttc ?? 0,
+                'date' => $ordre->updated_at ?? now(),
+                'motif' => 'Annulation enregistrée automatiquement',
+                'avoir_genere' => false,
+            ]);
+        }
+
+        // Factures annulées sans enregistrement d'annulation
+        $facturesAnnulees = Facture::where('statut', 'annulee')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('annulations')
+                    ->whereColumn('annulations.document_id', 'factures.id')
+                    ->where('annulations.type', 'facture');
+            })
+            ->get();
+
+        foreach ($facturesAnnulees as $facture) {
+            Annulation::create([
+                'numero' => Annulation::genererNumero(),
+                'type' => 'facture',
+                'document_id' => $facture->id,
+                'document_numero' => $facture->numero,
+                'client_id' => $facture->client_id,
+                'montant' => $facture->montant_ttc ?? 0,
+                'date' => $facture->updated_at ?? now(),
+                'motif' => 'Annulation enregistrée automatiquement',
+                'avoir_genere' => false,
+            ]);
+        }
     }
 
     public function show(Annulation $annulation): JsonResponse
