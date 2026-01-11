@@ -15,8 +15,11 @@ class NoteDebutService
     public function creer(array $data): NoteDebut
     {
         return DB::transaction(function () use ($data) {
+            // Normaliser le type pour la génération du numéro
+            $typeNormalise = $this->normaliserType($data['type'] ?? 'surestarie');
+            
             // Générer le numéro
-            $data['numero'] = $this->genererNumero($data['type'] ?? 'surestarie');
+            $data['numero'] = $this->genererNumero($typeNormalise);
             $data['statut'] = $data['statut'] ?? 'brouillon';
 
             // Calculer le montant si non fourni
@@ -31,6 +34,23 @@ class NoteDebutService
 
             return $note->fresh(['client', 'transitaire', 'armateur']);
         });
+    }
+
+    /**
+     * Normaliser le type de note pour la génération du numéro
+     */
+    private function normaliserType(string $type): string
+    {
+        $mapping = [
+            'Detention' => 'detention',
+            'Ouverture Port' => 'ouverture_port',
+            'Reparation' => 'reparation',
+            'detention' => 'detention',
+            'ouverture_port' => 'ouverture_port',
+            'reparation' => 'reparation',
+        ];
+
+        return $mapping[$type] ?? 'surestarie';
     }
 
     /**
