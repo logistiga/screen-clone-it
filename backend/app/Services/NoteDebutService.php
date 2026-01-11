@@ -22,6 +22,11 @@ class NoteDebutService
             $data['numero'] = $this->genererNumero($typeNormalise);
             $data['statut'] = $data['statut'] ?? 'brouillon';
 
+            // date_creation est obligatoire en base (pas de valeur par défaut)
+            if (!isset($data['date_creation']) || empty($data['date_creation'])) {
+                $data['date_creation'] = now()->toDateString();
+            }
+
             // Calculer le montant si non fourni
             if (!isset($data['montant_ht']) && isset($data['nombre_jours']) && isset($data['tarif_journalier'])) {
                 $data['montant_ht'] = $data['nombre_jours'] * $data['tarif_journalier'];

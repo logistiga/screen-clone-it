@@ -271,6 +271,7 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
       'reparation': 'Reparation',
     };
     const backendType = typeMapping[noteType] || noteType;
+    const dateCreation = new Date().toISOString().slice(0, 10);
 
     // Create notes for each valid ligne
     try {
@@ -284,6 +285,7 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
           ordre_id: ligne.ordreTravail || undefined,
           conteneur_numero: ligne.containerNumber || undefined,
           bl_numero: ligne.blNumber || undefined,
+          date_creation: dateCreation,
           date_debut: ligne.dateDebut,
           date_fin: ligne.dateFin,
           nombre_jours: jours,
