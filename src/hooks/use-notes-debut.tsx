@@ -31,11 +31,14 @@ export function useCreateNoteDebut() {
       const status = error.response?.status;
 
       // Helpful debug info (shows in browser console)
+      const responseText = JSON.stringify(error.response?.data, null, 2);
       console.error('Erreur création note de début', {
         status,
+        responseText,
         data: error.response?.data,
         request: error.config,
       });
+      console.error('API /notes-debut response (copy/paste):\n' + responseText);
 
       toast.error(
         apiError
