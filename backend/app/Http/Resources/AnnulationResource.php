@@ -11,13 +11,21 @@ class AnnulationResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'numero' => $this->numero,
+            'type' => $this->type,
+            'document_id' => $this->document_id,
+            'document_numero' => $this->document_numero,
+            'client_id' => $this->client_id,
+            'montant' => (float) $this->montant,
+            'date' => $this->date?->toDateString(),
             'motif' => $this->motif,
-            'date_annulation' => $this->date_annulation?->toDateString(),
+            'avoir_genere' => (bool) $this->avoir_genere,
+            'numero_avoir' => $this->numero_avoir,
             'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
             
             // Relations
-            'facture' => new FactureResource($this->whenLoaded('facture')),
-            'user' => new UserResource($this->whenLoaded('user')),
+            'client' => new ClientResource($this->whenLoaded('client')),
         ];
     }
 }
