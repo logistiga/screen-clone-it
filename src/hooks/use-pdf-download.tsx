@@ -1,4 +1,3 @@
-import html2pdf from 'html2pdf.js';
 import { useCallback, useRef } from 'react';
 
 interface UsePdfDownloadOptions {
@@ -6,37 +5,37 @@ interface UsePdfDownloadOptions {
   margin?: number;
 }
 
-export function usePdfDownload({ filename, margin = 10 }: UsePdfDownloadOptions) {
+/**
+ * Hook for PDF download using native browser print functionality.
+ * This replaces html2pdf.js which had a critical security vulnerability (Path Traversal via jsPDF).
+ * 
+ * The browser's native print dialog provides a secure "Save as PDF" option
+ * that avoids the security risks of client-side PDF generation libraries.
+ */
+export function usePdfDownload({ filename }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const downloadPdf = useCallback(async () => {
     if (!contentRef.current) return;
 
-    const element = contentRef.current;
+    // Store original title to restore after print
+    const originalTitle = document.title;
     
-    const opt = {
-      margin: margin,
-      filename: `${filename}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait' 
-      }
-    };
-
+    // Set document title to filename for PDF save dialog
+    document.title = filename;
+    
     try {
-      await html2pdf().set(opt).from(element).save();
-    } catch (error) {
-      console.error('Erreur lors de la génération du PDF:', error);
+      // Trigger browser's native print dialog
+      // Users can select "Save as PDF" in the print destination
+      window.print();
+    } finally {
+      // Restore original title after a short delay
+      // (allows print dialog to capture the filename)
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
     }
-  }, [filename, margin]);
+  }, [filename]);
 
   return { contentRef, downloadPdf };
 }
