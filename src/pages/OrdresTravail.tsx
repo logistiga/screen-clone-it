@@ -41,9 +41,11 @@ import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalOrdresModal } from "@/components/PaiementGlobalOrdresModal";
 import { ExportModal } from "@/components/ExportModal";
 import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture, useUpdateOrdre } from "@/hooks/use-commercial";
+import { useAnnulerOrdre } from "@/hooks/use-annulations";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "sonner";
+import { AnnulationOrdreModal } from "@/components/AnnulationOrdreModal";
 
 // Types pour les badges
 interface TypeConfig {
@@ -76,10 +78,11 @@ export default function OrdresTravailPage() {
   
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'annuler' | 'supprimer' | 'facturer' | null;
+    type: 'supprimer' | 'facturer' | null;
     id: string;
     numero: string;
   } | null>(null);
+  const [annulationModal, setAnnulationModal] = useState<{ id: number; numero: string } | null>(null);
   const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -89,9 +92,7 @@ export default function OrdresTravailPage() {
     if (!confirmAction) return;
 
     try {
-      if (confirmAction.type === "annuler") {
-        await updateOrdreMutation.mutateAsync({ id: confirmAction.id, data: { statut: "annule" } });
-      } else if (confirmAction.type === "supprimer") {
+      if (confirmAction.type === "supprimer") {
         await deleteOrdreMutation.mutateAsync(confirmAction.id);
       } else if (confirmAction.type === "facturer") {
         await convertMutation.mutateAsync(confirmAction.id);
@@ -621,7 +622,7 @@ export default function OrdresTravailPage() {
                                     size="icon" 
                                     title="Annuler" 
                                     className="h-8 w-8 text-orange-600 hover:bg-orange-500/10"
-                                    onClick={() => setConfirmAction({ type: 'annuler', id: ordre.id, numero: ordre.numero })}
+                                    onClick={() => setAnnulationModal({ id: Number(ordre.id), numero: ordre.numero })}
                                   >
                                     <Ban className="h-4 w-4" />
                                   </Button>
@@ -660,26 +661,13 @@ export default function OrdresTravailPage() {
         </motion.div>
       </motion.div>
 
-      {/* Modal Annulation */}
-      <AlertDialog open={confirmAction?.type === 'annuler'} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent className="animate-scale-in">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Ban className="h-5 w-5 text-orange-600" />
-              Confirmer l'annulation
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir annuler l'ordre <strong>{confirmAction?.numero}</strong> ?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700" disabled={updateOrdreMutation.isPending}>
-              {updateOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Modal Annulation avec motif */}
+      <AnnulationOrdreModal
+        open={!!annulationModal}
+        onOpenChange={(open) => !open && setAnnulationModal(null)}
+        ordreId={annulationModal?.id || null}
+        ordreNumero={annulationModal?.numero || ''}
+      />
 
       {/* Modal Suppression */}
       <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
