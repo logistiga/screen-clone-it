@@ -47,15 +47,30 @@ class Prime extends Model
         return $this->belongsTo(Representant::class);
     }
 
+    public function facture()
+    {
+        return $this->belongsTo(Facture::class);
+    }
+
     // Scopes
     public function scopeDues($query)
     {
-        return $query->where('statut', 'due');
+        return $query->whereIn('statut', ['En attente', 'Partiellement payée']);
     }
 
     public function scopePayees($query)
     {
-        return $query->where('statut', 'payee');
+        return $query->where('statut', 'Payée');
+    }
+
+    public function scopeEnAttente($query)
+    {
+        return $query->where('statut', 'En attente');
+    }
+
+    public function scopePartiellementPayees($query)
+    {
+        return $query->where('statut', 'Partiellement payée');
     }
 
     // Méthodes
