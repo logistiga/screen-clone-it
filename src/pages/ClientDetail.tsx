@@ -24,19 +24,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Users, User, Receipt, FileText, Download } from "lucide-react";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Trash2, CreditCard, Clock, Receipt, FileText, Download, Loader2, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  clients, devis, ordresTravail, factures, paiements,
-  formatMontant, formatDate, getStatutLabel 
-} from "@/data/mockData";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
-
-// Mock contacts pour la démo
-const getClientContacts = (clientId: string) => [
-  { id: "1", prenom: "Jean", nom: "DUPONT", email: "j.dupont@total-gabon.ga", telephone: "+241 07 12 34 56", fonction: "Responsable logistique" },
-  { id: "2", prenom: "Marie", nom: "NZENG", email: "m.nzeng@total-gabon.ga", telephone: "+241 06 98 76 54", fonction: "Assistante commerciale" },
-];
+import { useClient, useDeleteClient } from "@/hooks/use-commercial";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -44,10 +36,27 @@ export default function ClientDetailPage() {
   const { toast } = useToast();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   
-  const client = clients.find(c => c.id === id);
-  const contacts = id ? getClientContacts(id) : [];
-  
-  if (!client) {
+  const { data: client, isLoading, error } = useClient(id || '');
+  const deleteClientMutation = useDeleteClient();
+
+  // Charger les avoirs du client depuis l'API
+  const { data: avoirsData } = useQuery({
+    queryKey: ['client-avoirs', id],
+    queryFn: () => getAvoirsClient(Number(id)),
+    enabled: !!id,
+  });
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !client) {
     return (
       <MainLayout title="Client non trouvé">
         <div className="flex flex-col items-center justify-center py-12">
@@ -60,35 +69,25 @@ export default function ClientDetailPage() {
     );
   }
 
-  const clientDevis = devis.filter(d => d.clientId === id);
-  const clientOrdres = ordresTravail.filter(o => o.clientId === id);
-  const clientFactures = factures.filter(f => f.clientId === id);
-  const clientPaiements = paiements.filter(p => p.clientId === id);
-
-  // Charger les avoirs du client depuis l'API
-  const { data: avoirsData } = useQuery({
-    queryKey: ['client-avoirs', id],
-    queryFn: () => getAvoirsClient(Number(id)),
-    enabled: !!id,
-  });
-
+  // Données de l'API (avec fallback sur tableaux vides)
+  const clientDevis = (client as any).devis || [];
+  const clientOrdres = (client as any).ordres_travail || [];
+  const clientFactures = (client as any).factures || [];
+  const clientPaiements = (client as any).paiements || [];
   const clientAvoirs = avoirsData?.avoirs || [];
   const soldeAvoirsTotal = avoirsData?.solde_total || 0;
 
-  const totalFacture = clientFactures.reduce((sum, f) => sum + f.montantTTC, 0);
-  const totalPaye = clientPaiements.reduce((sum, p) => sum + p.montant, 0);
+  // Calculer les totaux
+  const totalFacture = clientFactures.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
+  const totalPaye = clientPaiements.reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
 
-  // Mock pour plafond et délai
-  const plafondCredit = 50000000;
-  const delaiPaiement = 30;
-
-  const handleDelete = () => {
-    toast({
-      title: "Client supprimé",
-      description: `Le client ${client.nom} a été supprimé.`,
-      variant: "destructive",
-    });
-    navigate("/clients");
+  const handleDelete = async () => {
+    try {
+      await deleteClientMutation.mutateAsync(id || '');
+      navigate("/clients");
+    } catch (error) {
+      // L'erreur est déjà gérée dans le hook
+    }
   };
 
   const getStatutBadge = (statut: string) => {
@@ -151,15 +150,15 @@ export default function ClientDetailPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{client.email}</span>
+                    <span>{client.email || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{client.telephone}</span>
+                    <span>{client.telephone || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{client.adresse}, {client.ville}</span>
+                    <span>{client.adresse || '-'}{client.ville ? `, ${client.ville}` : ''}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -175,16 +174,14 @@ export default function ClientDetailPage() {
                       <span>NIF: {client.nif}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-sm">
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <span>Plafond: {formatMontant(plafondCredit)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>Délai paiement: {delaiPaiement} jours</span>
-                  </div>
+                  {client.limite_credit > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <span>Plafond: {formatMontant(client.limite_credit)}</span>
+                    </div>
+                  )}
                   <div className="text-sm text-muted-foreground">
-                    Client depuis le {formatDate(client.dateCreation)}
+                    Client depuis le {client.created_at ? formatDate(client.created_at) : '-'}
                   </div>
                 </div>
               </div>
@@ -226,19 +223,18 @@ export default function ClientDetailPage() {
         </div>
 
         {/* Tabs with documents */}
-        <Tabs defaultValue="contacts" className="w-full">
+        <Tabs defaultValue="factures" className="w-full">
           <TabsList>
-            <TabsTrigger value="contacts" className="gap-2">
-              <Users className="h-4 w-4" />
-              Contacts ({contacts.length})
-            </TabsTrigger>
-            <TabsTrigger value="factures">
+            <TabsTrigger value="factures" className="gap-2">
+              <Receipt className="h-4 w-4" />
               Factures ({clientFactures.length})
             </TabsTrigger>
-            <TabsTrigger value="ordres">
+            <TabsTrigger value="ordres" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
               Ordres ({clientOrdres.length})
             </TabsTrigger>
-            <TabsTrigger value="devis">
+            <TabsTrigger value="devis" className="gap-2">
+              <FileText className="h-4 w-4" />
               Devis ({clientDevis.length})
             </TabsTrigger>
             <TabsTrigger value="paiements">
@@ -249,53 +245,6 @@ export default function ClientDetailPage() {
               Avoirs
             </TabsTrigger>
           </TabsList>
-
-          {/* Contacts Tab */}
-          <TabsContent value="contacts" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Interlocuteurs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {contacts.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {contacts.map((contact) => (
-                      <div key={contact.id} className="p-4 border rounded-lg bg-muted/30">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">{contact.prenom} {contact.nom}</p>
-                            <p className="text-sm text-muted-foreground">{contact.fonction}</p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
-                              {contact.email}
-                            </a>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3 text-muted-foreground" />
-                            <span>{contact.telephone}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center py-8 text-muted-foreground">
-                    Aucun contact enregistré
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="factures" className="mt-4">
             <Card>
@@ -312,13 +261,17 @@ export default function ClientDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clientFactures.map((facture) => (
-                      <TableRow key={facture.id} className="cursor-pointer hover:bg-muted/50">
+                    {clientFactures.map((facture: any) => (
+                      <TableRow 
+                        key={facture.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/factures/${facture.id}`)}
+                      >
                         <TableCell className="font-medium">{facture.numero}</TableCell>
-                        <TableCell>{formatDate(facture.dateCreation)}</TableCell>
-                        <TableCell>{formatDate(facture.dateEcheance)}</TableCell>
-                        <TableCell className="text-right">{formatMontant(facture.montantTTC)}</TableCell>
-                        <TableCell className="text-right">{formatMontant(facture.montantPaye)}</TableCell>
+                        <TableCell>{formatDate(facture.date_facture || facture.created_at)}</TableCell>
+                        <TableCell>{formatDate(facture.date_echeance)}</TableCell>
+                        <TableCell className="text-right">{formatMontant(facture.montant_ttc)}</TableCell>
+                        <TableCell className="text-right">{formatMontant(facture.montant_paye || 0)}</TableCell>
                         <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                       </TableRow>
                     ))}
@@ -349,12 +302,16 @@ export default function ClientDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clientOrdres.map((ordre) => (
-                      <TableRow key={ordre.id} className="cursor-pointer hover:bg-muted/50">
+                    {clientOrdres.map((ordre: any) => (
+                      <TableRow 
+                        key={ordre.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/ordres/${ordre.id}`)}
+                      >
                         <TableCell className="font-medium">{ordre.numero}</TableCell>
-                        <TableCell>{formatDate(ordre.dateCreation)}</TableCell>
-                        <TableCell className="capitalize">{ordre.typeOperation}</TableCell>
-                        <TableCell className="text-right">{formatMontant(ordre.montantTTC)}</TableCell>
+                        <TableCell>{formatDate(ordre.date || ordre.created_at)}</TableCell>
+                        <TableCell className="capitalize">{ordre.type_operation || ordre.categorie || '-'}</TableCell>
+                        <TableCell className="text-right">{formatMontant(ordre.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       </TableRow>
                     ))}
@@ -385,12 +342,16 @@ export default function ClientDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clientDevis.map((d) => (
-                      <TableRow key={d.id} className="cursor-pointer hover:bg-muted/50">
+                    {clientDevis.map((d: any) => (
+                      <TableRow 
+                        key={d.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/devis/${d.id}`)}
+                      >
                         <TableCell className="font-medium">{d.numero}</TableCell>
-                        <TableCell>{formatDate(d.dateCreation)}</TableCell>
-                        <TableCell>{formatDate(d.dateValidite)}</TableCell>
-                        <TableCell className="text-right">{formatMontant(d.montantTTC)}</TableCell>
+                        <TableCell>{formatDate(d.date || d.created_at)}</TableCell>
+                        <TableCell>{formatDate(d.date_validite)}</TableCell>
+                        <TableCell className="text-right">{formatMontant(d.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(d.statut)}</TableCell>
                       </TableRow>
                     ))}
@@ -420,11 +381,11 @@ export default function ClientDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clientPaiements.map((paiement) => (
+                    {clientPaiements.map((paiement: any) => (
                       <TableRow key={paiement.id}>
-                        <TableCell>{formatDate(paiement.date)}</TableCell>
-                        <TableCell className="capitalize">{paiement.modePaiement}</TableCell>
-                        <TableCell>{paiement.reference || paiement.numeroCheque || '-'}</TableCell>
+                        <TableCell>{formatDate(paiement.date_paiement || paiement.date)}</TableCell>
+                        <TableCell className="capitalize">{paiement.mode_paiement}</TableCell>
+                        <TableCell>{paiement.reference || '-'}</TableCell>
                         <TableCell className="text-right font-medium text-green-600">
                           {formatMontant(paiement.montant)}
                         </TableCell>

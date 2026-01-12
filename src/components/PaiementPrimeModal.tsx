@@ -20,14 +20,21 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatMontant } from "@/data/mockData";
-import { PrimePartenaire } from "@/types/partenaires";
+
+// Type générique pour les primes - supporte les deux formats
+interface PrimeGeneric {
+  id: string | number;
+  montant: number;
+  statut?: string;
+  [key: string]: any;
+}
 
 interface PaiementPrimeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   partenaireNom: string;
   partenaireType: "transitaire" | "representant";
-  primes: PrimePartenaire[];
+  primes: PrimeGeneric[];
   total: number;
 }
 
