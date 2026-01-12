@@ -9,6 +9,16 @@ class TransitaireResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Calculer les totaux des primes si chargées
+        $primes = $this->whenLoaded('primes');
+        $primesDues = 0;
+        $primesPayees = 0;
+        
+        if ($primes instanceof \Illuminate\Support\Collection) {
+            $primesDues = $primes->where('statut', '!=', 'Payée')->sum('montant');
+            $primesPayees = $primes->where('statut', 'Payée')->sum('montant');
+        }
+        
         return [
             'id' => $this->id,
             'nom' => $this->nom,
@@ -28,13 +38,15 @@ class TransitaireResource extends JsonResource
                 'factures' => $this->factures_count ?? 0,
             ]),
             
-            // Stats
-            'stats' => $this->when($this->stats !== null, $this->stats),
+            // Stats primes
+            'primes_dues' => $primesDues,
+            'primes_payees' => $primesPayees,
             
             // Relations
             'devis' => DevisResource::collection($this->whenLoaded('devis')),
             'ordres_travail' => OrdreTravailResource::collection($this->whenLoaded('ordresTravail')),
             'factures' => FactureResource::collection($this->whenLoaded('factures')),
+            'primes' => PrimeResource::collection($this->whenLoaded('primes')),
         ];
     }
 }

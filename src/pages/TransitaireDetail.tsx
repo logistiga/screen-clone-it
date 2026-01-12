@@ -13,15 +13,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, ClipboardList, Receipt, FileText, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, ClipboardList, Receipt, FileText, Loader2, CreditCard, History, DollarSign } from "lucide-react";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { useTransitaireById } from "@/hooks/use-commercial";
+import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
 
 export default function TransitaireDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [showPaiementModal, setShowPaiementModal] = useState(false);
+  const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
   
-  const { data: transitaire, isLoading, error } = useTransitaireById(id);
+  const { data: transitaire, isLoading, error, refetch } = useTransitaireById(id);
 
   if (isLoading) {
     return (
@@ -50,6 +54,7 @@ export default function TransitaireDetailPage() {
   const ordres = transitaire.ordres_travail || [];
   const factures = transitaire.factures || [];
   const devisList = transitaire.devis || [];
+  const primes = transitaire.primes || [];
 
   // Calculer les totaux
   const totalOrdres = ordres.length;
@@ -57,6 +62,40 @@ export default function TransitaireDetailPage() {
   const totalDevis = devisList.length;
   const montantTotalFactures = factures.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
   const montantTotalOrdres = ordres.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0);
+
+  // Primes
+  const primesDues = primes
+    .filter((p: any) => p.statut !== 'Payée')
+    .reduce((sum: number, p: any) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
+  
+  const primesPayees = primes
+    .filter((p: any) => p.statut === 'Payée')
+    .reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+
+  const primesDuesList = primes.filter((p: any) => p.statut !== 'Payée');
+
+  // Récupérer les paiements de toutes les primes
+  const allPaiements = primes.flatMap((p: any) => p.paiements || []);
+
+  const handleSelectPrime = (primeId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPrimes([...selectedPrimes, primeId]);
+    } else {
+      setSelectedPrimes(selectedPrimes.filter(pid => pid !== primeId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedPrimes(primesDuesList.map((p: any) => String(p.id)));
+    } else {
+      setSelectedPrimes([]);
+    }
+  };
+
+  const selectedTotal = primes
+    .filter((p: any) => selectedPrimes.includes(String(p.id)))
+    .reduce((sum: number, p: any) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -78,6 +117,15 @@ export default function TransitaireDetailPage() {
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
 
+  const getPrimeStatutBadge = (statut: string) => {
+    const isPaid = statut === 'Payée' || statut === 'payee';
+    return (
+      <Badge variant={isPaid ? 'default' : 'destructive'}>
+        {isPaid ? 'Payée' : statut === 'Partiellement payée' ? 'Partielle' : 'Due'}
+      </Badge>
+    );
+  };
+
   return (
     <MainLayout title={transitaire.nom || 'Transitaire'}>
       <div className="space-y-6">
@@ -92,6 +140,16 @@ export default function TransitaireDetailPage() {
               <Edit className="h-4 w-4" />
               Modifier
             </Button>
+            {primesDues > 0 && (
+              <Button 
+                className="gap-2"
+                onClick={() => setShowPaiementModal(true)}
+                disabled={selectedPrimes.length === 0}
+              >
+                <DollarSign className="h-4 w-4" />
+                Payer primes ({formatMontant(selectedTotal || primesDues)})
+              </Button>
+            )}
           </div>
         </div>
 
@@ -144,30 +202,37 @@ export default function TransitaireDetailPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Factures
+                  Primes Dues
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalFactures}</div>
-                <p className="text-xs text-muted-foreground">{formatMontant(montantTotalFactures)}</p>
+                <div className="text-2xl font-bold text-destructive">{formatMontant(primesDues)}</div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Devis
+                  Primes Payées
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalDevis}</div>
+                <div className="text-2xl font-bold text-green-600">{formatMontant(primesPayees)}</div>
               </CardContent>
             </Card>
           </div>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="ordres" className="w-full">
+        <Tabs defaultValue="primes" className="w-full">
           <TabsList>
+            <TabsTrigger value="primes" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Primes ({primes.length})
+            </TabsTrigger>
+            <TabsTrigger value="paiements" className="gap-2">
+              <History className="h-4 w-4" />
+              Paiements ({allPaiements.length})
+            </TabsTrigger>
             <TabsTrigger value="ordres" className="gap-2">
               <ClipboardList className="h-4 w-4" />
               Ordres ({totalOrdres})
@@ -181,6 +246,104 @@ export default function TransitaireDetailPage() {
               Devis ({totalDevis})
             </TabsTrigger>
           </TabsList>
+
+          {/* Primes Tab */}
+          <TabsContent value="primes" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={selectedPrimes.length === primesDuesList.length && primesDuesList.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
+                      <TableHead>Ordre/Facture</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
+                      <TableHead className="text-right">Reste à payer</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {primes.map((prime: any) => (
+                      <TableRow key={prime.id}>
+                        <TableCell>
+                          {prime.statut !== 'Payée' && (
+                            <Checkbox 
+                              checked={selectedPrimes.includes(String(prime.id))}
+                              onCheckedChange={(checked) => handleSelectPrime(String(prime.id), !!checked)}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell 
+                          className="font-medium text-primary hover:underline cursor-pointer"
+                          onClick={() => {
+                            if (prime.ordre_id) navigate(`/ordres/${prime.ordre_id}`);
+                            else if (prime.facture_id) navigate(`/factures/${prime.facture_id}`);
+                          }}
+                        >
+                          {prime.ordre?.numero || prime.facture?.numero || '-'}
+                        </TableCell>
+                        <TableCell>{formatDate(prime.created_at)}</TableCell>
+                        <TableCell className="text-right font-medium">{formatMontant(prime.montant)}</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">
+                          {formatMontant(prime.reste_a_payer ?? prime.montant)}
+                        </TableCell>
+                        <TableCell>{getPrimeStatutBadge(prime.statut)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {primes.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Aucune prime
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Historique Paiements Tab */}
+          <TabsContent value="paiements" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Référence</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allPaiements.map((paiement: any) => (
+                      <TableRow key={paiement.id}>
+                        <TableCell>{formatDate(paiement.date_paiement)}</TableCell>
+                        <TableCell className="capitalize">{paiement.mode_paiement}</TableCell>
+                        <TableCell>{paiement.reference || '-'}</TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
+                          {formatMontant(paiement.montant)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {allPaiements.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                          Aucun paiement
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Ordres Tab */}
           <TabsContent value="ordres" className="mt-4">
@@ -306,6 +469,17 @@ export default function TransitaireDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal Paiement */}
+      <PaiementPrimeModal 
+        open={showPaiementModal}
+        onOpenChange={setShowPaiementModal}
+        partenaireNom={transitaire.nom || ''}
+        partenaireType="transitaire"
+        primes={primes.filter((p: any) => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
+        total={selectedTotal > 0 ? selectedTotal : primesDues}
+        onSuccess={() => refetch()}
+      />
     </MainLayout>
   );
 }

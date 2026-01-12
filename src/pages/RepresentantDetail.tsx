@@ -313,6 +313,7 @@ export default function RepresentantDetailPage() {
         partenaireType="representant"
         primes={primes.filter((p: any) => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
         total={selectedTotal > 0 ? selectedTotal : primesDues}
+        onSuccess={() => {}}
       />
     </MainLayout>
   );
