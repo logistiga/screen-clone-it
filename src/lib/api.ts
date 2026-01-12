@@ -28,6 +28,28 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Diagnostics ciblées (utile quand l'API distante n'est pas à jour)
+    try {
+      const status = error?.response?.status;
+      const url: string | undefined = error?.config?.url;
+      const baseURL: string | undefined = error?.config?.baseURL;
+
+      if (
+        status === 404 &&
+        typeof url === 'string' &&
+        url.includes('/annulations/') &&
+        (url.includes('/rembourser') || url.includes('/generer-avoir') || url.includes('/utiliser-avoir'))
+      ) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[API] Route annulations introuvable (404). Le backend derrière VITE_API_URL n\'est probablement pas déployé/à jour.',
+          { baseURL, url }
+        );
+      }
+    } catch {
+      // ignore
+    }
+
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
