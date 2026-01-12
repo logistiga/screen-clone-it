@@ -11,12 +11,17 @@ class PaiementPrimeResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'transitaire_id' => $this->transitaire_id,
+            'representant_id' => $this->representant_id,
             'montant' => round($this->montant, 2),
             'mode_paiement' => $this->mode_paiement,
             'reference' => $this->reference,
-            'date_paiement' => $this->date_paiement?->toDateString(),
+            'date' => $this->date?->toDateString(),
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
+            
+            // Primes liées à ce paiement
+            'primes' => PrimeResource::collection($this->whenLoaded('primes')),
         ];
     }
 }

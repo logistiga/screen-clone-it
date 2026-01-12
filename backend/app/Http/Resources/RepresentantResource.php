@@ -51,6 +51,7 @@ class RepresentantResource extends JsonResource
             
             // Relations
             'primes' => PrimeResource::collection($this->whenLoaded('primes')),
+            'paiements_primes' => PaiementPrimeResource::collection($this->whenLoaded('paiementsPrimes')),
         ];
     }
 }

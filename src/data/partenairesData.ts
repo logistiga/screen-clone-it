@@ -13,19 +13,19 @@ export const getRepresentant = (id: string) => representantsData.find(r => r.id 
 export const getArmateur = (id: string) => armateursData.find(a => a.id === id);
 
 export const getPrimesTransitaire = (transitaireId: string) => 
-  primesPartenaires.filter(p => p.transitaireId === transitaireId);
+  primesPartenaires.filter(p => p.transitaire_id === transitaireId);
 
 export const getPrimesRepresentant = (representantId: string) => 
-  primesPartenaires.filter(p => p.representantId === representantId);
+  primesPartenaires.filter(p => p.representant_id === representantId);
 
 export const getPaiementsTransitaire = (transitaireId: string) => 
-  paiementsPrimes.filter(p => p.transitaireId === transitaireId);
+  paiementsPrimes.filter(p => p.transitaire_id === transitaireId);
 
 export const getPaiementsRepresentant = (representantId: string) => 
-  paiementsPrimes.filter(p => p.representantId === representantId);
+  paiementsPrimes.filter(p => p.representant_id === representantId);
 
 export const getTotalPrimesDues = (primes: PrimePartenaire[]) => 
-  primes.filter(p => p.statut === 'due').reduce((sum, p) => sum + p.montant, 0);
+  primes.filter(p => p.statut !== 'Payée').reduce((sum, p) => sum + p.montant, 0);
 
 export const getTotalPrimesPayees = (primes: PrimePartenaire[]) => 
-  primes.filter(p => p.statut === 'payee').reduce((sum, p) => sum + p.montant, 0);
+  primes.filter(p => p.statut === 'Payée').reduce((sum, p) => sum + p.montant, 0);
