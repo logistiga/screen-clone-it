@@ -206,9 +206,6 @@ export default function NouvelleFacturePage() {
     };
 
     try {
-      // eslint-disable-next-line no-console
-      console.log("[NouvelleFacture] create payload", data);
-
       await createFactureMutation.mutateAsync(data);
       toast.success("Facture créée avec succès");
       navigate("/factures");
@@ -216,6 +213,7 @@ export default function NouvelleFacturePage() {
       const info = extractApiErrorInfo(error);
       const responseData: any = (error as any)?.response?.data;
       const errors = responseData?.errors;
+      const backendError = typeof responseData?.error === "string" ? responseData.error : undefined;
 
       let message = info.message || "Erreur lors de la création de la facture";
 
@@ -227,12 +225,18 @@ export default function NouvelleFacturePage() {
       }
 
       // eslint-disable-next-line no-console
-      console.error("[NouvelleFacture] 422/Erreur API", {
+      console.error("[NouvelleFacture] Erreur API", {
         status: info.status,
         message: info.message,
+        error: backendError,
         errors: responseData?.errors,
       });
-      toast.error(message);
+
+      if (backendError) {
+        toast.error(message, { description: backendError });
+      } else {
+        toast.error(message);
+      }
     }
   };
 

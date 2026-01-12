@@ -105,6 +105,11 @@ class Facture extends Model
         return $this->hasMany(Paiement::class);
     }
 
+    public function primes()
+    {
+        return $this->hasMany(Prime::class, 'facture_id');
+    }
+
     public function annulation()
     {
         return $this->hasOne(Annulation::class, 'document_id')->where('type', 'facture');
