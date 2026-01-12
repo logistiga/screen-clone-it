@@ -124,7 +124,11 @@ export function useRembourserAnnulation() {
     }) => annulationsApi.rembourserAnnulation(annulationId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['annulations'] });
-      queryClient.invalidateQueries({ queryKey: ['caisse'] });
+      // Rafraîchir les écrans de caisse
+      queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse', 'solde'] });
+      // Rafraîchir les banques
       queryClient.invalidateQueries({ queryKey: ['banques'] });
       toast.success('Remboursement effectué avec succès');
     },
