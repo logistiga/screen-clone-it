@@ -121,11 +121,14 @@ class NoteDebut extends Model
             'detention' => 'ND',
             'ouverture_port' => 'NOP',
             'reparation' => 'NR',
+            'relache' => 'NRL',
         ];
         
-        $prefixe = $prefixes[$type] ?? 'N';
+        $prefixe = $prefixes[strtolower(str_replace(' ', '_', $type))] ?? 'N';
         $annee = date('Y');
-        $dernier = self::where('type', $type)->whereYear('created_at', $annee)->count() + 1;
+        $dernier = self::whereRaw('LOWER(REPLACE(type, " ", "_")) = ?', [strtolower(str_replace(' ', '_', $type))])
+            ->whereYear('created_at', $annee)
+            ->count() + 1;
         
         return sprintf('%s-%s-%04d', $prefixe, $annee, $dernier);
     }
