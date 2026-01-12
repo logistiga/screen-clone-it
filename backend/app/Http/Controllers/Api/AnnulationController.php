@@ -333,9 +333,16 @@ class AnnulationController extends Controller
         }
 
         $request->validate([
-            'facture_id' => 'required|exists:factures,id',
+            'facture_id' => 'nullable|exists:factures,id',
+            'ordre_id' => 'nullable|exists:ordres_travail,id',
             'montant' => 'required|numeric|min:0.01',
         ]);
+
+        if (!$request->filled('facture_id') && !$request->filled('ordre_id')) {
+            return response()->json([
+                'message' => 'facture_id ou ordre_id est requis.'
+            ], 422);
+        }
 
         if (!$annulation->avoir_genere) {
             return response()->json(['message' => 'Aucun avoir n\'a été généré pour cette annulation.'], 422);
@@ -346,13 +353,20 @@ class AnnulationController extends Controller
         }
 
         try {
-            $facture = \App\Models\Facture::findOrFail($request->facture_id);
+            $facture = $request->filled('facture_id')
+                ? \App\Models\Facture::findOrFail($request->facture_id)
+                : null;
 
-            DB::transaction(function () use ($request, $annulation, $facture) {
+            $ordre = $request->filled('ordre_id')
+                ? \App\Models\OrdreTravail::findOrFail($request->ordre_id)
+                : null;
+
+            DB::transaction(function () use ($request, $annulation, $facture, $ordre) {
                 // Créer le paiement
                 \App\Models\Paiement::create([
-                    'facture_id' => $facture->id,
-                    'client_id' => $facture->client_id,
+                    'facture_id' => $facture?->id,
+                    'ordre_id' => $ordre?->id,
+                    'client_id' => $facture?->client_id ?? $ordre?->client_id,
                     'montant' => $request->montant,
                     'date' => now(),
                     'mode_paiement' => 'Avoir',
@@ -360,21 +374,36 @@ class AnnulationController extends Controller
                     'notes' => "Paiement par avoir {$annulation->numero_avoir}",
                 ]);
 
-                // Mettre à jour le montant payé de la facture
-                $facture->increment('montant_paye', $request->montant);
+                if ($facture) {
+                    // Mettre à jour le montant payé de la facture
+                    $facture->increment('montant_paye', $request->montant);
 
-                // Mettre à jour le statut de la facture si entièrement payée
-                if ($facture->montant_paye >= $facture->montant_ttc) {
-                    $facture->update(['statut' => 'payee']);
-                } else {
-                    $facture->update(['statut' => 'partielle']);
+                    // Mettre à jour le statut de la facture
+                    if ($facture->montant_paye >= $facture->montant_ttc) {
+                        $facture->update(['statut' => 'payee']);
+                    } else {
+                        $facture->update(['statut' => 'partielle']);
+                    }
+                }
+
+                if ($ordre) {
+                    // Mettre à jour le montant payé de l'ordre
+                    $ordre->increment('montant_paye', $request->montant);
+
+                    // Mettre à jour le statut si entièrement payé
+                    if ($ordre->montant_paye >= $ordre->montant_ttc) {
+                        $ordre->update(['statut' => 'termine']);
+                    }
                 }
 
                 // Déduire le montant du solde de l'avoir
                 $annulation->decrement('solde_avoir', $request->montant);
             });
 
-            Audit::log('create', 'paiement_avoir', "Paiement par avoir: {$request->montant} FCFA - Facture {$facture->numero}", $facture->id);
+            $docNumero = $facture?->numero ?? $ordre?->numero ?? '';
+            $docType = $facture ? 'Facture' : 'Ordre';
+
+            Audit::log('create', 'paiement_avoir', "Paiement par avoir: {$request->montant} FCFA - {$docType} {$docNumero}", $facture?->id ?? $ordre?->id);
 
             return response()->json([
                 'message' => 'Avoir utilisé avec succès',
