@@ -9,6 +9,19 @@ class RepresentantResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Calculer les primes dues et payées
+        $primesDues = 0;
+        $primesPayees = 0;
+        
+        if ($this->relationLoaded('primes')) {
+            foreach ($this->primes as $prime) {
+                $primesDues += $prime->montant;
+                if ($prime->relationLoaded('paiements')) {
+                    $primesPayees += $prime->paiements->sum('montant');
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
             'nom' => $this->nom,
@@ -20,6 +33,10 @@ class RepresentantResource extends JsonResource
             'taux_commission' => $this->taux_commission,
             'actif' => $this->actif,
             'created_at' => $this->created_at?->toISOString(),
+            
+            // Totaux calculés des primes
+            'primes_dues' => round($primesDues, 2),
+            'primes_payees' => round($primesPayees, 2),
             
             // Compteurs
             'counts' => $this->when($this->primes_count !== null, [

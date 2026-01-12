@@ -17,7 +17,8 @@ class RepresentantController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Representant::withCount('primes')
-            ->withSum('primes', 'montant');
+            ->withSum('primes', 'montant')
+            ->with(['primes.paiements']);
 
         if ($request->has('search')) {
             $search = $request->get('search');
