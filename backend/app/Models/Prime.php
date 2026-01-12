@@ -28,7 +28,7 @@ class Prime extends Model
     // Relations
     public function paiements()
     {
-        return $this->hasMany(\App\Models\PaiementPrime::class, 'prime_id');
+        return $this->belongsToMany(\App\Models\PaiementPrime::class, 'paiement_prime_items', 'prime_id', 'paiement_prime_id');
     }
 
     // Relations
