@@ -108,7 +108,11 @@ class PrimeController extends Controller
 
     public function payer(PayerPrimeRequest $request, Prime $prime): JsonResponse
     {
-        $montantPaye = $prime->paiements()->sum('montant');
+        // Charger les relations nécessaires
+        $prime->load(['transitaire', 'representant']);
+        
+        // Calculer le montant déjà payé via la table pivot
+        $montantPaye = $prime->paiements()->sum('paiements_primes.montant');
         $resteAPayer = $prime->montant - $montantPaye;
 
         if ($request->montant > $resteAPayer) {
@@ -121,31 +125,46 @@ class PrimeController extends Controller
         try {
             DB::beginTransaction();
 
+            // Créer le paiement avec les bonnes colonnes
             $paiement = PaiementPrime::create([
-                'prime_id' => $prime->id,
+                'transitaire_id' => $prime->transitaire_id,
+                'representant_id' => $prime->representant_id,
                 'montant' => $request->montant,
+                'date' => now()->toDateString(),
                 'mode_paiement' => $request->mode_paiement,
                 'reference' => $request->reference,
-                'date_paiement' => now(),
                 'notes' => $request->notes,
-                'user_id' => auth()->id(),
             ]);
 
+            // Lier le paiement à la prime via la table pivot
+            DB::table('paiement_prime_items')->insert([
+                'paiement_prime_id' => $paiement->id,
+                'prime_id' => $prime->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Créer le mouvement de caisse si paiement en espèces
             if ($request->mode_paiement === 'Espèces') {
+                $beneficiaire = $prime->transitaire 
+                    ? $prime->transitaire->nom 
+                    : ($prime->representant ? "{$prime->representant->nom} {$prime->representant->prenom}" : 'N/A');
+                    
                 MouvementCaisse::create([
                     'type' => 'Sortie',
-                    'categorie' => 'Prime représentant',
+                    'categorie' => $prime->transitaire_id ? 'Prime transitaire' : 'Prime représentant',
                     'montant' => $request->montant,
-                    'description' => "Prime - {$prime->representant->nom} {$prime->representant->prenom}",
+                    'description' => "Prime - {$beneficiaire}",
                     'reference' => $paiement->id,
                     'date_mouvement' => now(),
                     'user_id' => auth()->id(),
                 ]);
             }
 
+            // Mettre à jour le statut de la prime
             $nouveauMontantPaye = $montantPaye + $request->montant;
             if ($nouveauMontantPaye >= $prime->montant) {
-                $prime->update(['statut' => 'Payée']);
+                $prime->update(['statut' => 'Payée', 'date_paiement' => now()]);
             } else {
                 $prime->update(['statut' => 'Partiellement payée']);
             }
