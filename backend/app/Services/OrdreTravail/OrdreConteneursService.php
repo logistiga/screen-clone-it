@@ -87,6 +87,10 @@ class OrdreConteneursService
         
         $montantHT = $this->calculerTotalHT($ordre);
         
+        // Appliquer la remise si présente
+        $remiseMontant = (float) ($ordre->remise_montant ?? 0);
+        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
+        
         // Récupérer les taux depuis la configuration taxes
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
@@ -94,10 +98,10 @@ class OrdreConteneursService
         $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
         $cssActif = $taxesConfig->data['css_actif'] ?? true;
         
-        // Calculer les taxes
-        $montantTVA = $tvaActif ? $montantHT * ($tauxTVA / 100) : 0;
-        $montantCSS = $cssActif ? $montantHT * ($tauxCSS / 100) : 0;
-        $montantTTC = $montantHT + $montantTVA + $montantCSS;
+        // Calculer les taxes sur le montant après remise
+        $montantTVA = $tvaActif ? $montantHTApresRemise * ($tauxTVA / 100) : 0;
+        $montantCSS = $cssActif ? $montantHTApresRemise * ($tauxCSS / 100) : 0;
+        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
         
         // Utiliser les bons noms de colonnes (tva, css)
         $ordre->update([
@@ -110,6 +114,7 @@ class OrdreConteneursService
         Log::info('Totaux conteneurs OT calculés', [
             'ordre_id' => $ordre->id,
             'montant_ht' => $montantHT,
+            'remise_montant' => $remiseMontant,
             'montant_ttc' => $montantTTC,
         ]);
     }
