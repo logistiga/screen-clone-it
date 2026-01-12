@@ -137,18 +137,19 @@ export default function NouvelleFacturePage() {
     let lotsData: any[] = [];
 
     if (categorie === "conteneurs" && conteneursData) {
-      conteneursDataForApi = conteneursData.conteneurs.map(c => ({
+      conteneursDataForApi = conteneursData.conteneurs.map((c) => ({
         numero: c.numero,
-        type: 'dry',
+        type: "DRY",
         taille: c.taille,
         description: c.description,
+        prix_unitaire: 0,
         armateur_id: conteneursData.armateurId || null,
-        operations: c.operations.map(op => ({
+        operations: c.operations.map((op) => ({
           type_operation: op.type,
           description: typesOperationConteneur[op.type]?.label || op.description,
           quantite: op.quantite,
           prix_unitaire: op.prixUnitaire,
-        }))
+        })),
       }));
     } else if (categorie === "conventionnel" && conventionnelData) {
       lotsData = conventionnelData.lots.map(l => ({
@@ -171,18 +172,33 @@ export default function NouvelleFacturePage() {
       }));
     }
 
+    const blNumero =
+      (categorie === "conteneurs" ? conteneursData?.numeroBL : conventionnelData?.numeroBL) || null;
+
     const data = {
-      client_id: clientId,
-      type_document: categorie === "conteneurs" ? "Conteneur" : categorie === "conventionnel" ? "Lot" : "Independant",
-      bl_numero: (categorie === "conteneurs" ? conteneursData?.numeroBL : conventionnelData?.numeroBL) || null,
+      client_id: Number(clientId),
+      type_document:
+        categorie === "conteneurs"
+          ? "Conteneur"
+          : categorie === "conventionnel"
+            ? "Lot"
+            : "Independant",
+
+      // Compatibilité backend (certaines versions attendent categorie + numero_bl)
+      categorie,
+      bl_numero: blNumero,
+      numero_bl: blNumero,
+
       date_echeance: dateEcheance,
-      transitaire_id: conteneursData?.transitaireId || null,
-      representant_id: conteneursData?.representantId || null,
-      armateur_id: conteneursData?.armateurId || null,
+      transitaire_id: conteneursData?.transitaireId ? Number(conteneursData.transitaireId) : null,
+      representant_id: conteneursData?.representantId ? Number(conteneursData.representantId) : null,
+      armateur_id: conteneursData?.armateurId ? Number(conteneursData.armateurId) : null,
       type_operation_indep: independantData?.typeOperationIndep || null,
+
       // Primes pour transitaire et représentant
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
+
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataForApi,
@@ -190,6 +206,9 @@ export default function NouvelleFacturePage() {
     };
 
     try {
+      // eslint-disable-next-line no-console
+      console.log("[NouvelleFacture] create payload", data);
+
       await createFactureMutation.mutateAsync(data);
       toast.success("Facture créée avec succès");
       navigate("/factures");
