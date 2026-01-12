@@ -81,10 +81,16 @@ export function PaiementModal({
 
   // Mutation to use avoir
   const useAvoirMutation = useMutation({
-    mutationFn: ({ avoirId, factureId, montant }: { avoirId: number; factureId: number; montant: number }) =>
-      utiliserAvoir(avoirId, { facture_id: factureId, montant }),
+    mutationFn: ({
+      avoirId,
+      payload,
+    }: {
+      avoirId: number;
+      payload: { facture_id?: number; ordre_id?: number; montant: number };
+    }) => utiliserAvoir(avoirId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['factures'] });
+      queryClient.invalidateQueries({ queryKey: ['ordres'] });
       queryClient.invalidateQueries({ queryKey: ['avoirs-client', clientId] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success("Paiement par avoir enregistré avec succès");
@@ -137,11 +143,6 @@ export function PaiementModal({
     }
 
     if (modePaiement === "Avoir") {
-      // Only works for factures
-      if (documentType !== "facture") {
-        toast.error("Le paiement par avoir n'est disponible que pour les factures");
-        return;
-      }
       if (!selectedAvoirId) {
         toast.error("Veuillez sélectionner un avoir");
         return;
@@ -151,10 +152,14 @@ export function PaiementModal({
         return;
       }
 
+      const docId = parseInt(documentId);
+
       useAvoirMutation.mutate({
         avoirId: selectedAvoirId,
-        factureId: parseInt(documentId),
-        montant,
+        payload:
+          documentType === 'facture'
+            ? { facture_id: docId, montant }
+            : { ordre_id: docId, montant },
       });
     } else {
       const paiementData = {

@@ -60,7 +60,7 @@ class ClientResource extends JsonResource
     private function getSoldeAvoirs(): float
     {
         return Annulation::where('client_id', $this->id)
-            ->where('generer_avoir', true)
+            ->where('avoir_genere', true)
             ->where('solde_avoir', '>', 0)
             ->sum('solde_avoir');
     }

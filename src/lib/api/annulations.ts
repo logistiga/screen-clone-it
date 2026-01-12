@@ -153,11 +153,12 @@ export const getAvoirsClient = async (clientId: number): Promise<{
   return response.data;
 };
 
-// Utiliser un avoir pour payer une facture
+// Utiliser un avoir pour payer une facture ou un ordre
 export const utiliserAvoir = async (
   annulationId: number,
   data: {
-    facture_id: number;
+    facture_id?: number;
+    ordre_id?: number;
     montant: number;
   }
 ): Promise<{ message: string; montant_utilise: number; solde_avoir_restant: number }> => {
