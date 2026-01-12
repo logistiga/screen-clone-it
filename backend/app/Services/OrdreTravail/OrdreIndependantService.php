@@ -76,6 +76,10 @@ class OrdreIndependantService
         
         $montantHT = $this->calculerTotalHT($ordre);
         
+        // Appliquer la remise si présente
+        $remiseMontant = (float) ($ordre->remise_montant ?? 0);
+        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
+        
         // Récupérer les taux depuis la configuration taxes
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
@@ -86,11 +90,12 @@ class OrdreIndependantService
             $montantTVA = 0;
             $montantCSS = 0;
         } else {
-            $montantTVA = $montantHT * ($tauxTVA / 100);
-            $montantCSS = $montantHT * ($tauxCSS / 100);
+            // Calculer les taxes sur le montant après remise
+            $montantTVA = $montantHTApresRemise * ($tauxTVA / 100);
+            $montantCSS = $montantHTApresRemise * ($tauxCSS / 100);
         }
         
-        $montantTTC = $montantHT + $montantTVA + $montantCSS;
+        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
         
         $ordre->update([
             'montant_ht' => round($montantHT, 2),
@@ -103,6 +108,7 @@ class OrdreIndependantService
             'ordre_id' => $ordre->id,
             'nb_lignes' => $ordre->lignes->count(),
             'montant_ht' => $montantHT,
+            'remise_montant' => $remiseMontant,
         ]);
     }
 

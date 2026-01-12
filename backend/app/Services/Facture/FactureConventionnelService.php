@@ -67,6 +67,10 @@ class FactureConventionnelService
         
         $montantHT = $this->calculerTotalHT($facture);
         
+        // Appliquer la remise si présente
+        $remiseMontant = (float) ($facture->remise_montant ?? 0);
+        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
+        
         // Récupérer les taux depuis la configuration taxes
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
@@ -74,10 +78,10 @@ class FactureConventionnelService
         $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
         $cssActif = $taxesConfig->data['css_actif'] ?? true;
         
-        // Calculer les taxes
-        $montantTVA = $tvaActif ? $montantHT * ($tauxTVA / 100) : 0;
-        $montantCSS = $cssActif ? $montantHT * ($tauxCSS / 100) : 0;
-        $montantTTC = $montantHT + $montantTVA + $montantCSS;
+        // Calculer les taxes sur le montant après remise
+        $montantTVA = $tvaActif ? $montantHTApresRemise * ($tauxTVA / 100) : 0;
+        $montantCSS = $cssActif ? $montantHTApresRemise * ($tauxCSS / 100) : 0;
+        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
         
         // Utiliser les bons noms de colonnes (tva, css)
         $facture->update([
@@ -91,6 +95,7 @@ class FactureConventionnelService
             'facture_id' => $facture->id,
             'nb_lots' => $facture->lots->count(),
             'montant_ht' => $montantHT,
+            'remise_montant' => $remiseMontant,
             'montant_ttc' => $montantTTC,
         ]);
     }

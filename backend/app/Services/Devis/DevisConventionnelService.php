@@ -67,14 +67,19 @@ class DevisConventionnelService
         
         $montantHT = $this->calculerTotalHT($devis);
         
+        // Appliquer la remise si présente
+        $remiseMontant = (float) ($devis->remise_montant ?? 0);
+        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
+        
         // Récupérer les taux depuis la configuration taxes
         $taxesConfig = Configuration::getOrCreate('taxes');
         $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
         $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
         
-        $montantTVA = $montantHT * ($tauxTVA / 100);
-        $montantCSS = $montantHT * ($tauxCSS / 100);
-        $montantTTC = $montantHT + $montantTVA + $montantCSS;
+        // Calculer les taxes sur le montant après remise
+        $montantTVA = $montantHTApresRemise * ($tauxTVA / 100);
+        $montantCSS = $montantHTApresRemise * ($tauxCSS / 100);
+        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
         
         $devis->update([
             'montant_ht' => $montantHT,
@@ -87,6 +92,7 @@ class DevisConventionnelService
             'devis_id' => $devis->id,
             'nb_lots' => $devis->lots->count(),
             'montant_ht' => $montantHT,
+            'remise_montant' => $remiseMontant,
         ]);
     }
 
