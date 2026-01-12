@@ -5,6 +5,7 @@ namespace App\Services\Facture;
 use App\Models\Facture;
 use App\Models\Client;
 use App\Models\Configuration;
+use App\Models\Prime;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -96,6 +97,11 @@ class FactureServiceFactory
             $data['statut'] = $data['statut'] ?? 'emise';
             $data['montant_paye'] = $data['montant_paye'] ?? 0;
 
+            // Extraire les primes avant l'insert
+            $primeTransitaire = $data['prime_transitaire'] ?? 0;
+            $primeRepresentant = $data['prime_representant'] ?? 0;
+            unset($data['prime_transitaire'], $data['prime_representant']);
+
             // Extraire les relations avant l'insert
             $lignes = $data['lignes'] ?? [];
             $conteneurs = $data['conteneurs'] ?? [];
@@ -119,6 +125,9 @@ class FactureServiceFactory
             // Calculer les totaux avec le bon service
             $service->calculerTotaux($facture);
 
+            // Créer les primes si présentes
+            $this->creerPrimes($facture, $primeTransitaire, $primeRepresentant);
+
             // Mettre à jour le solde client
             $this->mettreAJourSoldeClient($facture->client_id);
 
@@ -128,8 +137,48 @@ class FactureServiceFactory
                 'categorie' => $categorie,
             ]);
 
-            return $facture->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur']);
+            return $facture->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'primes']);
         });
+    }
+
+    /**
+     * Créer les primes pour transitaire et représentant
+     */
+    protected function creerPrimes(Facture $facture, float $primeTransitaire, float $primeRepresentant): void
+    {
+        // Prime pour le transitaire
+        if ($primeTransitaire > 0 && !empty($facture->transitaire_id)) {
+            Prime::create([
+                'facture_id' => $facture->id,
+                'transitaire_id' => $facture->transitaire_id,
+                'montant' => $primeTransitaire,
+                'statut' => 'En attente',
+                'description' => "Prime transitaire pour facture {$facture->numero}",
+            ]);
+            
+            Log::info('Prime transitaire créée pour facture', [
+                'facture_id' => $facture->id,
+                'transitaire_id' => $facture->transitaire_id,
+                'montant' => $primeTransitaire,
+            ]);
+        }
+
+        // Prime pour le représentant
+        if ($primeRepresentant > 0 && !empty($facture->representant_id)) {
+            Prime::create([
+                'facture_id' => $facture->id,
+                'representant_id' => $facture->representant_id,
+                'montant' => $primeRepresentant,
+                'statut' => 'En attente',
+                'description' => "Prime représentant pour facture {$facture->numero}",
+            ]);
+            
+            Log::info('Prime représentant créée pour facture', [
+                'facture_id' => $facture->id,
+                'representant_id' => $facture->representant_id,
+                'montant' => $primeRepresentant,
+            ]);
+        }
     }
 
     /**

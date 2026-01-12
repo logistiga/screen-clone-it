@@ -120,6 +120,8 @@ export default function ModifierFacturePage() {
       armateurId: String(facture.armateur_id || ""),
       transitaireId: String(facture.transitaire_id || ""),
       representantId: String(facture.representant_id || ""),
+      primeTransitaire: 0,
+      primeRepresentant: 0,
       conteneurs,
       montantHT: conteneurs.reduce((sum: number, c: any) => 
         sum + c.prixUnitaire + c.operations.reduce((opSum: number, op: any) => opSum + op.prixTotal, 0), 0

@@ -49,6 +49,8 @@ export interface FactureConteneursData {
   armateurId: string;
   transitaireId: string;
   representantId: string;
+  primeTransitaire: number;
+  primeRepresentant: number;
   conteneurs: LigneConteneur[];
   montantHT: number;
 }
@@ -70,6 +72,8 @@ export default function FactureConteneursForm({
   const [armateurId, setArmateurId] = useState("");
   const [transitaireId, setTransitaireId] = useState("");
   const [representantId, setRepresentantId] = useState("");
+  const [primeTransitaire, setPrimeTransitaire] = useState<number>(0);
+  const [primeRepresentant, setPrimeRepresentant] = useState<number>(0);
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
 
   // Sync initialData une seule fois
@@ -83,6 +87,8 @@ export default function FactureConteneursForm({
     setArmateurId(initialData.armateurId || "");
     setTransitaireId(initialData.transitaireId || "");
     setRepresentantId(initialData.representantId || "");
+    setPrimeTransitaire(initialData.primeTransitaire || 0);
+    setPrimeRepresentant(initialData.primeRepresentant || 0);
     if (initialData.conteneurs?.length > 0) {
       setConteneurs(initialData.conteneurs);
     }
@@ -96,6 +102,8 @@ export default function FactureConteneursForm({
       armateurId,
       transitaireId,
       representantId,
+      primeTransitaire,
+      primeRepresentant,
       conteneurs: newConteneurs,
       montantHT,
     });
@@ -103,7 +111,7 @@ export default function FactureConteneursForm({
 
   useEffect(() => {
     updateParent(conteneurs);
-  }, [typeOperation, numeroBL, armateurId, transitaireId, representantId]);
+  }, [typeOperation, numeroBL, armateurId, transitaireId, representantId, primeTransitaire, primeRepresentant]);
 
   const handleAddConteneur = () => {
     const newConteneurs = [...conteneurs, { ...getInitialConteneur(), id: String(Date.now()) }];
@@ -255,6 +263,28 @@ export default function FactureConteneursForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-pink-600">Prime transitaire (FCFA)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={primeTransitaire || ""}
+                onChange={(e) => setPrimeTransitaire(parseFloat(e.target.value) || 0)}
+                className="border-pink-200"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-pink-600">Prime représentant (FCFA)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={primeRepresentant || ""}
+                onChange={(e) => setPrimeRepresentant(parseFloat(e.target.value) || 0)}
+                className="border-pink-200"
+              />
             </div>
           </div>
         </CardContent>
