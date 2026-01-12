@@ -236,8 +236,12 @@ class AnnulationController extends Controller
             return response()->json(['message' => 'Annulation non trouvée.'], 404);
         }
 
+        // Calculer le montant maximum remboursable (montant_ttc ou montant, avec fallback)
+        $montantMax = $annulation->montant_ttc ?? $annulation->montant ?? 999999999;
+        $soldeRestant = $montantMax - ($annulation->montant_rembourse ?? 0);
+
         $request->validate([
-            'montant' => 'required|numeric|min:0.01|max:' . $annulation->montant,
+            'montant' => ['required', 'numeric', 'min:0.01', 'max:' . max($soldeRestant, 0.01)],
             'mode_paiement' => 'required|string|in:especes,cheque,virement,carte',
             'banque_id' => 'nullable|exists:banques,id',
             'reference' => 'nullable|string|max:100',
