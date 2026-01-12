@@ -14,11 +14,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Ban, AlertTriangle, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMontant } from "@/data/mockData";
+import { useAnnulerFacture, useAnnulerOrdre } from "@/hooks/use-annulations";
 
 interface AnnulationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   documentType: "ordre" | "facture";
+  documentId: number;
   documentNumero: string;
   montantTTC: number;
   montantPaye: number;
@@ -30,6 +32,7 @@ export function AnnulationModal({
   open,
   onOpenChange,
   documentType,
+  documentId,
   documentNumero,
   montantTTC,
   montantPaye,
@@ -39,7 +42,11 @@ export function AnnulationModal({
   const { toast } = useToast();
   const [motif, setMotif] = useState("");
   const [genererAvoir, setGenererAvoir] = useState(montantPaye > 0);
-  const [isSaving, setIsSaving] = useState(false);
+
+  const annulerFactureMutation = useAnnulerFacture();
+  const annulerOrdreMutation = useAnnulerOrdre();
+
+  const isSaving = annulerFactureMutation.isPending || annulerOrdreMutation.isPending;
 
   const documentLabel = documentType === "ordre" ? "l'ordre" : "la facture";
   const estPaye = montantPaye > 0;
@@ -54,40 +61,41 @@ export function AnnulationModal({
       return;
     }
 
-    setIsSaving(true);
+    try {
+      if (documentType === "facture") {
+        await annulerFactureMutation.mutateAsync({
+          factureId: documentId,
+          data: {
+            motif: motif.trim(),
+            generer_avoir: estPaye ? genererAvoir : false,
+          },
+        });
+      } else {
+        await annulerOrdreMutation.mutateAsync({
+          ordreId: documentId,
+          data: { motif: motif.trim() },
+        });
+      }
 
-    // Simulation
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (estPaye && genererAvoir && documentType === "facture") {
+        toast({
+          title: "Annulation avec avoir",
+          description: `La facture ${documentNumero} a été annulée et un avoir de ${formatMontant(montantPaye)} a été généré pour ${clientNom}.`,
+        });
+      } else {
+        toast({
+          title: "Annulation effectuée",
+          description: `${documentType === "ordre" ? "L'ordre" : "La facture"} ${documentNumero} a été annulé(e).`,
+        });
+      }
 
-    const annulationData = {
-      documentType,
-      documentNumero,
-      montantTTC,
-      montantPaye,
-      clientNom,
-      motif,
-      genererAvoir: estPaye ? genererAvoir : false,
-      date: new Date().toISOString(),
-    };
-
-    console.log("Annulation enregistrée:", annulationData);
-
-    if (estPaye && genererAvoir) {
-      toast({
-        title: "Annulation avec avoir",
-        description: `${documentType === "ordre" ? "L'ordre" : "La facture"} ${documentNumero} a été annulé(e) et un avoir de ${formatMontant(montantPaye)} a été généré pour ${clientNom}.`,
-      });
-    } else {
-      toast({
-        title: "Annulation effectuée",
-        description: `${documentType === "ordre" ? "L'ordre" : "La facture"} ${documentNumero} a été annulé(e).`,
-      });
+      onOpenChange(false);
+      setMotif("");
+      onSuccess?.(estPaye && genererAvoir);
+    } catch (error: any) {
+      // L'erreur est déjà gérée dans le hook via onError
+      console.error("Erreur annulation:", error);
     }
-
-    setIsSaving(false);
-    onOpenChange(false);
-    setMotif("");
-    onSuccess?.(estPaye && genererAvoir);
   };
 
   return (
@@ -154,8 +162,8 @@ export function AnnulationModal({
             />
           </div>
 
-          {/* Option avoir (si payé) */}
-          {estPaye && (
+          {/* Option avoir (si payé et facture) */}
+          {estPaye && documentType === "facture" && (
             <div className="flex items-start space-x-3 p-3 rounded-lg border bg-background">
               <Checkbox
                 id="genererAvoir"
