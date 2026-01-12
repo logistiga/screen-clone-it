@@ -149,6 +149,7 @@ class FactureServiceFactory
         // Prime pour le transitaire
         if ($primeTransitaire > 0 && !empty($facture->transitaire_id)) {
             Prime::create([
+                'ordre_id' => $facture->ordre_id ?? null,
                 'facture_id' => $facture->id,
                 'transitaire_id' => $facture->transitaire_id,
                 'montant' => $primeTransitaire,
@@ -166,6 +167,7 @@ class FactureServiceFactory
         // Prime pour le représentant
         if ($primeRepresentant > 0 && !empty($facture->representant_id)) {
             Prime::create([
+                'ordre_id' => $facture->ordre_id ?? null,
                 'facture_id' => $facture->id,
                 'representant_id' => $facture->representant_id,
                 'montant' => $primeRepresentant,
