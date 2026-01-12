@@ -16,6 +16,7 @@ class StoreOrdreTravailRequest extends FormRequest
         return [
             'client_id' => 'required|exists:clients,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
+            'representant_id' => 'nullable|exists:representants,id',
             'devis_id' => 'nullable|exists:devis,id',
             'type_document' => 'required|in:Conteneur,Lot,Independant',
             'type_operation' => 'nullable|string|max:100',
@@ -24,6 +25,10 @@ class StoreOrdreTravailRequest extends FormRequest
             'navire' => 'nullable|string|max:255',
             'date_arrivee' => 'nullable|date',
             'notes' => 'nullable|string|max:2000',
+            
+            // Primes
+            'prime_transitaire' => 'nullable|numeric|min:0',
+            'prime_representant' => 'nullable|numeric|min:0',
             
             // Lignes
             'lignes' => 'nullable|array',

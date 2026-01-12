@@ -90,6 +90,7 @@ export interface OrdreTravail {
   conteneurs?: any[];
   lots?: any[];
   lignes?: any[];
+  primes?: Prime[];
 }
 
 export interface Facture {

@@ -165,6 +165,10 @@ export default function NouvelOrdrePage() {
       navire: null,
       date_arrivee: null,
       transitaire_id: transitaireId || null,
+      representant_id: conteneursData?.representantId || null,
+      // Primes pour transitaire et représentant
+      prime_transitaire: conteneursData?.primeTransitaire || 0,
+      prime_representant: conteneursData?.primeRepresentant || 0,
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataApi,

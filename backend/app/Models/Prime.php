@@ -11,9 +11,11 @@ class Prime extends Model
 
     protected $fillable = [
         'ordre_id',
+        'facture_id',
         'transitaire_id',
         'representant_id',
         'montant',
+        'description',
         'statut',
         'date_paiement',
     ];
@@ -22,6 +24,12 @@ class Prime extends Model
         'montant' => 'decimal:2',
         'date_paiement' => 'date',
     ];
+
+    // Relations
+    public function paiements()
+    {
+        return $this->hasMany(\App\Models\PaiementPrime::class, 'prime_id');
+    }
 
     // Relations
     public function ordre()

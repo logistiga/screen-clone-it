@@ -83,6 +83,9 @@ class OrdreTravailController extends Controller
                 'conteneurs.operations',
                 'lots',
                 'facture',
+                'primes.paiements',
+                'primes.transitaire',
+                'primes.representant',
             ]);
 
             return response()->json(new OrdreTravailResource($ordreTravail));

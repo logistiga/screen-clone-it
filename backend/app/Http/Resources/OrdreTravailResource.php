@@ -63,6 +63,7 @@ class OrdreTravailResource extends JsonResource
             'lignes' => LigneOrdreResource::collection($this->whenLoaded('lignes')),
             'conteneurs' => ConteneurOrdreResource::collection($this->whenLoaded('conteneurs')),
             'lots' => LotOrdreResource::collection($this->whenLoaded('lots')),
+            'primes' => PrimeResource::collection($this->whenLoaded('primes')),
         ];
     }
 }
