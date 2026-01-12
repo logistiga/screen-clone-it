@@ -190,8 +190,14 @@ class AnnulationController extends Controller
     /**
      * Générer un avoir pour une annulation existante
      */
-    public function genererAvoir(Annulation $annulation): JsonResponse
+    public function genererAvoir(int $id): JsonResponse
     {
+        $annulation = Annulation::find($id);
+        
+        if (!$annulation) {
+            return response()->json(['message' => 'Annulation non trouvée.'], 404);
+        }
+
         if ($annulation->avoir_genere) {
             return response()->json(['message' => 'Un avoir a déjà été généré pour cette annulation.'], 422);
         }
@@ -222,8 +228,14 @@ class AnnulationController extends Controller
     /**
      * Rembourser le montant d'une annulation au client
      */
-    public function rembourser(Request $request, Annulation $annulation): JsonResponse
+    public function rembourser(Request $request, int $id): JsonResponse
     {
+        $annulation = Annulation::with('client')->find($id);
+        
+        if (!$annulation) {
+            return response()->json(['message' => 'Annulation non trouvée.'], 404);
+        }
+
         $request->validate([
             'montant' => 'required|numeric|min:0.01|max:' . $annulation->montant,
             'mode_paiement' => 'required|string|in:especes,cheque,virement,carte',
@@ -240,15 +252,15 @@ class AnnulationController extends Controller
 
         try {
             DB::transaction(function () use ($request, $annulation) {
-                // Déterminer la source
-                $source = $request->banque_id ? 'banque' : 'caisse';
+                // Déterminer la source selon le mode de paiement
+                $source = in_array($request->mode_paiement, ['virement', 'cheque']) ? 'banque' : 'caisse';
 
                 // Créer le mouvement de caisse (sortie = remboursement)
                 MouvementCaisse::create([
                     'type' => 'sortie',
                     'montant' => $request->montant,
                     'date' => now(),
-                    'description' => "Remboursement - Annulation {$annulation->numero} - {$annulation->client->nom}",
+                    'description' => "Remboursement - Annulation {$annulation->numero} - " . ($annulation->client->nom ?? 'Client'),
                     'source' => $source,
                     'banque_id' => $request->banque_id,
                     'categorie' => 'Remboursement client',
@@ -267,7 +279,7 @@ class AnnulationController extends Controller
                 // Marquer l'annulation comme remboursée
                 $annulation->update([
                     'rembourse' => true,
-                    'montant_rembourse' => $annulation->montant_rembourse + $request->montant,
+                    'montant_rembourse' => ($annulation->montant_rembourse ?? 0) + $request->montant,
                     'date_remboursement' => now(),
                 ]);
             });
@@ -308,8 +320,14 @@ class AnnulationController extends Controller
     /**
      * Utiliser un avoir pour payer une facture
      */
-    public function utiliserAvoir(Request $request, Annulation $annulation): JsonResponse
+    public function utiliserAvoir(Request $request, int $id): JsonResponse
     {
+        $annulation = Annulation::find($id);
+        
+        if (!$annulation) {
+            return response()->json(['message' => 'Annulation non trouvée.'], 404);
+        }
+
         $request->validate([
             'facture_id' => 'required|exists:factures,id',
             'montant' => 'required|numeric|min:0.01',
