@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Percent, DollarSign, Tag } from "lucide-react";
 
-export type RemiseType = "pourcentage" | "montant" | "";
+export type RemiseType = "pourcentage" | "montant" | "none";
 
 export interface RemiseData {
   type: RemiseType;
@@ -33,7 +33,7 @@ const formatMontant = (montant: number) => {
 export default function RemiseInput({
   montantHT,
   onChange,
-  initialType = "",
+  initialType = "none",
   initialValeur = 0,
 }: RemiseInputProps) {
   const [type, setType] = useState<RemiseType>(initialType);
@@ -41,7 +41,7 @@ export default function RemiseInput({
 
   // Calculer le montant de la remise
   const calculerMontantRemise = (): number => {
-    if (!type || valeur <= 0) return 0;
+    if (type === "none" || valeur <= 0) return 0;
     if (type === "pourcentage") {
       const pourcentage = Math.min(valeur, 100); // Max 100%
       return Math.round((montantHT * pourcentage) / 100);
@@ -62,7 +62,7 @@ export default function RemiseInput({
 
   const handleTypeChange = (newType: RemiseType) => {
     setType(newType);
-    if (!newType) {
+    if (newType === "none") {
       setValeur(0);
     }
   };
@@ -94,7 +94,7 @@ export default function RemiseInput({
                 <SelectValue placeholder="Aucune remise" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucune remise</SelectItem>
+                <SelectItem value="none">Aucune remise</SelectItem>
                 <SelectItem value="pourcentage">
                   <span className="flex items-center gap-2">
                     <Percent className="h-4 w-4" />
@@ -111,7 +111,7 @@ export default function RemiseInput({
             </Select>
           </div>
 
-          {type && (
+          {type !== "none" && (
             <div className="space-y-2">
               <Label>
                 {type === "pourcentage" ? "Pourcentage (%)" : "Montant (XAF)"}
@@ -134,7 +134,7 @@ export default function RemiseInput({
             </div>
           )}
 
-          {type && valeur > 0 && (
+          {type !== "none" && valeur > 0 && (
             <div className="space-y-2">
               <Label className="text-muted-foreground">Montant de la remise</Label>
               <div className="h-10 flex items-center px-3 bg-destructive/10 border border-destructive/20 rounded-md">
