@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import { primesApi } from "@/lib/api/commercial";
 import { useBanques } from "@/hooks/use-commercial";
 import { toast } from "sonner";
 import { formatMontant } from "@/data/mockData";
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, Printer, FileText } from "lucide-react";
 
 // Type générique pour les primes
 interface PrimeGeneric {
@@ -57,6 +58,7 @@ export function PaiementPrimeModal({
   total,
   onSuccess,
 }: PaiementPrimeModalProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: banques = [] } = useBanques();
   
@@ -147,6 +149,29 @@ export function PaiementPrimeModal({
     window.print();
   };
 
+  const handleOpenPDF = () => {
+    if (!paiementSuccess) return;
+    
+    // Construire les données pour la page PDF
+    const primesData = paiementSuccess.primes.map(p => ({
+      numero: p.ordre?.numero || p.facture?.numero || p.description || `Prime #${p.id}`,
+      montant: p.reste_a_payer ?? p.montant
+    }));
+    
+    const params = new URLSearchParams({
+      montant: String(paiementSuccess.montant),
+      mode: formData.modePaiement,
+      reference: paiementSuccess.reference || '',
+      date: paiementSuccess.date,
+      beneficiaire: partenaireNom,
+      type: partenaireType,
+      primes: encodeURIComponent(JSON.stringify(primesData))
+    });
+    
+    // Ouvrir la page PDF dans un nouvel onglet
+    window.open(`/partenaires/recu-prime/new?${params.toString()}`, '_blank');
+  };
+
   const handleClose = () => {
     onOpenChange(false);
     setPaiementSuccess(null);
@@ -222,7 +247,11 @@ export function PaiementPrimeModal({
             </div>
           </div>
 
-          <DialogFooter className="print:hidden">
+          <DialogFooter className="print:hidden gap-2">
+            <Button variant="outline" onClick={handleOpenPDF} className="gap-2">
+              <FileText className="h-4 w-4" />
+              Voir PDF
+            </Button>
             <Button variant="outline" onClick={handlePrint} className="gap-2">
               <Printer className="h-4 w-4" />
               Imprimer

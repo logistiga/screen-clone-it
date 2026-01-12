@@ -144,24 +144,24 @@ class PrimeController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Créer le mouvement de caisse si paiement en espèces
-            if ($request->mode_paiement === 'Espèces') {
-                $beneficiaire = $prime->transitaire 
-                    ? $prime->transitaire->nom 
-                    : ($prime->representant ? "{$prime->representant->nom} {$prime->representant->prenom}" : 'N/A');
-                    
-                MouvementCaisse::create([
-                    'type' => 'Sortie',
-                    'categorie' => $prime->transitaire_id ? 'Prime transitaire' : 'Prime représentant',
-                    'montant' => $request->montant,
-                    'description' => "Prime - {$beneficiaire}",
-                    'beneficiaire' => $beneficiaire,
-                    'reference' => (string) $paiement->id,
-                    'mode_paiement' => 'Espèces',
-                    'date' => now()->toDateString(),
-                    'source' => 'caisse',
-                ]);
-            }
+            // Créer le mouvement de caisse/banque
+            $beneficiaire = $prime->transitaire 
+                ? $prime->transitaire->nom 
+                : ($prime->representant ? "{$prime->representant->nom} {$prime->representant->prenom}" : 'N/A');
+            
+            $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
+            
+            MouvementCaisse::create([
+                'type' => 'Sortie',
+                'categorie' => $prime->transitaire_id ? 'Prime transitaire' : 'Prime représentant',
+                'montant' => $request->montant,
+                'description' => "Paiement prime - {$beneficiaire}",
+                'beneficiaire' => $beneficiaire,
+                'reference' => (string) $paiement->id,
+                'mode_paiement' => $request->mode_paiement,
+                'date' => now()->toDateString(),
+                'source' => $isCaisse ? 'caisse' : 'banque',
+            ]);
 
             // Mettre à jour le statut de la prime
             $nouveauMontantPaye = $montantPaye + $request->montant;
