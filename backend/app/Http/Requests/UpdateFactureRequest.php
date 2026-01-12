@@ -28,6 +28,19 @@ class UpdateFactureRequest extends FormRequest
             'notes' => 'nullable|string|max:2000',
             'statut' => 'sometimes|in:emise,payee,partielle,impayee,annulee',
             
+            // Primes
+            'prime_transitaire' => 'nullable|numeric|min:0',
+            'prime_representant' => 'nullable|numeric|min:0',
+            
+            // Armateur et représentant
+            'armateur_id' => 'nullable|exists:armateurs,id',
+            'representant_id' => 'nullable|exists:representants,id',
+            
+            // Remise
+            'remise_type' => 'nullable|string|in:pourcentage,montant',
+            'remise_valeur' => 'nullable|numeric|min:0',
+            'remise_montant' => 'nullable|numeric|min:0',
+            
             // Lignes (Opérations indépendantes)
             'lignes' => 'nullable|array',
             'lignes.*.type_operation' => 'required_with:lignes|string|max:100',
