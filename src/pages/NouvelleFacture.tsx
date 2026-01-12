@@ -31,6 +31,7 @@ import {
 } from "@/components/factures/forms";
 import { RecapitulatifCard } from "@/components/devis/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture, useConfiguration } from "@/hooks/use-commercial";
+import { extractApiErrorInfo } from "@/lib/api-error";
 import { formatMontant } from "@/data/mockData";
 
 export default function NouvelleFacturePage() {
@@ -101,6 +102,36 @@ export default function NouvelleFacturePage() {
       toast.error("Veuillez sélectionner un type d'opération"); return;
     }
 
+    // Validation côté client (pour éviter les 422 Laravel)
+    if (categorie === "conteneurs" && conteneursData) {
+      if (!conteneursData.armateurId) {
+        toast.error("Veuillez sélectionner un armateur");
+        return;
+      }
+
+      const idxNumero = conteneursData.conteneurs.findIndex((c) => !c.numero?.trim());
+      if (idxNumero !== -1) {
+        toast.error(`Veuillez saisir le N° du conteneur (ligne ${idxNumero + 1})`);
+        return;
+      }
+
+      const idxTaille = conteneursData.conteneurs.findIndex((c) => !c.taille);
+      if (idxTaille !== -1) {
+        toast.error(`Veuillez sélectionner la taille du conteneur (ligne ${idxTaille + 1})`);
+        return;
+      }
+    }
+
+    if (categorie === "conventionnel" && conventionnelData) {
+      const idxDesignation = conventionnelData.lots.findIndex(
+        (l) => !(l.description?.trim() || l.numeroLot?.trim())
+      );
+      if (idxDesignation !== -1) {
+        toast.error(`Veuillez renseigner la désignation du lot (ligne ${idxDesignation + 1})`);
+        return;
+      }
+    }
+
     let lignesData: any[] = [];
     let conteneursDataForApi: any[] = [];
     let lotsData: any[] = [];
@@ -163,7 +194,26 @@ export default function NouvelleFacturePage() {
       toast.success("Facture créée avec succès");
       navigate("/factures");
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Erreur lors de la création de la facture");
+      const info = extractApiErrorInfo(error);
+      const responseData: any = (error as any)?.response?.data;
+      const errors = responseData?.errors;
+
+      let message = info.message || "Erreur lors de la création de la facture";
+
+      if (errors && typeof errors === "object") {
+        const firstKey = Object.keys(errors)[0];
+        const firstVal = (errors as any)[firstKey];
+        const firstMsg = Array.isArray(firstVal) ? firstVal[0] : String(firstVal);
+        if (firstMsg) message = firstMsg;
+      }
+
+      // eslint-disable-next-line no-console
+      console.error("[NouvelleFacture] 422/Erreur API", {
+        status: info.status,
+        message: info.message,
+        errors: responseData?.errors,
+      });
+      toast.error(message);
     }
   };
 

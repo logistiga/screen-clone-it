@@ -239,9 +239,9 @@ export default function FactureConteneursForm({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-amber-600">Transitaire</Label>
+              <Label>Transitaire</Label>
               <Select value={transitaireId} onValueChange={setTransitaireId}>
-                <SelectTrigger className="border-amber-200">
+                <SelectTrigger>
                   <SelectValue placeholder="Sélectionner (optionnel)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,9 +252,9 @@ export default function FactureConteneursForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-amber-600">Représentant</Label>
+              <Label>Représentant</Label>
               <Select value={representantId} onValueChange={setRepresentantId}>
-                <SelectTrigger className="border-amber-200">
+                <SelectTrigger>
                   <SelectValue placeholder="Sélectionner (optionnel)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -267,23 +267,21 @@ export default function FactureConteneursForm({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-pink-600">Prime transitaire (FCFA)</Label>
+              <Label>Prime transitaire (FCFA)</Label>
               <Input
                 type="number"
                 placeholder="0"
                 value={primeTransitaire || ""}
                 onChange={(e) => setPrimeTransitaire(parseFloat(e.target.value) || 0)}
-                className="border-pink-200"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-pink-600">Prime représentant (FCFA)</Label>
+              <Label>Prime représentant (FCFA)</Label>
               <Input
                 type="number"
                 placeholder="0"
                 value={primeRepresentant || ""}
                 onChange={(e) => setPrimeRepresentant(parseFloat(e.target.value) || 0)}
-                className="border-pink-200"
               />
             </div>
           </div>
