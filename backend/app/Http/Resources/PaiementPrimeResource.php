@@ -11,6 +11,7 @@ class PaiementPrimeResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'numero_recu' => $this->numero_recu,
             'transitaire_id' => $this->transitaire_id,
             'representant_id' => $this->representant_id,
             'montant' => round($this->montant, 2),

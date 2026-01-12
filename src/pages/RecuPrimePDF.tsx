@@ -16,6 +16,7 @@ export default function RecuPrimePDF() {
   const date = searchParams.get('date') || new Date().toISOString();
   const beneficiaire = searchParams.get('beneficiaire') || '';
   const type = searchParams.get('type') || 'transitaire';
+  const numeroRecu = searchParams.get('numero_recu') || '';
   const primesParam = searchParams.get('primes') || '';
   
   // Parser les primes depuis JSON
@@ -57,7 +58,7 @@ export default function RecuPrimePDF() {
             <div className="text-right">
               <h1 className="text-2xl font-bold text-gray-800">REÇU DE PAIEMENT</h1>
               <p className="text-sm text-gray-600 mt-1">Prime {type === 'transitaire' ? 'Transitaire' : 'Représentant'}</p>
-              <p className="text-xs text-gray-500 mt-2">N° {id || 'AUTO'}</p>
+              <p className="text-lg font-semibold text-primary mt-2">{numeroRecu || `N° ${id || 'AUTO'}`}</p>
             </div>
           </div>
 

@@ -75,6 +75,7 @@ export function PaiementPrimeModal({
     primes: PrimeGeneric[];
     date: string;
     reference?: string;
+    numeroRecu?: string;
   } | null>(null);
 
   // Reset on open
@@ -107,18 +108,23 @@ export function PaiementPrimeModal({
     }
 
     setIsPaying(true);
+    let lastNumeroRecu: string | undefined;
 
     try {
       // Payer chaque prime séquentiellement
       for (const prime of primes) {
         const resteAPayer = prime.reste_a_payer ?? (prime.montant - (prime.montant_paye || 0));
         if (resteAPayer > 0) {
-          await primesApi.payer(String(prime.id), {
+          const response = await primesApi.payer(String(prime.id), {
             montant: resteAPayer,
             mode_paiement: formData.modePaiement,
             reference: formData.reference || undefined,
             notes: formData.notes || undefined,
           });
+          // Récupérer le numéro de reçu du dernier paiement
+          if (response?.numero_recu) {
+            lastNumeroRecu = response.numero_recu;
+          }
         }
       }
 
@@ -134,6 +140,7 @@ export function PaiementPrimeModal({
         primes: primes,
         date: formData.date,
         reference: formData.reference,
+        numeroRecu: lastNumeroRecu,
       });
 
       toast.success(`Paiement de ${formatMontant(total)} effectué avec succès`);
@@ -165,6 +172,7 @@ export function PaiementPrimeModal({
       date: paiementSuccess.date,
       beneficiaire: partenaireNom,
       type: partenaireType,
+      numero_recu: paiementSuccess.numeroRecu || '',
       primes: encodeURIComponent(JSON.stringify(primesData))
     });
     
@@ -184,7 +192,13 @@ export function PaiementPrimeModal({
         <DialogContent className="sm:max-w-[600px] print:shadow-none print:border-none">
           <DialogHeader>
             <DialogTitle className="text-green-600">✓ Paiement effectué</DialogTitle>
-            <DialogDescription>Récapitulatif du paiement</DialogDescription>
+            <DialogDescription>
+              {paiementSuccess.numeroRecu ? (
+                <span className="text-primary font-semibold">{paiementSuccess.numeroRecu}</span>
+              ) : (
+                'Récapitulatif du paiement'
+              )}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4 print:py-8">
