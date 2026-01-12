@@ -33,6 +33,7 @@ import { RecapitulatifCard } from "@/components/devis/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture, useConfiguration } from "@/hooks/use-commercial";
 import { extractApiErrorInfo } from "@/lib/api-error";
 import { formatMontant } from "@/data/mockData";
+import RemiseInput, { RemiseData, RemiseType } from "@/components/shared/RemiseInput";
 
 export default function NouvelleFacturePage() {
   const navigate = useNavigate();
@@ -68,6 +69,13 @@ export default function NouvelleFacturePage() {
   const [conventionnelData, setConventionnelData] = useState<FactureConventionnelData | null>(null);
   const [independantData, setIndependantData] = useState<FactureIndependantData | null>(null);
 
+  // État de la remise
+  const [remiseData, setRemiseData] = useState<RemiseData>({
+    type: "",
+    valeur: 0,
+    montantCalcule: 0,
+  });
+
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
     if (categorie === "conventionnel" && conventionnelData) return conventionnelData.montantHT;
@@ -76,15 +84,17 @@ export default function NouvelleFacturePage() {
   };
 
   const montantHT = getMontantHT();
-  const tva = Math.round(montantHT * TAUX_TVA);
-  const css = Math.round(montantHT * TAUX_CSS);
-  const montantTTC = montantHT + tva + css;
+  const montantHTApresRemise = montantHT - remiseData.montantCalcule;
+  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
+  const css = Math.round(montantHTApresRemise * TAUX_CSS);
+  const montantTTC = montantHTApresRemise + tva + css;
 
   const handleCategorieChange = (value: CategorieDocument) => {
     setCategorie(value);
     setConteneursData(null);
     setConventionnelData(null);
     setIndependantData(null);
+    setRemiseData({ type: "", valeur: 0, montantCalcule: 0 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -198,6 +208,11 @@ export default function NouvelleFacturePage() {
       // Primes pour transitaire et représentant
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
+
+      // Remise
+      remise_type: remiseData.type || null,
+      remise_valeur: remiseData.valeur || 0,
+      remise_montant: remiseData.montantCalcule || 0,
 
       notes,
       lignes: lignesData,
@@ -366,6 +381,11 @@ export default function NouvelleFacturePage() {
           </Card>
         )}
 
+        {/* Remise - avant le récapitulatif */}
+        {categorie && montantHT > 0 && (
+          <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+        )}
+
         {/* Récapitulatif */}
         {categorie && (
           <div className="animate-fade-in">
@@ -376,6 +396,9 @@ export default function NouvelleFacturePage() {
               montantTTC={montantTTC}
               tauxTva={Math.round(TAUX_TVA * 100)}
               tauxCss={Math.round(TAUX_CSS * 100)}
+              remiseMontant={remiseData.montantCalcule}
+              remiseType={remiseData.type}
+              remiseValeur={remiseData.valeur}
             />
           </div>
         )}

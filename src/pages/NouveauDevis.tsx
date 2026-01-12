@@ -21,6 +21,7 @@ import {
 import type { DevisConteneursData } from "@/components/devis/forms/DevisConteneursForm";
 import type { DevisConventionnelData } from "@/components/devis/forms/DevisConventionnelForm";
 import type { DevisIndependantData } from "@/components/devis/forms/DevisIndependantForm";
+import RemiseInput, { RemiseData, RemiseType } from "@/components/shared/RemiseInput";
 
 export default function NouveauDevisPage() {
   const navigate = useNavigate();
@@ -57,6 +58,13 @@ export default function NouveauDevisPage() {
   const [conventionnelData, setConventionnelData] = useState<DevisConventionnelData | null>(null);
   const [independantData, setIndependantData] = useState<DevisIndependantData | null>(null);
 
+  // État de la remise
+  const [remiseData, setRemiseData] = useState<RemiseData>({
+    type: "",
+    valeur: 0,
+    montantCalcule: 0,
+  });
+
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
     if (categorie === "conventionnel" && conventionnelData) return conventionnelData.montantHT;
@@ -65,15 +73,17 @@ export default function NouveauDevisPage() {
   };
 
   const montantHT = getMontantHT();
-  const tva = Math.round(montantHT * TAUX_TVA);
-  const css = Math.round(montantHT * TAUX_CSS);
-  const montantTTC = montantHT + tva + css;
+  const montantHTApresRemise = montantHT - remiseData.montantCalcule;
+  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
+  const css = Math.round(montantHTApresRemise * TAUX_CSS);
+  const montantTTC = montantHTApresRemise + tva + css;
 
   const handleCategorieChange = (value: CategorieDocument) => {
     setCategorie(value);
     setConteneursData(null);
     setConventionnelData(null);
     setIndependantData(null);
+    setRemiseData({ type: "", valeur: 0, montantCalcule: 0 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,6 +113,10 @@ export default function NouveauDevisPage() {
       date_arrivee: new Date().toISOString().split('T')[0],
       validite_jours: Math.ceil((new Date(dateValidite).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
       notes: notes || null,
+      // Remise
+      remise_type: remiseData.type || null,
+      remise_valeur: remiseData.valeur || 0,
+      remise_montant: remiseData.montantCalcule || 0,
       lignes: [],
       conteneurs: [],
       lots: [],
@@ -277,6 +291,11 @@ export default function NouveauDevisPage() {
           </Card>
         )}
 
+        {/* Remise - avant le récapitulatif */}
+        {categorie && montantHT > 0 && (
+          <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+        )}
+
         {categorie && (
           <RecapitulatifCard
             montantHT={montantHT}
@@ -285,6 +304,9 @@ export default function NouveauDevisPage() {
             montantTTC={montantTTC}
             tauxTva={Math.round(TAUX_TVA * 100)}
             tauxCss={Math.round(TAUX_CSS * 100)}
+            remiseMontant={remiseData.montantCalcule}
+            remiseType={remiseData.type}
+            remiseValeur={remiseData.valeur}
           />
         )}
 

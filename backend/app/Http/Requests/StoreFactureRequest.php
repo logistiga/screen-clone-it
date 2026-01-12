@@ -32,6 +32,11 @@ class StoreFactureRequest extends FormRequest
             'prime_transitaire' => 'nullable|numeric|min:0',
             'prime_representant' => 'nullable|numeric|min:0',
             
+            // Remise
+            'remise_type' => 'nullable|string|in:pourcentage,montant',
+            'remise_valeur' => 'nullable|numeric|min:0',
+            'remise_montant' => 'nullable|numeric|min:0',
+            
             // Lignes
             'lignes' => 'nullable|array',
             'lignes.*.type_operation' => 'required_with:lignes|string|max:100',
