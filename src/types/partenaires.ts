@@ -19,6 +19,7 @@ export interface PrimePartenaire {
 
 export interface PaiementPrime {
   id: string | number;
+  numero_recu?: string;
   transitaire_id?: string | number;
   representant_id?: string | number;
   montant: number;

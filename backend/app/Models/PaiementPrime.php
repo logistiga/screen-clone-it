@@ -12,6 +12,7 @@ class PaiementPrime extends Model
     protected $table = 'paiements_primes';
 
     protected $fillable = [
+        'numero_recu',
         'transitaire_id',
         'representant_id',
         'montant',
@@ -20,6 +21,38 @@ class PaiementPrime extends Model
         'reference',
         'notes',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($paiement) {
+            if (empty($paiement->numero_recu)) {
+                $paiement->numero_recu = self::generateNumeroRecu();
+            }
+        });
+    }
+
+    public static function generateNumeroRecu(): string
+    {
+        $prefix = 'REC-PRI';
+        $year = date('Y');
+        $month = date('m');
+        
+        // Trouver le dernier numéro de reçu du mois
+        $lastRecu = self::where('numero_recu', 'like', "{$prefix}-{$year}{$month}%")
+            ->orderBy('numero_recu', 'desc')
+            ->first();
+        
+        if ($lastRecu) {
+            $lastNumber = (int) substr($lastRecu->numero_recu, -4);
+            $newNumber = $lastNumber + 1;
+        } else {
+            $newNumber = 1;
+        }
+        
+        return sprintf('%s-%s%s-%04d', $prefix, $year, $month, $newNumber);
+    }
 
     protected $casts = [
         'montant' => 'decimal:2',
