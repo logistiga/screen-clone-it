@@ -79,8 +79,8 @@ class FactureController extends Controller
     public function show(Facture $facture): JsonResponse
     {
         $facture->load([
-            'client', 'transitaire', 'ordreTravail', 'lignes', 
-            'conteneurs.operations', 'conteneurs.armateur', 'lots', 'paiements'
+            'client', 'transitaire', 'ordreTravail', 'lignes',
+            'conteneurs.operations', 'lots', 'paiements'
         ]);
 
         return response()->json(new FactureResource($facture));
