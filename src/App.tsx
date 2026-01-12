@@ -50,6 +50,7 @@ import NouvelleNoteDebutPage from "./pages/NouvelleNoteDebut";
 import NouvelleNoteOuverturePortPage from "./pages/NouvelleNoteOuverturePort";
 import NouvelleNoteDetentionPage from "./pages/NouvelleNoteDetention";
 import NouvelleNoteReparationPage from "./pages/NouvelleNoteReparation";
+import NouvelleNoteRelachePage from "./pages/NouvelleNoteRelache";
 import NoteDebutDetailPage from "./pages/NoteDebutDetail";
 import ModifierNoteDebutPage from "./pages/ModifierNoteDebut";
 import VerificationDocumentPage from "./pages/VerificationDocument";
@@ -103,6 +104,7 @@ const App = () => (
               <Route path="/notes-debut/ouverture-port" element={<ProtectedRoute><NouvelleNoteOuverturePortPage /></ProtectedRoute>} />
               <Route path="/notes-debut/detention" element={<ProtectedRoute><NouvelleNoteDetentionPage /></ProtectedRoute>} />
               <Route path="/notes-debut/reparation" element={<ProtectedRoute><NouvelleNoteReparationPage /></ProtectedRoute>} />
+              <Route path="/notes-debut/relache" element={<ProtectedRoute><NouvelleNoteRelachePage /></ProtectedRoute>} />
               <Route path="/notes-debut/:id" element={<ProtectedRoute><NoteDebutDetailPage /></ProtectedRoute>} />
               <Route path="/notes-debut/:id/modifier" element={<ProtectedRoute><ModifierNoteDebutPage /></ProtectedRoute>} />
               <Route path="/caisse" element={<ProtectedRoute><CaissePage /></ProtectedRoute>} />
