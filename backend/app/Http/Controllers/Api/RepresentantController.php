@@ -53,6 +53,12 @@ class RepresentantController extends Controller
         $representant->load([
             'primes' => fn($q) => $q->orderBy('created_at', 'desc'),
             'primes.paiements',
+            'primes.ordre',
+            'primes.facture',
+            'paiementsPrimes' => fn($q) => $q->orderBy('date', 'desc'),
+            'paiementsPrimes.primes',
+            'paiementsPrimes.primes.ordre',
+            'paiementsPrimes.primes.facture',
         ]);
 
         return response()->json(['data' => new RepresentantResource($representant)]);

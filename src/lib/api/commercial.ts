@@ -161,6 +161,7 @@ export interface Transitaire {
   factures?: Facture[];
   devis?: Devis[];
   primes?: Prime[];
+  paiements_primes?: PaiementPrimeGrouped[];
   counts?: {
     devis: number;
     ordres: number;
@@ -190,19 +191,34 @@ export interface Prime {
 
 export interface PaiementPrime {
   id: string;
-  prime_id: string;
+  prime_id?: string;
   montant: number;
   mode_paiement: string;
   reference?: string;
-  date_paiement: string;
+  date?: string;
+  date_paiement?: string;
   notes?: string;
   created_at?: string;
+}
+
+export interface PaiementPrimeGrouped {
+  id: string;
+  transitaire_id?: string;
+  representant_id?: string;
+  montant: number;
+  mode_paiement: string;
+  reference?: string;
+  date?: string;
+  notes?: string;
+  created_at?: string;
+  primes?: Prime[];
 }
 
 export interface Representant {
   id: string;
   nom: string;
   prenom?: string;
+  nom_complet?: string;
   email?: string;
   telephone?: string;
   adresse?: string;
@@ -216,6 +232,7 @@ export interface Representant {
   primes_payees?: number;
   // Relations chargées depuis show()
   primes?: Prime[];
+  paiements_primes?: PaiementPrimeGrouped[];
   counts?: {
     primes: number;
     primes_sum_montant: number;

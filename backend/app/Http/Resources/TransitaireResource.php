@@ -48,6 +48,7 @@ class TransitaireResource extends JsonResource
             'ordres_travail' => OrdreTravailResource::collection($this->whenLoaded('ordresTravail')),
             'factures' => FactureResource::collection($this->whenLoaded('factures')),
             'primes' => PrimeResource::collection($this->whenLoaded('primes')),
+            'paiements_primes' => PaiementPrimeResource::collection($this->whenLoaded('paiementsPrimes')),
         ];
     }
 }

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, History, DollarSign, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, History, DollarSign, Loader2, Printer } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
 import { useRepresentantById } from "@/hooks/use-commercial";
@@ -64,8 +64,13 @@ export default function RepresentantDetailPage() {
 
   const primesDuesList = primes.filter((p: any) => p.statut !== 'Payée');
 
-  // Récupérer les paiements de toutes les primes
-  const allPaiements = primes.flatMap((p: any) => p.paiements || []);
+  // Récupérer les paiements groupés (depuis paiements_primes)
+  const paiementsPrimes = representant.paiements_primes || [];
+  
+  // Fallback: paiements individuels des primes si paiements_primes vide
+  const allPaiements = paiementsPrimes.length > 0 
+    ? paiementsPrimes 
+    : primes.flatMap((p: any) => p.paiements || []);
 
   const handleSelectPrime = (primeId: string, checked: boolean) => {
     if (checked) {
@@ -223,11 +228,11 @@ export default function RepresentantDetailPage() {
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      <TableHead>Facture</TableHead>
+                      <TableHead>Ordre/Facture</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
+                      <TableHead className="text-right">Reste à payer</TableHead>
                       <TableHead>Statut</TableHead>
-                      <TableHead>Description</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -243,14 +248,19 @@ export default function RepresentantDetailPage() {
                         </TableCell>
                         <TableCell 
                           className="font-medium text-primary hover:underline cursor-pointer"
-                          onClick={() => prime.facture_id && navigate(`/factures/${prime.facture_id}`)}
+                          onClick={() => {
+                            if (prime.ordre_id) navigate(`/ordres/${prime.ordre_id}`);
+                            else if (prime.facture_id) navigate(`/factures/${prime.facture_id}`);
+                          }}
                         >
-                          {prime.facture?.numero || '-'}
+                          {prime.ordre?.numero || prime.facture?.numero || '-'}
                         </TableCell>
                         <TableCell>{formatDate(prime.created_at)}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(prime.montant)}</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">
+                          {formatMontant(prime.reste_a_payer ?? prime.montant)}
+                        </TableCell>
                         <TableCell>{getStatutBadge(prime.statut)}</TableCell>
-                        <TableCell className="text-muted-foreground">{prime.description || '-'}</TableCell>
                       </TableRow>
                     ))}
                     {primes.length === 0 && (
@@ -270,35 +280,127 @@ export default function RepresentantDetailPage() {
           <TabsContent value="historique" className="mt-4">
             <Card>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Date</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Référence</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                {allPaiements.length === 0 ? (
+                  <div className="h-24 flex items-center justify-center text-muted-foreground">
+                    Aucun paiement
+                  </div>
+                ) : (
+                  <div className="divide-y">
                     {allPaiements.map((paiement: any) => (
-                      <TableRow key={paiement.id}>
-                        <TableCell>{formatDate(paiement.date_paiement)}</TableCell>
-                        <TableCell className="capitalize">{paiement.mode_paiement}</TableCell>
-                        <TableCell>{paiement.reference || '-'}</TableCell>
-                        <TableCell className="text-right font-medium text-green-600">
-                          {formatMontant(paiement.montant)}
-                        </TableCell>
-                      </TableRow>
+                      <div key={paiement.id} className="p-4 hover:bg-muted/50">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="font-semibold text-lg text-green-600">
+                                {formatMontant(paiement.montant)}
+                              </span>
+                              <Badge variant="outline">{paiement.mode_paiement}</Badge>
+                              {paiement.reference && (
+                                <span className="text-sm text-muted-foreground">
+                                  Réf: {paiement.reference}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground mb-2">
+                              Payé le {formatDate(paiement.date || paiement.created_at)}
+                            </div>
+                            
+                            {/* Liste des primes payées dans ce lot */}
+                            {paiement.primes && paiement.primes.length > 0 && (
+                              <div className="mt-3 bg-muted/30 rounded-lg p-3">
+                                <div className="text-xs font-medium text-muted-foreground mb-2">
+                                  Primes incluses:
+                                </div>
+                                <div className="space-y-1">
+                                  {paiement.primes.map((prime: any) => (
+                                    <div key={prime.id} className="flex justify-between text-sm">
+                                      <span 
+                                        className="text-primary hover:underline cursor-pointer"
+                                        onClick={() => {
+                                          if (prime.ordre_id) navigate(`/ordres/${prime.ordre_id}`);
+                                          else if (prime.facture_id) navigate(`/factures/${prime.facture_id}`);
+                                        }}
+                                      >
+                                        {prime.ordre?.numero || prime.facture?.numero || prime.description || `Prime #${prime.id}`}
+                                      </span>
+                                      <span className="font-mono">{formatMontant(prime.montant)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2 print:hidden"
+                            onClick={() => {
+                              const nomComplet = representant.nom_complet || `${representant.prenom || ''} ${representant.nom}`.trim();
+                              const printContent = `
+                                <html>
+                                <head>
+                                  <title>Reçu de paiement - ${paiement.reference || paiement.id}</title>
+                                  <style>
+                                    body { font-family: Arial, sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; }
+                                    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+                                    .header h1 { margin: 0; font-size: 24px; }
+                                    .info { margin: 20px 0; }
+                                    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+                                    .primes { margin-top: 20px; }
+                                    .primes h3 { margin-bottom: 10px; font-size: 14px; color: #666; }
+                                    .prime-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+                                    .total { margin-top: 20px; padding-top: 20px; border-top: 2px solid #333; font-size: 20px; font-weight: bold; text-align: right; }
+                                    .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <div class="header">
+                                    <h1>REÇU DE PAIEMENT</h1>
+                                    <p>Prime ${nomComplet}</p>
+                                  </div>
+                                  <div class="info">
+                                    <div class="info-row"><span>Date:</span><span>${formatDate(paiement.date || paiement.created_at)}</span></div>
+                                    <div class="info-row"><span>Mode de paiement:</span><span>${paiement.mode_paiement}</span></div>
+                                    ${paiement.reference ? `<div class="info-row"><span>Référence:</span><span>${paiement.reference}</span></div>` : ''}
+                                    <div class="info-row"><span>Bénéficiaire:</span><span>${nomComplet}</span></div>
+                                  </div>
+                                  ${paiement.primes && paiement.primes.length > 0 ? `
+                                    <div class="primes">
+                                      <h3>DÉTAIL DES PRIMES PAYÉES</h3>
+                                      ${paiement.primes.map((p: any) => `
+                                        <div class="prime-row">
+                                          <span>${p.ordre?.numero || p.facture?.numero || p.description || 'Prime #' + p.id}</span>
+                                          <span>${formatMontant(p.montant)}</span>
+                                        </div>
+                                      `).join('')}
+                                    </div>
+                                  ` : ''}
+                                  <div class="total">
+                                    TOTAL: ${formatMontant(paiement.montant)}
+                                  </div>
+                                  <div class="footer">
+                                    <p>Document généré le ${new Date().toLocaleDateString('fr-FR')}</p>
+                                  </div>
+                                </body>
+                                </html>
+                              `;
+                              const printWindow = window.open('', '_blank');
+                              if (printWindow) {
+                                printWindow.document.write(printContent);
+                                printWindow.document.close();
+                                printWindow.print();
+                              }
+                            }}
+                          >
+                            <Printer className="h-4 w-4" />
+                            Imprimer
+                          </Button>
+                        </div>
+                      </div>
                     ))}
-                    {allPaiements.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                          Aucun paiement
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
