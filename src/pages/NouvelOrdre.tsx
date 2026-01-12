@@ -30,6 +30,7 @@ import {
 } from "@/components/ordres/forms";
 import { RecapitulatifCard } from "@/components/devis/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre, useConfiguration } from "@/hooks/use-commercial";
+import RemiseInput, { RemiseData, RemiseType } from "@/components/shared/RemiseInput";
 
 export default function NouvelOrdrePage() {
   const navigate = useNavigate();
@@ -63,6 +64,13 @@ export default function NouvelOrdrePage() {
   const [conventionnelData, setConventionnelData] = useState<OrdreConventionnelData | null>(null);
   const [independantData, setIndependantData] = useState<OrdreIndependantData | null>(null);
 
+  // État de la remise
+  const [remiseData, setRemiseData] = useState<RemiseData>({
+    type: "",
+    valeur: 0,
+    montantCalcule: 0,
+  });
+
   // Calcul du montant HT selon la catégorie
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -72,9 +80,10 @@ export default function NouvelOrdrePage() {
   };
 
   const montantHT = getMontantHT();
-  const tva = Math.round(montantHT * TAUX_TVA);
-  const css = Math.round(montantHT * TAUX_CSS);
-  const montantTTC = montantHT + tva + css;
+  const montantHTApresRemise = montantHT - remiseData.montantCalcule;
+  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
+  const css = Math.round(montantHTApresRemise * TAUX_CSS);
+  const montantTTC = montantHTApresRemise + tva + css;
 
   // Reset catégorie
   const handleCategorieChange = (value: CategorieDocument) => {
@@ -82,6 +91,7 @@ export default function NouvelOrdrePage() {
     setConteneursData(null);
     setConventionnelData(null);
     setIndependantData(null);
+    setRemiseData({ type: "", valeur: 0, montantCalcule: 0 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,6 +179,10 @@ export default function NouvelOrdrePage() {
       // Primes pour transitaire et représentant
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
+      // Remise
+      remise_type: remiseData.type || null,
+      remise_valeur: remiseData.valeur || 0,
+      remise_montant: remiseData.montantCalcule || 0,
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataApi,
@@ -327,16 +341,24 @@ export default function NouvelOrdrePage() {
           </Card>
         )}
 
+        {/* Remise - avant le récapitulatif */}
+        {categorie && montantHT > 0 && (
+          <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+        )}
+
         {/* Récapitulatif */}
         {categorie && (
           <div className="animate-fade-in">
             <RecapitulatifCard
               montantHT={montantHT}
-              tauxTva={TAUX_TVA}
-              tauxCss={TAUX_CSS}
+              tauxTva={Math.round(TAUX_TVA * 100)}
+              tauxCss={Math.round(TAUX_CSS * 100)}
               tva={tva}
               css={css}
               montantTTC={montantTTC}
+              remiseMontant={remiseData.montantCalcule}
+              remiseType={remiseData.type}
+              remiseValeur={remiseData.valeur}
             />
           </div>
         )}

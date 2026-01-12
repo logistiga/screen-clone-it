@@ -7,6 +7,9 @@ interface RecapitulatifCardProps {
   montantTTC: number;
   tauxTva?: number;
   tauxCss?: number;
+  remiseMontant?: number;
+  remiseType?: string;
+  remiseValeur?: number;
 }
 
 const formatMontant = (montant: number) => {
@@ -20,7 +23,12 @@ export default function RecapitulatifCard({
   montantTTC,
   tauxTva = 18,
   tauxCss = 1,
+  remiseMontant = 0,
+  remiseType,
+  remiseValeur,
 }: RecapitulatifCardProps) {
+  const montantHTApresRemise = montantHT - remiseMontant;
+
   return (
     <Card>
       <CardHeader>
@@ -29,9 +37,26 @@ export default function RecapitulatifCard({
       <CardContent>
         <div className="space-y-3 max-w-md ml-auto">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Montant HT</span>
+            <span className="text-muted-foreground">Total HT (avant remise)</span>
             <span className="font-medium">{formatMontant(montantHT)}</span>
           </div>
+
+          {remiseMontant > 0 && (
+            <>
+              <div className="flex justify-between text-destructive">
+                <span>
+                  Remise
+                  {remiseType === "pourcentage" && remiseValeur ? ` (${remiseValeur}%)` : ""}
+                </span>
+                <span className="font-medium">- {formatMontant(remiseMontant)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-muted-foreground">Sous-total HT</span>
+                <span className="font-medium">{formatMontant(montantHTApresRemise)}</span>
+              </div>
+            </>
+          )}
+
           <div className="flex justify-between">
             <span className="text-muted-foreground">TVA ({tauxTva}%)</span>
             <span>{formatMontant(tva)}</span>
