@@ -53,6 +53,8 @@ class StoreFactureRequest extends FormRequest
             'conteneurs.*.numero' => 'required_with:conteneurs|string|max:50',
             'conteneurs.*.type' => 'required_with:conteneurs|string|max:50',
             'conteneurs.*.taille' => 'required_with:conteneurs|string|max:20',
+            'conteneurs.*.description' => 'nullable|string|max:500',
+            'conteneurs.*.prix_unitaire' => 'nullable|numeric|min:0',
             'conteneurs.*.armateur_id' => 'nullable|exists:armateurs,id',
             'conteneurs.*.operations' => 'nullable|array',
             'conteneurs.*.operations.*.type_operation' => 'required|string|max:100',
