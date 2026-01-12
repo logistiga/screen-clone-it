@@ -155,9 +155,11 @@ class PrimeController extends Controller
                     'categorie' => $prime->transitaire_id ? 'Prime transitaire' : 'Prime représentant',
                     'montant' => $request->montant,
                     'description' => "Prime - {$beneficiaire}",
-                    'reference' => $paiement->id,
-                    'date_mouvement' => now(),
-                    'user_id' => auth()->id(),
+                    'beneficiaire' => $beneficiaire,
+                    'reference' => (string) $paiement->id,
+                    'mode_paiement' => 'Espèces',
+                    'date' => now()->toDateString(),
+                    'source' => 'caisse',
                 ]);
             }
 
