@@ -17,6 +17,7 @@ import {
   FileText,
   Loader2,
   RotateCcw,
+  PackageOpen,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,7 +58,7 @@ import { NoteDebut } from "@/lib/api/notes-debut";
 import { TablePagination } from "@/components/TablePagination";
 import { formatMontant, formatDate } from "@/data/mockData";
 
-const typeConfig = {
+const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
   ouverture_port: {
     label: "Ouverture de port",
     icon: Anchor,
@@ -72,6 +73,11 @@ const typeConfig = {
     label: "Réparation conteneur",
     icon: Wrench,
     color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300",
+  },
+  relache: {
+    label: "Relâche",
+    icon: PackageOpen,
+    color: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300",
   },
 };
 
@@ -304,6 +310,7 @@ export default function NotesDebut() {
                   <SelectItem value="ouverture_port">Ouverture de port</SelectItem>
                   <SelectItem value="detention">Détention</SelectItem>
                   <SelectItem value="reparation">Réparation conteneur</SelectItem>
+                  <SelectItem value="relache">Relâche</SelectItem>
                 </SelectContent>
               </Select>
               {hasFilters && (
