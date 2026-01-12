@@ -152,7 +152,8 @@ export default function NouvelleFacturePage() {
         type: "DRY",
         taille: c.taille,
         description: c.description,
-        prix_unitaire: 0,
+        // IMPORTANT: ne pas perdre le prix du conteneur (sinon totaux = 0 si pas d'opérations)
+        prix_unitaire: Number(c.prixUnitaire || 0),
         armateur_id: conteneursData.armateurId || null,
         operations: c.operations.map((op) => ({
           type_operation: op.type,
