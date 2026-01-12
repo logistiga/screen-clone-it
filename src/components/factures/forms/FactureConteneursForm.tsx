@@ -111,7 +111,7 @@ export default function FactureConteneursForm({
 
   useEffect(() => {
     updateParent(conteneurs);
-  }, [typeOperation, numeroBL, armateurId, transitaireId, representantId, primeTransitaire, primeRepresentant]);
+  }, [typeOperation, numeroBL, armateurId, transitaireId, representantId, primeTransitaire, primeRepresentant, conteneurs]);
 
   const handleAddConteneur = () => {
     const newConteneurs = [...conteneurs, { ...getInitialConteneur(), id: String(Date.now()) }];

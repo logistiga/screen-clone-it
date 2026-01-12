@@ -64,7 +64,7 @@ export default function FactureConventionnelForm({
 
   useEffect(() => {
     updateParent(lots);
-  }, [numeroBL, lieuChargement, lieuDechargement]);
+  }, [numeroBL, lieuChargement, lieuDechargement, lots]);
 
   const handleAddLot = () => {
     const newLots = [...lots, { ...getInitialLot(), id: String(Date.now()) }];
