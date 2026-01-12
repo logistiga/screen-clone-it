@@ -15,7 +15,8 @@ class TransitaireController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Transitaire::withCount(['devis', 'ordresTravail', 'factures']);
+        $query = Transitaire::withCount(['devis', 'ordresTravail', 'factures'])
+            ->with(['primes' => fn($q) => $q->select('id', 'transitaire_id', 'montant', 'statut')]);
 
         if ($request->has('search')) {
             $search = $request->get('search');

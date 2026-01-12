@@ -14,12 +14,10 @@ class RepresentantResource extends JsonResource
         $primesPayees = 0;
         
         if ($this->relationLoaded('primes')) {
-            foreach ($this->primes as $prime) {
-                $primesDues += $prime->montant;
-                if ($prime->relationLoaded('paiements')) {
-                    $primesPayees += $prime->paiements->sum('montant');
-                }
-            }
+            // Primes dues = montant total des primes non payées
+            $primesDues = $this->primes->whereIn('statut', ['En attente', 'Partiellement payée'])->sum('montant');
+            // Primes payées = montant total des primes payées
+            $primesPayees = $this->primes->where('statut', 'Payée')->sum('montant');
         }
 
         return [
