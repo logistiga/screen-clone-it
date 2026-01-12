@@ -18,7 +18,7 @@ class RepresentantController extends Controller
     {
         $query = Representant::withCount('primes')
             ->withSum('primes', 'montant')
-            ->with(['primes.paiements']);
+            ->with(['primes' => fn($q) => $q->select('id', 'representant_id', 'montant', 'statut')]);
 
         if ($request->has('search')) {
             $search = $request->get('search');

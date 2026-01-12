@@ -10,13 +10,14 @@ class TransitaireResource extends JsonResource
     public function toArray(Request $request): array
     {
         // Calculer les totaux des primes si chargées
-        $primes = $this->whenLoaded('primes');
         $primesDues = 0;
         $primesPayees = 0;
         
-        if ($primes instanceof \Illuminate\Support\Collection) {
-            $primesDues = $primes->where('statut', '!=', 'Payée')->sum('montant');
-            $primesPayees = $primes->where('statut', 'Payée')->sum('montant');
+        if ($this->relationLoaded('primes')) {
+            // Primes dues = montant total des primes non payées
+            $primesDues = $this->primes->whereIn('statut', ['En attente', 'Partiellement payée'])->sum('montant');
+            // Primes payées = montant total des primes payées
+            $primesPayees = $this->primes->where('statut', 'Payée')->sum('montant');
         }
         
         return [
