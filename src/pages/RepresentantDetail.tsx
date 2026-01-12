@@ -14,28 +14,18 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, ClipboardList, Receipt, History, DollarSign, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { formatMontant, formatDate, ordresTravail, factures, getStatutLabel } from "@/data/mockData";
-import { 
-  getPrimesRepresentant, 
-  getPaiementsRepresentant,
-  getTotalPrimesDues,
-  getTotalPrimesPayees
-} from "@/data/partenairesData";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, History, DollarSign, Loader2 } from "lucide-react";
+import { formatMontant, formatDate } from "@/data/mockData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
 import { useRepresentantById } from "@/hooks/use-commercial";
 
 export default function RepresentantDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [showPaiementModal, setShowPaiementModal] = useState(false);
   const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
   
   const { data: representant, isLoading, error } = useRepresentantById(id);
-  const primes = id ? getPrimesRepresentant(id) : [];
-  const paiements = id ? getPaiementsRepresentant(id) : [];
 
   if (isLoading) {
     return (
@@ -60,47 +50,50 @@ export default function RepresentantDetailPage() {
     );
   }
 
-  const primesDues = getTotalPrimesDues(primes);
-  const primesPayees = getTotalPrimesPayees(primes);
-  const primesDuesList = primes.filter(p => p.statut === 'due');
+  // Données de l'API
+  const primes = representant.primes || [];
 
-  // Mock: ordres associés à ce représentant (basé sur les primes)
-  const ordreIds = [...new Set(primes.map(p => p.ordreId))];
-  const representantOrdres = ordresTravail.filter(o => ordreIds.includes(o.id));
-  const representantFactures = factures.filter(f => f.ordreId && ordreIds.includes(f.ordreId));
+  // Calculer les totaux depuis les vraies données
+  const primesDues = primes
+    .filter((p: any) => p.statut !== 'Payée')
+    .reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+  
+  const primesPayees = primes
+    .filter((p: any) => p.statut === 'Payée')
+    .reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+
+  const primesDuesList = primes.filter((p: any) => p.statut !== 'Payée');
+
+  // Récupérer les paiements de toutes les primes
+  const allPaiements = primes.flatMap((p: any) => p.paiements || []);
 
   const handleSelectPrime = (primeId: string, checked: boolean) => {
     if (checked) {
       setSelectedPrimes([...selectedPrimes, primeId]);
     } else {
-      setSelectedPrimes(selectedPrimes.filter(id => id !== primeId));
+      setSelectedPrimes(selectedPrimes.filter(pid => pid !== primeId));
     }
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedPrimes(primesDuesList.map(p => p.id));
+      setSelectedPrimes(primesDuesList.map((p: any) => String(p.id)));
     } else {
       setSelectedPrimes([]);
     }
   };
 
   const selectedTotal = primes
-    .filter(p => selectedPrimes.includes(p.id))
-    .reduce((sum, p) => sum + p.montant, 0);
+    .filter((p: any) => selectedPrimes.includes(String(p.id)))
+    .reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      en_cours: "outline",
-      termine: "default",
-      facture: "default",
-      annule: "destructive",
-      emise: "outline",
-      payee: "default",
-      partielle: "secondary",
-      impayee: "destructive",
-    };
-    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+    const isPaid = statut === 'Payée' || statut === 'payee';
+    return (
+      <Badge variant={isPaid ? 'default' : 'destructive'}>
+        {isPaid ? 'Payée' : statut === 'Partiellement payée' ? 'Partielle' : 'Due'}
+      </Badge>
+    );
   };
 
   return (
@@ -156,6 +149,12 @@ export default function RepresentantDetailPage() {
                   <div className="text-sm text-muted-foreground">
                     Partenaire depuis le {representant.created_at ? formatDate(representant.created_at) : '-'}
                   </div>
+                  {representant.taux_commission && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Taux commission: </span>
+                      <span className="font-medium">{representant.taux_commission}%</span>
+                    </div>
+                  )}
                   <Badge variant={representant.actif !== false ? "default" : "secondary"}>
                     {representant.actif !== false ? "Actif" : "Inactif"}
                   </Badge>
@@ -168,11 +167,11 @@ export default function RepresentantDetailPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Ordres
+                  Total Primes
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{representantOrdres.length}</div>
+                <div className="text-2xl font-bold">{primes.length}</div>
               </CardContent>
             </Card>
             <Card>
@@ -205,17 +204,9 @@ export default function RepresentantDetailPage() {
               <CreditCard className="h-4 w-4" />
               Primes ({primes.length})
             </TabsTrigger>
-            <TabsTrigger value="ordres" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Ordres ({representantOrdres.length})
-            </TabsTrigger>
-            <TabsTrigger value="factures" className="gap-2">
-              <Receipt className="h-4 w-4" />
-              Factures ({representantFactures.length})
-            </TabsTrigger>
             <TabsTrigger value="historique" className="gap-2">
               <History className="h-4 w-4" />
-              Historique Paiements ({paiements.length})
+              Historique Paiements ({allPaiements.length})
             </TabsTrigger>
           </TabsList>
 
@@ -232,126 +223,40 @@ export default function RepresentantDetailPage() {
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      <TableHead>Ordre</TableHead>
+                      <TableHead>Facture</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
                       <TableHead>Statut</TableHead>
-                      <TableHead>Date Paiement</TableHead>
+                      <TableHead>Description</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {primes.map((prime) => (
+                    {primes.map((prime: any) => (
                       <TableRow key={prime.id}>
                         <TableCell>
-                          {prime.statut === 'due' && (
+                          {prime.statut !== 'Payée' && (
                             <Checkbox 
-                              checked={selectedPrimes.includes(prime.id)}
-                              onCheckedChange={(checked) => handleSelectPrime(prime.id, !!checked)}
+                              checked={selectedPrimes.includes(String(prime.id))}
+                              onCheckedChange={(checked) => handleSelectPrime(String(prime.id), !!checked)}
                             />
                           )}
                         </TableCell>
                         <TableCell 
                           className="font-medium text-primary hover:underline cursor-pointer"
-                          onClick={() => navigate(`/ordres/${prime.ordreId}`)}
+                          onClick={() => prime.facture_id && navigate(`/factures/${prime.facture_id}`)}
                         >
-                          {prime.ordreNumero}
+                          {prime.facture?.numero || '-'}
                         </TableCell>
-                        <TableCell>{formatDate(prime.dateCreation)}</TableCell>
+                        <TableCell>{formatDate(prime.created_at)}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(prime.montant)}</TableCell>
-                        <TableCell>
-                          <Badge variant={prime.statut === 'payee' ? 'default' : 'destructive'}>
-                            {prime.statut === 'payee' ? 'Payée' : 'Due'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{prime.datePaiement ? formatDate(prime.datePaiement) : '-'}</TableCell>
+                        <TableCell>{getStatutBadge(prime.statut)}</TableCell>
+                        <TableCell className="text-muted-foreground">{prime.description || '-'}</TableCell>
                       </TableRow>
                     ))}
                     {primes.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                           Aucune prime
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Ordres Tab */}
-          <TabsContent value="ordres" className="mt-4">
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Numéro</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Montant TTC</TableHead>
-                      <TableHead>Statut</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {representantOrdres.map((ordre) => (
-                      <TableRow 
-                        key={ordre.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/ordres/${ordre.id}`)}
-                      >
-                        <TableCell className="font-medium">{ordre.numero}</TableCell>
-                        <TableCell>{formatDate(ordre.dateCreation)}</TableCell>
-                        <TableCell className="capitalize">{ordre.typeOperation}</TableCell>
-                        <TableCell className="text-right">{formatMontant(ordre.montantTTC)}</TableCell>
-                        <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
-                      </TableRow>
-                    ))}
-                    {representantOrdres.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          Aucun ordre de travail
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Factures Tab */}
-          <TabsContent value="factures" className="mt-4">
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Numéro</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Échéance</TableHead>
-                      <TableHead className="text-right">Montant TTC</TableHead>
-                      <TableHead>Statut</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {representantFactures.map((facture) => (
-                      <TableRow 
-                        key={facture.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/factures/${facture.id}`)}
-                      >
-                        <TableCell className="font-medium">{facture.numero}</TableCell>
-                        <TableCell>{formatDate(facture.dateCreation)}</TableCell>
-                        <TableCell>{formatDate(facture.dateEcheance)}</TableCell>
-                        <TableCell className="text-right">{formatMontant(facture.montantTTC)}</TableCell>
-                        <TableCell>{getStatutBadge(facture.statut)}</TableCell>
-                      </TableRow>
-                    ))}
-                    {representantFactures.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          Aucune facture
                         </TableCell>
                       </TableRow>
                     )}
@@ -375,17 +280,17 @@ export default function RepresentantDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paiements.map((paiement) => (
+                    {allPaiements.map((paiement: any) => (
                       <TableRow key={paiement.id}>
-                        <TableCell>{formatDate(paiement.date)}</TableCell>
-                        <TableCell className="capitalize">{paiement.modePaiement}</TableCell>
+                        <TableCell>{formatDate(paiement.date_paiement)}</TableCell>
+                        <TableCell className="capitalize">{paiement.mode_paiement}</TableCell>
                         <TableCell>{paiement.reference || '-'}</TableCell>
                         <TableCell className="text-right font-medium text-green-600">
                           {formatMontant(paiement.montant)}
                         </TableCell>
                       </TableRow>
                     ))}
-                    {paiements.length === 0 && (
+                    {allPaiements.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                           Aucun paiement
@@ -404,9 +309,9 @@ export default function RepresentantDetailPage() {
       <PaiementPrimeModal 
         open={showPaiementModal}
         onOpenChange={setShowPaiementModal}
-        partenaireNom={representant.nom}
+        partenaireNom={representant.nom || ''}
         partenaireType="representant"
-        primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(p.id) : p.statut === 'due')}
+        primes={primes.filter((p: any) => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
         total={selectedTotal > 0 ? selectedTotal : primesDues}
       />
     </MainLayout>

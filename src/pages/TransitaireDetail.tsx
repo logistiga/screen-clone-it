@@ -13,29 +13,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, ClipboardList, Receipt, FileText, History, DollarSign, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { formatMontant, formatDate, ordresTravail, factures, devis, getStatutLabel } from "@/data/mockData";
-import { 
-  getPrimesTransitaire, 
-  getPaiementsTransitaire,
-  getTotalPrimesDues,
-  getTotalPrimesPayees
-} from "@/data/partenairesData";
-import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, ClipboardList, Receipt, FileText, Loader2 } from "lucide-react";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { useTransitaireById } from "@/hooks/use-commercial";
 
 export default function TransitaireDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [showPaiementModal, setShowPaiementModal] = useState(false);
-  const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
   
   const { data: transitaire, isLoading, error } = useTransitaireById(id);
-  const primes = id ? getPrimesTransitaire(id) : [];
-  const paiements = id ? getPaiementsTransitaire(id) : [];
 
   if (isLoading) {
     return (
@@ -60,34 +46,17 @@ export default function TransitaireDetailPage() {
     );
   }
 
-  const primesDues = getTotalPrimesDues(primes);
-  const primesPayees = getTotalPrimesPayees(primes);
-  const primesDuesList = primes.filter(p => p.statut === 'due');
+  // Données venant de l'API
+  const ordres = transitaire.ordres_travail || [];
+  const factures = transitaire.factures || [];
+  const devisList = transitaire.devis || [];
 
-  // Mock: ordres associés à ce transitaire (basé sur les primes)
-  const ordreIds = [...new Set(primes.map(p => p.ordreId))];
-  const transitaireOrdres = ordresTravail.filter(o => ordreIds.includes(o.id));
-  const transitaireFactures = factures.filter(f => f.ordreId && ordreIds.includes(f.ordreId));
-
-  const handleSelectPrime = (primeId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedPrimes([...selectedPrimes, primeId]);
-    } else {
-      setSelectedPrimes(selectedPrimes.filter(id => id !== primeId));
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedPrimes(primesDuesList.map(p => p.id));
-    } else {
-      setSelectedPrimes([]);
-    }
-  };
-
-  const selectedTotal = primes
-    .filter(p => selectedPrimes.includes(p.id))
-    .reduce((sum, p) => sum + p.montant, 0);
+  // Calculer les totaux
+  const totalOrdres = ordres.length;
+  const totalFactures = factures.length;
+  const totalDevis = devisList.length;
+  const montantTotalFactures = factures.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
+  const montantTotalOrdres = ordres.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0);
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -99,6 +68,12 @@ export default function TransitaireDetailPage() {
       payee: "default",
       partielle: "secondary",
       impayee: "destructive",
+      brouillon: "secondary",
+      envoye: "outline",
+      accepte: "default",
+      refuse: "destructive",
+      expire: "destructive",
+      converti: "default",
     };
     return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
   };
@@ -117,16 +92,6 @@ export default function TransitaireDetailPage() {
               <Edit className="h-4 w-4" />
               Modifier
             </Button>
-            {primesDues > 0 && (
-              <Button 
-                className="gap-2"
-                onClick={() => setShowPaiementModal(true)}
-                disabled={selectedPrimes.length === 0}
-              >
-                <DollarSign className="h-4 w-4" />
-                Payer primes ({formatMontant(selectedTotal || primesDues)})
-              </Button>
-            )}
           </div>
         </div>
 
@@ -172,112 +137,50 @@ export default function TransitaireDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{transitaireOrdres.length}</div>
+                <div className="text-2xl font-bold">{totalOrdres}</div>
+                <p className="text-xs text-muted-foreground">{formatMontant(montantTotalOrdres)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Primes Dues
+                  Total Factures
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-destructive">{formatMontant(primesDues)}</div>
+                <div className="text-2xl font-bold">{totalFactures}</div>
+                <p className="text-xs text-muted-foreground">{formatMontant(montantTotalFactures)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Primes Payées
+                  Total Devis
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatMontant(primesPayees)}</div>
+                <div className="text-2xl font-bold">{totalDevis}</div>
               </CardContent>
             </Card>
           </div>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="primes" className="w-full">
+        <Tabs defaultValue="ordres" className="w-full">
           <TabsList>
-            <TabsTrigger value="primes" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              Primes ({primes.length})
-            </TabsTrigger>
             <TabsTrigger value="ordres" className="gap-2">
               <ClipboardList className="h-4 w-4" />
-              Ordres ({transitaireOrdres.length})
+              Ordres ({totalOrdres})
             </TabsTrigger>
             <TabsTrigger value="factures" className="gap-2">
               <Receipt className="h-4 w-4" />
-              Factures ({transitaireFactures.length})
+              Factures ({totalFactures})
             </TabsTrigger>
-            <TabsTrigger value="historique" className="gap-2">
-              <History className="h-4 w-4" />
-              Historique Paiements ({paiements.length})
+            <TabsTrigger value="devis" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Devis ({totalDevis})
             </TabsTrigger>
           </TabsList>
-
-          {/* Primes Tab */}
-          <TabsContent value="primes" className="mt-4">
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-12">
-                        <Checkbox 
-                          checked={selectedPrimes.length === primesDuesList.length && primesDuesList.length > 0}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </TableHead>
-                      <TableHead>Ordre</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Date Paiement</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {primes.map((prime) => (
-                      <TableRow key={prime.id}>
-                        <TableCell>
-                          {prime.statut === 'due' && (
-                            <Checkbox 
-                              checked={selectedPrimes.includes(prime.id)}
-                              onCheckedChange={(checked) => handleSelectPrime(prime.id, !!checked)}
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell 
-                          className="font-medium text-primary hover:underline cursor-pointer"
-                          onClick={() => navigate(`/ordres/${prime.ordreId}`)}
-                        >
-                          {prime.ordreNumero}
-                        </TableCell>
-                        <TableCell>{formatDate(prime.dateCreation)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatMontant(prime.montant)}</TableCell>
-                        <TableCell>
-                          <Badge variant={prime.statut === 'payee' ? 'default' : 'destructive'}>
-                            {prime.statut === 'payee' ? 'Payée' : 'Due'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{prime.datePaiement ? formatDate(prime.datePaiement) : '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                    {primes.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                          Aucune prime
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Ordres Tab */}
           <TabsContent value="ordres" className="mt-4">
@@ -288,26 +191,26 @@ export default function TransitaireDetailPage() {
                     <TableRow className="bg-muted/50">
                       <TableHead>Numéro</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Client</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transitaireOrdres.map((ordre) => (
+                    {ordres.map((ordre: any) => (
                       <TableRow 
                         key={ordre.id} 
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => navigate(`/ordres/${ordre.id}`)}
                       >
                         <TableCell className="font-medium">{ordre.numero}</TableCell>
-                        <TableCell>{formatDate(ordre.dateCreation)}</TableCell>
-                        <TableCell className="capitalize">{ordre.typeOperation}</TableCell>
-                        <TableCell className="text-right">{formatMontant(ordre.montantTTC)}</TableCell>
+                        <TableCell>{formatDate(ordre.date || ordre.created_at)}</TableCell>
+                        <TableCell>{ordre.client?.nom || '-'}</TableCell>
+                        <TableCell className="text-right">{formatMontant(ordre.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       </TableRow>
                     ))}
-                    {transitaireOrdres.length === 0 && (
+                    {ordres.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                           Aucun ordre de travail
@@ -329,26 +232,26 @@ export default function TransitaireDetailPage() {
                     <TableRow className="bg-muted/50">
                       <TableHead>Numéro</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Échéance</TableHead>
+                      <TableHead>Client</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transitaireFactures.map((facture) => (
+                    {factures.map((facture: any) => (
                       <TableRow 
                         key={facture.id} 
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => navigate(`/factures/${facture.id}`)}
                       >
                         <TableCell className="font-medium">{facture.numero}</TableCell>
-                        <TableCell>{formatDate(facture.dateCreation)}</TableCell>
-                        <TableCell>{formatDate(facture.dateEcheance)}</TableCell>
-                        <TableCell className="text-right">{formatMontant(facture.montantTTC)}</TableCell>
+                        <TableCell>{formatDate(facture.date_facture || facture.created_at)}</TableCell>
+                        <TableCell>{facture.client?.nom || '-'}</TableCell>
+                        <TableCell className="text-right">{formatMontant(facture.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                       </TableRow>
                     ))}
-                    {transitaireFactures.length === 0 && (
+                    {factures.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                           Aucune facture
@@ -361,34 +264,38 @@ export default function TransitaireDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Historique Paiements Tab */}
-          <TabsContent value="historique" className="mt-4">
+          {/* Devis Tab */}
+          <TabsContent value="devis" className="mt-4">
             <Card>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
+                      <TableHead>Numéro</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Référence</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Montant TTC</TableHead>
+                      <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paiements.map((paiement) => (
-                      <TableRow key={paiement.id}>
-                        <TableCell>{formatDate(paiement.date)}</TableCell>
-                        <TableCell className="capitalize">{paiement.modePaiement}</TableCell>
-                        <TableCell>{paiement.reference || '-'}</TableCell>
-                        <TableCell className="text-right font-medium text-green-600">
-                          {formatMontant(paiement.montant)}
-                        </TableCell>
+                    {devisList.map((devis: any) => (
+                      <TableRow 
+                        key={devis.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/devis/${devis.id}`)}
+                      >
+                        <TableCell className="font-medium">{devis.numero}</TableCell>
+                        <TableCell>{formatDate(devis.date || devis.created_at)}</TableCell>
+                        <TableCell>{devis.client?.nom || '-'}</TableCell>
+                        <TableCell className="text-right">{formatMontant(devis.montant_ttc)}</TableCell>
+                        <TableCell>{getStatutBadge(devis.statut)}</TableCell>
                       </TableRow>
                     ))}
-                    {paiements.length === 0 && (
+                    {devisList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                          Aucun paiement
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          Aucun devis
                         </TableCell>
                       </TableRow>
                     )}
@@ -399,16 +306,6 @@ export default function TransitaireDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Modal Paiement */}
-      <PaiementPrimeModal 
-        open={showPaiementModal}
-        onOpenChange={setShowPaiementModal}
-        partenaireNom={transitaire.nom}
-        partenaireType="transitaire"
-        primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(p.id) : p.statut === 'due')}
-        total={selectedTotal > 0 ? selectedTotal : primesDues}
-      />
     </MainLayout>
   );
 }

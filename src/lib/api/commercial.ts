@@ -152,6 +152,39 @@ export interface Transitaire {
   actif: boolean;
   created_at?: string;
   updated_at?: string;
+  // Relations chargées depuis show()
+  ordres_travail?: OrdreTravail[];
+  factures?: Facture[];
+  devis?: Devis[];
+  counts?: {
+    devis: number;
+    ordres: number;
+    factures: number;
+  };
+}
+
+export interface Prime {
+  id: string;
+  representant_id: string;
+  facture_id?: string;
+  montant: number;
+  description?: string;
+  statut: string;
+  facture?: Facture;
+  paiements?: PaiementPrime[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PaiementPrime {
+  id: string;
+  prime_id: string;
+  montant: number;
+  mode_paiement: string;
+  reference?: string;
+  date_paiement: string;
+  notes?: string;
+  created_at?: string;
 }
 
 export interface Representant {
@@ -166,6 +199,12 @@ export interface Representant {
   actif: boolean;
   created_at?: string;
   updated_at?: string;
+  // Relations chargées depuis show()
+  primes?: Prime[];
+  counts?: {
+    primes: number;
+    primes_sum_montant: number;
+  };
 }
 
 export interface PaginatedResponse<T> {
