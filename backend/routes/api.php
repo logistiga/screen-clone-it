@@ -352,11 +352,15 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:devis.modifier');
         
         // Actions sur les annulations existantes (AVANT la route générique {annulation})
-        Route::post('{annulation}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
+        // Utiliser whereNumber pour s'assurer que {id} est un entier
+        Route::post('{id}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
+            ->whereNumber('id')
             ->middleware('permission:factures.modifier');
-        Route::post('{annulation}/rembourser', [AnnulationController::class, 'rembourser'])
+        Route::post('{id}/rembourser', [AnnulationController::class, 'rembourser'])
+            ->whereNumber('id')
             ->middleware('permission:caisse.creer');
-        Route::post('{annulation}/utiliser-avoir', [AnnulationController::class, 'utiliserAvoir'])
+        Route::post('{id}/utiliser-avoir', [AnnulationController::class, 'utiliserAvoir'])
+            ->whereNumber('id')
             ->middleware('permission:paiements.creer');
         
         // Avoirs d'un client
