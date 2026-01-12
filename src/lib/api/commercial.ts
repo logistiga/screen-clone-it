@@ -210,6 +210,9 @@ export interface Representant {
   actif: boolean;
   created_at?: string;
   updated_at?: string;
+  // Totaux calculés des primes
+  primes_dues?: number;
+  primes_payees?: number;
   // Relations chargées depuis show()
   primes?: Prime[];
   counts?: {

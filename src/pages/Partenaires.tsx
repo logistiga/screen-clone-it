@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, Trash2, Ship, User, Truck, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Ship, User, Truck, Loader2, AlertCircle, RefreshCw, Banknote } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { formatMontant } from "@/data/mockData";
@@ -162,9 +162,45 @@ export default function PartenairesPage() {
 
   const isLoading = isLoadingTransitaires || isLoadingRepresentants || isLoadingArmateurs;
 
+  // Calculer le montant global des primes non payées
+  const primesTransitaires = transitaires.reduce((acc, t) => acc + ((t.primes_dues || 0) - (t.primes_payees || 0)), 0);
+  const primesRepresentants = representants.reduce((acc, r) => acc + ((r.primes_dues || 0) - (r.primes_payees || 0)), 0);
+  const totalPrimesAPayer = primesTransitaires + primesRepresentants;
+
   return (
     <MainLayout title="Partenaires">
       <div className="space-y-6">
+        {/* Bandeau sticky pour les primes non payées */}
+        {totalPrimesAPayer > 0 && (
+          <div className="sticky top-0 z-10">
+            <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
+                      <Banknote className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Primes à payer
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        Transitaires: {formatMontant(primesTransitaires)} • Représentants: {formatMontant(primesRepresentants)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                      {formatMontant(totalPrimesAPayer)}
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400">Montant total</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Recherche */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
