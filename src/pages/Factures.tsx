@@ -468,6 +468,7 @@ export default function FacturesPage() {
           open={!!annulationModal}
           onOpenChange={(open) => !open && setAnnulationModal(null)}
           documentType="facture"
+          documentId={Number(annulationModal.id)}
           documentNumero={annulationModal.numero}
           montantTTC={annulationModal.montantTTC}
           montantPaye={annulationModal.montantPaye}
