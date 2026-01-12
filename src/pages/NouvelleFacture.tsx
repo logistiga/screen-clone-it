@@ -147,6 +147,8 @@ export default function NouvelleFacturePage() {
       date_echeance: dateEcheance,
       transitaire_id: conteneursData?.transitaireId || null,
       representant_id: conteneursData?.representantId || null,
+      armateur_id: conteneursData?.armateurId || null,
+      type_operation_indep: independantData?.typeOperationIndep || null,
       // Primes pour transitaire et représentant
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
