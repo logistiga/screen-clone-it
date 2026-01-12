@@ -54,12 +54,12 @@ class Representant extends Model
     // Accessors
     public function getTotalPrimesDuesAttribute()
     {
-        return $this->primes()->where('statut', 'due')->sum('montant');
+        return $this->primes()->whereIn('statut', ['En attente', 'Partiellement payée'])->sum('montant');
     }
 
     public function getTotalPrimesPayeesAttribute()
     {
-        return $this->primes()->where('statut', 'payee')->sum('montant');
+        return $this->primes()->where('statut', 'Payée')->sum('montant');
     }
 
     // Scopes
