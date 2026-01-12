@@ -13,6 +13,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -22,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Edit, Trash2, Users, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Users, Loader2, Receipt, Banknote, TrendingUp, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/use-commercial";
 import { formatMontant } from "@/data/mockData";
@@ -56,6 +61,7 @@ export default function ClientsPage() {
 
   // Statistiques
   const totalSolde = clientsList.reduce((sum, c) => sum + (c.solde || 0), 0);
+  const totalAvoirs = clientsList.reduce((sum, c) => sum + ((c as any).solde_avoirs || 0), 0);
   const clientsAvecSolde = clientsList.filter(c => (c.solde || 0) > 0).length;
 
   if (isLoading) {
@@ -100,26 +106,47 @@ export default function ClientsPage() {
   return (
     <MainLayout title="Clients">
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clients</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Total Clients
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalItems}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-red-500">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Solde Total Dû</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Solde Total Dû
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{formatMontant(totalSolde)}</div>
+              <div className="text-2xl font-bold text-red-600">{formatMontant(totalSolde)}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-green-500">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Clients avec Solde</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Banknote className="h-4 w-4" />
+                Total Avoirs
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{formatMontant(totalAvoirs)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-amber-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Clients avec Solde
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{clientsAvecSolde}</div>
@@ -152,51 +179,80 @@ export default function ClientsPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Ville</TableHead>
                   <TableHead className="text-right">Solde Dû</TableHead>
-                  <TableHead className="w-32">Actions</TableHead>
+                  <TableHead className="text-right">Avoirs</TableHead>
+                  <TableHead className="w-32 text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientsList.map((client) => (
-                  <TableRow key={client.id} className="hover:bg-muted/50">
-                    <TableCell 
-                      className="font-medium text-primary hover:underline cursor-pointer"
-                      onClick={() => navigate(`/clients/${client.id}`)}
-                    >
-                      {client.nom}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">{client.email}</div>
-                      <div className="text-xs text-muted-foreground">{client.telephone}</div>
-                    </TableCell>
-                    <TableCell>{client.ville}</TableCell>
-                    <TableCell className="text-right">
-                      {(client.solde || 0) > 0 ? (
-                        <Badge variant="destructive">{formatMontant(client.solde)}</Badge>
-                      ) : (
-                        <Badge variant="secondary">0 XAF</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/clients/${client.id}`)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/clients/${client.id}/modifier`)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive"
-                          title="Supprimer"
-                          onClick={() => setDeleteConfirm({ id: client.id, nom: client.nom })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {clientsList.map((client) => {
+                  const soldeAvoirs = (client as any).solde_avoirs || 0;
+                  return (
+                    <TableRow key={client.id} className="hover:bg-muted/50 group">
+                      <TableCell 
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                        onClick={() => navigate(`/clients/${client.id}`)}
+                      >
+                        {client.nom}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{client.email}</div>
+                        <div className="text-xs text-muted-foreground">{client.telephone}</div>
+                      </TableCell>
+                      <TableCell>{client.ville}</TableCell>
+                      <TableCell className="text-right">
+                        {(client.solde || 0) > 0 ? (
+                          <Badge variant="destructive" className="font-mono">
+                            {formatMontant(client.solde)}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">0 FCFA</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {soldeAvoirs > 0 ? (
+                          <Badge variant="default" className="bg-green-600 hover:bg-green-700 font-mono">
+                            {formatMontant(soldeAvoirs)}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/clients/${client.id}`)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Voir détails</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/clients/${client.id}/modifier`)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Modifier</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteConfirm({ id: client.id, nom: client.nom })}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Supprimer</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             <TablePagination
