@@ -6,7 +6,8 @@ import {
   FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight,
   Tag
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
