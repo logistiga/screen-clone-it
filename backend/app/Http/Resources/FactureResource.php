@@ -9,6 +9,21 @@ class FactureResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Calculer les primes liées à cette facture
+        $primeTransitaire = 0;
+        $primeRepresentant = 0;
+        
+        if ($this->relationLoaded('primes')) {
+            foreach ($this->primes as $prime) {
+                if ($prime->transitaire_id) {
+                    $primeTransitaire += (float) $prime->montant;
+                }
+                if ($prime->representant_id) {
+                    $primeRepresentant += (float) $prime->montant;
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
             'numero' => $this->numero,
@@ -53,6 +68,10 @@ class FactureResource extends JsonResource
             'taux_tva' => $this->taux_tva,
             'taux_css' => $this->taux_css,
             
+            // Primes liées (calculées depuis la relation primes)
+            'prime_transitaire' => round($primeTransitaire, 2),
+            'prime_representant' => round($primeRepresentant, 2),
+            
             'notes' => $this->notes,
             'token_verification' => $this->token_verification,
             'created_at' => $this->created_at?->toISOString(),
@@ -68,6 +87,7 @@ class FactureResource extends JsonResource
             'conteneurs' => ConteneurFactureResource::collection($this->whenLoaded('conteneurs')),
             'lots' => LotFactureResource::collection($this->whenLoaded('lots')),
             'paiements' => PaiementResource::collection($this->whenLoaded('paiements')),
+            'primes' => PrimeResource::collection($this->whenLoaded('primes')),
         ];
     }
 }
