@@ -71,7 +71,7 @@ export default function NouvelleFacturePage() {
 
   // État de la remise
   const [remiseData, setRemiseData] = useState<RemiseData>({
-    type: "",
+    type: "none",
     valeur: 0,
     montantCalcule: 0,
   });
@@ -94,7 +94,7 @@ export default function NouvelleFacturePage() {
     setConteneursData(null);
     setConventionnelData(null);
     setIndependantData(null);
-    setRemiseData({ type: "", valeur: 0, montantCalcule: 0 });
+    setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
