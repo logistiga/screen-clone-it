@@ -256,7 +256,14 @@ export default function ModifierFacturePage() {
 
     if (categorie === "conteneurs" && conteneursData) {
       data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
+      data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
+      data.armateur_id = conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null;
       data.bl_numero = conteneursData.numeroBL || null;
+      
+      // Primes transitaire et représentant
+      data.prime_transitaire = conteneursData.primeTransitaire || 0;
+      data.prime_representant = conteneursData.primeRepresentant || 0;
+      
       data.conteneurs = conteneursData.conteneurs.map(c => ({
         numero: c.numero,
         type: "DRY",

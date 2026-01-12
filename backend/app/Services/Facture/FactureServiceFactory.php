@@ -193,6 +193,11 @@ class FactureServiceFactory
             $categorie = $facture->categorie;
             $service = $this->getService($categorie);
 
+            // Extraire les primes avant update (elles ne sont pas des colonnes de la table factures)
+            $primeTransitaire = $data['prime_transitaire'] ?? 0;
+            $primeRepresentant = $data['prime_representant'] ?? 0;
+            unset($data['prime_transitaire'], $data['prime_representant']);
+
             $facture->update($data);
 
             // Remplacer les conteneurs si fournis
@@ -218,6 +223,17 @@ class FactureServiceFactory
 
             // Recalculer les totaux
             $service->calculerTotaux($facture);
+
+            // Gérer les primes (supprimer les anciennes et créer les nouvelles si montants > 0)
+            if ($primeTransitaire > 0 || $primeRepresentant > 0) {
+                // Supprimer les anciennes primes non payées de cette facture
+                Prime::where('facture_id', $facture->id)
+                    ->where('statut', 'En attente')
+                    ->delete();
+                
+                // Créer les nouvelles primes
+                $this->creerPrimes($facture, $primeTransitaire, $primeRepresentant);
+            }
 
             // Mettre à jour les soldes clients si changement
             $this->mettreAJourSoldeClient($facture->client_id);
