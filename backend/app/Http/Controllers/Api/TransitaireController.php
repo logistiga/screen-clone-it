@@ -50,6 +50,9 @@ class TransitaireController extends Controller
             'devis' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
             'ordresTravail' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
             'factures' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
+            'primes' => fn($q) => $q->orderBy('created_at', 'desc'),
+            'primes.paiements',
+            'primes.ordre',
         ]);
 
         return response()->json(['data' => new TransitaireResource($transitaire)]);

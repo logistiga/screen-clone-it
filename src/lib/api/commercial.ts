@@ -152,10 +152,14 @@ export interface Transitaire {
   actif: boolean;
   created_at?: string;
   updated_at?: string;
+  // Primes
+  primes_dues?: number;
+  primes_payees?: number;
   // Relations chargées depuis show()
   ordres_travail?: OrdreTravail[];
   factures?: Facture[];
   devis?: Devis[];
+  primes?: Prime[];
   counts?: {
     devis: number;
     ordres: number;
@@ -165,12 +169,19 @@ export interface Transitaire {
 
 export interface Prime {
   id: string;
-  representant_id: string;
+  ordre_id?: string;
+  transitaire_id?: string;
+  representant_id?: string;
   facture_id?: string;
   montant: number;
+  montant_paye?: number;
+  reste_a_payer?: number;
   description?: string;
   statut: string;
+  ordre?: OrdreTravail;
   facture?: Facture;
+  transitaire?: Transitaire;
+  representant?: Representant;
   paiements?: PaiementPrime[];
   created_at?: string;
   updated_at?: string;
@@ -816,6 +827,50 @@ export const categoriesDepensesApi = {
 
   getStats: async () => {
     const response = await api.get('/categories-depenses/stats');
+    return response.data;
+  },
+};
+
+// Primes API
+export interface PayerPrimeData {
+  montant: number;
+  mode_paiement: string;
+  reference?: string;
+  notes?: string;
+}
+
+export const primesApi = {
+  getAll: async (params?: { search?: string; representant_id?: string; transitaire_id?: string; statut?: string; page?: number; per_page?: number }) => {
+    const response = await api.get<PaginatedResponse<Prime>>('/primes', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/primes/${id}`);
+    return response.data.data || response.data;
+  },
+
+  create: async (data: Partial<Prime>) => {
+    const response = await api.post('/primes', data);
+    return response.data.data || response.data;
+  },
+
+  update: async (id: string, data: Partial<Prime>) => {
+    const response = await api.put(`/primes/${id}`, data);
+    return response.data.data || response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/primes/${id}`);
+  },
+
+  payer: async (id: string, data: PayerPrimeData) => {
+    const response = await api.post(`/primes/${id}/payer`, data);
+    return response.data;
+  },
+
+  getStats: async (params?: { date_debut?: string; date_fin?: string }) => {
+    const response = await api.get('/primes/stats', { params });
     return response.data;
   },
 };
