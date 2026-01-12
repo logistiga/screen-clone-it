@@ -210,10 +210,10 @@ export default function NouvelleFacturePage() {
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
 
-      // Remise
-      remise_type: remiseData.type || null,
-      remise_valeur: remiseData.valeur || 0,
-      remise_montant: remiseData.montantCalcule || 0,
+      // Remise - ne pas envoyer "none" au backend (validation: pourcentage|montant)
+      remise_type: remiseData.type !== "none" ? remiseData.type : null,
+      remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
+      remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
 
       notes,
       lignes: lignesData,
