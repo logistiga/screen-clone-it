@@ -860,6 +860,7 @@ export default function OrdreDetailPage() {
         documentId={ordre.id}
         documentNumero={ordre.numero}
         montantRestant={resteAPayer}
+        clientId={client?.id ? Number(client.id) : undefined}
         onSuccess={() => refetch()}
       />
     </MainLayout>

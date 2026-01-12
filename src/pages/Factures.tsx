@@ -68,7 +68,7 @@ export default function FacturesPage() {
     clientEmail: string;
     clientNom: string;
   } | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number; clientId?: number } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{
     id: string;
     numero: string;
@@ -348,7 +348,7 @@ export default function FacturesPage() {
                               size="icon" 
                               title="Paiement" 
                               className="text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10"
-                              onClick={() => setPaiementModal({ id: facture.id, numero: facture.numero, montantRestant: resteAPayer })}
+                              onClick={() => setPaiementModal({ id: facture.id, numero: facture.numero, montantRestant: resteAPayer, clientId: facture.client?.id ? Number(facture.client.id) : undefined })}
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
@@ -455,6 +455,7 @@ export default function FacturesPage() {
           documentId={paiementModal.id}
           documentNumero={paiementModal.numero}
           montantRestant={paiementModal.montantRestant}
+          clientId={paiementModal.clientId}
           onSuccess={() => {
             setPaiementModal(null);
             refetch();

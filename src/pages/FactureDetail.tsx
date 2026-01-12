@@ -452,6 +452,7 @@ export default function FactureDetailPage() {
         documentId={facture.id}
         documentNumero={facture.numero}
         montantRestant={resteAPayer}
+        clientId={client?.id ? Number(client.id) : undefined}
         onSuccess={() => refetch()}
       />
 
