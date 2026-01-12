@@ -262,6 +262,8 @@ export default function ModifierFacturePage() {
         type: "DRY",
         taille: c.taille === "20'" ? "20" : "40",
         description: c.description || null,
+        // IMPORTANT: garder le prix du conteneur (sinon totaux = 0 si pas d'opérations)
+        prix_unitaire: Number(c.prixUnitaire || 0),
         armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
         operations: c.operations.map(op => ({
           type_operation: op.type,
