@@ -162,13 +162,14 @@ export function PaiementModal({
             : { ordre_id: docId, montant },
       });
     } else {
+      const docId = parseInt(documentId);
       const paiementData = {
         montant,
         mode_paiement: modePaiement,
-        banque_id: (modePaiement === "Chèque" || modePaiement === "Virement") ? banqueId : undefined,
+        banque_id: (modePaiement === "Chèque" || modePaiement === "Virement") && banqueId ? parseInt(banqueId) : undefined,
         reference: reference || undefined,
         notes: notes || undefined,
-        ...(documentType === "facture" ? { facture_id: documentId } : { ordre_id: documentId }),
+        ...(documentType === "facture" ? { facture_id: docId } : { ordre_id: docId }),
       };
 
       createPaiement.mutate(paiementData, {

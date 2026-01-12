@@ -580,12 +580,12 @@ export const banquesApi = {
 
 // Paiements API
 export interface PaiementData {
-  facture_id?: string;
-  ordre_id?: string;
+  facture_id?: string | number;
+  ordre_id?: string | number;
   montant: number;
   mode_paiement: 'Espèces' | 'Chèque' | 'Virement' | 'Mobile Money';
   reference?: string;
-  banque_id?: string;
+  banque_id?: string | number;
   notes?: string;
 }
 
