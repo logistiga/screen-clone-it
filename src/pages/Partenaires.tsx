@@ -302,6 +302,7 @@ export default function PartenairesPage() {
                           <TableHead>Nom</TableHead>
                           <TableHead>Contact</TableHead>
                           <TableHead>Adresse</TableHead>
+                          <TableHead className="text-right">Primes à payer</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="w-32">Actions</TableHead>
                         </TableRow>
@@ -309,57 +310,69 @@ export default function PartenairesPage() {
                       <TableBody>
                         {paginatedTransitaires.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                               Aucun transitaire trouvé
                             </TableCell>
                           </TableRow>
                         ) : (
-                          paginatedTransitaires.map((transitaire) => (
-                            <TableRow key={transitaire.id} className="cursor-pointer hover:bg-muted/50">
-                              <TableCell 
-                                className="font-medium text-primary hover:underline cursor-pointer"
-                                onClick={() => navigate(`/partenaires/transitaires/${transitaire.id}`)}
-                              >
-                                {transitaire.nom}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{transitaire.email || '-'}</div>
-                                <div className="text-xs text-muted-foreground">{transitaire.telephone || '-'}</div>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {transitaire.adresse || '-'}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={transitaire.actif !== false ? "default" : "secondary"}>
-                                  {transitaire.actif !== false ? "Actif" : "Inactif"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    title="Voir"
-                                    onClick={() => navigate(`/partenaires/transitaires/${transitaire.id}`)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" title="Modifier">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-destructive"
-                                    title="Supprimer"
-                                    onClick={() => setDeleteConfirm({ id: transitaire.id, nom: transitaire.nom, type: "Transitaire" })}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                          paginatedTransitaires.map((transitaire) => {
+                            const primesAPayer = (transitaire.primes_dues || 0) - (transitaire.primes_payees || 0);
+                            return (
+                              <TableRow key={transitaire.id} className="cursor-pointer hover:bg-muted/50">
+                                <TableCell 
+                                  className="font-medium text-primary hover:underline cursor-pointer"
+                                  onClick={() => navigate(`/partenaires/transitaires/${transitaire.id}`)}
+                                >
+                                  {transitaire.nom}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">{transitaire.email || '-'}</div>
+                                  <div className="text-xs text-muted-foreground">{transitaire.telephone || '-'}</div>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {transitaire.adresse || '-'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {primesAPayer > 0 ? (
+                                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                      {formatMontant(primesAPayer)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={transitaire.actif !== false ? "default" : "secondary"}>
+                                    {transitaire.actif !== false ? "Actif" : "Inactif"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      title="Voir"
+                                      onClick={() => navigate(`/partenaires/transitaires/${transitaire.id}`)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" title="Modifier">
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="text-destructive"
+                                      title="Supprimer"
+                                      onClick={() => setDeleteConfirm({ id: transitaire.id, nom: transitaire.nom, type: "Transitaire" })}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
                         )}
                       </TableBody>
                     </Table>
@@ -451,6 +464,7 @@ export default function PartenairesPage() {
                           <TableHead>Nom</TableHead>
                           <TableHead>Contact</TableHead>
                           <TableHead>Adresse</TableHead>
+                          <TableHead className="text-right">Primes à payer</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="w-32">Actions</TableHead>
                         </TableRow>
@@ -458,57 +472,69 @@ export default function PartenairesPage() {
                       <TableBody>
                         {paginatedRepresentants.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                               Aucun représentant trouvé
                             </TableCell>
                           </TableRow>
                         ) : (
-                          paginatedRepresentants.map((representant) => (
-                            <TableRow key={representant.id} className="cursor-pointer hover:bg-muted/50">
-                              <TableCell 
-                                className="font-medium text-primary hover:underline cursor-pointer"
-                                onClick={() => navigate(`/partenaires/representants/${representant.id}`)}
-                              >
-                                {representant.nom}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{representant.email || '-'}</div>
-                                <div className="text-xs text-muted-foreground">{representant.telephone || '-'}</div>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {representant.adresse || '-'}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={representant.actif !== false ? "default" : "secondary"}>
-                                  {representant.actif !== false ? "Actif" : "Inactif"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    title="Voir"
-                                    onClick={() => navigate(`/partenaires/representants/${representant.id}`)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" title="Modifier">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-destructive"
-                                    title="Supprimer"
-                                    onClick={() => setDeleteConfirm({ id: representant.id, nom: representant.nom, type: "Représentant" })}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                          paginatedRepresentants.map((representant) => {
+                            const primesAPayer = (representant.primes_dues || 0) - (representant.primes_payees || 0);
+                            return (
+                              <TableRow key={representant.id} className="cursor-pointer hover:bg-muted/50">
+                                <TableCell 
+                                  className="font-medium text-primary hover:underline cursor-pointer"
+                                  onClick={() => navigate(`/partenaires/representants/${representant.id}`)}
+                                >
+                                  {representant.nom}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">{representant.email || '-'}</div>
+                                  <div className="text-xs text-muted-foreground">{representant.telephone || '-'}</div>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {representant.adresse || '-'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {primesAPayer > 0 ? (
+                                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                      {formatMontant(primesAPayer)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={representant.actif !== false ? "default" : "secondary"}>
+                                    {representant.actif !== false ? "Actif" : "Inactif"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      title="Voir"
+                                      onClick={() => navigate(`/partenaires/representants/${representant.id}`)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" title="Modifier">
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="text-destructive"
+                                      title="Supprimer"
+                                      onClick={() => setDeleteConfirm({ id: representant.id, nom: representant.nom, type: "Représentant" })}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
                         )}
                       </TableBody>
                     </Table>
