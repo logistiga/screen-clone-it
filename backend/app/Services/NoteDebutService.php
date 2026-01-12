@@ -50,9 +50,11 @@ class NoteDebutService
             'Detention' => 'detention',
             'Ouverture Port' => 'ouverture_port',
             'Reparation' => 'reparation',
+            'Relache' => 'relache',
             'detention' => 'detention',
             'ouverture_port' => 'ouverture_port',
             'reparation' => 'reparation',
+            'relache' => 'relache',
         ];
 
         return $mapping[$type] ?? 'surestarie';
@@ -128,12 +130,16 @@ class NoteDebutService
             'detention' => $config->prefixe_note_detention ?? 'ND',
             'reparation' => $config->prefixe_note_reparation ?? 'NR',
             'ouverture_port' => $config->prefixe_note_ouverture ?? 'NOP',
+            'relache' => $config->prefixe_note_relache ?? 'NRL',
         ];
 
         $prefixe = $prefixes[$type] ?? 'NOTE';
         $annee = date('Y');
         
-        $derniereNote = NoteDebut::where('type', $type)
+        // Normaliser le type pour la recherche en base
+        $typeNormalise = strtolower(str_replace(' ', '_', $type));
+        
+        $derniereNote = NoteDebut::whereRaw('LOWER(REPLACE(type, " ", "_")) = ?', [$typeNormalise])
             ->whereYear('created_at', $annee)
             ->orderBy('id', 'desc')
             ->first();
