@@ -4,6 +4,7 @@ namespace App\Services\OrdreTravail;
 
 use App\Models\OrdreTravail;
 use App\Models\Configuration;
+use App\Models\Prime;
 use App\Services\Facture\FactureServiceFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -93,6 +94,11 @@ class OrdreServiceFactory
             $data['statut'] = $data['statut'] ?? 'en_cours';
             $data['montant_paye'] = 0;
 
+            // Extraire les primes avant l'insert
+            $primeTransitaire = $data['prime_transitaire'] ?? 0;
+            $primeRepresentant = $data['prime_representant'] ?? 0;
+            unset($data['prime_transitaire'], $data['prime_representant']);
+
             // Extraire les relations avant l'insert
             $lignes = $data['lignes'] ?? [];
             $conteneurs = $data['conteneurs'] ?? [];
@@ -116,14 +122,57 @@ class OrdreServiceFactory
             // Calculer les totaux avec le bon service
             $service->calculerTotaux($ordre);
 
+            // Créer les primes si présentes
+            $this->creerPrimes($ordre, $primeTransitaire, $primeRepresentant);
+
             Log::info('Ordre créé via Factory', [
                 'ordre_id' => $ordre->id,
                 'numero' => $ordre->numero,
                 'categorie' => $categorie,
             ]);
 
-            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur']);
+            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'primes']);
         });
+    }
+
+    /**
+     * Créer les primes pour transitaire et représentant
+     */
+    protected function creerPrimes(OrdreTravail $ordre, float $primeTransitaire, float $primeRepresentant): void
+    {
+        // Prime pour le transitaire
+        if ($primeTransitaire > 0 && !empty($ordre->transitaire_id)) {
+            Prime::create([
+                'ordre_id' => $ordre->id,
+                'transitaire_id' => $ordre->transitaire_id,
+                'montant' => $primeTransitaire,
+                'statut' => 'En attente',
+                'description' => "Prime transitaire pour ordre {$ordre->numero}",
+            ]);
+            
+            Log::info('Prime transitaire créée', [
+                'ordre_id' => $ordre->id,
+                'transitaire_id' => $ordre->transitaire_id,
+                'montant' => $primeTransitaire,
+            ]);
+        }
+
+        // Prime pour le représentant
+        if ($primeRepresentant > 0 && !empty($ordre->representant_id)) {
+            Prime::create([
+                'ordre_id' => $ordre->id,
+                'representant_id' => $ordre->representant_id,
+                'montant' => $primeRepresentant,
+                'statut' => 'En attente',
+                'description' => "Prime représentant pour ordre {$ordre->numero}",
+            ]);
+            
+            Log::info('Prime représentant créée', [
+                'ordre_id' => $ordre->id,
+                'representant_id' => $ordre->representant_id,
+                'montant' => $primeRepresentant,
+            ]);
+        }
     }
 
     /**

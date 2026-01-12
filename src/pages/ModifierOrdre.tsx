@@ -305,9 +305,13 @@ export default function ModifierOrdrePage() {
 
     if (categorie === "conteneurs" && conteneursData) {
       data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
+      data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
       data.bl_numero = conteneursData.numeroBL || null;
       // Ajouter type_operation (Import/Export)
       data.type_operation = conteneursData.typeOperation || null;
+      // Primes pour transitaire et représentant
+      data.prime_transitaire = conteneursData.primeTransitaire || 0;
+      data.prime_representant = conteneursData.primeRepresentant || 0;
       data.conteneurs = conteneursData.conteneurs.map(c => ({
         numero: c.numero,
         type: "DRY",
