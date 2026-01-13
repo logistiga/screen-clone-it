@@ -15,3 +15,6 @@ export { DevisTimeline } from './DevisTimeline';
 // Stepper et Preview
 export { default as DevisStepper } from './DevisStepper';
 export { default as DevisPreview } from './DevisPreview';
+
+// Auto-save
+export { default as AutoSaveIndicator } from './AutoSaveIndicator';
