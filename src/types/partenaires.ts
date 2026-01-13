@@ -1,6 +1,10 @@
 // Types pour les partenaires (Transitaires, Représentants, Armateurs)
+// NOTE: Ces types sont réexportés pour le composant PartenaireDetailContent
+// Les types API sont dans src/lib/api/commercial.ts
 
-export interface PrimePartenaire {
+export type PartenaireType = 'transitaire' | 'representant' | 'armateur';
+
+export interface Prime {
   id: string | number;
   ordre_id?: string | number;
   facture_id?: string | number;
@@ -12,10 +16,13 @@ export interface PrimePartenaire {
   description?: string;
   statut: string;
   created_at?: string;
-  ordre?: { id: string | number; numero: string };
-  facture?: { id: string | number; numero: string };
+  ordre?: { id?: string | number; numero: string };
+  facture?: { id?: string | number; numero: string };
   paiements?: PaiementPrime[];
 }
+
+// Alias pour compatibilité
+export type PrimePartenaire = Prime;
 
 export interface PaiementPrime {
   id: string | number;
@@ -28,47 +35,81 @@ export interface PaiementPrime {
   reference?: string;
   notes?: string;
   created_at?: string;
-  primes?: PrimePartenaire[];
+  primes?: Prime[];
 }
 
-export interface Transitaire {
-  id: string;
+export interface OrdreTravail {
+  id: string | number;
+  numero: string;
+  date?: string;
+  date_creation?: string;
+  created_at?: string;
+  montant_ttc?: number;
+  statut: string;
+  client?: { id?: string | number; nom: string };
+}
+
+export interface Facture {
+  id: string | number;
+  numero: string;
+  date?: string;
+  date_facture?: string;
+  created_at?: string;
+  montant_ttc?: number;
+  statut: string;
+  client?: { id?: string | number; nom: string };
+}
+
+export interface Devis {
+  id: string | number;
+  numero: string;
+  date?: string;
+  created_at?: string;
+  montant_ttc?: number;
+  statut: string;
+  client?: { id?: string | number; nom: string };
+}
+
+export interface PartenaireBase {
+  id: string | number;
   nom: string;
+  prenom?: string;
   email?: string;
   telephone?: string;
   adresse?: string;
-  contact_principal?: string;
+  actif?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Transitaire extends PartenaireBase {
   nif?: string;
   rccm?: string;
-  created_at?: string;
-  actif: boolean;
+  contact_principal?: string;
   primes_dues?: number;
   primes_payees?: number;
+  primes?: Prime[];
+  paiements_primes?: PaiementPrime[];
+  ordres_travail?: OrdreTravail[];
+  factures?: Facture[];
+  devis?: Devis[];
   counts?: {
     devis?: number;
     ordres?: number;
     factures?: number;
   };
-  devis?: any[];
-  ordres_travail?: any[];
-  factures?: any[];
-  primes?: PrimePartenaire[];
-  paiements_primes?: PaiementPrime[];
 }
 
-export interface Representant {
-  id: string;
-  nom: string;
-  prenom?: string;
-  nom_complet?: string;
-  email?: string;
-  telephone?: string;
-  adresse?: string;
+export interface Representant extends PartenaireBase {
   taux_commission?: number;
-  created_at?: string;
-  actif: boolean;
+  nom_complet?: string;
   primes_dues?: number;
   primes_payees?: number;
+  primes?: Prime[];
+  paiements_primes?: PaiementPrime[];
+  ordres_travail?: OrdreTravail[];
+  factures?: Facture[];
+  devis?: Devis[];
   counts?: {
     primes?: number;
     ordres?: number;
@@ -78,19 +119,21 @@ export interface Representant {
   totaux?: {
     total_primes?: number;
   };
-  primes?: PrimePartenaire[];
-  paiements_primes?: PaiementPrime[];
-  ordres_travail?: any[];
-  factures?: any[];
-  devis?: any[];
 }
 
-export interface Armateur {
-  id: string;
-  nom: string;
-  email?: string;
-  telephone?: string;
-  adresse?: string;
-  created_at?: string;
-  actif: boolean;
+export interface Armateur extends PartenaireBase {
+  code?: string;
+  chiffre_affaires?: number;
+  montant_ordres?: number;
+  ordres_travail?: OrdreTravail[];
+  factures?: Facture[];
+  devis?: Devis[];
+  counts?: {
+    devis?: number;
+    ordres?: number;
+    factures?: number;
+  };
 }
+
+// Type union pour tous les partenaires
+export type Partenaire = Transitaire | Representant | Armateur;

@@ -379,6 +379,14 @@ export function useCreateArmateur() {
   });
 }
 
+export function useArmateurById(id: string | undefined) {
+  return useQuery({
+    queryKey: ['armateurs', id],
+    queryFn: () => armateursApi.getById(id!),
+    enabled: !!id,
+  });
+}
+
 export function useDeleteArmateur() {
   const queryClient = useQueryClient();
   return useMutation({

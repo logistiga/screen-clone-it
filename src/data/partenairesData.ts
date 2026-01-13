@@ -1,31 +1,31 @@
-import { Transitaire, Representant, Armateur, PrimePartenaire, PaiementPrime } from "@/types/partenaires";
+import { Transitaire, Representant, Armateur, Prime, PaiementPrime } from "@/types/partenaires";
 
 // Données en mémoire (persistance locale uniquement, perdues au refresh)
 export const transitairesData: Transitaire[] = [];
 export const representantsData: Representant[] = [];
 export const armateursData: Armateur[] = [];
-export const primesPartenaires: PrimePartenaire[] = [];
+export const primesPartenaires: Prime[] = [];
 export const paiementsPrimes: PaiementPrime[] = [];
 
 // Fonctions utilitaires
-export const getTransitaire = (id: string) => transitairesData.find(t => t.id === id);
-export const getRepresentant = (id: string) => representantsData.find(r => r.id === id);
-export const getArmateur = (id: string) => armateursData.find(a => a.id === id);
+export const getTransitaire = (id: string | number) => transitairesData.find(t => String(t.id) === String(id));
+export const getRepresentant = (id: string | number) => representantsData.find(r => String(r.id) === String(id));
+export const getArmateur = (id: string | number) => armateursData.find(a => String(a.id) === String(id));
 
-export const getPrimesTransitaire = (transitaireId: string) => 
-  primesPartenaires.filter(p => p.transitaire_id === transitaireId);
+export const getPrimesTransitaire = (transitaireId: string | number) => 
+  primesPartenaires.filter(p => String(p.transitaire_id) === String(transitaireId));
 
-export const getPrimesRepresentant = (representantId: string) => 
-  primesPartenaires.filter(p => p.representant_id === representantId);
+export const getPrimesRepresentant = (representantId: string | number) => 
+  primesPartenaires.filter(p => String(p.representant_id) === String(representantId));
 
-export const getPaiementsTransitaire = (transitaireId: string) => 
-  paiementsPrimes.filter(p => p.transitaire_id === transitaireId);
+export const getPaiementsTransitaire = (transitaireId: string | number) => 
+  paiementsPrimes.filter(p => String(p.transitaire_id) === String(transitaireId));
 
-export const getPaiementsRepresentant = (representantId: string) => 
-  paiementsPrimes.filter(p => p.representant_id === representantId);
+export const getPaiementsRepresentant = (representantId: string | number) => 
+  paiementsPrimes.filter(p => String(p.representant_id) === String(representantId));
 
-export const getTotalPrimesDues = (primes: PrimePartenaire[]) => 
+export const getTotalPrimesDues = (primes: Prime[]) => 
   primes.filter(p => p.statut !== 'Payée').reduce((sum, p) => sum + p.montant, 0);
 
-export const getTotalPrimesPayees = (primes: PrimePartenaire[]) => 
+export const getTotalPrimesPayees = (primes: Prime[]) => 
   primes.filter(p => p.statut === 'Payée').reduce((sum, p) => sum + p.montant, 0);
