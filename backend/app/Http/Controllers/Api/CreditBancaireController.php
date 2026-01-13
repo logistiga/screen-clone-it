@@ -54,33 +54,42 @@ class CreditBancaireController extends Controller
         try {
             DB::beginTransaction();
 
-            $montantInteret = $request->montant_principal * ($request->taux_interet / 100) * ($request->duree_mois / 12);
-            $montantTotal = $request->montant_principal + $montantInteret;
+            $montantEmprunte = $request->montant_emprunte;
+            $dureeEnMois = $request->duree_en_mois;
+            $tauxInteret = $request->taux_interet;
+            
+            // Calcul des intérêts simples
+            $totalInterets = $montantEmprunte * ($tauxInteret / 100) * ($dureeEnMois / 12);
+            $mensualite = ($montantEmprunte + $totalInterets) / $dureeEnMois;
             $numero = $this->generateNumero();
 
             $credit = CreditBancaire::create([
                 'numero' => $numero,
                 'banque_id' => $request->banque_id,
                 'objet' => $request->objet,
-                'montant_principal' => $request->montant_principal,
-                'taux_interet' => $request->taux_interet,
-                'montant_interet' => $montantInteret,
-                'montant_total' => $montantTotal,
-                'duree_mois' => $request->duree_mois,
+                'montant_emprunte' => $montantEmprunte,
+                'taux_interet' => $tauxInteret,
+                'total_interets' => $totalInterets,
+                'mensualite' => $mensualite,
+                'duree_en_mois' => $dureeEnMois,
                 'date_debut' => $request->date_debut,
-                'date_fin' => date('Y-m-d', strtotime($request->date_debut . " + {$request->duree_mois} months")),
+                'date_fin' => date('Y-m-d', strtotime($request->date_debut . " + {$dureeEnMois} months")),
                 'notes' => $request->notes,
-                'statut' => 'Actif',
+                'statut' => 'actif',
+                'montant_rembourse' => 0,
             ]);
 
-            $mensualite = $montantTotal / $request->duree_mois;
-            for ($i = 1; $i <= $request->duree_mois; $i++) {
+            // Créer les échéances
+            for ($i = 1; $i <= $dureeEnMois; $i++) {
                 EcheanceCredit::create([
-                    'credit_bancaire_id' => $credit->id,
-                    'numero_echeance' => $i,
+                    'credit_id' => $credit->id,
+                    'numero' => $i,
                     'date_echeance' => date('Y-m-d', strtotime($request->date_debut . " + {$i} months")),
-                    'montant' => $mensualite,
-                    'statut' => 'En attente',
+                    'montant_capital' => $montantEmprunte / $dureeEnMois,
+                    'montant_interet' => $totalInterets / $dureeEnMois,
+                    'montant_total' => $mensualite,
+                    'montant_paye' => 0,
+                    'statut' => 'a_payer',
                 ]);
             }
 
