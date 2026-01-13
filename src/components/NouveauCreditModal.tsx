@@ -62,7 +62,7 @@ function calculerTauxDepuisMensualite(principal: number, mensualite: number, dur
   
   // Si Newton-Raphson échoue, utiliser la méthode de bissection
   let low = 0.0001;
-  let high = 0.5; // 50% mensuel max
+  let high = 2.0; // 200% mensuel max (pour taux très élevés)
   
   for (let i = 0; i < maxIterations; i++) {
     const mid = (low + high) / 2;
