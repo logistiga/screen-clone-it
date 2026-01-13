@@ -21,16 +21,16 @@ class ReportingService
      */
     public function getChiffreAffaires(int $annee, ?int $mois = null): array
     {
-        $query = Facture::whereYear('date_creation', $annee)
+        $query = Facture::whereYear('created_at', $annee)
             ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee']);
 
         if ($mois) {
-            $query->whereMonth('date_creation', $mois);
+            $query->whereMonth('created_at', $mois);
         }
 
         $parMois = (clone $query)
             ->selectRaw('
-                MONTH(date_creation) as mois,
+                MONTH(created_at) as mois,
                 SUM(montant_ht) as total_ht,
                 SUM(tva) as total_tva,
                 SUM(css) as total_css,
@@ -67,11 +67,11 @@ class ReportingService
     public function getRentabilite(int $annee): array
     {
         // Chiffre d'affaires HT
-        $caHT = Facture::whereYear('date_creation', $annee)
+        $caHT = Facture::whereYear('created_at', $annee)
             ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee'])
             ->sum('montant_ht');
 
-        $caTTC = Facture::whereYear('date_creation', $annee)
+        $caTTC = Facture::whereYear('created_at', $annee)
             ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee'])
             ->sum('montant_ttc');
 
@@ -232,16 +232,16 @@ class ReportingService
         $getData = function ($annee) {
             return [
                 'annee' => $annee,
-                'ca_ht' => Facture::whereYear('date_creation', $annee)
+                'ca_ht' => Facture::whereYear('created_at', $annee)
                     ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee'])
                     ->sum('montant_ht'),
-                'ca_ttc' => Facture::whereYear('date_creation', $annee)
+                'ca_ttc' => Facture::whereYear('created_at', $annee)
                     ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee'])
                     ->sum('montant_ttc'),
                 'paiements' => Paiement::whereYear('date', $annee)->sum('montant'),
-                'nombre_factures' => Facture::whereYear('date_creation', $annee)->count(),
-                'nombre_ordres' => OrdreTravail::whereYear('date_creation', $annee)->count(),
-                'nombre_devis' => Devis::whereYear('date_creation', $annee)->count(),
+                'nombre_factures' => Facture::whereYear('created_at', $annee)->count(),
+                'nombre_ordres' => OrdreTravail::whereYear('created_at', $annee)->count(),
+                'nombre_devis' => Devis::whereYear('created_at', $annee)->count(),
                 'nouveaux_clients' => Client::whereYear('created_at', $annee)->count(),
                 'annulations' => Annulation::whereYear('date', $annee)->count(),
             ];
@@ -275,12 +275,12 @@ class ReportingService
     public function getActiviteClients(string $dateDebut, string $dateFin, int $limit = 20): array
     {
         $clients = Client::withCount([
-            'factures' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
-            'ordres' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
-            'devis' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
+            'factures' => fn($q) => $q->whereBetween('created_at', [$dateDebut, $dateFin]),
+            'ordres' => fn($q) => $q->whereBetween('created_at', [$dateDebut, $dateFin]),
+            'devis' => fn($q) => $q->whereBetween('created_at', [$dateDebut, $dateFin]),
         ])
         ->withSum([
-            'factures' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
+            'factures' => fn($q) => $q->whereBetween('created_at', [$dateDebut, $dateFin]),
         ], 'montant_ttc')
         ->withSum([
             'paiements' => fn($q) => $q->whereBetween('date', [$dateDebut, $dateFin]),
@@ -312,28 +312,28 @@ class ReportingService
      */
     public function getStatistiquesDocuments(int $annee): array
     {
-        $devis = Devis::whereYear('date_creation', $annee)
+        $devis = Devis::whereYear('created_at', $annee)
             ->selectRaw('statut, COUNT(*) as nombre, SUM(montant_ttc) as montant')
             ->groupBy('statut')
             ->get();
 
-        $ordres = OrdreTravail::whereYear('date_creation', $annee)
+        $ordres = OrdreTravail::whereYear('created_at', $annee)
             ->selectRaw('statut, COUNT(*) as nombre, SUM(montant_ttc) as montant')
             ->groupBy('statut')
             ->get();
 
-        $factures = Facture::whereYear('date_creation', $annee)
+        $factures = Facture::whereYear('created_at', $annee)
             ->selectRaw('statut, COUNT(*) as nombre, SUM(montant_ttc) as montant')
             ->groupBy('statut')
             ->get();
 
         // Taux de conversion
-        $devisTotal = Devis::whereYear('date_creation', $annee)->count();
-        $devisConvertis = Devis::whereYear('date_creation', $annee)->where('statut', 'converti')->count();
+        $devisTotal = Devis::whereYear('created_at', $annee)->count();
+        $devisConvertis = Devis::whereYear('created_at', $annee)->where('statut', 'converti')->count();
         $tauxConversionDevis = $devisTotal > 0 ? round(($devisConvertis / $devisTotal) * 100, 2) : 0;
 
-        $ordresTotal = OrdreTravail::whereYear('date_creation', $annee)->count();
-        $ordresFactures = OrdreTravail::whereYear('date_creation', $annee)->where('statut', 'facture')->count();
+        $ordresTotal = OrdreTravail::whereYear('created_at', $annee)->count();
+        $ordresFactures = OrdreTravail::whereYear('created_at', $annee)->where('statut', 'facture')->count();
         $tauxConversionOrdres = $ordresTotal > 0 ? round(($ordresFactures / $ordresTotal) * 100, 2) : 0;
 
         return [
@@ -350,7 +350,7 @@ class ReportingService
             ],
             'factures' => [
                 'par_statut' => $factures,
-                'total' => Facture::whereYear('date_creation', $annee)->count(),
+                'total' => Facture::whereYear('created_at', $annee)->count(),
             ],
         ];
     }
@@ -423,9 +423,9 @@ class ReportingService
     protected function getRentabiliteParMois(int $annee): Collection
     {
         return DB::table('factures')
-            ->selectRaw('MONTH(date_creation) as mois')
+            ->selectRaw('MONTH(created_at) as mois')
             ->selectRaw('SUM(montant_ht) as ca')
-            ->whereYear('date_creation', $annee)
+            ->whereYear('created_at', $annee)
             ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee'])
             ->whereNull('deleted_at')
             ->groupBy('mois')
