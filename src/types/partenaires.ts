@@ -71,12 +71,18 @@ export interface Representant {
   primes_payees?: number;
   counts?: {
     primes?: number;
+    ordres?: number;
+    factures?: number;
+    devis?: number;
   };
   totaux?: {
     total_primes?: number;
   };
   primes?: PrimePartenaire[];
   paiements_primes?: PaiementPrime[];
+  ordres_travail?: any[];
+  factures?: any[];
+  devis?: any[];
 }
 
 export interface Armateur {
