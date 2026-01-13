@@ -272,6 +272,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('armateurs')->middleware('audit')->group(function () {
         Route::get('/', [ArmateurController::class, 'index'])
             ->middleware('permission:partenaires.voir');
+        Route::get('stats', [ArmateurController::class, 'globalStats'])
+            ->middleware('permission:partenaires.voir');
         Route::post('/', [ArmateurController::class, 'store'])
             ->middleware('permission:partenaires.creer');
         Route::get('{armateur}', [ArmateurController::class, 'show'])
@@ -280,6 +282,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:partenaires.modifier');
         Route::delete('{armateur}', [ArmateurController::class, 'destroy'])
             ->middleware('permission:partenaires.supprimer');
+        Route::get('{armateur}/stats', [ArmateurController::class, 'stats'])
+            ->middleware('permission:partenaires.voir');
     });
 
     // ============================================
