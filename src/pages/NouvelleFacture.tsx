@@ -34,12 +34,18 @@ import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateF
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+import {
+  validateFactureConteneurs,
+  validateFactureConventionnel,
+  validateFactureIndependant,
+} from "@/lib/validations/facture-schemas";
 
 interface DraftData {
   categorie: CategorieDocument | "";
   clientId: string;
   dateEcheance: string;
   notes: string;
+  currentStep: number;
   conteneursData: FactureConteneursData | null;
   conventionnelData: FactureConventionnelData | null;
   independantData: FactureIndependantData | null;
@@ -69,6 +75,7 @@ export default function NouvelleFacturePage() {
   // Stepper state
   const [currentStep, setCurrentStep] = useState(1);
   const [showRestorePrompt, setShowRestorePrompt] = useState(true);
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
 
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
   const [clientId, setClientId] = useState("");
@@ -103,13 +110,14 @@ export default function NouvelleFacturePage() {
         clientId,
         dateEcheance,
         notes,
+        currentStep,
         conteneursData,
         conventionnelData,
         independantData,
         remiseData,
       });
     }
-  }, [categorie, clientId, dateEcheance, notes, conteneursData, conventionnelData, independantData, remiseData, save]);
+  }, [categorie, clientId, dateEcheance, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, save]);
 
   const handleRestoreDraft = () => {
     const draft = restore();
@@ -121,15 +129,10 @@ export default function NouvelleFacturePage() {
       setConteneursData(draft.conteneursData);
       setConventionnelData(draft.conventionnelData);
       setIndependantData(draft.independantData);
-      setRemiseData(draft.remiseData);
-      
-      if (draft.clientId) {
-        setCurrentStep(3);
-      } else if (draft.categorie) {
-        setCurrentStep(2);
-      }
-      
-      toast.success("Brouillon restauré");
+      setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
+      setCurrentStep(draft.currentStep || 1);
+      setIsRestoredFromDraft(true);
+      toast.success("Brouillon restauré avec succès");
     }
     setShowRestorePrompt(false);
   };
@@ -198,43 +201,33 @@ export default function NouvelleFacturePage() {
     e.preventDefault();
     if (!clientId) { toast.error("Veuillez sélectionner un client"); return; }
     if (!categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
-    
-    if (categorie === "conteneurs" && (!conteneursData?.numeroBL)) {
-      toast.error("Veuillez saisir le numéro de BL"); return;
-    }
-    if (categorie === "conventionnel" && (!conventionnelData?.numeroBL)) {
-      toast.error("Veuillez saisir le numéro de BL"); return;
-    }
-    if (categorie === "operations_independantes" && (!independantData?.typeOperationIndep)) {
-      toast.error("Veuillez sélectionner un type d'opération"); return;
-    }
 
-    // Validation côté client
+    // Validation Zod selon la catégorie
     if (categorie === "conteneurs" && conteneursData) {
-      if (!conteneursData.armateurId) {
-        toast.error("Veuillez sélectionner un armateur");
+      const validation = validateFactureConteneurs(conteneursData);
+      if (!validation.success) {
+        toast.error("Erreurs de validation", {
+          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
+        });
+        console.log("Validation errors:", validation.errors);
         return;
       }
-
-      const idxNumero = conteneursData.conteneurs.findIndex((c) => !c.numero?.trim());
-      if (idxNumero !== -1) {
-        toast.error(`Veuillez saisir le N° du conteneur (ligne ${idxNumero + 1})`);
+    } else if (categorie === "conventionnel" && conventionnelData) {
+      const validation = validateFactureConventionnel(conventionnelData);
+      if (!validation.success) {
+        toast.error("Erreurs de validation", {
+          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
+        });
+        console.log("Validation errors:", validation.errors);
         return;
       }
-
-      const idxTaille = conteneursData.conteneurs.findIndex((c) => !c.taille);
-      if (idxTaille !== -1) {
-        toast.error(`Veuillez sélectionner la taille du conteneur (ligne ${idxTaille + 1})`);
-        return;
-      }
-    }
-
-    if (categorie === "conventionnel" && conventionnelData) {
-      const idxDesignation = conventionnelData.lots.findIndex(
-        (l) => !(l.description?.trim() || l.numeroLot?.trim())
-      );
-      if (idxDesignation !== -1) {
-        toast.error(`Veuillez renseigner la désignation du lot (ligne ${idxDesignation + 1})`);
+    } else if (categorie === "operations_independantes" && independantData) {
+      const validation = validateFactureIndependant(independantData);
+      if (!validation.success) {
+        toast.error("Erreurs de validation", {
+          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
+        });
+        console.log("Validation errors:", validation.errors);
         return;
       }
     }
@@ -367,7 +360,7 @@ export default function NouvelleFacturePage() {
       </div>
 
       {/* Restore prompt */}
-      {showRestorePrompt && hasDraft && (
+      {showRestorePrompt && hasDraft && !isRestoredFromDraft && (
         <AutoSaveIndicator
           hasDraft={hasDraft}
           lastSaved={lastSaved}
@@ -479,15 +472,22 @@ export default function NouvelleFacturePage() {
                     transitaires={transitaires}
                     representants={representants}
                     onDataChange={setConteneursData}
+                    initialData={isRestoredFromDraft && conteneursData ? conteneursData : undefined}
                   />
                 )}
 
                 {categorie === "conventionnel" && (
-                  <FactureConventionnelForm onDataChange={setConventionnelData} />
+                  <FactureConventionnelForm 
+                    onDataChange={setConventionnelData} 
+                    initialData={isRestoredFromDraft && conventionnelData ? conventionnelData : undefined}
+                  />
                 )}
 
                 {categorie === "operations_independantes" && (
-                  <FactureIndependantForm onDataChange={setIndependantData} />
+                  <FactureIndependantForm 
+                    onDataChange={setIndependantData} 
+                    initialData={isRestoredFromDraft && independantData ? independantData : undefined}
+                  />
                 )}
 
                 {/* Notes */}

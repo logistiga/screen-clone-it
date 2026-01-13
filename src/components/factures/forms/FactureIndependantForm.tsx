@@ -8,6 +8,7 @@ import {
   calculateDaysBetween,
 } from "@/types/documents";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
+import { FormError } from "@/components/ui/form-error";
 
 interface FactureIndependantFormProps {
   onDataChange: (data: FactureIndependantData) => void;
@@ -28,6 +29,10 @@ export default function FactureIndependantForm({
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
   
+  // Validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   // Synchroniser l'état interne avec initialData (sans écraser les edits si rien n'a changé)
   useEffect(() => {
     if (!initialData) return;
@@ -47,8 +52,6 @@ export default function FactureIndependantForm({
     });
 
     if (initKey === lastInitKey.current) return;
-
-    console.log("FactureIndependantForm - Sync initialData:", initialData);
 
     if (initialData.typeOperationIndep) {
       setTypeOperationIndep(initialData.typeOperationIndep);
@@ -119,13 +122,31 @@ export default function FactureIndependantForm({
     updateParent(newPrestations);
   };
 
+  const handleBlur = (fieldName: string, value: unknown) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    // Simple validation for description
+    if (fieldName.includes("description") && (!value || String(value).trim() === "")) {
+      setErrors((prev) => ({ ...prev, [fieldName]: "La description est obligatoire" }));
+    } else {
+      setErrors((prev) => {
+        const { [fieldName]: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
+  const handleTypeSelect = (key: TypeOperationIndep) => {
+    setTypeOperationIndep(key);
+    setTouched((prev) => ({ ...prev, typeOperationIndep: true }));
+  };
+
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Type d'opération indépendante</CardTitle>
+          <CardTitle className="text-lg">Type d'opération indépendante *</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
               const op = operationsIndepLabels[key];
@@ -134,7 +155,7 @@ export default function FactureIndependantForm({
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setTypeOperationIndep(key)}
+                  onClick={() => handleTypeSelect(key)}
                   className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 text-center ${
                     isSelected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   }`}
@@ -145,6 +166,7 @@ export default function FactureIndependantForm({
               );
             })}
           </div>
+          <FormError message={touched.typeOperationIndep && !typeOperationIndep ? "Veuillez sélectionner un type d'opération" : undefined} />
         </CardContent>
       </Card>
 
@@ -155,6 +177,9 @@ export default function FactureIndependantForm({
           onAddPrestation={handleAddPrestation}
           onRemovePrestation={handleRemovePrestation}
           onPrestationChange={handlePrestationChange}
+          errors={errors}
+          touched={touched}
+          onBlur={(fieldName: string) => handleBlur(fieldName, "")}
         />
       )}
     </>
