@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -17,16 +18,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { banques, CreditBancaire, EcheanceCredit } from "@/data/mockData";
+import { useBanques } from "@/hooks/use-commercial";
+import { useRembourserCredit } from "@/hooks/use-credits";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Loader2, Wallet, Calendar, CreditCard } from "lucide-react";
 
 interface RemboursementCreditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  credit: CreditBancaire;
-  echeance?: EcheanceCredit;
+  credit: {
+    id: number | string;
+    numero: string;
+    objet?: string;
+    banque?: { id?: number | string; nom: string };
+  };
+  echeance?: {
+    id?: number | string;
+    numero?: number;
+    date_echeance?: string;
+    montant?: number;
+    montant_total?: number;
+    montant_capital?: number;
+    montant_interet?: number;
+  } | null;
 }
 
 export function RemboursementCreditModal({ 
@@ -35,53 +51,94 @@ export function RemboursementCreditModal({
   credit,
   echeance 
 }: RemboursementCreditModalProps) {
+  const { data: banques = [], isLoading: isLoadingBanques } = useBanques({ actif: true });
+  const rembourserCredit = useRembourserCredit();
+  
+  const montantEcheance = echeance?.montant_total || echeance?.montant || 0;
+  
   const [formData, setFormData] = useState({
-    montant: echeance ? echeance.montantTotal.toString() : "",
-    date: format(new Date(), 'yyyy-MM-dd'),
-    banqueId: credit.banqueId,
+    montant: montantEcheance > 0 ? montantEcheance.toString() : "",
+    mode_paiement: "virement",
     reference: "",
     notes: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.montant || !formData.date || !formData.banqueId) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
+    if (!formData.montant) {
+      toast.error("Veuillez saisir le montant du remboursement");
       return;
     }
 
     const montant = parseFloat(formData.montant);
-    const banque = banques.find(b => b.id === formData.banqueId);
+    if (montant <= 0) {
+      toast.error("Le montant doit être supérieur à 0");
+      return;
+    }
 
-    toast.success(
-      `Remboursement de ${montant.toLocaleString('fr-FR')} FCFA enregistré pour le crédit ${credit.numero} via ${banque?.nom}`
-    );
-    
-    setFormData({
-      montant: "",
-      date: format(new Date(), 'yyyy-MM-dd'),
-      banqueId: credit.banqueId,
-      reference: "",
-      notes: ""
-    });
-    onOpenChange(false);
+    try {
+      const creditId = typeof credit.id === 'string' ? parseInt(credit.id) : credit.id;
+      const echeanceId = echeance?.id ? (typeof echeance.id === 'string' ? parseInt(echeance.id) : echeance.id) : undefined;
+      
+      await rembourserCredit.mutateAsync({
+        id: creditId,
+        data: {
+          echeance_id: echeanceId,
+          montant,
+          mode_paiement: formData.mode_paiement,
+          reference: formData.reference || undefined,
+          notes: formData.notes || undefined,
+        }
+      });
+
+      toast.success(
+        `Remboursement de ${montant.toLocaleString('fr-FR')} FCFA enregistré pour le crédit ${credit.numero}`
+      );
+      
+      setFormData({
+        montant: "",
+        mode_paiement: "virement",
+        reference: "",
+        notes: ""
+      });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Erreur lors du remboursement");
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Enregistrer un remboursement</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-green-600" />
+            Enregistrer un remboursement
+          </DialogTitle>
+          <DialogDescription>
+            Paiement manuel d'une échéance de crédit
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="bg-muted p-3 rounded-lg mb-4">
-          <p className="text-sm font-medium">{credit.numero}</p>
-          <p className="text-xs text-muted-foreground">{credit.objet}</p>
-          {echeance && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Échéance n°{echeance.numero} - {format(new Date(echeance.dateEcheance), 'dd MMMM yyyy', { locale: fr })}
-            </p>
+        <div className="bg-muted p-4 rounded-lg mb-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{credit.numero}</span>
+          </div>
+          {credit.objet && (
+            <p className="text-xs text-muted-foreground">{credit.objet}</p>
+          )}
+          {credit.banque && (
+            <p className="text-xs text-muted-foreground">Banque: {credit.banque.nom}</p>
+          )}
+          {echeance && echeance.date_echeance && (
+            <div className="flex items-center gap-2 pt-2 border-t mt-2">
+              <Calendar className="h-4 w-4 text-orange-500" />
+              <span className="text-sm">
+                Échéance n°{echeance.numero} - {format(new Date(echeance.date_echeance), 'dd MMMM yyyy', { locale: fr })}
+              </span>
+            </div>
           )}
         </div>
 
@@ -93,47 +150,40 @@ export function RemboursementCreditModal({
               type="number"
               value={formData.montant}
               onChange={(e) => setFormData({...formData, montant: e.target.value})}
-              placeholder={echeance ? echeance.montantTotal.toString() : "0"}
+              placeholder={montantEcheance > 0 ? montantEcheance.toString() : "0"}
             />
-            {echeance && (
+            {echeance && montantEcheance > 0 && (
               <p className="text-xs text-muted-foreground">
-                Montant attendu: {echeance.montantTotal.toLocaleString('fr-FR')} FCFA 
-                (Capital: {echeance.montantCapital.toLocaleString('fr-FR')} + Intérêts: {echeance.montantInteret.toLocaleString('fr-FR')})
+                Montant attendu: {montantEcheance.toLocaleString('fr-FR')} FCFA
+                {echeance.montant_capital && echeance.montant_interet && (
+                  <> (Capital: {echeance.montant_capital.toLocaleString('fr-FR')} + Intérêts: {echeance.montant_interet.toLocaleString('fr-FR')})</>
+                )}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="date">Date du remboursement *</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="banque">Compte de débit *</Label>
-            <Select value={formData.banqueId} onValueChange={(value) => setFormData({...formData, banqueId: value})}>
+            <Label htmlFor="mode_paiement">Mode de paiement *</Label>
+            <Select value={formData.mode_paiement} onValueChange={(value) => setFormData({...formData, mode_paiement: value})}>
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un compte" />
+                <SelectValue placeholder="Sélectionner un mode" />
               </SelectTrigger>
               <SelectContent>
-                {banques.filter(b => b.actif).map(banque => (
-                  <SelectItem key={banque.id} value={banque.id}>{banque.nom}</SelectItem>
-                ))}
+                <SelectItem value="virement">Virement bancaire</SelectItem>
+                <SelectItem value="cheque">Chèque</SelectItem>
+                <SelectItem value="prelevement">Prélèvement automatique</SelectItem>
+                <SelectItem value="especes">Espèces</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reference">Référence du virement</Label>
+            <Label htmlFor="reference">Référence du paiement</Label>
             <Input
               id="reference"
               value={formData.reference}
               onChange={(e) => setFormData({...formData, reference: e.target.value})}
-              placeholder="VIR-CRED-XXX"
+              placeholder="VIR-CRED-2026-001"
             />
           </div>
 
@@ -152,7 +202,10 @@ export function RemboursementCreditModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button type="submit">Enregistrer</Button>
+            <Button type="submit" disabled={rembourserCredit.isPending} className="bg-green-600 hover:bg-green-700">
+              {rembourserCredit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enregistrer le paiement
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

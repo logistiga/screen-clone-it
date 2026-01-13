@@ -31,6 +31,7 @@ export default function CreditsPage() {
   const [showNouveauModal, setShowNouveauModal] = useState(false);
   const [showRemboursementModal, setShowRemboursementModal] = useState(false);
   const [selectedCredit, setSelectedCredit] = useState<any>(null);
+  const [selectedEcheance, setSelectedEcheance] = useState<any>(null);
   const [filterStatut, setFilterStatut] = useState<string>("all");
   const [expandedBanques, setExpandedBanques] = useState<number[]>([]);
 
@@ -83,9 +84,26 @@ export default function CreditsPage() {
     );
   };
 
-  const handleRemboursement = (credit: any) => {
+  const handleRemboursement = (credit: any, echeance?: any) => {
     setSelectedCredit(credit);
+    setSelectedEcheance(echeance || null);
     setShowRemboursementModal(true);
+  };
+
+  const handlePayerEcheance = (echeance: any) => {
+    // On cherche le crédit associé
+    const credit = credits.find(c => c.id === echeance.credit_id);
+    if (credit) {
+      handleRemboursement(credit, echeance);
+    } else {
+      // Si on n'a pas le crédit complet, on crée un objet minimal
+      handleRemboursement({
+        id: echeance.credit_id,
+        numero: echeance.credit_numero,
+        objet: echeance.objet || '',
+        banque: { nom: echeance.banque }
+      }, echeance);
+    }
   };
 
   // Prepare chart data
@@ -712,6 +730,7 @@ export default function CreditsPage() {
                       <TableHead>Crédit / Banque</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -726,11 +745,22 @@ export default function CreditsPage() {
                         </TableCell>
                         <TableCell className="text-right font-semibold">{formatMontant(e.montant)}</TableCell>
                         <TableCell>{getEcheanceStatutBadge(e.statut)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => handlePayerEcheance(e)}
+                          >
+                            <Wallet className="h-3 w-3 mr-1" />
+                            Payer
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {(!stats?.prochaines_echeances || stats.prochaines_echeances.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                           Aucune échéance à venir
                         </TableCell>
                       </TableRow>
@@ -755,6 +785,7 @@ export default function CreditsPage() {
                       <TableHead>Crédit / Banque</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
                       <TableHead>Retard</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -771,11 +802,22 @@ export default function CreditsPage() {
                         <TableCell>
                           <Badge variant="destructive">{e.jours_retard}j</Badge>
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => handlePayerEcheance(e)}
+                          >
+                            <Wallet className="h-3 w-3 mr-1" />
+                            Régulariser
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {(!stats?.echeances_retard || stats.echeances_retard.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8">
+                        <TableCell colSpan={5} className="text-center py-8">
                           <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
                           <p className="text-green-600 font-medium">Aucune échéance en retard</p>
                         </TableCell>
@@ -869,8 +911,15 @@ export default function CreditsPage() {
       {selectedCredit && (
         <RemboursementCreditModal 
           open={showRemboursementModal} 
-          onOpenChange={setShowRemboursementModal} 
-          credit={selectedCredit} 
+          onOpenChange={(open) => {
+            setShowRemboursementModal(open);
+            if (!open) {
+              setSelectedCredit(null);
+              setSelectedEcheance(null);
+            }
+          }} 
+          credit={selectedCredit}
+          echeance={selectedEcheance}
         />
       )}
     </MainLayout>
