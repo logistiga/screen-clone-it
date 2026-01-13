@@ -33,6 +33,12 @@ import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateO
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 import { Users } from "lucide-react";
+import { FormError } from "@/components/ui/form-error";
+import {
+  validateOrdreConteneurs,
+  validateOrdreConventionnel,
+  validateOrdreIndependant,
+} from "@/lib/validations/ordre-schemas";
 
 interface DraftData {
   categorie: CategorieDocument | "";
@@ -202,6 +208,36 @@ export default function NouvelOrdrePage() {
       return;
     }
 
+    // Validation Zod selon la catégorie
+    if (categorie === "conteneurs" && conteneursData) {
+      const validation = validateOrdreConteneurs(conteneursData);
+      if (!validation.success) {
+        toast.error("Erreurs de validation", {
+          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
+        });
+        console.log("Validation errors:", validation.errors);
+        return;
+      }
+    } else if (categorie === "conventionnel" && conventionnelData) {
+      const validation = validateOrdreConventionnel(conventionnelData);
+      if (!validation.success) {
+        toast.error("Erreurs de validation", {
+          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
+        });
+        console.log("Validation errors:", validation.errors);
+        return;
+      }
+    } else if (categorie === "operations_independantes" && independantData) {
+      const validation = validateOrdreIndependant(independantData);
+      if (!validation.success) {
+        toast.error("Erreurs de validation", {
+          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
+        });
+        console.log("Validation errors:", validation.errors);
+        return;
+      }
+    }
+
     // Préparer les données selon la catégorie
     let lignesData: any[] = [];
     let conteneursDataApi: any[] = [];
@@ -210,10 +246,6 @@ export default function NouvelOrdrePage() {
     let transitaireId = "";
 
     if (categorie === "conteneurs" && conteneursData) {
-      if (!conteneursData.numeroBL) {
-        toast.error("Veuillez saisir le numéro de BL");
-        return;
-      }
       numeroBL = conteneursData.numeroBL;
       transitaireId = conteneursData.transitaireId;
       conteneursDataApi = conteneursData.conteneurs.map(c => ({
@@ -231,10 +263,6 @@ export default function NouvelOrdrePage() {
         }))
       }));
     } else if (categorie === "conventionnel" && conventionnelData) {
-      if (!conventionnelData.numeroBL) {
-        toast.error("Veuillez saisir le numéro de BL");
-        return;
-      }
       numeroBL = conventionnelData.numeroBL;
       lotsData = conventionnelData.lots.map(l => ({
         designation: l.description || l.numeroLot,
@@ -244,10 +272,6 @@ export default function NouvelOrdrePage() {
         prix_unitaire: l.prixUnitaire,
       }));
     } else if (categorie === "operations_independantes" && independantData) {
-      if (!independantData.typeOperationIndep) {
-        toast.error("Veuillez sélectionner un type d'opération");
-        return;
-      }
       lignesData = independantData.prestations.map(p => ({
         type_operation: independantData.typeOperationIndep,
         description: p.description,
