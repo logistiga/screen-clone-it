@@ -16,9 +16,27 @@ class RepresentantController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Representant::withCount('primes')
-            ->withSum('primes', 'montant')
-            ->with(['primes' => fn($q) => $q->select('id', 'representant_id', 'montant', 'statut')]);
+        // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
+        $query = Representant::query()
+            ->withCount('primes')
+            ->select('representants.*')
+            ->selectSub(function ($q) {
+                $q->from('primes')
+                    ->selectRaw('COALESCE(SUM(montant), 0)')
+                    ->whereColumn('primes.representant_id', 'representants.id')
+                    ->whereIn('statut', ['En attente', 'Partiellement payée']);
+            }, 'primes_dues')
+            ->selectSub(function ($q) {
+                $q->from('primes')
+                    ->selectRaw('COALESCE(SUM(montant), 0)')
+                    ->whereColumn('primes.representant_id', 'representants.id')
+                    ->where('statut', 'Payée');
+            }, 'primes_payees')
+            ->selectSub(function ($q) {
+                $q->from('primes')
+                    ->selectRaw('COALESCE(SUM(montant), 0)')
+                    ->whereColumn('primes.representant_id', 'representants.id');
+            }, 'primes_total');
 
         if ($request->has('search')) {
             $search = $request->get('search');

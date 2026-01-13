@@ -9,16 +9,14 @@ class TransitaireResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // Calculer les totaux des primes si chargées
-        $primesDues = 0;
-        $primesPayees = 0;
+        // Priorité: colonnes SQL (index rapide) sinon calcul en mémoire (show détaillé)
+        $primesDues = $this->relationLoaded('primes')
+            ? $this->primes->whereIn('statut', ['En attente', 'Partiellement payée'])->sum('montant')
+            : (float) ($this->primes_dues ?? 0);
         
-        if ($this->relationLoaded('primes')) {
-            // Primes dues = montant total des primes non payées
-            $primesDues = $this->primes->whereIn('statut', ['En attente', 'Partiellement payée'])->sum('montant');
-            // Primes payées = montant total des primes payées
-            $primesPayees = $this->primes->where('statut', 'Payée')->sum('montant');
-        }
+        $primesPayees = $this->relationLoaded('primes')
+            ? $this->primes->where('statut', 'Payée')->sum('montant')
+            : (float) ($this->primes_payees ?? 0);
         
         return [
             'id' => $this->id,
@@ -39,9 +37,9 @@ class TransitaireResource extends JsonResource
                 'factures' => $this->factures_count ?? 0,
             ]),
             
-            // Stats primes
-            'primes_dues' => $primesDues,
-            'primes_payees' => $primesPayees,
+            // Stats primes (SQL ou mémoire) avec round() pour cohérence
+            'primes_dues' => round($primesDues, 2),
+            'primes_payees' => round($primesPayees, 2),
             
             // Relations
             'devis' => DevisResource::collection($this->whenLoaded('devis')),
