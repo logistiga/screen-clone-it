@@ -38,6 +38,7 @@ interface DraftData {
   categorie: CategorieDocument | "";
   clientId: string;
   notes: string;
+  currentStep: number;
   conteneursData: OrdreConteneursData | null;
   conventionnelData: OrdreConventionnelData | null;
   independantData: OrdreIndependantData | null;
@@ -69,6 +70,7 @@ export default function NouvelOrdrePage() {
   // Stepper state
   const [currentStep, setCurrentStep] = useState(1);
   const [showRestorePrompt, setShowRestorePrompt] = useState(true);
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
 
   // État global
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
@@ -100,13 +102,14 @@ export default function NouvelOrdrePage() {
         categorie,
         clientId,
         notes,
+        currentStep,
         conteneursData,
         conventionnelData,
         independantData,
         remiseData,
       });
     }
-  }, [categorie, clientId, notes, conteneursData, conventionnelData, independantData, remiseData, save]);
+  }, [categorie, clientId, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, save]);
 
   const handleRestoreDraft = () => {
     const draft = restore();
@@ -117,16 +120,10 @@ export default function NouvelOrdrePage() {
       setConteneursData(draft.conteneursData);
       setConventionnelData(draft.conventionnelData);
       setIndependantData(draft.independantData);
-      setRemiseData(draft.remiseData);
-      
-      // Set step based on restored data
-      if (draft.clientId) {
-        setCurrentStep(3);
-      } else if (draft.categorie) {
-        setCurrentStep(2);
-      }
-      
-      toast.success("Brouillon restauré");
+      setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
+      setCurrentStep(draft.currentStep || 1);
+      setIsRestoredFromDraft(true);
+      toast.success("Brouillon restauré avec succès");
     }
     setShowRestorePrompt(false);
   };
@@ -335,7 +332,7 @@ export default function NouvelOrdrePage() {
       </div>
 
       {/* Restore prompt */}
-      {showRestorePrompt && hasDraft && (
+      {showRestorePrompt && hasDraft && !isRestoredFromDraft && (
         <AutoSaveIndicator
           hasDraft={hasDraft}
           lastSaved={lastSaved}
@@ -433,15 +430,39 @@ export default function NouvelOrdrePage() {
                     transitaires={transitaires}
                     representants={representants}
                     onDataChange={setConteneursData}
+                    initialData={isRestoredFromDraft && conteneursData ? {
+                      typeOperation: conteneursData.typeOperation,
+                      numeroBL: conteneursData.numeroBL,
+                      armateurId: conteneursData.armateurId,
+                      transitaireId: conteneursData.transitaireId,
+                      representantId: conteneursData.representantId,
+                      conteneurs: conteneursData.conteneurs,
+                      primeTransitaire: conteneursData.primeTransitaire,
+                      primeRepresentant: conteneursData.primeRepresentant,
+                    } : undefined}
                   />
                 )}
 
                 {categorie === "conventionnel" && (
-                  <OrdreConventionnelForm onDataChange={setConventionnelData} />
+                  <OrdreConventionnelForm 
+                    onDataChange={setConventionnelData}
+                    initialData={isRestoredFromDraft && conventionnelData ? {
+                      numeroBL: conventionnelData.numeroBL,
+                      lieuChargement: conventionnelData.lieuChargement,
+                      lieuDechargement: conventionnelData.lieuDechargement,
+                      lots: conventionnelData.lots,
+                    } : undefined}
+                  />
                 )}
 
                 {categorie === "operations_independantes" && (
-                  <OrdreIndependantForm onDataChange={setIndependantData} />
+                  <OrdreIndependantForm 
+                    onDataChange={setIndependantData}
+                    initialData={isRestoredFromDraft && independantData ? {
+                      typeOperationIndep: independantData.typeOperationIndep,
+                      prestations: independantData.prestations,
+                    } : undefined}
+                  />
                 )}
 
                 {/* Notes */}
