@@ -33,6 +33,19 @@ api.interceptors.response.use(
       const status = error?.response?.status;
       const url: string | undefined = error?.config?.url;
       const baseURL: string | undefined = error?.config?.baseURL;
+      const data = error?.response?.data;
+
+      if (typeof status === 'number' && status >= 500) {
+        // eslint-disable-next-line no-console
+        console.error('[API] Erreur serveur', { status, baseURL, url, data });
+      } else if (!status) {
+        // eslint-disable-next-line no-console
+        console.error('[API] Erreur réseau / CORS', {
+          baseURL,
+          url,
+          message: error?.message,
+        });
+      }
 
       if (
         status === 404 &&

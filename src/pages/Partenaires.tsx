@@ -62,52 +62,74 @@ export default function PartenairesPage() {
   const { data: armateurs = [], isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
 
   // Helper to get error message
-  const getErrorMessage = (error: unknown): { title: string; description: string } => {
-    const axiosError = error as { response?: { status?: number } };
+  const getErrorMessage = (error: unknown): { title: string; description: string; details?: string } => {
+    const axiosError = error as {
+      response?: { status?: number; data?: any };
+      config?: { baseURL?: string; url?: string };
+      message?: string;
+    };
+
     const status = axiosError?.response?.status;
-    
+    const apiMsg = axiosError?.response?.data?.message || axiosError?.response?.data?.error;
+    const requestUrl = [axiosError?.config?.baseURL, axiosError?.config?.url].filter(Boolean).join('');
+
+    const details = [
+      status ? `HTTP ${status}` : undefined,
+      requestUrl ? `URL: ${requestUrl}` : undefined,
+      typeof apiMsg === 'string' ? `Message: ${apiMsg}` : undefined,
+    ]
+      .filter(Boolean)
+      .join(' • ');
+
     if (status === 401) {
       return {
         title: "Session expirée",
-        description: "Votre session a expiré. Veuillez vous reconnecter."
+        description: "Votre session a expiré. Veuillez vous reconnecter.",
+        details: details || undefined,
       };
     }
     if (status === 403) {
       return {
         title: "Accès refusé",
-        description: "Vous n'avez pas les permissions nécessaires pour accéder à ces données."
+        description: "Vous n'avez pas les permissions nécessaires pour accéder à ces données.",
+        details: details || undefined,
       };
     }
     if (status === 500) {
       return {
         title: "Erreur serveur",
-        description: "Une erreur s'est produite sur le serveur. Veuillez réessayer plus tard."
+        description: "Le serveur a renvoyé une erreur 500.",
+        details: details || undefined,
       };
     }
+
     return {
       title: "Erreur de chargement",
-      description: "Impossible de charger les données. Vérifiez votre connexion et réessayez."
+      description: "Impossible de charger les données. Vérifiez votre connexion et réessayez.",
+      details: details || undefined,
     };
   };
 
   // Error UI component
   const ErrorCard = ({ error, onRetry, entityName }: { error: unknown; onRetry: () => void; entityName: string }) => {
-    const { title, description } = getErrorMessage(error);
+    const { title, description, details } = getErrorMessage(error);
     return (
       <Alert variant="destructive" className="my-4">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>{title}</AlertTitle>
-        <AlertDescription className="flex items-center justify-between">
-          <span>{description}</span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onRetry}
-            className="ml-4 gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Réessayer
-          </Button>
+        <AlertDescription className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span>{description}</span>
+            <Button variant="outline" size="sm" onClick={onRetry} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Réessayer
+            </Button>
+          </div>
+          {details && (
+            <div className="text-xs text-muted-foreground break-words">
+              {entityName} • {details}
+            </div>
+          )}
         </AlertDescription>
       </Alert>
     );
