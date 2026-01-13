@@ -26,6 +26,15 @@ class UpdateClientRequest extends FormRequest
             'contact_principal' => 'nullable|string|max:255',
             'limite_credit' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:5000',
+            // Contacts
+            'contacts' => 'nullable|array',
+            'contacts.*.id' => 'nullable|integer|exists:contacts,id',
+            'contacts.*.nom' => 'required_with:contacts|string|max:255',
+            'contacts.*.fonction' => 'nullable|string|max:255',
+            'contacts.*.email' => 'nullable|email|max:255',
+            'contacts.*.telephone' => 'nullable|string|max:50',
+            'contacts.*.est_principal' => 'nullable|boolean',
+            'contacts.*.notes' => 'nullable|string|max:1000',
         ];
     }
 

@@ -63,4 +63,14 @@ class Client extends Model
             ->where('avoir_genere', true)
             ->where('solde_avoir', '>', 0);
     }
+
+    public function contacts()
+    {
+        return $this->hasMany(Contact::class);
+    }
+
+    public function contactPrincipal()
+    {
+        return $this->hasOne(Contact::class)->where('est_principal', true);
+    }
 }

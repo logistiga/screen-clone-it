@@ -70,6 +70,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('clients')->middleware('audit')->group(function () {
         Route::get('/', [ClientController::class, 'index'])
             ->middleware('permission:clients.voir');
+        Route::get('stats', [ClientController::class, 'globalStats'])
+            ->middleware('permission:clients.voir');
         Route::post('/', [ClientController::class, 'store'])
             ->middleware('permission:clients.creer');
         Route::get('{client}', [ClientController::class, 'show'])

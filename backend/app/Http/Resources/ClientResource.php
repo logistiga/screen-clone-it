@@ -39,6 +39,7 @@ class ClientResource extends JsonResource
             'ordres_travail' => OrdreTravailResource::collection($this->whenLoaded('ordresTravail')),
             'factures' => FactureResource::collection($this->whenLoaded('factures')),
             'paiements' => PaiementResource::collection($this->whenLoaded('paiements')),
+            'contacts' => ContactResource::collection($this->whenLoaded('contacts')),
             
             // Statistiques calculées (mode détail)
             'stats' => $this->when($this->total_facture !== null, [
