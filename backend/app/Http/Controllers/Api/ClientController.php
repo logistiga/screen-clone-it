@@ -15,7 +15,19 @@ class ClientController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Client::with(['devis', 'ordresTravail', 'factures', 'paiements']);
+        // Optimisé: withCount/withSum au lieu de charger toutes les relations
+        $query = Client::withCount(['devis', 'ordresTravail', 'factures'])
+            ->withSum([
+                'factures as factures_sum_ttc' => fn($q) => $q->whereNotIn('statut', ['annulee', 'Annulée']),
+            ], 'montant_ttc')
+            ->withSum('paiements as paiements_sum_montant', 'montant')
+            ->addSelect([
+                '*',
+                'solde_avoirs' => \App\Models\Annulation::selectRaw('COALESCE(SUM(solde_avoir), 0)')
+                    ->whereColumn('client_id', 'clients.id')
+                    ->where('avoir_genere', true)
+                    ->where('solde_avoir', '>', 0)
+            ]);
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -68,7 +80,10 @@ class ClientController extends Controller
 
     public function destroy(Client $client): JsonResponse
     {
-        $facturesImpayees = $client->factures()->where('statut', '!=', 'Payée')->count();
+        // Accepte tous les variants de statuts (majuscules, minuscules, snake_case)
+        $facturesImpayees = $client->factures()
+            ->whereNotIn('statut', ['Payée', 'payee', 'Annulée', 'annulee'])
+            ->count();
         
         if ($facturesImpayees > 0) {
             return response()->json([
