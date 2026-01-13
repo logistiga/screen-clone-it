@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Save, Ship, Loader2, Users, Container, Package, Truck, Warehouse, Calendar, RotateCcw, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { ArrowLeft, Save, Ship, Loader2, Users, Container, Package, Truck, Warehouse, Calendar, RotateCcw, ArrowDownToLine, ArrowUpFromLine, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,7 @@ import {
   useConfiguration 
 } from "@/hooks/use-commercial";
 import { RecapitulatifCard } from "@/components/devis/shared";
+import { OrdreStepper, OrdrePreview } from "@/components/ordres/shared";
 import { 
   OrdreConteneursForm, 
   OrdreConventionnelForm, 
@@ -59,6 +60,9 @@ export default function ModifierOrdrePage() {
   const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
+
+  // Stepper state - start at step 2 (client) since category is not editable
+  const [currentStep, setCurrentStep] = useState(2);
 
   const [clientId, setClientId] = useState("");
   const [notes, setNotes] = useState("");
@@ -141,14 +145,11 @@ export default function ModifierOrdrePage() {
 
   const independantInitialData = useMemo(() => {
     if (!ordreData || !ordreData.lignes || ordreData.lignes.length === 0) {
-      console.log("getIndependantInitialData - No data or no lignes");
       return undefined;
     }
     
-    // Déterminer le type d'opération depuis les données
     let typeFromOrder = (ordreData as any).type_operation_indep || "";
     
-    // Si le type n'est pas défini au niveau de l'ordre, essayer de le récupérer depuis les lignes
     if (!typeFromOrder && ordreData.lignes && ordreData.lignes.length > 0) {
       const firstLigne = ordreData.lignes[0];
       if (firstLigne.type_operation) {
@@ -156,13 +157,9 @@ export default function ModifierOrdrePage() {
       }
     }
     
-    // Normaliser le type (lowercase et remplacer les espaces par underscore)
     const normalizedType = typeFromOrder.toLowerCase().replace(/\s+/g, '_').replace('double relevage', 'double_relevage');
     
-    console.log("getIndependantInitialData - typeFromOrder:", typeFromOrder, "normalized:", normalizedType);
-    console.log("getIndependantInitialData - lignes count:", ordreData.lignes.length);
-    
-    const result = {
+    return {
       typeOperationIndep: normalizedType as any,
       prestations: ordreData.lignes.map((l: any) => ({
         id: String(l.id),
@@ -177,9 +174,6 @@ export default function ModifierOrdrePage() {
       })),
       montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
     };
-    
-    console.log("getIndependantInitialData - result:", JSON.stringify(result, null, 2));
-    return result;
   }, [ordreData]);
 
   const getMontantHT = (): number => {
@@ -193,6 +187,35 @@ export default function ModifierOrdrePage() {
   const tva = Math.round(montantHT * TAUX_TVA);
   const css = Math.round(montantHT * TAUX_CSS);
   const montantTTC = montantHT + tva + css;
+
+  // Stepper navigation
+  const handleStepClick = (step: number) => {
+    if (step >= 2 && step <= 4) {
+      setCurrentStep(step);
+    }
+  };
+
+  const canProceedToStep = (step: number): boolean => {
+    if (step === 3) return !!clientId;
+    if (step === 4) {
+      if (categorie === "conteneurs") return !!conteneursData && conteneursData.conteneurs.length > 0;
+      if (categorie === "conventionnel") return !!conventionnelData && conventionnelData.lots.length > 0;
+      if (categorie === "operations_independantes") return !!independantData && independantData.prestations.length > 0;
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (currentStep < 4 && canProceedToStep(currentStep + 1)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 2) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   // Configuration des badges de type
   const getTypeBadge = useMemo(() => {
@@ -231,12 +254,12 @@ export default function ModifierOrdrePage() {
         location: { label: "Location", icon: <Calendar className="h-3.5 w-3.5" />, className: "bg-teal-100 text-teal-800" },
         double_relevage: { label: "Double Relevage", icon: <RotateCcw className="h-3.5 w-3.5" />, className: "bg-pink-100 text-pink-800" },
       };
-      const config = configs[typeIndep];
-      if (config) {
+      const badgeConfig = configs[typeIndep];
+      if (badgeConfig) {
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5`}>
-            {config.icon}
-            Indépendant / {config.label}
+          <Badge className={`${badgeConfig.className} flex items-center gap-1.5`}>
+            {badgeConfig.icon}
+            Indépendant / {badgeConfig.label}
           </Badge>
         );
       }
@@ -279,13 +302,13 @@ export default function ModifierOrdrePage() {
         className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
       },
     };
-    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
+    const badgeConfig = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
     return (
       <Badge 
         variant="outline" 
-        className={`${config.className} transition-all duration-200 hover:scale-105`}
+        className={`${badgeConfig.className} transition-all duration-200 hover:scale-105`}
       >
-        {config.label}
+        {badgeConfig.label}
       </Badge>
     );
   };
@@ -307,9 +330,7 @@ export default function ModifierOrdrePage() {
       data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
       data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
       data.bl_numero = conteneursData.numeroBL || null;
-      // Ajouter type_operation (Import/Export)
       data.type_operation = conteneursData.typeOperation || null;
-      // Primes pour transitaire et représentant
       data.prime_transitaire = conteneursData.primeTransitaire || 0;
       data.prime_representant = conteneursData.primeRepresentant || 0;
       data.conteneurs = conteneursData.conteneurs.map(c => ({
@@ -342,7 +363,6 @@ export default function ModifierOrdrePage() {
     }
 
     if (categorie === "operations_independantes" && independantData) {
-      // Ajouter type_operation_indep au niveau de l'ordre
       data.type_operation_indep = independantData.typeOperationIndep || null;
       data.lignes = independantData.prestations.map(p => ({
         type_operation: independantData.typeOperationIndep || "manutention",
@@ -359,7 +379,6 @@ export default function ModifierOrdrePage() {
     try {
       await updateOrdreMutation.mutateAsync({ id: id!, data });
       toast.success("Ordre modifié avec succès");
-      // Après modification, retourner vers la liste des ordres
       navigate(`/ordres`);
     } catch (error) {
       // Error handled by mutation
@@ -389,11 +408,12 @@ export default function ModifierOrdrePage() {
     );
   }
 
+  // Get client for preview
+  const selectedClient = clients.find(c => String(c.id) === clientId);
+
   return (
     <MainLayout title={`Modifier ${ordreData.numero}`}>
-      <motion.form 
-        onSubmit={handleSubmit} 
-        className="space-y-6"
+      <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
@@ -402,7 +422,7 @@ export default function ModifierOrdrePage() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card/50 backdrop-blur-sm p-4 rounded-lg border"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card/50 backdrop-blur-sm p-4 rounded-lg border mb-6"
         >
           <div className="flex items-center gap-4">
             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
@@ -430,7 +450,7 @@ export default function ModifierOrdrePage() {
             </div>
           </div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button type="submit" disabled={updateOrdreMutation.isPending} className="gap-2 shadow-md">
+            <Button onClick={handleSubmit} disabled={updateOrdreMutation.isPending} className="gap-2 shadow-md">
               {updateOrdreMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -441,168 +461,217 @@ export default function ModifierOrdrePage() {
           </motion.div>
         </motion.div>
 
-        {/* Catégorie (lecture seule) */}
-        {categorie && (
-          <div className="flex items-center gap-3 animate-fade-in">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
-              {categoriesLabels[categorie]?.icon}
-              <span>{categoriesLabels[categorie]?.label}</span>
-            </Badge>
-            <span className="text-sm text-muted-foreground">(non modifiable)</span>
-          </div>
-        )}
+        {/* Stepper - starting from step 2 */}
+        <OrdreStepper 
+          currentStep={currentStep} 
+          categorie={categorie || undefined}
+          onStepClick={handleStepClick}
+        />
 
-        {/* Client */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="h-5 w-5 text-primary" />
-                Client
-              </CardTitle>
-              <CardDescription>Sélectionnez le client pour cet ordre de travail</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="max-w-md space-y-2">
-                <Label>Nom du client *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Sélectionner un client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Formulaires par catégorie */}
-        <AnimatePresence mode="wait">
-          {categorie === "conteneurs" && isInitialized && (
-            <motion.div
-              key="conteneurs"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ delay: 0.2 }}
-            >
-              <OrdreConteneursForm
-                armateurs={armateurs}
-                transitaires={transitaires}
-                representants={representants}
-                onDataChange={setConteneursData}
-                initialData={getConteneursInitialData()}
-              />
-            </motion.div>
-          )}
-
-          {categorie === "conventionnel" && isInitialized && (
-            <motion.div
-              key="conventionnel"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ delay: 0.2 }}
-            >
-              <OrdreConventionnelForm 
-                onDataChange={setConventionnelData} 
-                initialData={getConventionnelInitialData()}
-              />
-            </motion.div>
-          )}
-
-          {categorie === "operations_independantes" && isInitialized && independantInitialData && (
-            <motion.div
-              key="independant"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ delay: 0.2 }}
-            >
-              <OrdreIndependantForm 
-                onDataChange={setIndependantData} 
-                initialData={independantInitialData}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Notes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-transparent">
-              <CardTitle className="text-lg">Notes / Observations</CardTitle>
-              <CardDescription>Informations complémentaires pour cet ordre</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Conditions particulières, notes..."
-                rows={4}
-                className="resize-none"
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Récapitulatif */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <RecapitulatifCard
-            montantHT={montantHT}
-            tva={tva}
-            css={css}
-            montantTTC={montantTTC}
-            tauxTva={Math.round(TAUX_TVA * 100)}
-            tauxCss={Math.round(TAUX_CSS * 100)}
-          />
-        </motion.div>
-
-        {/* Boutons */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="flex justify-end gap-4 pb-6"
-        >
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => navigate(`/ordres`)} 
-              disabled={updateOrdreMutation.isPending}
-            >
-              Annuler
-            </Button>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button type="submit" className="gap-2 shadow-md" disabled={updateOrdreMutation.isPending}>
-              {updateOrdreMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main form area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Catégorie badge (read-only) */}
+              {categorie && currentStep === 2 && (
+                <div className="flex items-center gap-3 animate-fade-in">
+                  <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
+                    {categoriesLabels[categorie]?.icon}
+                    <span>{categoriesLabels[categorie]?.label}</span>
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">(non modifiable)</span>
+                </div>
               )}
-              Enregistrer les modifications
-            </Button>
-          </motion.div>
-        </motion.div>
-      </motion.form>
+
+              {/* Step 2: Client */}
+              {currentStep === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Users className="h-5 w-5 text-primary" />
+                        Client
+                      </CardTitle>
+                      <CardDescription>Sélectionnez le client pour cet ordre de travail</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="max-w-md space-y-2">
+                        <Label>Nom du client *</Label>
+                        <Select value={clientId} onValueChange={setClientId}>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Sélectionner un client" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {/* Step 3: Détails */}
+              {currentStep === 3 && (
+                <AnimatePresence mode="wait">
+                  {categorie === "conteneurs" && isInitialized && (
+                    <motion.div
+                      key="conteneurs"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      <OrdreConteneursForm
+                        armateurs={armateurs}
+                        transitaires={transitaires}
+                        representants={representants}
+                        onDataChange={setConteneursData}
+                        initialData={getConteneursInitialData()}
+                      />
+                    </motion.div>
+                  )}
+
+                  {categorie === "conventionnel" && isInitialized && (
+                    <motion.div
+                      key="conventionnel"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      <OrdreConventionnelForm 
+                        onDataChange={setConventionnelData} 
+                        initialData={getConventionnelInitialData()}
+                      />
+                    </motion.div>
+                  )}
+
+                  {categorie === "operations_independantes" && isInitialized && independantInitialData && (
+                    <motion.div
+                      key="independant"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      <OrdreIndependantForm 
+                        onDataChange={setIndependantData} 
+                        initialData={independantInitialData}
+                      />
+                    </motion.div>
+                  )}
+
+                  {/* Notes */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mt-6"
+                  >
+                    <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
+                      <CardHeader className="bg-gradient-to-r from-amber-500/5 to-transparent">
+                        <CardTitle className="text-lg">Notes / Observations</CardTitle>
+                        <CardDescription>Informations complémentaires pour cet ordre</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-4">
+                        <Textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Conditions particulières, notes..."
+                          rows={4}
+                          className="resize-none"
+                        />
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </AnimatePresence>
+              )}
+
+              {/* Step 4: Récapitulatif */}
+              {currentStep === 4 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <RecapitulatifCard
+                    montantHT={montantHT}
+                    tva={tva}
+                    css={css}
+                    montantTTC={montantTTC}
+                    tauxTva={Math.round(TAUX_TVA * 100)}
+                    tauxCss={Math.round(TAUX_CSS * 100)}
+                  />
+                </motion.div>
+              )}
+
+              {/* Navigation buttons */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex justify-between pt-4"
+              >
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handlePrevStep}
+                  disabled={currentStep === 2}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Précédent
+                </Button>
+
+                {currentStep < 4 ? (
+                  <Button 
+                    type="button" 
+                    onClick={handleNextStep}
+                    disabled={!canProceedToStep(currentStep + 1)}
+                  >
+                    Suivant
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    disabled={updateOrdreMutation.isPending}
+                    className="gap-2 shadow-md transition-all duration-200 hover:scale-105"
+                  >
+                    {updateOrdreMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Enregistrer les modifications
+                  </Button>
+                )}
+              </motion.div>
+            </div>
+
+            {/* Preview sidebar */}
+            <div className="hidden lg:block">
+              <OrdrePreview
+                categorie={categorie}
+                client={selectedClient ? { id: selectedClient.id, nom: selectedClient.nom } : null}
+                montantHT={montantHT}
+                tva={tva}
+                css={css}
+                montantTTC={montantTTC}
+                numeroBL={conteneursData?.numeroBL || conventionnelData?.numeroBL || ordreData?.numero_bl}
+                typeOperation={conteneursData?.typeOperation || ordreData?.type_operation}
+                typeOperationIndep={independantData?.typeOperationIndep || (ordreData as any)?.type_operation_indep}
+                conteneurs={conteneursData?.conteneurs || ordreData?.conteneurs?.map((c: any) => ({ numero: c.numero, taille: c.taille }))}
+                lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || ordreData?.lots?.map((l: any) => ({ description: l.designation, quantite: l.quantite }))}
+                prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || ordreData?.lignes?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
+                notes={notes}
+              />
+            </div>
+          </div>
+        </form>
+      </motion.div>
     </MainLayout>
   );
 }
