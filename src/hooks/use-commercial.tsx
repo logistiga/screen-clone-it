@@ -205,6 +205,14 @@ export function useOrdres(params?: { search?: string; statut?: string; categorie
   });
 }
 
+// Stats globales des ordres (avec les mêmes filtres)
+export function useOrdresStats(params?: { search?: string; statut?: string; categorie?: string; client_id?: string }) {
+  return useQuery({
+    queryKey: ['ordres', 'stats', params],
+    queryFn: () => ordresApi.getStats(params),
+  });
+}
+
 export function useOrdreById(id: string) {
   return useQuery({
     queryKey: ['ordres', id],

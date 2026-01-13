@@ -108,6 +108,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('ordres-travail')->middleware('audit')->group(function () {
         Route::get('/', [OrdreTravailController::class, 'index'])
             ->middleware('permission:ordres.voir');
+        Route::get('stats', [OrdreTravailController::class, 'stats'])
+            ->middleware('permission:ordres.voir');
         Route::post('/', [OrdreTravailController::class, 'store'])
             ->middleware('permission:ordres.creer');
         Route::get('{ordreTravail}', [OrdreTravailController::class, 'show'])

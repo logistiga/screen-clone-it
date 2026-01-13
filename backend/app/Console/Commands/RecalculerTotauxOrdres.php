@@ -66,11 +66,14 @@ class RecalculerTotauxOrdres extends Command
 
                     $montantTTC = $montantHT + $montantTVA + $montantCSS;
 
+                    // IMPORTANT: Utiliser les bons noms de colonnes (tva/css, pas montant_tva/montant_css)
                     $ordre->update([
                         'montant_ht' => $montantHT,
-                        'montant_tva' => $montantTVA,
-                        'montant_css' => $montantCSS,
+                        'tva' => $montantTVA,
+                        'css' => $montantCSS,
                         'montant_ttc' => $montantTTC,
+                        'taux_tva' => $tauxTVA,
+                        'taux_css' => $tauxCSS,
                     ]);
 
                     $updated++;
@@ -79,6 +82,8 @@ class RecalculerTotauxOrdres extends Command
                         'ordre_id' => $ordre->id,
                         'numero' => $ordre->numero,
                         'montant_ht' => $montantHT,
+                        'tva' => $montantTVA,
+                        'css' => $montantCSS,
                         'montant_ttc' => $montantTTC,
                     ]);
                 });

@@ -339,8 +339,24 @@ export const devisApi = {
 };
 
 // Ordres de Travail API
+export interface OrdresStats {
+  total_ordres: number;
+  montant_total: number;
+  total_paye: number;
+  reste_a_payer: number;
+  en_cours: number;
+  termine: number;
+  facture: number;
+  annule: number;
+  par_categorie: {
+    conteneurs: number;
+    conventionnel: number;
+    operations_independantes: number;
+  };
+}
+
 export const ordresApi = {
-  getAll: async (params?: { search?: string; statut?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) => {
+  getAll: async (params?: { search?: string; statut?: string; categorie?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) => {
     const response = await api.get<PaginatedResponse<OrdreTravail>>('/ordres-travail', { params });
     return response.data;
   },
@@ -349,6 +365,11 @@ export const ordresApi = {
     const response = await api.get(`/ordres-travail/${id}`);
     const payload = response.data;
     return (payload?.data ?? payload) as OrdreTravail;
+  },
+  
+  getStats: async (params?: { search?: string; statut?: string; categorie?: string; client_id?: string; date_debut?: string; date_fin?: string }) => {
+    const response = await api.get<OrdresStats>('/ordres-travail/stats', { params });
+    return response.data;
   },
   
   create: async (data: any) => {
