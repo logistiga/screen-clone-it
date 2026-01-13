@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Container, FileText, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormError } from "@/components/ui/form-error";
 import {
   TypeOperation,
   TypeOperationConteneur,
@@ -19,6 +20,8 @@ import {
   getInitialConteneur,
   calculateTotalConteneurs,
 } from "@/types/documents";
+import { ordreConteneursSchema } from "@/lib/validations/ordre-schemas";
+import { cn } from "@/lib/utils";
 
 interface Armateur {
   id: string | number;
@@ -75,6 +78,10 @@ export default function OrdreConteneursForm({
   const [primeTransitaire, setPrimeTransitaire] = useState<number>(0);
   const [primeRepresentant, setPrimeRepresentant] = useState<number>(0);
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
+  
+  // Validation errors state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Initialisation depuis initialData
   useEffect(() => {
@@ -92,6 +99,50 @@ export default function OrdreConteneursForm({
       setIsInitialized(true);
     }
   }, [initialData, isInitialized]);
+
+  // Validate on blur
+  const validateField = useCallback((fieldPath: string) => {
+    const data = {
+      typeOperation,
+      numeroBL,
+      armateurId,
+      transitaireId,
+      representantId,
+      primeTransitaire,
+      primeRepresentant,
+      conteneurs,
+    };
+
+    const result = ordreConteneursSchema.safeParse(data);
+    
+    if (!result.success) {
+      const fieldError = result.error.errors.find(e => e.path.join('.') === fieldPath);
+      if (fieldError) {
+        setErrors(prev => ({ ...prev, [fieldPath]: fieldError.message }));
+      } else {
+        setErrors(prev => {
+          const next = { ...prev };
+          delete next[fieldPath];
+          return next;
+        });
+      }
+    } else {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldPath];
+        return next;
+      });
+    }
+  }, [typeOperation, numeroBL, armateurId, transitaireId, representantId, primeTransitaire, primeRepresentant, conteneurs]);
+
+  const handleBlur = (fieldPath: string) => {
+    setTouched(prev => ({ ...prev, [fieldPath]: true }));
+    validateField(fieldPath);
+  };
+
+  const getFieldError = (fieldPath: string) => {
+    return touched[fieldPath] ? errors[fieldPath] : undefined;
+  };
 
   const updateParent = (newConteneurs: LigneConteneur[]) => {
     const montantHT = calculateTotalConteneurs(newConteneurs);
@@ -209,13 +260,22 @@ export default function OrdreConteneursForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Type d'opération *</Label>
-              <Select value={typeOperation} onValueChange={(v) => setTypeOperation(v as TypeOperation)}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+              <Select 
+                value={typeOperation} 
+                onValueChange={(v) => {
+                  setTypeOperation(v as TypeOperation);
+                  setTouched(prev => ({ ...prev, typeOperation: true }));
+                }}
+              >
+                <SelectTrigger className={cn(getFieldError('typeOperation') && "border-destructive")}>
+                  <SelectValue placeholder="Sélectionner" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="import">Import</SelectItem>
                   <SelectItem value="export">Export</SelectItem>
                 </SelectContent>
               </Select>
+              <FormError message={getFieldError('typeOperation')} />
             </div>
             <div className="space-y-2">
               <Label>Numéro BL *</Label>
@@ -223,11 +283,13 @@ export default function OrdreConteneursForm({
                 placeholder="Ex: MSCUAB123456"
                 value={numeroBL}
                 onChange={(e) => setNumeroBL(e.target.value.toUpperCase())}
-                className="font-mono"
+                onBlur={() => handleBlur('numeroBL')}
+                className={cn("font-mono", getFieldError('numeroBL') && "border-destructive")}
               />
+              <FormError message={getFieldError('numeroBL')} />
             </div>
             <div className="space-y-2">
-              <Label>Armateur *</Label>
+              <Label>Armateur</Label>
               <Select value={armateurId} onValueChange={setArmateurId}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                 <SelectContent>
@@ -304,6 +366,7 @@ export default function OrdreConteneursForm({
           </div>
         </CardHeader>
         <CardContent>
+          <FormError message={getFieldError('conteneurs')} />
           <div className="space-y-6">
             {conteneurs.map((conteneur, index) => (
               <div key={conteneur.id} className="space-y-4">
@@ -324,13 +387,15 @@ export default function OrdreConteneursForm({
                 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label>N° Conteneur</Label>
+                    <Label>N° Conteneur *</Label>
                     <Input
                       placeholder="Ex: MSCU1234567"
                       value={conteneur.numero}
                       onChange={(e) => handleConteneurChange(conteneur.id, 'numero', e.target.value.toUpperCase())}
-                      className="font-mono"
+                      onBlur={() => handleBlur(`conteneurs.${index}.numero`)}
+                      className={cn("font-mono", getFieldError(`conteneurs.${index}.numero`) && "border-destructive")}
                     />
+                    <FormError message={getFieldError(`conteneurs.${index}.numero`)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Description</Label>
@@ -341,14 +406,23 @@ export default function OrdreConteneursForm({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Taille</Label>
-                    <Select value={conteneur.taille} onValueChange={(v) => handleConteneurChange(conteneur.id, 'taille', v)}>
-                      <SelectTrigger><SelectValue placeholder="Taille" /></SelectTrigger>
+                    <Label>Taille *</Label>
+                    <Select 
+                      value={conteneur.taille} 
+                      onValueChange={(v) => {
+                        handleConteneurChange(conteneur.id, 'taille', v);
+                        setTouched(prev => ({ ...prev, [`conteneurs.${index}.taille`]: true }));
+                      }}
+                    >
+                      <SelectTrigger className={cn(getFieldError(`conteneurs.${index}.taille`) && "border-destructive")}>
+                        <SelectValue placeholder="Taille" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="20'">20'</SelectItem>
                         <SelectItem value="40'">40'</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormError message={getFieldError(`conteneurs.${index}.taille`)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Prix (FCFA)</Label>
