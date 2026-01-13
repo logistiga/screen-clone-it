@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,20 +19,23 @@ interface TablePaginationProps {
   pageSizeOptions?: number[];
 }
 
-export function TablePagination({
-  currentPage,
-  totalPages,
-  pageSize,
-  totalItems,
-  onPageChange,
-  onPageSizeChange,
-  pageSizeOptions = [10, 20, 50, 100],
-}: TablePaginationProps) {
+export const TablePagination = forwardRef<HTMLDivElement, TablePaginationProps>(function TablePagination(
+  {
+    currentPage,
+    totalPages,
+    pageSize,
+    totalItems,
+    onPageChange,
+    onPageSizeChange,
+    pageSizeOptions = [10, 20, 50, 100],
+  },
+  ref
+) {
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+    <div ref={ref} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span>Afficher</span>
         <Select value={pageSize.toString()} onValueChange={(v) => onPageSizeChange(Number(v))}>
@@ -53,7 +57,7 @@ export function TablePagination({
         <span className="text-sm text-muted-foreground">
           {totalItems > 0 ? `${startItem}-${endItem} sur ${totalItems}` : "0 résultat"}
         </span>
-        
+
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
@@ -98,4 +102,7 @@ export function TablePagination({
       </div>
     </div>
   );
-}
+});
+
+TablePagination.displayName = "TablePagination";
+
