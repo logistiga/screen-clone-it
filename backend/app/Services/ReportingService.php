@@ -364,14 +364,38 @@ class ReportingService
         $creances = $this->getCreances();
         $documents = $this->getStatistiquesDocuments($annee);
 
-        // Indicateurs clés
-        $indicateurs = [
-            'ca_ttc' => $rentabilite['chiffre_affaires_ttc'],
-            'resultat_net' => $rentabilite['resultat_net'],
-            'marge_nette' => $rentabilite['marge_nette_pct'],
+        // CA du mois courant
+        $moisCourant = (int) date('n');
+        $anneeCourante = (int) date('Y');
+        $caMoisCourant = 0;
+        
+        if ($annee === $anneeCourante) {
+            $caMoisCourant = (float) Facture::whereYear('date_creation', $annee)
+                ->whereMonth('date_creation', $moisCourant)
+                ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'Payée', 'validee', 'partiellement_payee', 'payee', 'partielle'])
+                ->sum('montant_ttc');
+        }
+
+        // Nombre de clients actifs
+        $nbClients = Client::whereHas('factures', function ($q) use ($annee) {
+            $q->whereYear('date_creation', $annee);
+        })->count();
+
+        // Taux de recouvrement
+        $caTotal = $rentabilite['chiffre_affaires_ttc'];
+        $creancesTotales = $creances['total_creances'];
+        $tauxRecouvrement = $caTotal > 0 ? round((($caTotal - $creancesTotales) / $caTotal) * 100, 2) : 0;
+
+        // KPIs formatés pour le frontend
+        $kpis = [
+            'ca_total' => $rentabilite['chiffre_affaires_ttc'],
+            'ca_mois_courant' => $caMoisCourant,
             'creances_totales' => $creances['total_creances'],
-            'taux_conversion_devis' => $documents['devis']['taux_conversion'],
-            'factures_en_cours' => $creances['nombre_factures'],
+            'taux_recouvrement' => max(0, $tauxRecouvrement),
+            'nb_factures' => $documents['factures']['total'] ?? 0,
+            'nb_ordres' => $documents['ordres']['total'] ?? 0,
+            'nb_devis' => $documents['devis']['total'] ?? 0,
+            'nb_clients' => $nbClients,
         ];
 
         // Alertes
@@ -379,7 +403,8 @@ class ReportingService
 
         return [
             'annee' => $annee,
-            'indicateurs' => $indicateurs,
+            'kpis' => $kpis,
+            'indicateurs' => $kpis, // Compatibilité ancienne structure
             'rentabilite' => $rentabilite,
             'creances' => $creances,
             'documents' => $documents,
