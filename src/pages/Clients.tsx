@@ -32,6 +32,7 @@ import { formatMontant } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { ClientAvatar, ClientHealthBadge, ClientCard, ClientFilters } from "@/components/clients";
 import { Client } from "@/lib/api/commercial";
+import { MainLayout } from "@/components/layout/MainLayout";
 
 type SortField = "nom" | "solde" | "ville" | "created_at";
 type SortOrder = "asc" | "desc";
@@ -154,24 +155,29 @@ export default function ClientsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <MainLayout title="Clients">
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="text-muted-foreground">Erreur lors du chargement des clients</p>
-        <Button onClick={() => window.location.reload()}>Réessayer</Button>
-      </div>
+      <MainLayout title="Clients">
+        <div className="flex flex-col items-center justify-center h-96 gap-4">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+          <p className="text-muted-foreground">Erreur lors du chargement des clients</p>
+          <Button onClick={() => window.location.reload()}>Réessayer</Button>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <MainLayout title="Clients">
+      <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -454,6 +460,7 @@ export default function ClientsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
