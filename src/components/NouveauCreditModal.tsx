@@ -164,9 +164,9 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
     try {
       await createCredit.mutateAsync({
         banque_id: parseInt(formData.banqueId),
-        montant_principal: parseFloat(formData.montantEmprunte),
+        montant_emprunte: parseFloat(formData.montantEmprunte),
         taux_interet: parseFloat(tauxFinal),
-        duree_mois: parseInt(formData.dureeEnMois),
+        duree_en_mois: parseInt(formData.dureeEnMois),
         date_debut: formData.dateDebut,
         objet: formData.objet,
         notes: formData.notes || undefined,

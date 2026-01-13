@@ -109,9 +109,9 @@ export interface CreditFilters {
 export interface CreateCreditData {
   banque_id: number;
   objet: string;
-  montant_principal: number;
+  montant_emprunte: number;
   taux_interet: number;
-  duree_mois: number;
+  duree_en_mois: number;
   date_debut: string;
   notes?: string;
 }
