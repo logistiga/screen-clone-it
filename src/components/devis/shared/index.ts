@@ -11,3 +11,7 @@ export { DevisCardSkeleton, DevisTableRowSkeleton, DevisGridSkeleton, DevisTable
 export { DevisHeader, DevisHeaderSkeleton } from './DevisHeader';
 export { DevisFilters } from './DevisFilters';
 export { DevisTimeline } from './DevisTimeline';
+
+// Stepper et Preview
+export { default as DevisStepper } from './DevisStepper';
+export { default as DevisPreview } from './DevisPreview';
