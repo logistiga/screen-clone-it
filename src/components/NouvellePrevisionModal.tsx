@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useCreatePrevision, usePrevisionCategories } from "@/hooks/use-previsions";
+import { useCreatePrevision } from "@/hooks/use-previsions";
+import { useCategoriesDepenses } from "@/hooks/use-commercial";
+import type { CategorieDepense } from "@/lib/api/commercial";
 import { TrendingUp, TrendingDown, Wallet, Building2 } from "lucide-react";
 
 interface NouvellePrevisionModalProps {
@@ -36,7 +38,11 @@ export function NouvellePrevisionModal({
     notes: '',
   });
 
-  const { data: categories } = usePrevisionCategories();
+  const { data: categoriesData, isLoading: loadingCategories } = useCategoriesDepenses({
+    type: formData.type === 'recette' ? 'Entrée' : 'Sortie',
+    actif: true,
+  });
+
   const createMutation = useCreatePrevision();
 
   useEffect(() => {
@@ -106,9 +112,9 @@ export function NouvellePrevisionModal({
     }
   };
 
-  const categoriesList = formData.type === 'recette' 
-    ? (categories?.recette || [])
-    : (categories?.depense || []);
+  const categoriesList = (categoriesData?.data || [])
+    .map((c: CategorieDepense) => c.nom)
+    .filter(Boolean);
 
   const moisOptions = [
     { value: 1, label: 'Janvier' },
@@ -252,7 +258,19 @@ export function NouvellePrevisionModal({
                 <SelectValue placeholder="Sélectionner une catégorie" />
               </SelectTrigger>
               <SelectContent>
-                {categoriesList.map(cat => (
+                {loadingCategories && (
+                  <SelectItem value="__loading" disabled>
+                    Chargement...
+                  </SelectItem>
+                )}
+
+                {!loadingCategories && categoriesList.length === 0 && (
+                  <SelectItem value="__empty" disabled>
+                    Aucune catégorie (voir Catégories de dépenses)
+                  </SelectItem>
+                )}
+
+                {categoriesList.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}
                   </SelectItem>
