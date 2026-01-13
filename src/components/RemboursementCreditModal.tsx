@@ -58,7 +58,8 @@ export function RemboursementCreditModal({
   
   const [formData, setFormData] = useState({
     montant: montantEcheance > 0 ? montantEcheance.toString() : "",
-    mode_paiement: "virement",
+    // Doit correspondre exactement aux valeurs backend (RembourserCreditRequest)
+    mode_paiement: "Virement",
     reference: "",
     notes: ""
   });
@@ -98,13 +99,18 @@ export function RemboursementCreditModal({
       
       setFormData({
         montant: "",
-        mode_paiement: "virement",
+        mode_paiement: "Virement",
         reference: "",
         notes: ""
       });
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Erreur lors du remboursement");
+      const data = error?.response?.data;
+      const firstValidationError = data?.errors
+        ? (Object.values(data.errors).flat() as string[])[0]
+        : undefined;
+
+      toast.error(data?.message || firstValidationError || "Erreur lors du remboursement");
     }
   };
 
@@ -169,10 +175,9 @@ export function RemboursementCreditModal({
                 <SelectValue placeholder="Sélectionner un mode" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="virement">Virement bancaire</SelectItem>
-                <SelectItem value="cheque">Chèque</SelectItem>
-                <SelectItem value="prelevement">Prélèvement automatique</SelectItem>
-                <SelectItem value="especes">Espèces</SelectItem>
+                <SelectItem value="Virement">Virement bancaire</SelectItem>
+                <SelectItem value="Chèque">Chèque</SelectItem>
+                <SelectItem value="Espèces">Espèces</SelectItem>
               </SelectContent>
             </Select>
           </div>
