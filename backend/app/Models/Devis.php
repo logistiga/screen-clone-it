@@ -14,10 +14,10 @@ class Devis extends Model
 
     protected $table = 'devis';
 
+    // Champs modifiables par l'utilisateur uniquement
+    // Les champs calculés (montants, taxes) et générés (numero) sont exclus
     protected $fillable = [
-        'numero',
         'client_id',
-        'date_creation',
         'date_validite',
         'categorie',
         'type_operation',
@@ -27,15 +27,21 @@ class Devis extends Model
         'representant_id',
         'navire',
         'numero_bl',
-        'montant_ht',
         'remise_type',
         'remise_valeur',
+        'statut',
+        'notes',
+    ];
+
+    // Champs calculés/générés (non mass-assignable pour sécurité)
+    protected $guarded_calculated = [
+        'numero',
+        'date_creation',
+        'montant_ht',
         'remise_montant',
         'tva',
         'css',
         'montant_ttc',
-        'statut',
-        'notes',
     ];
 
     protected $casts = [
@@ -149,11 +155,100 @@ class Devis extends Model
     }
 
     // =========================================
+    // SCOPES
+    // =========================================
+
+    /**
+     * Scope pour recherche textuelle
+     */
+    public function scopeSearch($query, ?string $term)
+    {
+        if (empty($term)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('numero', 'like', "%{$term}%")
+              ->orWhere('navire', 'like', "%{$term}%")
+              ->orWhere('numero_bl', 'like', "%{$term}%")
+              ->orWhereHas('client', function ($q) use ($term) {
+                  $q->where('nom', 'like', "%{$term}%");
+              });
+        });
+    }
+
+    /**
+     * Scope pour filtrer par statut
+     */
+    public function scopeStatut($query, ?string $statut)
+    {
+        if (empty($statut)) {
+            return $query;
+        }
+
+        return $query->where('statut', $statut);
+    }
+
+    /**
+     * Scope pour filtrer par client
+     */
+    public function scopeClient($query, ?int $clientId)
+    {
+        if (empty($clientId)) {
+            return $query;
+        }
+
+        return $query->where('client_id', $clientId);
+    }
+
+    /**
+     * Scope pour filtrer par plage de dates
+     */
+    public function scopeDateRange($query, ?string $dateDebut, ?string $dateFin)
+    {
+        if ($dateDebut) {
+            $query->whereDate('date_creation', '>=', $dateDebut);
+        }
+
+        if ($dateFin) {
+            $query->whereDate('date_creation', '<=', $dateFin);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope pour chargement léger (liste)
+     */
+    public function scopeLite($query)
+    {
+        return $query->with(['client:id,nom', 'armateur:id,nom', 'transitaire:id,nom']);
+    }
+
+    /**
+     * Scope pour chargement complet (détail)
+     */
+    public function scopeFull($query)
+    {
+        return $query->with([
+            'client',
+            'armateur',
+            'transitaire',
+            'representant',
+            'lignes',
+            'conteneurs.operations',
+            'lots',
+            'ordre',
+            'annulation',
+        ]);
+    }
+
+    // =========================================
     // MÉTHODES PUBLIQUES
     // =========================================
 
     /**
-     * Calculer et sauvegarder les totaux du devis
+     * Calculer et sauvegarder les totaux du devis (avec remise)
      */
     public function calculerTotaux(): void
     {
@@ -164,7 +259,33 @@ class Devis extends Model
         $tauxTVA = ($taxesConfig->data['tva_taux'] ?? 18) / 100;
         $tauxCSS = ($taxesConfig->data['css_taux'] ?? 1) / 100;
 
-        // Calculer le montant HT selon la catégorie
+        // Calculer le montant HT brut selon la catégorie
+        $montantHTBrut = $this->calculerMontantHTBrut();
+
+        // Appliquer la remise
+        $remiseMontant = $this->calculerRemise($montantHTBrut);
+        $montantHT = $montantHTBrut - $remiseMontant;
+
+        // Calculer les taxes sur le montant HT après remise
+        $montantTVA = $montantHT * $tauxTVA;
+        $montantCSS = $montantHT * $tauxCSS;
+        $montantTTC = $montantHT + $montantTVA + $montantCSS;
+
+        // Mise à jour directe sans passer par fillable
+        $this->forceFill([
+            'montant_ht' => round($montantHT, 2),
+            'remise_montant' => round($remiseMontant, 2),
+            'tva' => round($montantTVA, 2),
+            'css' => round($montantCSS, 2),
+            'montant_ttc' => round($montantTTC, 2),
+        ])->save();
+    }
+
+    /**
+     * Calculer le montant HT brut (avant remise)
+     */
+    protected function calculerMontantHTBrut(): float
+    {
         $montantHT = 0;
 
         switch ($this->categorie) {
@@ -190,15 +311,23 @@ class Devis extends Model
                 break;
         }
 
-        $montantTVA = $montantHT * $tauxTVA;
-        $montantCSS = $montantHT * $tauxCSS;
-        $montantTTC = $montantHT + $montantTVA + $montantCSS;
+        return $montantHT;
+    }
 
-        $this->update([
-            'montant_ht' => round($montantHT, 2),
-            'tva' => round($montantTVA, 2),
-            'css' => round($montantCSS, 2),
-            'montant_ttc' => round($montantTTC, 2),
-        ]);
+    /**
+     * Calculer le montant de la remise
+     */
+    protected function calculerRemise(float $montantHTBrut): float
+    {
+        if (empty($this->remise_valeur) || $this->remise_valeur <= 0) {
+            return 0;
+        }
+
+        if ($this->remise_type === 'pourcentage') {
+            return $montantHTBrut * ((float) $this->remise_valeur / 100);
+        }
+
+        // Remise en montant fixe
+        return min((float) $this->remise_valeur, $montantHTBrut);
     }
 }

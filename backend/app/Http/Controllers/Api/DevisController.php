@@ -23,32 +23,12 @@ class DevisController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = Devis::with(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
-
-            // Recherche
-            if ($request->filled('search')) {
-                $search = $request->get('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('numero', 'like', "%{$search}%")
-                      ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
-                });
-            }
-
-            // Filtres
-            if ($request->filled('statut')) {
-                $query->where('statut', $request->get('statut'));
-            }
-
-            if ($request->filled('client_id')) {
-                $query->where('client_id', $request->get('client_id'));
-            }
-
-            if ($request->filled('date_debut') && $request->filled('date_fin')) {
-                $query->whereBetween('date_creation', [
-                    $request->get('date_debut'),
-                    $request->get('date_fin')
-                ]);
-            }
+            // Utiliser les scopes pour une requête propre et optimisée
+            $query = Devis::lite()
+                ->search($request->get('search'))
+                ->statut($request->get('statut'))
+                ->client($request->get('client_id'))
+                ->dateRange($request->get('date_debut'), $request->get('date_fin'));
 
             $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
             $devis = $query->orderBy('created_at', 'desc')->paginate($perPage);
@@ -76,23 +56,26 @@ class DevisController extends Controller
                 // Normaliser les données
                 $data = $this->normaliserDonnees($data);
 
-                // Générer le numéro
-                $data['numero'] = Devis::genererNumero();
-                $data['statut'] = $data['statut'] ?? 'brouillon';
-
                 // Extraire les relations
                 $lignes = $data['lignes'] ?? [];
                 $conteneurs = $data['conteneurs'] ?? [];
                 $lots = $data['lots'] ?? [];
                 unset($data['lignes'], $data['conteneurs'], $data['lots']);
 
-                // Créer le devis
-                $devis = Devis::create($data);
+                // Créer le devis avec forceFill pour les champs générés
+                $devis = new Devis();
+                $devis->fill($data);
+                $devis->forceFill([
+                    'numero' => Devis::genererNumero(),
+                    'date_creation' => now()->toDateString(),
+                    'statut' => $data['statut'] ?? 'brouillon',
+                ]);
+                $devis->save();
 
                 // Créer les éléments selon la catégorie
                 $this->creerElements($devis, $lignes, $conteneurs, $lots);
 
-                // Calculer les totaux
+                // Calculer les totaux (utilise forceFill en interne)
                 $devis->calculerTotaux();
 
                 return $devis->fresh(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
@@ -119,12 +102,24 @@ class DevisController extends Controller
     }
 
     /**
-     * Afficher un devis
+     * Afficher un devis (chargement complet)
      */
     public function show(Devis $devis): JsonResponse
     {
         try {
-            $devis->load(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
+            // Chargement complet avec scope full pour le détail
+            $devis->loadMissing([
+                'client',
+                'armateur',
+                'transitaire',
+                'representant',
+                'lignes',
+                'conteneurs.operations',
+                'lots',
+                'ordre',
+                'annulation',
+            ]);
+            
             return response()->json(new DevisResource($devis));
 
         } catch (\Throwable $e) {
@@ -343,11 +338,10 @@ class DevisController extends Controller
             $newDevis = DB::transaction(function () use ($devis) {
                 $devis->load(['lignes', 'conteneurs.operations', 'lots']);
 
-                $newDevis = Devis::create([
-                    'numero' => Devis::genererNumero(),
+                // Créer le nouveau devis avec forceFill pour les champs générés
+                $newDevis = new Devis();
+                $newDevis->fill([
                     'client_id' => $devis->client_id,
-                    'date_creation' => now(),
-                    'date_validite' => now()->addDays(30),
                     'categorie' => $devis->categorie,
                     'type_operation' => $devis->type_operation,
                     'type_operation_indep' => $devis->type_operation_indep,
@@ -356,9 +350,17 @@ class DevisController extends Controller
                     'representant_id' => $devis->representant_id,
                     'navire' => $devis->navire,
                     'numero_bl' => $devis->numero_bl,
+                    'remise_type' => $devis->remise_type,
+                    'remise_valeur' => $devis->remise_valeur,
                     'notes' => $devis->notes,
+                ]);
+                $newDevis->forceFill([
+                    'numero' => Devis::genererNumero(),
+                    'date_creation' => now()->toDateString(),
+                    'date_validite' => now()->addDays(30)->toDateString(),
                     'statut' => 'brouillon',
                 ]);
+                $newDevis->save();
 
                 // Copier les éléments
                 foreach ($devis->lignes as $ligne) {
