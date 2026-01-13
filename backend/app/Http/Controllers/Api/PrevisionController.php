@@ -141,19 +141,19 @@ class PrevisionController extends Controller
         $reelBanque = $this->getReelsBanqueAnnee($annee);
 
         // Prévisions enregistrées
-        $prevuRecettesCaisse = Prevision::where('type', 'recette')
+        $prevuRecettesCaisse = (float) Prevision::where('type', 'recette')
             ->where('source', 'caisse')
             ->where('annee', $annee)
             ->sum('montant_prevu');
-        $prevuRecettesBanque = Prevision::where('type', 'recette')
+        $prevuRecettesBanque = (float) Prevision::where('type', 'recette')
             ->where('source', 'banque')
             ->where('annee', $annee)
             ->sum('montant_prevu');
-        $prevuDepensesCaisse = Prevision::where('type', 'depense')
+        $prevuDepensesCaisse = (float) Prevision::where('type', 'depense')
             ->where('source', 'caisse')
             ->where('annee', $annee)
             ->sum('montant_prevu');
-        $prevuDepensesBanque = Prevision::where('type', 'depense')
+        $prevuDepensesBanque = (float) Prevision::where('type', 'depense')
             ->where('source', 'banque')
             ->where('annee', $annee)
             ->sum('montant_prevu');
