@@ -30,10 +30,10 @@ class ExportService
         $query = Facture::with(['client', 'paiements']);
 
         if (!empty($filters['date_debut'])) {
-            $query->where('date_facture', '>=', $filters['date_debut']);
+            $query->where('date_creation', '>=', $filters['date_debut']);
         }
         if (!empty($filters['date_fin'])) {
-            $query->where('date_facture', '<=', $filters['date_fin']);
+            $query->where('date_creation', '<=', $filters['date_fin']);
         }
         if (!empty($filters['statut'])) {
             $query->where('statut', $filters['statut']);
@@ -42,7 +42,7 @@ class ExportService
             $query->where('client_id', $filters['client_id']);
         }
 
-        $factures = $query->orderBy('date_facture', 'desc')->get();
+        $factures = $query->orderBy('date_creation', 'desc')->get();
 
         $headers = [
             'Numéro',
@@ -60,14 +60,14 @@ class ExportService
         $rows = $factures->map(function ($facture) {
             return [
                 $facture->numero,
-                $facture->date_facture->format('d/m/Y'),
-                $facture->client->raison_sociale ?? $facture->client->nom_complet,
-                number_format($facture->montant_ht, 2, ',', ' '),
-                number_format($facture->montant_tva, 2, ',', ' '),
-                number_format($facture->montant_css, 2, ',', ' '),
-                number_format($facture->montant_ttc, 2, ',', ' '),
-                number_format($facture->montant_paye, 2, ',', ' '),
-                number_format($facture->reste_a_payer, 2, ',', ' '),
+                $facture->date_creation ? $facture->date_creation->format('d/m/Y') : '-',
+                $facture->client->raison_sociale ?? $facture->client->nom_complet ?? '-',
+                number_format($facture->montant_ht ?? 0, 2, ',', ' '),
+                number_format($facture->tva ?? 0, 2, ',', ' '),
+                number_format($facture->css ?? 0, 2, ',', ' '),
+                number_format($facture->montant_ttc ?? 0, 2, ',', ' '),
+                number_format($facture->montant_paye ?? 0, 2, ',', ' '),
+                number_format(($facture->montant_ttc ?? 0) - ($facture->montant_paye ?? 0), 2, ',', ' '),
                 $this->formatStatut($facture->statut),
             ];
         });
@@ -83,10 +83,10 @@ class ExportService
         $query = OrdreTravail::with(['client', 'transitaire', 'representant', 'armateur']);
 
         if (!empty($filters['date_debut'])) {
-            $query->where('date', '>=', $filters['date_debut']);
+            $query->where('date_creation', '>=', $filters['date_debut']);
         }
         if (!empty($filters['date_fin'])) {
-            $query->where('date', '<=', $filters['date_fin']);
+            $query->where('date_creation', '<=', $filters['date_fin']);
         }
         if (!empty($filters['statut'])) {
             $query->where('statut', $filters['statut']);
@@ -98,7 +98,7 @@ class ExportService
             $query->where('categorie', $filters['categorie']);
         }
 
-        $ordres = $query->orderBy('date', 'desc')->get();
+        $ordres = $query->orderBy('date_creation', 'desc')->get();
 
         $headers = [
             'Numéro',
@@ -118,7 +118,7 @@ class ExportService
         $rows = $ordres->map(function ($ordre) {
             return [
                 $ordre->numero,
-                $ordre->date ? $ordre->date->format('d/m/Y') : '-',
+                $ordre->date_creation ? $ordre->date_creation->format('d/m/Y') : '-',
                 $ordre->client->raison_sociale ?? $ordre->client->nom_complet ?? '-',
                 $this->formatCategorie($ordre->categorie),
                 $ordre->navire ?? '-',
@@ -226,16 +226,16 @@ class ExportService
         $query = Devis::with(['client']);
 
         if (!empty($filters['date_debut'])) {
-            $query->where('date_devis', '>=', $filters['date_debut']);
+            $query->where('date_creation', '>=', $filters['date_debut']);
         }
         if (!empty($filters['date_fin'])) {
-            $query->where('date_devis', '<=', $filters['date_fin']);
+            $query->where('date_creation', '<=', $filters['date_fin']);
         }
         if (!empty($filters['statut'])) {
             $query->where('statut', $filters['statut']);
         }
 
-        $devis = $query->orderBy('date_devis', 'desc')->get();
+        $devis = $query->orderBy('date_creation', 'desc')->get();
 
         $headers = [
             'Numéro',
@@ -251,12 +251,12 @@ class ExportService
         $rows = $devis->map(function ($d) {
             return [
                 $d->numero,
-                $d->date_devis->format('d/m/Y'),
+                $d->date_creation ? $d->date_creation->format('d/m/Y') : '-',
                 $d->date_validite ? $d->date_validite->format('d/m/Y') : '-',
-                $d->client->raison_sociale ?? $d->client->nom_complet,
-                number_format($d->montant_ht, 2, ',', ' '),
-                number_format($d->montant_tva, 2, ',', ' '),
-                number_format($d->montant_ttc, 2, ',', ' '),
+                $d->client->raison_sociale ?? $d->client->nom_complet ?? '-',
+                number_format($d->montant_ht ?? 0, 2, ',', ' '),
+                number_format($d->tva ?? 0, 2, ',', ' '),
+                number_format($d->montant_ttc ?? 0, 2, ',', ' '),
                 $this->formatStatut($d->statut),
             ];
         });
@@ -272,16 +272,16 @@ class ExportService
         $query = Paiement::with(['facture.client']);
 
         if (!empty($filters['date_debut'])) {
-            $query->where('date_paiement', '>=', $filters['date_debut']);
+            $query->where('date', '>=', $filters['date_debut']);
         }
         if (!empty($filters['date_fin'])) {
-            $query->where('date_paiement', '<=', $filters['date_fin']);
+            $query->where('date', '<=', $filters['date_fin']);
         }
         if (!empty($filters['mode_paiement'])) {
             $query->where('mode_paiement', $filters['mode_paiement']);
         }
 
-        $paiements = $query->orderBy('date_paiement', 'desc')->get();
+        $paiements = $query->orderBy('date', 'desc')->get();
 
         $headers = [
             'Référence',
@@ -297,13 +297,13 @@ class ExportService
         $rows = $paiements->map(function ($paiement) {
             return [
                 $paiement->reference ?? '-',
-                $paiement->date_paiement->format('d/m/Y'),
+                $paiement->date ? $paiement->date->format('d/m/Y') : '-',
                 $paiement->facture->numero ?? '-',
                 $paiement->facture->client->raison_sociale ?? $paiement->facture->client->nom_complet ?? '-',
-                number_format($paiement->montant, 2, ',', ' '),
-                $this->formatModePaiement($paiement->mode_paiement),
-                $paiement->reference_paiement ?? '-',
-                $paiement->observations ?? '-',
+                number_format($paiement->montant ?? 0, 2, ',', ' '),
+                $this->formatModePaiement($paiement->mode_paiement ?? ''),
+                $paiement->reference ?? '-',
+                $paiement->notes ?? '-',
             ];
         });
 
@@ -318,10 +318,10 @@ class ExportService
         $query = MouvementCaisse::query();
 
         if (!empty($filters['date_debut'])) {
-            $query->where('date_mouvement', '>=', $filters['date_debut']);
+            $query->where('date', '>=', $filters['date_debut']);
         }
         if (!empty($filters['date_fin'])) {
-            $query->where('date_mouvement', '<=', $filters['date_fin']);
+            $query->where('date', '<=', $filters['date_fin']);
         }
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
@@ -330,7 +330,7 @@ class ExportService
             $query->where('categorie', $filters['categorie']);
         }
 
-        $mouvements = $query->orderBy('date_mouvement', 'desc')->get();
+        $mouvements = $query->orderBy('date', 'desc')->get();
 
         $headers = [
             'Date',
@@ -347,11 +347,11 @@ class ExportService
             $solde += $montant;
             
             return [
-                $mouvement->date_mouvement->format('d/m/Y'),
+                $mouvement->date ? $mouvement->date->format('d/m/Y') : '-',
                 $mouvement->type === 'entree' ? 'Entrée' : 'Sortie',
                 $mouvement->categorie ?? '-',
                 $mouvement->description ?? '-',
-                ($mouvement->type === 'entree' ? '+' : '-') . number_format($mouvement->montant, 2, ',', ' '),
+                ($mouvement->type === 'entree' ? '+' : '-') . number_format($mouvement->montant ?? 0, 2, ',', ' '),
                 number_format($solde, 2, ',', ' '),
             ];
         });
@@ -468,14 +468,14 @@ class ExportService
 
         $rows = collect($data['par_client'])->map(function ($item) {
             return [
-                $item['client'],
-                number_format($item['total_du'], 2, ',', ' '),
+                $item['client_nom'] ?? 'N/A',
+                number_format($item['total_du'] ?? 0, 2, ',', ' '),
                 number_format($item['non_echu'] ?? 0, 2, ',', ' '),
                 number_format($item['0_30_jours'] ?? 0, 2, ',', ' '),
                 number_format($item['31_60_jours'] ?? 0, 2, ',', ' '),
                 number_format($item['61_90_jours'] ?? 0, 2, ',', ' '),
                 number_format($item['plus_90_jours'] ?? 0, 2, ',', ' '),
-                $item['nb_factures'],
+                $item['nombre_factures'] ?? 0,
             ];
         });
 
@@ -496,12 +496,12 @@ class ExportService
             'Solde',
         ];
 
-        $rows = collect($data['evolution'])->map(function ($item) {
+        $rows = collect($data['mouvements_quotidiens'] ?? [])->map(function ($item) {
             return [
-                $item['date'],
-                number_format($item['entrees'], 2, ',', ' '),
-                number_format($item['sorties'], 2, ',', ' '),
-                number_format($item['solde'], 2, ',', ' '),
+                $item->jour ?? '-',
+                number_format($item->entrees ?? 0, 2, ',', ' '),
+                number_format($item->sorties ?? 0, 2, ',', ' '),
+                number_format($item->solde_cumule ?? 0, 2, ',', ' '),
             ];
         });
 
@@ -561,19 +561,19 @@ class ExportService
      */
     public function exportAnnulationsCSV(array $filters = []): string
     {
-        $query = Annulation::with(['user', 'facture', 'ordre', 'devis']);
+        $query = Annulation::with(['client']);
 
         if (!empty($filters['date_debut'])) {
-            $query->where('date_annulation', '>=', $filters['date_debut']);
+            $query->where('date', '>=', $filters['date_debut']);
         }
         if (!empty($filters['date_fin'])) {
-            $query->where('date_annulation', '<=', $filters['date_fin']);
+            $query->where('date', '<=', $filters['date_fin']);
         }
         if (!empty($filters['type'])) {
-            $query->where('type_document', $filters['type']);
+            $query->where('type', $filters['type']);
         }
 
-        $annulations = $query->orderBy('date_annulation', 'desc')->get();
+        $annulations = $query->orderBy('date', 'desc')->get();
 
         $headers = [
             'Date',
@@ -581,18 +581,17 @@ class ExportService
             'Numéro Document',
             'Montant',
             'Motif',
-            'Utilisateur',
+            'Client',
         ];
 
         $rows = $annulations->map(function ($annulation) {
-            $document = $annulation->facture ?? $annulation->ordre ?? $annulation->devis;
             return [
-                $annulation->date_annulation->format('d/m/Y H:i'),
-                $this->formatTypeDocument($annulation->type_document),
-                $document->numero ?? '-',
+                $annulation->date ? $annulation->date->format('d/m/Y H:i') : '-',
+                $this->formatTypeDocument($annulation->type ?? ''),
+                $annulation->document_numero ?? '-',
                 number_format($annulation->montant ?? 0, 2, ',', ' '),
                 $annulation->motif ?? '-',
-                $annulation->user->name ?? '-',
+                $annulation->client->raison_sociale ?? $annulation->client->nom ?? '-',
             ];
         });
 
@@ -611,18 +610,18 @@ class ExportService
         // Indicateurs clés
         $content .= "INDICATEURS CLÉS\n";
         $content .= "Métrique;Valeur\n";
-        $content .= "Chiffre d'affaires;" . number_format($data['chiffre_affaires']['total_facture'], 2, ',', ' ') . " FCFA\n";
-        $content .= "Encaissements;" . number_format($data['chiffre_affaires']['total_encaisse'], 2, ',', ' ') . " FCFA\n";
-        $content .= "Créances totales;" . number_format($data['creances']['total'], 2, ',', ' ') . " FCFA\n";
-        $content .= "Solde trésorerie;" . number_format($data['tresorerie']['solde_actuel'], 2, ',', ' ') . " FCFA\n";
+        $content .= "Chiffre d'affaires TTC;" . number_format($data['rentabilite']['chiffre_affaires_ttc'] ?? 0, 2, ',', ' ') . " FCFA\n";
+        $content .= "Résultat net;" . number_format($data['rentabilite']['resultat_net'] ?? 0, 2, ',', ' ') . " FCFA\n";
+        $content .= "Créances totales;" . number_format($data['creances']['total_creances'] ?? 0, 2, ',', ' ') . " FCFA\n";
+        $content .= "Marge nette;" . ($data['rentabilite']['marge_nette_pct'] ?? 0) . "%\n";
         $content .= "\n";
 
         // Statistiques documents
         $content .= "STATISTIQUES DOCUMENTS\n";
-        $content .= "Type;Total;En cours;Validés\n";
-        foreach ($data['statistiques_documents'] as $type => $stats) {
-            $content .= ucfirst($type) . ";" . $stats['total'] . ";" . ($stats['en_cours'] ?? 0) . ";" . ($stats['valides'] ?? 0) . "\n";
-        }
+        $content .= "Type;Total;Taux Conversion\n";
+        $content .= "Devis;" . ($data['documents']['devis']['total'] ?? 0) . ";" . ($data['documents']['devis']['taux_conversion'] ?? 0) . "%\n";
+        $content .= "Ordres;" . ($data['documents']['ordres']['total'] ?? 0) . ";" . ($data['documents']['ordres']['taux_conversion'] ?? 0) . "%\n";
+        $content .= "Factures;" . ($data['documents']['factures']['total'] ?? 0) . ";-\n";
         $content .= "\n";
 
         // Alertes
@@ -630,7 +629,7 @@ class ExportService
             $content .= "ALERTES\n";
             $content .= "Niveau;Message\n";
             foreach ($data['alertes'] as $alerte) {
-                $content .= $alerte['niveau'] . ";" . $alerte['message'] . "\n";
+                $content .= ($alerte['type'] ?? 'info') . ";" . ($alerte['message'] ?? '') . "\n";
             }
         }
 
