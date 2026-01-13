@@ -63,6 +63,15 @@ const exportOptions: ExportOption[] = [
     hasStatutFilter: true,
   },
   { 
+    id: 'ordres-travail', 
+    label: 'Ordres de Travail', 
+    description: 'Tous les ordres de travail',
+    icon: Truck,
+    hasClientFilter: true,
+    hasStatutFilter: true,
+    hasCategorieFilter: true,
+  },
+  { 
     id: 'paiements', 
     label: 'Paiements', 
     description: 'Historique des paiements',
@@ -74,6 +83,13 @@ const exportOptions: ExportOption[] = [
     label: 'Clients', 
     description: 'Liste des clients',
     icon: Users,
+  },
+  { 
+    id: 'primes', 
+    label: 'Primes', 
+    description: 'Primes des représentants',
+    icon: Wallet,
+    hasStatutFilter: true,
   },
   { 
     id: 'caisse', 
@@ -107,6 +123,18 @@ const exportOptions: ExportOption[] = [
     icon: XCircle,
   },
   { 
+    id: 'activite-globale', 
+    label: 'Activité Clients', 
+    description: 'Synthèse par client',
+    icon: Users,
+  },
+  { 
+    id: 'chiffre-affaires', 
+    label: 'Chiffre d\'Affaires', 
+    description: 'CA mensuel et annuel',
+    icon: BarChart3,
+  },
+  { 
     id: 'tableau-de-bord', 
     label: 'Tableau de Bord', 
     description: 'Synthèse générale',
@@ -132,6 +160,28 @@ const statutsDevis = [
   { value: 'expire', label: 'Expiré' },
 ];
 
+const statutsOrdre = [
+  { value: 'tous', label: 'Tous les statuts' },
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'termine', label: 'Terminé' },
+  { value: 'facture', label: 'Facturé' },
+  { value: 'annule', label: 'Annulé' },
+];
+
+const statutsPrime = [
+  { value: 'tous', label: 'Tous les statuts' },
+  { value: 'en_attente', label: 'En attente' },
+  { value: 'partiel', label: 'Partiellement payée' },
+  { value: 'paye', label: 'Payée' },
+];
+
+const categoriesDocument = [
+  { value: 'tous', label: 'Toutes les catégories' },
+  { value: 'conteneurs', label: 'Conteneurs' },
+  { value: 'conventionnel', label: 'Conventionnel' },
+  { value: 'independant', label: 'Indépendant' },
+];
+
 const modesPaiement = [
   { value: 'tous', label: 'Tous les modes' },
   { value: 'especes', label: 'Espèces' },
@@ -151,6 +201,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const [clientId, setClientId] = useState("tous");
   const [statut, setStatut] = useState("tous");
   const [modePaiement, setModePaiement] = useState("tous");
+  const [categorie, setCategorie] = useState("tous");
   const [isExporting, setIsExporting] = useState(false);
   const [annee, setAnnee] = useState(new Date().getFullYear());
 
@@ -160,6 +211,14 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         ? prev.filter(e => e !== exportId)
         : [...prev, exportId]
     );
+  };
+
+  // Déterminer les statuts à afficher selon le type sélectionné
+  const getStatutsForType = () => {
+    if (selectedExports.includes('ordres-travail')) return statutsOrdre;
+    if (selectedExports.includes('primes')) return statutsPrime;
+    if (selectedExports.includes('devis')) return statutsDevis;
+    return statutsFacture;
   };
 
   const handleExport = async () => {
@@ -186,6 +245,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         if (modePaiement !== 'tous') {
           filters.mode_paiement = modePaiement;
         }
+        if (categorie !== 'tous') {
+          filters.categorie = categorie;
+        }
         if (exportType === 'tableau-de-bord' || exportType === 'chiffre-affaires') {
           filters.annee = annee;
         }
@@ -208,7 +270,6 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
     }
   };
 
-  const selectedOption = exportOptions.find(o => selectedExports.includes(o.id));
   const showClientFilter = selectedExports.some(e => 
     exportOptions.find(o => o.id === e)?.hasClientFilter
   );
@@ -217,6 +278,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   );
   const showModePaiementFilter = selectedExports.some(e => 
     exportOptions.find(o => o.id === e)?.hasModePaiementFilter
+  );
+  const showCategorieFilter = selectedExports.some(e => 
+    exportOptions.find(o => o.id === e)?.hasCategorieFilter
   );
 
   return (
@@ -313,7 +377,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
           </div>
 
           {/* Filtres conditionnels */}
-          {(showClientFilter || showStatutFilter || showModePaiementFilter) && (
+          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Filtres</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -344,7 +408,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(selectedExports.includes('devis') ? statutsDevis : statutsFacture).map((s) => (
+                        {getStatutsForType().map((s) => (
                           <SelectItem key={s.value} value={s.value}>
                             {s.label}
                           </SelectItem>
@@ -365,6 +429,24 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
                         {modesPaiement.map((m) => (
                           <SelectItem key={m.value} value={m.value}>
                             {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {showCategorieFilter && (
+                  <div className="space-y-2">
+                    <Label>Catégorie</Label>
+                    <Select value={categorie} onValueChange={setCategorie}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriesDocument.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
                           </SelectItem>
                         ))}
                       </SelectContent>

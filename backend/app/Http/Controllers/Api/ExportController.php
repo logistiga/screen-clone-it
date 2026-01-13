@@ -32,6 +32,31 @@ class ExportController extends Controller
         return $this->streamCSV($csv, 'devis');
     }
 
+    public function ordres(Request $request): StreamedResponse
+    {
+        $filters = $request->only(['date_debut', 'date_fin', 'statut', 'client_id', 'categorie']);
+        $csv = $this->exportService->exportOrdresCSV($filters);
+        
+        return $this->streamCSV($csv, 'ordres-travail');
+    }
+
+    public function primes(Request $request): StreamedResponse
+    {
+        $filters = $request->only(['date_debut', 'date_fin', 'statut', 'representant_id']);
+        $csv = $this->exportService->exportPrimesCSV($filters);
+        
+        return $this->streamCSV($csv, 'primes');
+    }
+
+    public function activiteGlobale(Request $request): StreamedResponse
+    {
+        $dateDebut = $request->get('date_debut', now()->startOfYear()->toDateString());
+        $dateFin = $request->get('date_fin', now()->endOfYear()->toDateString());
+        $csv = $this->exportService->exportActiviteGlobaleCSV($dateDebut, $dateFin);
+        
+        return $this->streamCSV($csv, 'activite-globale');
+    }
+
     public function paiements(Request $request): StreamedResponse
     {
         $filters = $request->only(['date_debut', 'date_fin', 'mode_paiement']);

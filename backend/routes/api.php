@@ -469,14 +469,17 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('exports')->middleware('permission:reporting.voir')->group(function () {
         Route::get('factures', [ExportController::class, 'factures']);
         Route::get('devis', [ExportController::class, 'devis']);
+        Route::get('ordres-travail', [ExportController::class, 'ordres']);
         Route::get('paiements', [ExportController::class, 'paiements']);
         Route::get('caisse', [ExportController::class, 'caisse']);
         Route::get('clients', [ExportController::class, 'clients']);
+        Route::get('primes', [ExportController::class, 'primes']);
         Route::get('chiffre-affaires', [ExportController::class, 'chiffreAffaires']);
         Route::get('creances', [ExportController::class, 'creances']);
         Route::get('tresorerie', [ExportController::class, 'tresorerie']);
         Route::get('credits', [ExportController::class, 'credits']);
         Route::get('annulations', [ExportController::class, 'annulations']);
+        Route::get('activite-globale', [ExportController::class, 'activiteGlobale']);
         Route::get('tableau-de-bord', [ExportController::class, 'tableauDeBord']);
     });
 
