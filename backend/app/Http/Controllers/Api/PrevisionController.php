@@ -258,9 +258,30 @@ class PrevisionController extends Controller
 
     public function categories(): JsonResponse
     {
+        // Charger depuis la table categories_depenses
+        $categoriesEntree = \App\Models\CategorieDepense::where('type', 'Entrée')
+            ->where('actif', true)
+            ->orderBy('nom')
+            ->pluck('nom')
+            ->toArray();
+
+        $categoriesSortie = \App\Models\CategorieDepense::where('type', 'Sortie')
+            ->where('actif', true)
+            ->orderBy('nom')
+            ->pluck('nom')
+            ->toArray();
+
+        // Ajouter les catégories par défaut si la table est vide
+        if (empty($categoriesEntree)) {
+            $categoriesEntree = Prevision::getCategoriesRecettes();
+        }
+        if (empty($categoriesSortie)) {
+            $categoriesSortie = Prevision::getCategoriesDepenses();
+        }
+
         return response()->json([
-            'recette' => Prevision::getCategoriesRecettes(),
-            'depense' => Prevision::getCategoriesDepenses(),
+            'recette' => $categoriesEntree,
+            'depense' => $categoriesSortie,
         ]);
     }
 
