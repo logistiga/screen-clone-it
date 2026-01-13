@@ -233,9 +233,15 @@ export interface Representant {
   // Relations chargées depuis show()
   primes?: Prime[];
   paiements_primes?: PaiementPrimeGrouped[];
+  ordres_travail?: OrdreTravail[];
+  factures?: Facture[];
+  devis?: Devis[];
   counts?: {
     primes: number;
     primes_sum_montant: number;
+    ordres?: number;
+    factures?: number;
+    devis?: number;
   };
 }
 

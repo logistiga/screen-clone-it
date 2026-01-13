@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, History, DollarSign, Loader2, Printer } from "lucide-react";
-import { formatMontant, formatDate } from "@/data/mockData";
+import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, History, DollarSign, Loader2, Printer, ClipboardList, Receipt, FileText } from "lucide-react";
+import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
 import { useRepresentantById } from "@/hooks/use-commercial";
+import type { Representant } from "@/types/partenaires";
 
 export default function RepresentantDetailPage() {
   const { id } = useParams();
@@ -25,7 +26,7 @@ export default function RepresentantDetailPage() {
   const [showPaiementModal, setShowPaiementModal] = useState(false);
   const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
   
-  const { data: representant, isLoading, error } = useRepresentantById(id);
+  const { data: representant, isLoading, error, refetch } = useRepresentantById(id);
 
   if (isLoading) {
     return (
@@ -52,11 +53,21 @@ export default function RepresentantDetailPage() {
 
   // Données de l'API
   const primes = representant.primes || [];
+  const ordres = representant.ordres_travail || [];
+  const factures = representant.factures || [];
+  const devisList = representant.devis || [];
+
+  // Calculer les totaux
+  const totalOrdres = ordres.length;
+  const totalFactures = factures.length;
+  const totalDevis = devisList.length;
+  const montantTotalFactures = factures.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
+  const montantTotalOrdres = ordres.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0);
 
   // Calculer les totaux depuis les vraies données
   const primesDues = primes
     .filter((p: any) => p.statut !== 'Payée')
-    .reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+    .reduce((sum: number, p: any) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
   
   const primesPayees = primes
     .filter((p: any) => p.statut === 'Payée')
@@ -90,9 +101,29 @@ export default function RepresentantDetailPage() {
 
   const selectedTotal = primes
     .filter((p: any) => selectedPrimes.includes(String(p.id)))
-    .reduce((sum: number, p: any) => sum + (p.montant || 0), 0);
+    .reduce((sum: number, p: any) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
 
   const getStatutBadge = (statut: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      en_cours: "outline",
+      termine: "default",
+      facture: "default",
+      annule: "destructive",
+      emise: "outline",
+      payee: "default",
+      partielle: "secondary",
+      impayee: "destructive",
+      brouillon: "secondary",
+      envoye: "outline",
+      accepte: "default",
+      refuse: "destructive",
+      expire: "destructive",
+      converti: "default",
+    };
+    return <Badge variant={variants[statut] || "secondary"}>{getStatutLabel(statut)}</Badge>;
+  };
+
+  const getPrimeStatutBadge = (statut: string) => {
     const isPaid = statut === 'Payée' || statut === 'payee';
     return (
       <Badge variant={isPaid ? 'default' : 'destructive'}>
@@ -172,11 +203,12 @@ export default function RepresentantDetailPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Primes
+                  Total Ordres
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{primes.length}</div>
+                <div className="text-2xl font-bold">{totalOrdres}</div>
+                <p className="text-xs text-muted-foreground">{formatMontant(montantTotalOrdres)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -209,9 +241,21 @@ export default function RepresentantDetailPage() {
               <CreditCard className="h-4 w-4" />
               Primes ({primes.length})
             </TabsTrigger>
-            <TabsTrigger value="historique" className="gap-2">
+            <TabsTrigger value="paiements" className="gap-2">
               <History className="h-4 w-4" />
-              Historique Paiements ({allPaiements.length})
+              Paiements ({allPaiements.length})
+            </TabsTrigger>
+            <TabsTrigger value="ordres" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Ordres ({totalOrdres})
+            </TabsTrigger>
+            <TabsTrigger value="factures" className="gap-2">
+              <Receipt className="h-4 w-4" />
+              Factures ({totalFactures})
+            </TabsTrigger>
+            <TabsTrigger value="devis" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Devis ({totalDevis})
             </TabsTrigger>
           </TabsList>
 
@@ -260,7 +304,7 @@ export default function RepresentantDetailPage() {
                         <TableCell className="text-right font-medium text-destructive">
                           {formatMontant(prime.reste_a_payer ?? prime.montant)}
                         </TableCell>
-                        <TableCell>{getStatutBadge(prime.statut)}</TableCell>
+                        <TableCell>{getPrimeStatutBadge(prime.statut)}</TableCell>
                       </TableRow>
                     ))}
                     {primes.length === 0 && (
@@ -277,7 +321,7 @@ export default function RepresentantDetailPage() {
           </TabsContent>
 
           {/* Historique Paiements Tab */}
-          <TabsContent value="historique" className="mt-4">
+          <TabsContent value="paiements" className="mt-4">
             <Card>
               <CardContent className="p-0">
                 {allPaiements.length === 0 ? (
@@ -374,6 +418,141 @@ export default function RepresentantDetailPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Ordres Tab */}
+          <TabsContent value="ordres" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Numéro</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Montant TTC</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ordres.map((ordre: any) => (
+                      <TableRow 
+                        key={ordre.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/ordres/${ordre.id}`)}
+                      >
+                        <TableCell className="font-medium text-primary">{ordre.numero}</TableCell>
+                        <TableCell>{formatDate(ordre.date_creation || ordre.date)}</TableCell>
+                        <TableCell>{ordre.client?.nom || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{ordre.type_document || ordre.categorie || '-'}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
+                        <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {ordres.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Aucun ordre de travail
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Factures Tab */}
+          <TabsContent value="factures" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Numéro</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Montant TTC</TableHead>
+                      <TableHead className="text-right">Reste à payer</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {factures.map((facture: any) => (
+                      <TableRow 
+                        key={facture.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/factures/${facture.id}`)}
+                      >
+                        <TableCell className="font-medium text-primary">{facture.numero}</TableCell>
+                        <TableCell>{formatDate(facture.date_creation || facture.date)}</TableCell>
+                        <TableCell>{facture.client?.nom || '-'}</TableCell>
+                        <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">
+                          {formatMontant((facture.montant_ttc || 0) - (facture.montant_paye || 0))}
+                        </TableCell>
+                        <TableCell>{getStatutBadge(facture.statut)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {factures.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Aucune facture
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Devis Tab */}
+          <TabsContent value="devis" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Numéro</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Montant TTC</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {devisList.map((devis: any) => (
+                      <TableRow 
+                        key={devis.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/devis/${devis.id}`)}
+                      >
+                        <TableCell className="font-medium text-primary">{devis.numero}</TableCell>
+                        <TableCell>{formatDate(devis.date_creation || devis.date)}</TableCell>
+                        <TableCell>{devis.client?.nom || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{devis.type_document || devis.categorie || '-'}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatMontant(devis.montant_ttc)}</TableCell>
+                        <TableCell>{getStatutBadge(devis.statut)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {devisList.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Aucun devis
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -385,7 +564,7 @@ export default function RepresentantDetailPage() {
         partenaireType="representant"
         primes={primes.filter((p: any) => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
         total={selectedTotal > 0 ? selectedTotal : primesDues}
-        onSuccess={() => {}}
+        onSuccess={() => refetch()}
       />
     </MainLayout>
   );

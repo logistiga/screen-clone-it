@@ -59,6 +59,10 @@ class RepresentantController extends Controller
             'paiementsPrimes.primes',
             'paiementsPrimes.primes.ordre',
             'paiementsPrimes.primes.facture',
+            // Charger les documents liés
+            'ordres' => fn($q) => $q->with('client')->orderBy('date_creation', 'desc')->limit(50),
+            'factures' => fn($q) => $q->with('client')->orderBy('date_creation', 'desc')->limit(50),
+            'devis' => fn($q) => $q->with('client')->orderBy('date_creation', 'desc')->limit(50),
         ]);
 
         return response()->json(['data' => new RepresentantResource($representant)]);
