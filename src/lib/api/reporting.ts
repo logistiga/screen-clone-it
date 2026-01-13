@@ -230,15 +230,17 @@ export const reportingApi = {
 export type ExportType = 
   | 'factures' 
   | 'devis' 
-  | 'ordres'
+  | 'ordres-travail'
   | 'paiements' 
   | 'caisse' 
   | 'clients' 
+  | 'primes'
   | 'chiffre-affaires' 
   | 'creances' 
   | 'tresorerie' 
   | 'credits' 
   | 'annulations'
+  | 'activite-globale'
   | 'tableau-de-bord';
 
 export interface ExportFilters {
@@ -250,6 +252,7 @@ export interface ExportFilters {
   type?: string;
   categorie?: string;
   banque_id?: string;
+  representant_id?: string;
   annee?: number;
   actif?: boolean;
 }
@@ -259,10 +262,7 @@ export interface ExportFilters {
 export const exportApi = {
   // Export générique CSV
   exportCSV: async (type: ExportType, filters: ExportFilters = {}): Promise<Blob> => {
-    // Pour ordres, on utilise une route personnalisée ou on gère côté client
-    const endpoint = type === 'ordres' ? 'ordres-travail' : type;
-    
-    const response = await api.get(`/exports/${endpoint}`, {
+    const response = await api.get(`/exports/${type}`, {
       params: filters,
       responseType: 'blob',
     });
@@ -298,6 +298,10 @@ export const exportApi = {
     return exportApi.exportCSV('devis', filters);
   },
 
+  exportOrdres: async (filters: ExportFilters = {}): Promise<Blob> => {
+    return exportApi.exportCSV('ordres-travail', filters);
+  },
+
   exportPaiements: async (filters: ExportFilters = {}): Promise<Blob> => {
     return exportApi.exportCSV('paiements', filters);
   },
@@ -308,6 +312,10 @@ export const exportApi = {
 
   exportClients: async (filters: ExportFilters = {}): Promise<Blob> => {
     return exportApi.exportCSV('clients', filters);
+  },
+
+  exportPrimes: async (filters: ExportFilters = {}): Promise<Blob> => {
+    return exportApi.exportCSV('primes', filters);
   },
 
   exportCreances: async (): Promise<Blob> => {
@@ -324,6 +332,10 @@ export const exportApi = {
 
   exportAnnulations: async (filters: ExportFilters = {}): Promise<Blob> => {
     return exportApi.exportCSV('annulations', filters);
+  },
+
+  exportActiviteGlobale: async (dateDebut: string, dateFin: string): Promise<Blob> => {
+    return exportApi.exportCSV('activite-globale', { date_debut: dateDebut, date_fin: dateFin });
   },
 
   exportTableauDeBord: async (annee: number): Promise<Blob> => {

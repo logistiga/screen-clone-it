@@ -76,6 +76,149 @@ class ExportService
     }
 
     /**
+     * Export des ordres de travail en CSV
+     */
+    public function exportOrdresCSV(array $filters = []): string
+    {
+        $query = OrdreTravail::with(['client', 'transitaire', 'representant', 'armateur']);
+
+        if (!empty($filters['date_debut'])) {
+            $query->where('date', '>=', $filters['date_debut']);
+        }
+        if (!empty($filters['date_fin'])) {
+            $query->where('date', '<=', $filters['date_fin']);
+        }
+        if (!empty($filters['statut'])) {
+            $query->where('statut', $filters['statut']);
+        }
+        if (!empty($filters['client_id'])) {
+            $query->where('client_id', $filters['client_id']);
+        }
+        if (!empty($filters['categorie'])) {
+            $query->where('categorie', $filters['categorie']);
+        }
+
+        $ordres = $query->orderBy('date', 'desc')->get();
+
+        $headers = [
+            'Numéro',
+            'Date',
+            'Client',
+            'Catégorie',
+            'Navire',
+            'BL',
+            'Transitaire',
+            'Représentant',
+            'Montant HT',
+            'TVA',
+            'Montant TTC',
+            'Statut',
+        ];
+
+        $rows = $ordres->map(function ($ordre) {
+            return [
+                $ordre->numero,
+                $ordre->date ? $ordre->date->format('d/m/Y') : '-',
+                $ordre->client->raison_sociale ?? $ordre->client->nom_complet ?? '-',
+                $this->formatCategorie($ordre->categorie),
+                $ordre->navire ?? '-',
+                $ordre->bl ?? '-',
+                $ordre->transitaire->nom ?? '-',
+                $ordre->representant->nom ?? '-',
+                number_format($ordre->montant_ht ?? 0, 2, ',', ' '),
+                number_format($ordre->montant_tva ?? 0, 2, ',', ' '),
+                number_format($ordre->montant_ttc ?? 0, 2, ',', ' '),
+                $this->formatStatut($ordre->statut),
+            ];
+        });
+
+        return $this->generateCSV($headers, $rows);
+    }
+
+    /**
+     * Export des primes en CSV
+     */
+    public function exportPrimesCSV(array $filters = []): string
+    {
+        $query = \App\Models\Prime::with(['representant', 'paiements']);
+
+        if (!empty($filters['date_debut'])) {
+            $query->where('date', '>=', $filters['date_debut']);
+        }
+        if (!empty($filters['date_fin'])) {
+            $query->where('date', '<=', $filters['date_fin']);
+        }
+        if (!empty($filters['statut'])) {
+            $query->where('statut', $filters['statut']);
+        }
+        if (!empty($filters['representant_id'])) {
+            $query->where('representant_id', $filters['representant_id']);
+        }
+
+        $primes = $query->orderBy('date', 'desc')->get();
+
+        $headers = [
+            'Référence',
+            'Date',
+            'Représentant',
+            'Source',
+            'Montant Total',
+            'Montant Payé',
+            'Reste à Payer',
+            'Statut',
+        ];
+
+        $rows = $primes->map(function ($prime) {
+            $paye = $prime->paiements->sum('montant');
+            return [
+                $prime->reference ?? '-',
+                $prime->date ? $prime->date->format('d/m/Y') : '-',
+                $prime->representant->nom ?? '-',
+                $prime->source ?? '-',
+                number_format($prime->montant ?? 0, 2, ',', ' '),
+                number_format($paye, 2, ',', ' '),
+                number_format(($prime->montant ?? 0) - $paye, 2, ',', ' '),
+                $this->formatStatut($prime->statut ?? 'en_attente'),
+            ];
+        });
+
+        return $this->generateCSV($headers, $rows);
+    }
+
+    /**
+     * Export du rapport d'activité globale en CSV
+     */
+    public function exportActiviteGlobaleCSV(string $dateDebut, string $dateFin): string
+    {
+        $data = $this->reportingService->getActiviteClients($dateDebut, $dateFin, 100);
+
+        $headers = [
+            'Client',
+            'CA Total',
+            'Nb Factures',
+            'Paiements',
+            'Solde Dû',
+            'Taux Paiement (%)',
+        ];
+
+        $rows = collect($data['top_clients'])->map(function ($client) {
+            $taux = ($client->factures_sum_montant_ttc ?? 0) > 0 
+                ? round((($client->paiements_sum_montant ?? 0) / $client->factures_sum_montant_ttc) * 100, 2) 
+                : 100;
+            return [
+                $client->raison_sociale ?? $client->nom ?? 'N/A',
+                number_format($client->factures_sum_montant_ttc ?? 0, 2, ',', ' '),
+                $client->factures_count ?? 0,
+                number_format($client->paiements_sum_montant ?? 0, 2, ',', ' '),
+                number_format($client->solde ?? 0, 2, ',', ' '),
+                $taux . '%',
+            ];
+        });
+
+        return $this->generateCSV($headers, $rows);
+    }
+
+    /**
      * Export des devis en CSV
      */
     public function exportDevisCSV(array $filters = []): string
@@ -564,6 +707,19 @@ class ExportService
             'devis' => 'Devis',
             'ordre' => 'Ordre de travail',
             default => ucfirst($type),
+        };
+    }
+
+    /**
+     * Formate une catégorie pour l'affichage
+     */
+    protected function formatCategorie(string $categorie): string
+    {
+        return match ($categorie) {
+            'conteneurs' => 'Conteneurs',
+            'conventionnel' => 'Conventionnel',
+            'independant' => 'Indépendant',
+            default => ucfirst($categorie),
         };
     }
 }
