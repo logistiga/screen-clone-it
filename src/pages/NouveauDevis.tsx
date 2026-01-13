@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, FileText, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   RecapitulatifCard,
   DevisStepper,
   DevisPreview,
+  AutoSaveIndicator,
 } from "@/components/devis/shared";
 import {
   DevisConteneursForm,
@@ -26,6 +27,19 @@ import type { DevisConteneursData } from "@/components/devis/forms/DevisConteneu
 import type { DevisConventionnelData } from "@/components/devis/forms/DevisConventionnelForm";
 import type { DevisIndependantData } from "@/components/devis/forms/DevisIndependantForm";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+import { useAutoSave } from "@/hooks/use-auto-save";
+
+interface DevisDraftData {
+  categorie: CategorieDocument | "";
+  clientId: string;
+  dateValidite: string;
+  notes: string;
+  currentStep: number;
+  conteneursData: DevisConteneursData | null;
+  conventionnelData: DevisConventionnelData | null;
+  independantData: DevisIndependantData | null;
+  remiseData: RemiseData;
+}
 
 export default function NouveauDevisPage() {
   const navigate = useNavigate();
@@ -50,6 +64,8 @@ export default function NouveauDevisPage() {
 
   // Stepper
   const [currentStep, setCurrentStep] = useState(1);
+  const [showRestorePrompt, setShowRestorePrompt] = useState(true);
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
 
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
   const [clientId, setClientId] = useState("");
@@ -71,6 +87,51 @@ export default function NouveauDevisPage() {
     valeur: 0,
     montantCalcule: 0,
   });
+
+  // Auto-save hook
+  const autoSave = useAutoSave<DevisDraftData>({
+    key: 'nouveau_devis',
+    debounceMs: 1500,
+  });
+
+  // Restore draft function
+  const handleRestoreDraft = useCallback(() => {
+    const draft = autoSave.restore();
+    if (draft) {
+      setCategorie(draft.categorie);
+      setClientId(draft.clientId);
+      setDateValidite(draft.dateValidite);
+      setNotes(draft.notes);
+      setCurrentStep(draft.currentStep || 1);
+      setConteneursData(draft.conteneursData);
+      setConventionnelData(draft.conventionnelData);
+      setIndependantData(draft.independantData);
+      setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
+      setIsRestoredFromDraft(true);
+      setShowRestorePrompt(false);
+      toast.success("Brouillon restauré avec succès");
+    }
+  }, [autoSave]);
+
+  // Auto-save when form data changes
+  useEffect(() => {
+    // Ne pas sauvegarder si on n'a pas encore fait de choix
+    if (!categorie && !clientId) return;
+
+    const draftData: DevisDraftData = {
+      categorie,
+      clientId,
+      dateValidite,
+      notes,
+      currentStep,
+      conteneursData,
+      conventionnelData,
+      independantData,
+      remiseData,
+    };
+
+    autoSave.save(draftData);
+  }, [categorie, clientId, dateValidite, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData]);
 
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -223,6 +284,8 @@ export default function NouveauDevisPage() {
 
     try {
       await createDevisMutation.mutateAsync(data);
+      // Clear draft on successful creation
+      autoSave.clear();
       navigate("/devis");
     } catch (error) {
       // Error handled by mutation
@@ -267,8 +330,29 @@ export default function NouveauDevisPage() {
             </h1>
             <p className="text-muted-foreground text-sm">Créer un nouveau devis client</p>
           </div>
+          {/* Auto-save indicator */}
+          <AutoSaveIndicator
+            hasDraft={autoSave.hasDraft}
+            lastSaved={autoSave.lastSaved}
+            isSaving={autoSave.isSaving}
+            onRestore={handleRestoreDraft}
+            onClear={autoSave.clear}
+          />
         </div>
       </div>
+
+      {/* Prompt de restauration si brouillon existant */}
+      {showRestorePrompt && autoSave.hasDraft && !isRestoredFromDraft && (
+        <AutoSaveIndicator
+          hasDraft={autoSave.hasDraft}
+          lastSaved={autoSave.lastSaved}
+          isSaving={false}
+          onRestore={handleRestoreDraft}
+          onClear={autoSave.clear}
+          showRestorePrompt={true}
+          onDismissPrompt={() => setShowRestorePrompt(false)}
+        />
+      )}
 
       {/* Stepper */}
       <DevisStepper 
@@ -334,15 +418,39 @@ export default function NouveauDevisPage() {
                     transitaires={transitaires}
                     representants={representants}
                     onDataChange={setConteneursData}
+                    initialData={isRestoredFromDraft && conteneursData ? {
+                      typeOperation: conteneursData.typeOperation,
+                      numeroBL: conteneursData.numeroBL,
+                      armateurId: conteneursData.armateurId,
+                      transitaireId: conteneursData.transitaireId,
+                      representantId: conteneursData.representantId,
+                      conteneurs: conteneursData.conteneurs,
+                    } : undefined}
                   />
                 )}
 
                 {categorie === "conventionnel" && (
-                  <DevisConventionnelForm onDataChange={setConventionnelData} />
+                  <DevisConventionnelForm 
+                    onDataChange={setConventionnelData}
+                    initialData={isRestoredFromDraft && conventionnelData ? {
+                      numeroBL: conventionnelData.numeroBL,
+                      lieuChargement: conventionnelData.lieuChargement,
+                      lieuDechargement: conventionnelData.lieuDechargement,
+                      lots: conventionnelData.lots,
+                    } : undefined}
+                  />
                 )}
 
                 {categorie === "operations_independantes" && (
-                  <DevisIndependantForm onDataChange={setIndependantData} />
+                  <DevisIndependantForm 
+                    onDataChange={setIndependantData}
+                    initialData={isRestoredFromDraft && independantData ? {
+                      typeOperationIndep: independantData.typeOperationIndep,
+                      lieuChargement: independantData.lieuChargement,
+                      lieuDechargement: independantData.lieuDechargement,
+                      prestations: independantData.prestations,
+                    } : undefined}
+                  />
                 )}
               </div>
             )}
