@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -14,11 +14,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, CreditCard, History, DollarSign, Loader2, Printer, ClipboardList, Receipt, FileText } from "lucide-react";
+import { ArrowLeft, Edit, CreditCard, History, DollarSign, Printer, ClipboardList, Receipt, FileText, Banknote, CheckCircle2 } from "lucide-react";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
 import { useRepresentantById } from "@/hooks/use-commercial";
-import type { Representant } from "@/types/partenaires";
+import { 
+  PartenaireInfoCard, 
+  PartenaireInfoCardSkeleton,
+  DetailStatCard,
+  DetailStatCardSkeleton 
+} from "@/components/partenaires";
+import { cn } from "@/lib/utils";
 
 export default function RepresentantDetailPage() {
   const { id } = useParams();
@@ -28,17 +34,7 @@ export default function RepresentantDetailPage() {
   
   const { data: representant, isLoading, error, refetch } = useRepresentantById(id);
 
-  if (isLoading) {
-    return (
-      <MainLayout title="Chargement...">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </MainLayout>
-    );
-  }
-  
-  if (error || !representant) {
+  if (error || (!isLoading && !representant)) {
     return (
       <MainLayout title="Représentant non trouvé">
         <div className="flex flex-col items-center justify-center py-12">
@@ -52,16 +48,15 @@ export default function RepresentantDetailPage() {
   }
 
   // Données de l'API
-  const primes = representant.primes || [];
-  const ordres = representant.ordres_travail || [];
-  const factures = representant.factures || [];
-  const devisList = representant.devis || [];
+  const primes = representant?.primes || [];
+  const ordres = representant?.ordres_travail || [];
+  const factures = representant?.factures || [];
+  const devisList = representant?.devis || [];
 
   // Calculer les totaux
   const totalOrdres = ordres.length;
   const totalFactures = factures.length;
   const totalDevis = devisList.length;
-  const montantTotalFactures = factures.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
   const montantTotalOrdres = ordres.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0);
 
   // Calculer les totaux depuis les vraies données
@@ -75,10 +70,8 @@ export default function RepresentantDetailPage() {
 
   const primesDuesList = primes.filter((p: any) => p.statut !== 'Payée');
 
-  // Récupérer les paiements groupés (depuis paiements_primes)
-  const paiementsPrimes = representant.paiements_primes || [];
-  
-  // Fallback: paiements individuels des primes si paiements_primes vide
+  // Récupérer les paiements groupés
+  const paiementsPrimes = representant?.paiements_primes || [];
   const allPaiements = paiementsPrimes.length > 0 
     ? paiementsPrimes 
     : primes.flatMap((p: any) => p.paiements || []);
@@ -125,16 +118,27 @@ export default function RepresentantDetailPage() {
 
   const getPrimeStatutBadge = (statut: string) => {
     const isPaid = statut === 'Payée' || statut === 'payee';
+    const isPartial = statut === 'Partiellement payée';
     return (
-      <Badge variant={isPaid ? 'default' : 'destructive'}>
-        {isPaid ? 'Payée' : statut === 'Partiellement payée' ? 'Partielle' : 'Due'}
+      <Badge 
+        className={cn(
+          isPaid && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+          isPartial && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+          !isPaid && !isPartial && "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+        )}
+      >
+        {isPaid ? 'Payée' : isPartial ? 'Partielle' : 'Due'}
       </Badge>
     );
   };
 
+  const displayName = representant?.prenom 
+    ? `${representant.prenom} ${representant.nom}` 
+    : representant?.nom || 'Représentant';
+
   return (
-    <MainLayout title={representant.prenom ? `${representant.prenom} ${representant.nom}` : representant.nom || 'Représentant'}>
-      <div className="space-y-6">
+    <MainLayout title={displayName}>
+      <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Button variant="ghost" onClick={() => navigate("/partenaires")} className="gap-2 w-fit">
@@ -148,7 +152,7 @@ export default function RepresentantDetailPage() {
             </Button>
             {primesDues > 0 && (
               <Button 
-                className="gap-2"
+                className="gap-2 shadow-sm"
                 onClick={() => setShowPaiementModal(true)}
                 disabled={selectedPrimes.length === 0}
               >
@@ -161,107 +165,85 @@ export default function RepresentantDetailPage() {
 
         {/* Info + Stats */}
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Informations du représentant</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{representant.email || '-'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{representant.telephone || '-'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{representant.adresse || '-'}</span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    Partenaire depuis le {representant.created_at ? formatDate(representant.created_at) : '-'}
-                  </div>
-                  {representant.taux_commission && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Taux commission: </span>
-                      <span className="font-medium">{representant.taux_commission}%</span>
-                    </div>
-                  )}
-                  <Badge variant={representant.actif !== false ? "default" : "secondary"}>
-                    {representant.actif !== false ? "Actif" : "Inactif"}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="lg:col-span-2">
+            {isLoading ? (
+              <PartenaireInfoCardSkeleton />
+            ) : (
+              <PartenaireInfoCard
+                nom={representant.nom}
+                prenom={representant.prenom}
+                email={representant.email}
+                telephone={representant.telephone}
+                adresse={representant.adresse}
+                actif={representant.actif !== false}
+                createdAt={representant.created_at}
+                tauxCommission={representant.taux_commission}
+                type="representant"
+              />
+            )}
+          </div>
 
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Ordres
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalOrdres}</div>
-                <p className="text-xs text-muted-foreground">{formatMontant(montantTotalOrdres)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Primes Dues
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-destructive">{formatMontant(primesDues)}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Primes Payées
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatMontant(primesPayees)}</div>
-              </CardContent>
-            </Card>
+          <div className="space-y-3">
+            {isLoading ? (
+              <>
+                <DetailStatCardSkeleton />
+                <DetailStatCardSkeleton />
+                <DetailStatCardSkeleton />
+              </>
+            ) : (
+              <>
+                <DetailStatCard
+                  title="Total Ordres"
+                  value={totalOrdres}
+                  subtitle={formatMontant(montantTotalOrdres)}
+                  icon={ClipboardList}
+                  variant="primary"
+                />
+                <DetailStatCard
+                  title="Primes Dues"
+                  value={formatMontant(primesDues)}
+                  icon={Banknote}
+                  variant={primesDues > 0 ? "danger" : "default"}
+                />
+                <DetailStatCard
+                  title="Primes Payées"
+                  value={formatMontant(primesPayees)}
+                  icon={CheckCircle2}
+                  variant="success"
+                />
+              </>
+            )}
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="primes" className="w-full">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="primes" className="gap-2">
               <CreditCard className="h-4 w-4" />
-              Primes ({primes.length})
+              <span className="hidden sm:inline">Primes</span> ({primes.length})
             </TabsTrigger>
             <TabsTrigger value="paiements" className="gap-2">
               <History className="h-4 w-4" />
-              Paiements ({allPaiements.length})
+              <span className="hidden sm:inline">Paiements</span> ({allPaiements.length})
             </TabsTrigger>
             <TabsTrigger value="ordres" className="gap-2">
               <ClipboardList className="h-4 w-4" />
-              Ordres ({totalOrdres})
+              <span className="hidden sm:inline">Ordres</span> ({totalOrdres})
             </TabsTrigger>
             <TabsTrigger value="factures" className="gap-2">
               <Receipt className="h-4 w-4" />
-              Factures ({totalFactures})
+              <span className="hidden sm:inline">Factures</span> ({totalFactures})
             </TabsTrigger>
             <TabsTrigger value="devis" className="gap-2">
               <FileText className="h-4 w-4" />
-              Devis ({totalDevis})
+              <span className="hidden sm:inline">Devis</span> ({totalDevis})
             </TabsTrigger>
           </TabsList>
 
           {/* Primes Tab */}
-          <TabsContent value="primes" className="mt-4">
-            <Card>
+          <TabsContent value="primes" className="mt-4 animate-fade-in">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
@@ -281,7 +263,7 @@ export default function RepresentantDetailPage() {
                   </TableHeader>
                   <TableBody>
                     {primes.map((prime: any) => (
-                      <TableRow key={prime.id}>
+                      <TableRow key={prime.id} className="group hover:bg-muted/50">
                         <TableCell>
                           {prime.statut !== 'Payée' && (
                             <Checkbox 
@@ -299,10 +281,15 @@ export default function RepresentantDetailPage() {
                         >
                           {prime.ordre?.numero || prime.facture?.numero || '-'}
                         </TableCell>
-                        <TableCell>{formatDate(prime.created_at)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(prime.created_at)}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(prime.montant)}</TableCell>
-                        <TableCell className="text-right font-medium text-destructive">
-                          {formatMontant(prime.reste_a_payer ?? prime.montant)}
+                        <TableCell className="text-right">
+                          <span className={cn(
+                            "font-semibold",
+                            (prime.reste_a_payer ?? prime.montant) > 0 && "text-red-600 dark:text-red-400"
+                          )}>
+                            {formatMontant(prime.reste_a_payer ?? prime.montant)}
+                          </span>
                         </TableCell>
                         <TableCell>{getPrimeStatutBadge(prime.statut)}</TableCell>
                       </TableRow>
@@ -310,6 +297,7 @@ export default function RepresentantDetailPage() {
                     {primes.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucune prime
                         </TableCell>
                       </TableRow>
@@ -321,11 +309,12 @@ export default function RepresentantDetailPage() {
           </TabsContent>
 
           {/* Historique Paiements Tab */}
-          <TabsContent value="paiements" className="mt-4">
-            <Card>
+          <TabsContent value="paiements" className="mt-4 animate-fade-in">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
                 {allPaiements.length === 0 ? (
-                  <div className="h-24 flex items-center justify-center text-muted-foreground">
+                  <div className="h-32 flex flex-col items-center justify-center text-muted-foreground">
+                    <History className="h-10 w-10 mb-2 opacity-20" />
                     Aucun paiement enregistré
                   </div>
                 ) : (
@@ -342,18 +331,24 @@ export default function RepresentantDetailPage() {
                     </TableHeader>
                     <TableBody>
                       {allPaiements.map((paiement: any) => {
-                        const nomComplet = representant.nom_complet || `${representant.prenom || ''} ${representant.nom}`.trim();
+                        const nomComplet = representant?.nom_complet || `${representant?.prenom || ''} ${representant?.nom}`.trim();
                         return (
-                          <TableRow key={paiement.id}>
+                          <TableRow key={paiement.id} className="group hover:bg-muted/50">
                             <TableCell className="font-medium text-primary">
                               {paiement.numero_recu || `#${paiement.id}`}
                             </TableCell>
-                            <TableCell>{formatDate(paiement.date || paiement.created_at)}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{paiement.mode_paiement}</Badge>
+                            <TableCell className="text-muted-foreground">
+                              {formatDate(paiement.date || paiement.created_at)}
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-green-600">
-                              {formatMontant(paiement.montant)}
+                            <TableCell>
+                              <Badge variant="outline" className="font-normal">
+                                {paiement.mode_paiement}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {formatMontant(paiement.montant)}
+                              </span>
                             </TableCell>
                             <TableCell>
                               {paiement.primes && paiement.primes.length > 0 ? (
@@ -384,7 +379,7 @@ export default function RepresentantDetailPage() {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="gap-2"
+                                className="gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => {
                                   const primesData = (paiement.primes || []).map((p: any) => ({
                                     numero: p.ordre?.numero || p.facture?.numero || p.description || `Prime #${p.id}`,
@@ -420,8 +415,8 @@ export default function RepresentantDetailPage() {
           </TabsContent>
 
           {/* Ordres Tab */}
-          <TabsContent value="ordres" className="mt-4">
-            <Card>
+          <TabsContent value="ordres" className="mt-4 animate-fade-in">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
@@ -429,7 +424,6 @@ export default function RepresentantDetailPage() {
                       <TableHead>Numéro</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Client</TableHead>
-                      <TableHead>Type</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
                     </TableRow>
@@ -442,18 +436,16 @@ export default function RepresentantDetailPage() {
                         onClick={() => navigate(`/ordres/${ordre.id}`)}
                       >
                         <TableCell className="font-medium text-primary">{ordre.numero}</TableCell>
-                        <TableCell>{formatDate(ordre.date_creation || ordre.date)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(ordre.date || ordre.created_at)}</TableCell>
                         <TableCell>{ordre.client?.nom || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{ordre.type_document || ordre.categorie || '-'}</Badge>
-                        </TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       </TableRow>
                     ))}
                     {ordres.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          <ClipboardList className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucun ordre de travail
                         </TableCell>
                       </TableRow>
@@ -465,8 +457,8 @@ export default function RepresentantDetailPage() {
           </TabsContent>
 
           {/* Factures Tab */}
-          <TabsContent value="factures" className="mt-4">
-            <Card>
+          <TabsContent value="factures" className="mt-4 animate-fade-in">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
@@ -475,30 +467,27 @@ export default function RepresentantDetailPage() {
                       <TableHead>Date</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
-                      <TableHead className="text-right">Reste à payer</TableHead>
                       <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {factures.map((facture: any) => (
                       <TableRow 
-                        key={facture.id}
+                        key={facture.id} 
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => navigate(`/factures/${facture.id}`)}
                       >
                         <TableCell className="font-medium text-primary">{facture.numero}</TableCell>
-                        <TableCell>{formatDate(facture.date_creation || facture.date)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(facture.date_facture || facture.created_at)}</TableCell>
                         <TableCell>{facture.client?.nom || '-'}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
-                        <TableCell className="text-right font-medium text-destructive">
-                          {formatMontant((facture.montant_ttc || 0) - (facture.montant_paye || 0))}
-                        </TableCell>
                         <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                       </TableRow>
                     ))}
                     {factures.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          <Receipt className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucune facture
                         </TableCell>
                       </TableRow>
@@ -510,8 +499,8 @@ export default function RepresentantDetailPage() {
           </TabsContent>
 
           {/* Devis Tab */}
-          <TabsContent value="devis" className="mt-4">
-            <Card>
+          <TabsContent value="devis" className="mt-4 animate-fade-in">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
@@ -519,7 +508,6 @@ export default function RepresentantDetailPage() {
                       <TableHead>Numéro</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Client</TableHead>
-                      <TableHead>Type</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
                     </TableRow>
@@ -527,23 +515,21 @@ export default function RepresentantDetailPage() {
                   <TableBody>
                     {devisList.map((devis: any) => (
                       <TableRow 
-                        key={devis.id}
+                        key={devis.id} 
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => navigate(`/devis/${devis.id}`)}
                       >
                         <TableCell className="font-medium text-primary">{devis.numero}</TableCell>
-                        <TableCell>{formatDate(devis.date_creation || devis.date)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(devis.date || devis.created_at)}</TableCell>
                         <TableCell>{devis.client?.nom || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{devis.type_document || devis.categorie || '-'}</Badge>
-                        </TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(devis.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(devis.statut)}</TableCell>
                       </TableRow>
                     ))}
                     {devisList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          <FileText className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucun devis
                         </TableCell>
                       </TableRow>
@@ -557,15 +543,17 @@ export default function RepresentantDetailPage() {
       </div>
 
       {/* Modal Paiement */}
-      <PaiementPrimeModal 
-        open={showPaiementModal}
-        onOpenChange={setShowPaiementModal}
-        partenaireNom={representant.nom || ''}
-        partenaireType="representant"
-        primes={primes.filter((p: any) => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
-        total={selectedTotal > 0 ? selectedTotal : primesDues}
-        onSuccess={() => refetch()}
-      />
+      {representant && (
+        <PaiementPrimeModal 
+          open={showPaiementModal}
+          onOpenChange={setShowPaiementModal}
+          partenaireNom={displayName}
+          partenaireType="representant"
+          primes={primes.filter((p: any) => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
+          total={selectedTotal > 0 ? selectedTotal : primesDues}
+          onSuccess={() => refetch()}
+        />
+      )}
     </MainLayout>
   );
 }
