@@ -21,13 +21,7 @@ class ClientController extends Controller
                 'factures as factures_sum_ttc' => fn($q) => $q->whereNotIn('statut', ['annulee', 'Annulée']),
             ], 'montant_ttc')
             ->withSum('paiements as paiements_sum_montant', 'montant')
-            ->addSelect([
-                '*',
-                'solde_avoirs' => \App\Models\Annulation::selectRaw('COALESCE(SUM(solde_avoir), 0)')
-                    ->whereColumn('client_id', 'clients.id')
-                    ->where('avoir_genere', true)
-                    ->where('solde_avoir', '>', 0)
-            ]);
+            ->selectRaw('clients.*, (SELECT COALESCE(SUM(solde_avoir), 0) FROM annulations WHERE client_id = clients.id AND avoir_genere = 1 AND solde_avoir > 0) as solde_avoirs');
 
         if ($request->has('search')) {
             $search = $request->get('search');
