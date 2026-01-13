@@ -295,7 +295,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
-    // PREVISIONS
+    // PREVISIONS BUDGETAIRES
     // ============================================
     Route::prefix('previsions')->middleware('audit')->group(function () {
         Route::get('/', [PrevisionController::class, 'index'])
@@ -306,6 +306,10 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.voir');
         Route::get('categories', [PrevisionController::class, 'categories'])
             ->middleware('permission:reporting.voir');
+        Route::get('comparaison', [PrevisionController::class, 'comparaison'])
+            ->middleware('permission:reporting.voir');
+        Route::post('sync-realise', [PrevisionController::class, 'syncRealise'])
+            ->middleware('permission:reporting.modifier');
         Route::get('{prevision}', [PrevisionController::class, 'show'])
             ->middleware('permission:reporting.voir');
         Route::put('{prevision}', [PrevisionController::class, 'update'])
