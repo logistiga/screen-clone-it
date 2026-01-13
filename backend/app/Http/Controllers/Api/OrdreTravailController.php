@@ -24,7 +24,9 @@ class OrdreTravailController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = OrdreTravail::with(['client', 'transitaire', 'devis', 'lignes', 'conteneurs.operations', 'lots']);
+        // Optimisation: ne charger que les relations essentielles pour la liste
+        // Les détails (lignes, conteneurs.operations, lots) sont chargés uniquement sur show()
+        $query = OrdreTravail::with(['client:id,nom,email,telephone']);
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -48,12 +50,63 @@ class OrdreTravailController extends Controller
         }
 
         if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date', [$request->get('date_debut'), $request->get('date_fin')]);
+            $query->whereBetween('date_creation', [$request->get('date_debut'), $request->get('date_fin')]);
         }
 
         $ordres = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
 
         return response()->json(OrdreTravailResource::collection($ordres)->response()->getData(true));
+    }
+
+    /**
+     * Statistiques globales des ordres (avec mêmes filtres que index)
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $query = OrdreTravail::query();
+
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('numero', 'like', "%{$search}%")
+                  ->orWhere('numero_bl', 'like', "%{$search}%")
+                  ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($request->has('statut')) {
+            $query->where('statut', $request->get('statut'));
+        }
+
+        if ($request->has('client_id')) {
+            $query->where('client_id', $request->get('client_id'));
+        }
+
+        if ($request->has('categorie')) {
+            $query->where('categorie', $request->get('categorie'));
+        }
+
+        if ($request->has('date_debut') && $request->has('date_fin')) {
+            $query->whereBetween('date_creation', [$request->get('date_debut'), $request->get('date_fin')]);
+        }
+
+        $stats = [
+            'total_ordres' => (clone $query)->count(),
+            'montant_total' => (clone $query)->sum('montant_ttc'),
+            'total_paye' => (clone $query)->sum('montant_paye'),
+            'reste_a_payer' => (clone $query)->selectRaw('SUM(montant_ttc - COALESCE(montant_paye, 0)) as reste')->value('reste') ?? 0,
+            'en_cours' => (clone $query)->where('statut', 'en_cours')->count(),
+            'termine' => (clone $query)->where('statut', 'termine')->count(),
+            'facture' => (clone $query)->where('statut', 'facture')->count(),
+            'annule' => (clone $query)->where('statut', 'annule')->count(),
+            'par_categorie' => [
+                'conteneurs' => (clone $query)->where('categorie', 'conteneurs')->count(),
+                'conventionnel' => (clone $query)->where('categorie', 'conventionnel')->count(),
+                'operations_independantes' => (clone $query)->where('categorie', 'operations_independantes')->count(),
+            ],
+        ];
+
+        return response()->json($stats);
     }
 
     public function store(StoreOrdreTravailRequest $request): JsonResponse
