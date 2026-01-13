@@ -2,7 +2,7 @@ import api from '@/lib/api';
 
 // Types
 export interface Client {
-  id: string;
+  id: number;
   code: string;
   nom: string;
   type: string;
@@ -15,6 +15,7 @@ export interface Client {
   rccm?: string;
   limite_credit: number;
   solde: number;
+  solde_avoirs?: number;
   notes?: string;
   actif: boolean;
   created_at: string;

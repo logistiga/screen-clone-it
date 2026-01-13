@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
 import { useClient, useDeleteClient } from "@/hooks/use-commercial";
+import { ClientDetailHeader } from "@/components/clients";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -124,31 +125,11 @@ export default function ClientDetailPage() {
   return (
     <MainLayout title={client.nom}>
       <div className="space-y-6">
-        {/* Header with actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Button variant="ghost" onClick={() => navigate("/clients")} className="gap-2 w-fit">
-            <ArrowLeft className="h-4 w-4" />
-            Retour aux clients
-          </Button>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => navigate(`/clients/${id}/modifier`)}
-            >
-              <Edit className="h-4 w-4" />
-              Modifier
-            </Button>
-            <Button 
-              variant="destructive" 
-              className="gap-2"
-              onClick={() => setDeleteConfirm(true)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Supprimer
-            </Button>
-          </div>
-        </div>
+      {/* New Header */}
+      <ClientDetailHeader 
+        client={client} 
+        onDelete={() => setDeleteConfirm(true)}
+      />
 
         {/* Client Info + Stats - Improved Layout */}
         <div className="grid gap-6 lg:grid-cols-12">
