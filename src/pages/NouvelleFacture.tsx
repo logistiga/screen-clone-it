@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Receipt, Save, Loader2, Users, Calendar } from "lucide-react";
+import { ArrowLeft, Receipt, Save, Loader2, Users, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -29,11 +28,23 @@ import {
   FactureConventionnelData,
   FactureIndependantData,
 } from "@/components/factures/forms";
-import { RecapitulatifCard } from "@/components/devis/shared";
+import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
+import { FactureStepper, FacturePreview } from "@/components/factures/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture, useConfiguration } from "@/hooks/use-commercial";
+import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
-import { formatMontant } from "@/data/mockData";
-import RemiseInput, { RemiseData, RemiseType } from "@/components/shared/RemiseInput";
+import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+
+interface DraftData {
+  categorie: CategorieDocument | "";
+  clientId: string;
+  dateEcheance: string;
+  notes: string;
+  conteneursData: FactureConteneursData | null;
+  conventionnelData: FactureConventionnelData | null;
+  independantData: FactureIndependantData | null;
+  remiseData: RemiseData;
+}
 
 export default function NouvelleFacturePage() {
   const navigate = useNavigate();
@@ -55,6 +66,10 @@ export default function NouvelleFacturePage() {
   
   const categoriesLabels = getCategoriesLabels();
 
+  // Stepper state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showRestorePrompt, setShowRestorePrompt] = useState(true);
+
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
   const [clientId, setClientId] = useState("");
   const [dateEcheance, setDateEcheance] = useState(() => {
@@ -64,17 +79,60 @@ export default function NouvelleFacturePage() {
   });
   const [notes, setNotes] = useState("");
 
-  // Données des formulaires par catégorie
   const [conteneursData, setConteneursData] = useState<FactureConteneursData | null>(null);
   const [conventionnelData, setConventionnelData] = useState<FactureConventionnelData | null>(null);
   const [independantData, setIndependantData] = useState<FactureIndependantData | null>(null);
 
-  // État de la remise
   const [remiseData, setRemiseData] = useState<RemiseData>({
     type: "none",
     valeur: 0,
     montantCalcule: 0,
   });
+
+  // Auto-save
+  const { save, clear, restore, hasDraft, lastSaved, isSaving } = useAutoSave<DraftData>({
+    key: 'nouvelle_facture',
+    debounceMs: 1500,
+  });
+
+  // Auto-save on data changes
+  useEffect(() => {
+    if (categorie || clientId || notes) {
+      save({
+        categorie,
+        clientId,
+        dateEcheance,
+        notes,
+        conteneursData,
+        conventionnelData,
+        independantData,
+        remiseData,
+      });
+    }
+  }, [categorie, clientId, dateEcheance, notes, conteneursData, conventionnelData, independantData, remiseData, save]);
+
+  const handleRestoreDraft = () => {
+    const draft = restore();
+    if (draft) {
+      setCategorie(draft.categorie);
+      setClientId(draft.clientId);
+      setDateEcheance(draft.dateEcheance);
+      setNotes(draft.notes);
+      setConteneursData(draft.conteneursData);
+      setConventionnelData(draft.conventionnelData);
+      setIndependantData(draft.independantData);
+      setRemiseData(draft.remiseData);
+      
+      if (draft.clientId) {
+        setCurrentStep(3);
+      } else if (draft.categorie) {
+        setCurrentStep(2);
+      }
+      
+      toast.success("Brouillon restauré");
+    }
+    setShowRestorePrompt(false);
+  };
 
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -95,6 +153,45 @@ export default function NouvelleFacturePage() {
     setConventionnelData(null);
     setIndependantData(null);
     setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
+    setCurrentStep(2);
+  };
+
+  // Stepper navigation
+  const handleStepClick = (step: number) => {
+    if (step <= currentStep + 1) {
+      setCurrentStep(step);
+    }
+  };
+
+  const canProceedToStep = (step: number): boolean => {
+    if (step === 2) return !!categorie;
+    if (step === 3) return !!categorie && !!clientId;
+    if (step === 4) {
+      if (categorie === "conteneurs") return !!conteneursData && conteneursData.conteneurs.length > 0;
+      if (categorie === "conventionnel") return !!conventionnelData && conventionnelData.lots.length > 0;
+      if (categorie === "operations_independantes") return !!independantData && independantData.prestations.length > 0;
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (canProceedToStep(currentStep + 1)) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      if (currentStep === 1 && !categorie) {
+        toast.error("Veuillez sélectionner une catégorie");
+      } else if (currentStep === 2 && !clientId) {
+        toast.error("Veuillez sélectionner un client");
+      } else if (currentStep === 3) {
+        toast.error("Veuillez compléter les détails de la facture");
+      }
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,7 +209,7 @@ export default function NouvelleFacturePage() {
       toast.error("Veuillez sélectionner un type d'opération"); return;
     }
 
-    // Validation côté client (pour éviter les 422 Laravel)
+    // Validation côté client
     if (categorie === "conteneurs" && conteneursData) {
       if (!conteneursData.armateurId) {
         toast.error("Veuillez sélectionner un armateur");
@@ -152,7 +249,6 @@ export default function NouvelleFacturePage() {
         type: "DRY",
         taille: c.taille,
         description: c.description,
-        // IMPORTANT: ne pas perdre le prix du conteneur (sinon totaux = 0 si pas d'opérations)
         prix_unitaire: Number(c.prixUnitaire || 0),
         armateur_id: conteneursData.armateurId || null,
         operations: c.operations.map((op) => ({
@@ -194,27 +290,19 @@ export default function NouvelleFacturePage() {
           : categorie === "conventionnel"
             ? "Lot"
             : "Independant",
-
-      // Compatibilité backend (certaines versions attendent categorie + numero_bl)
       categorie,
       bl_numero: blNumero,
       numero_bl: blNumero,
-
       date_echeance: dateEcheance,
       transitaire_id: conteneursData?.transitaireId ? Number(conteneursData.transitaireId) : null,
       representant_id: conteneursData?.representantId ? Number(conteneursData.representantId) : null,
       armateur_id: conteneursData?.armateurId ? Number(conteneursData.armateurId) : null,
       type_operation_indep: independantData?.typeOperationIndep || null,
-
-      // Primes pour transitaire et représentant
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
-
-      // Remise - ne pas envoyer "none" au backend (validation: pourcentage|montant)
       remise_type: remiseData.type !== "none" ? remiseData.type : null,
       remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
       remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
-
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataForApi,
@@ -223,6 +311,7 @@ export default function NouvelleFacturePage() {
 
     try {
       await createFactureMutation.mutateAsync(data);
+      clear();
       toast.success("Facture créée avec succès");
       navigate("/factures");
     } catch (error: any) {
@@ -240,14 +329,6 @@ export default function NouvelleFacturePage() {
         if (firstMsg) message = firstMsg;
       }
 
-      // eslint-disable-next-line no-console
-      console.error("[NouvelleFacture] Erreur API", {
-        status: info.status,
-        message: info.message,
-        error: backendError,
-        errors: responseData?.errors,
-      });
-
       if (backendError) {
         toast.error(message, { description: backendError });
       } else {
@@ -256,164 +337,258 @@ export default function NouvelleFacturePage() {
     }
   };
 
+  // Get client for preview
+  const selectedClient = clients.find(c => String(c.id) === clientId);
+
   return (
     <MainLayout title="Nouvelle facture">
       <div className="mb-6 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-110">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Receipt className="h-6 w-6 text-primary" />
-              Nouvelle facture
-            </h1>
-            <p className="text-muted-foreground text-sm">Créez une nouvelle facture client</p>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-110">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Receipt className="h-6 w-6 text-primary" />
+                Nouvelle facture
+              </h1>
+              <p className="text-muted-foreground text-sm">Créez une nouvelle facture client</p>
+            </div>
           </div>
+          <AutoSaveIndicator
+            hasDraft={hasDraft}
+            lastSaved={lastSaved}
+            isSaving={isSaving}
+            onRestore={handleRestoreDraft}
+            onClear={clear}
+          />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
-        {/* Sélection catégorie */}
-        {!categorie && (
-          <Card className="transition-all duration-300 hover:shadow-lg">
-            <CardHeader><CardTitle className="text-lg">Catégorie de facture</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => handleCategorieChange(key)}
-                    className="p-4 rounded-lg border-2 text-left transition-all duration-300 border-border hover:border-primary/50 hover:bg-muted/50 hover:shadow-md hover:-translate-y-1"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="text-muted-foreground">{categoriesLabels[key].icon}</div>
-                      <span className="font-semibold">{categoriesLabels[key].label}</span>
+      {/* Restore prompt */}
+      {showRestorePrompt && hasDraft && (
+        <AutoSaveIndicator
+          hasDraft={hasDraft}
+          lastSaved={lastSaved}
+          isSaving={isSaving}
+          onRestore={handleRestoreDraft}
+          onClear={clear}
+          showRestorePrompt={true}
+          onDismissPrompt={() => setShowRestorePrompt(false)}
+        />
+      )}
+
+      {/* Stepper */}
+      <FactureStepper 
+        currentStep={currentStep} 
+        categorie={categorie || undefined}
+        onStepClick={handleStepClick}
+      />
+
+      <form onSubmit={handleSubmit} className="animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main form area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Step 1: Catégorie */}
+            {currentStep === 1 && (
+              <Card className="transition-all duration-300 hover:shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-lg">Catégorie de facture</CardTitle>
+                  <CardDescription>Sélectionnez le type de facture</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => {
+                      const cat = categoriesLabels[key];
+                      const isSelected = categorie === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => handleCategorieChange(key)}
+                          className={`p-4 rounded-lg border-2 text-left transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
+                            isSelected 
+                              ? "border-primary bg-primary/10" 
+                              : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className={`${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                              {cat.icon}
+                            </div>
+                            <span className="font-semibold">{cat.label}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{cat.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 2: Client */}
+            {currentStep === 2 && (
+              <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                    Client & Échéance
+                  </CardTitle>
+                  <CardDescription>Sélectionnez le client et la date d'échéance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nom du client *</Label>
+                      <Select value={clientId} onValueChange={setClientId}>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner un client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <p className="text-sm text-muted-foreground">{categoriesLabels[key].description}</p>
-                  </button>
-                ))}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Date d'échéance
+                      </Label>
+                      <Input 
+                        type="date" 
+                        value={dateEcheance} 
+                        onChange={(e) => setDateEcheance(e.target.value)} 
+                        className="h-11"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 3: Détails */}
+            {currentStep === 3 && (
+              <div className="space-y-6 animate-fade-in">
+                {categorie === "conteneurs" && (
+                  <FactureConteneursForm
+                    armateurs={armateurs}
+                    transitaires={transitaires}
+                    representants={representants}
+                    onDataChange={setConteneursData}
+                  />
+                )}
+
+                {categorie === "conventionnel" && (
+                  <FactureConventionnelForm onDataChange={setConventionnelData} />
+                )}
+
+                {categorie === "operations_independantes" && (
+                  <FactureIndependantForm onDataChange={setIndependantData} />
+                )}
+
+                {/* Notes */}
+                <Card className="transition-all duration-300 hover:shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Notes / Observations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      placeholder="Ajouter des notes ou observations..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Remise */}
+                {montantHT > 0 && (
+                  <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
 
-        {categorie && (
-          <div className="flex items-center gap-3 animate-fade-in">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
-              {categoriesLabels[categorie].icon}
-              <span>{categoriesLabels[categorie].label}</span>
-            </Badge>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground transition-all duration-200 hover:scale-105">
-              Changer
-            </Button>
-          </div>
-        )}
-
-        {/* Client et date échéance */}
-        {categorie && (
-          <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="h-5 w-5 text-primary" />
-                Client
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nom du client *</Label>
-                  <Select value={clientId} onValueChange={setClientId}>
-                    <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
-                    <SelectContent>
-                      {clients.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Date d'échéance
-                  </Label>
-                  <Input type="date" value={dateEcheance} onChange={(e) => setDateEcheance(e.target.value)} />
-                </div>
+            {/* Step 4: Récapitulatif */}
+            {currentStep === 4 && (
+              <div className="space-y-6 animate-fade-in">
+                <RecapitulatifCard
+                  montantHT={montantHT}
+                  tva={tva}
+                  css={css}
+                  montantTTC={montantTTC}
+                  tauxTva={Math.round(TAUX_TVA * 100)}
+                  tauxCss={Math.round(TAUX_CSS * 100)}
+                  remiseMontant={remiseData.montantCalcule}
+                  remiseType={remiseData.type}
+                  remiseValeur={remiseData.valeur}
+                />
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
 
-        {/* Formulaires par catégorie */}
-        {categorie === "conteneurs" && (
-          <div className="animate-fade-in">
-            <FactureConteneursForm
-              armateurs={armateurs}
-              transitaires={transitaires}
-              representants={representants}
-              onDataChange={setConteneursData}
-            />
+            {/* Navigation buttons */}
+            <div className="flex justify-between pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handlePrevStep}
+                disabled={currentStep === 1}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Précédent
+              </Button>
+
+              {currentStep < 4 ? (
+                <Button 
+                  type="button" 
+                  onClick={handleNextStep}
+                  disabled={!canProceedToStep(currentStep + 1)}
+                >
+                  Suivant
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : (
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  disabled={createFactureMutation.isPending}
+                  className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                >
+                  {createFactureMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Créer la facture
+                </Button>
+              )}
+            </div>
           </div>
-        )}
 
-        {categorie === "conventionnel" && (
-          <div className="animate-fade-in">
-            <FactureConventionnelForm onDataChange={setConventionnelData} />
-          </div>
-        )}
-
-        {categorie === "operations_independantes" && (
-          <div className="animate-fade-in">
-            <FactureIndependantForm onDataChange={setIndependantData} />
-          </div>
-        )}
-
-        {/* Notes */}
-        {categorie && (
-          <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
-            <CardHeader><CardTitle className="text-lg">Notes / Observations</CardTitle></CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Ajouter des notes ou observations..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Remise - avant le récapitulatif */}
-        {categorie && montantHT > 0 && (
-          <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
-        )}
-
-        {/* Récapitulatif */}
-        {categorie && (
-          <div className="animate-fade-in">
-            <RecapitulatifCard
+          {/* Preview sidebar */}
+          <div className="hidden lg:block">
+            <FacturePreview
+              categorie={categorie}
+              client={selectedClient ? { id: selectedClient.id, nom: selectedClient.nom } : null}
               montantHT={montantHT}
               tva={tva}
               css={css}
               montantTTC={montantTTC}
-              tauxTva={Math.round(TAUX_TVA * 100)}
-              tauxCss={Math.round(TAUX_CSS * 100)}
+              numeroBL={conteneursData?.numeroBL || conventionnelData?.numeroBL}
+              dateEcheance={dateEcheance}
+              typeOperation={conteneursData?.typeOperation}
+              typeOperationIndep={independantData?.typeOperationIndep}
+              conteneurs={conteneursData?.conteneurs}
+              lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite }))}
+              prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
+              notes={notes}
               remiseMontant={remiseData.montantCalcule}
-              remiseType={remiseData.type}
-              remiseValeur={remiseData.valeur}
             />
           </div>
-        )}
-
-        {/* Boutons */}
-        {categorie && (
-          <div className="flex justify-end gap-4 animate-fade-in">
-            <Button type="button" variant="outline" onClick={() => navigate("/factures")} className="transition-all duration-200 hover:scale-105">Annuler</Button>
-            <Button type="submit" disabled={createFactureMutation.isPending} className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md">
-              {createFactureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Créer la facture
-            </Button>
-          </div>
-        )}
+        </div>
       </form>
     </MainLayout>
   );
