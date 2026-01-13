@@ -2,6 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { previsionsApi, PrevisionFilters, CreatePrevisionData, UpdatePrevisionData } from '@/lib/api/previsions';
 import { toast } from 'sonner';
 
+function getApiErrorMessage(error: any, fallback: string) {
+  const data = error?.response?.data;
+  const firstValidationError = data?.errors
+    ? (Object.values(data.errors).flat() as string[])[0]
+    : undefined;
+
+  return data?.message || firstValidationError || fallback;
+}
+
 export function usePrevisions(filters: PrevisionFilters = {}) {
   return useQuery({
     queryKey: ['previsions', filters],
@@ -52,7 +61,7 @@ export function useCreatePrevision() {
       toast.success('Prévision créée avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la création');
+      toast.error(getApiErrorMessage(error, 'Erreur lors de la création'));
     },
   });
 }
@@ -68,7 +77,7 @@ export function useUpdatePrevision() {
       toast.success('Prévision mise à jour');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour');
+      toast.error(getApiErrorMessage(error, 'Erreur lors de la mise à jour'));
     },
   });
 }
@@ -83,7 +92,7 @@ export function useDeletePrevision() {
       toast.success('Prévision supprimée');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
+      toast.error(getApiErrorMessage(error, 'Erreur lors de la suppression'));
     },
   });
 }
@@ -99,7 +108,7 @@ export function useUpdatePrevisionRealise() {
       toast.success('Montant réalisé mis à jour');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour');
+      toast.error(getApiErrorMessage(error, 'Erreur lors de la mise à jour'));
     },
   });
 }
@@ -115,7 +124,7 @@ export function useSyncPrevisionRealise() {
       toast.success('Synchronisation effectuée');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur de synchronisation');
+      toast.error(getApiErrorMessage(error, 'Erreur de synchronisation'));
     },
   });
 }
