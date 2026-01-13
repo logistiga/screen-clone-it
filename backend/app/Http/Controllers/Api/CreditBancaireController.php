@@ -186,13 +186,13 @@ class CreditBancaireController extends Controller
 
             if ($request->mode_paiement === 'Espèces') {
                 MouvementCaisse::create([
-                    'type' => 'Sortie',
+                    'type' => 'sortie',
                     'categorie' => 'Remboursement crédit',
                     'montant' => $request->montant,
                     'description' => "Remboursement crédit {$creditBancaire->numero}",
-                    'reference' => $remboursement->id,
-                    'date_mouvement' => now(),
-                    'user_id' => auth()->id(),
+                    'reference' => $request->reference,
+                    'date' => now(),
+                    'source' => 'caisse',
                 ]);
             }
 
