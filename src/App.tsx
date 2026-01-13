@@ -57,6 +57,7 @@ import VerificationDocumentPage from "./pages/VerificationDocument";
 import PartenairesPage from "./pages/Partenaires";
 import TransitaireDetailPage from "./pages/TransitaireDetail";
 import RepresentantDetailPage from "./pages/RepresentantDetail";
+import ArmateurDetailPage from "./pages/ArmateurDetail";
 import CategoriesDepensesPage from "./pages/CategoriesDepenses";
 import CategorieDepenseDetailPage from "./pages/CategorieDepenseDetail";
 import RecuPrimePDFPage from "./pages/RecuPrimePDF";
@@ -128,6 +129,7 @@ const App = () => (
               <Route path="/partenaires" element={<ProtectedRoute><PartenairesPage /></ProtectedRoute>} />
               <Route path="/partenaires/transitaires/:id" element={<ProtectedRoute><TransitaireDetailPage /></ProtectedRoute>} />
               <Route path="/partenaires/representants/:id" element={<ProtectedRoute><RepresentantDetailPage /></ProtectedRoute>} />
+              <Route path="/partenaires/armateurs/:id" element={<ProtectedRoute><ArmateurDetailPage /></ProtectedRoute>} />
               <Route path="/partenaires/recu-prime/:id" element={<ProtectedRoute><RecuPrimePDFPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
