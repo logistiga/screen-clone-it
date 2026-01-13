@@ -1,15 +1,15 @@
 import { useParams } from "react-router-dom";
-import { useTransitaireById } from "@/hooks/use-commercial";
+import { useArmateurById } from "@/hooks/use-commercial";
 import { PartenaireDetailContent } from "@/components/partenaires";
 
-export default function TransitaireDetailPage() {
+export default function ArmateurDetailPage() {
   const { id } = useParams();
-  const { data: transitaire, isLoading, error, refetch } = useTransitaireById(id);
+  const { data: armateur, isLoading, error, refetch } = useArmateurById(id);
 
   return (
     <PartenaireDetailContent
-      type="transitaire"
-      partenaire={transitaire}
+      type="armateur"
+      partenaire={armateur}
       isLoading={isLoading}
       error={error}
       refetch={refetch}
