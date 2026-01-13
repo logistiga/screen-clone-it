@@ -15,8 +15,22 @@ class TransitaireController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Transitaire::withCount(['devis', 'ordresTravail', 'factures'])
-            ->with(['primes' => fn($q) => $q->select('id', 'transitaire_id', 'montant', 'statut')]);
+        // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
+        $query = Transitaire::query()
+            ->withCount(['devis', 'ordresTravail', 'factures'])
+            ->select('transitaires.*')
+            ->selectSub(function ($q) {
+                $q->from('primes')
+                    ->selectRaw('COALESCE(SUM(montant), 0)')
+                    ->whereColumn('primes.transitaire_id', 'transitaires.id')
+                    ->whereIn('statut', ['En attente', 'Partiellement payée']);
+            }, 'primes_dues')
+            ->selectSub(function ($q) {
+                $q->from('primes')
+                    ->selectRaw('COALESCE(SUM(montant), 0)')
+                    ->whereColumn('primes.transitaire_id', 'transitaires.id')
+                    ->where('statut', 'Payée');
+            }, 'primes_payees');
 
         if ($request->has('search')) {
             $search = $request->get('search');
