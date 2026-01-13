@@ -37,12 +37,6 @@ class Client extends Model
         return $this->hasMany(Devis::class);
     }
 
-    public function ordres()
-    {
-        return $this->hasMany(OrdreTravail::class);
-    }
-
-    // Alias pour la compatibilité avec le controller
     public function ordresTravail()
     {
         return $this->hasMany(OrdreTravail::class);
@@ -58,53 +52,15 @@ class Client extends Model
         return $this->hasMany(Paiement::class);
     }
 
-    // Méthodes
-    public function calculerSolde()
+    public function annulations()
     {
-        $totalFactures = $this->factures()
-            ->whereNotIn('statut', ['annulee'])
-            ->sum('montant_ttc');
-        
-        $totalPaiements = $this->paiements()->sum('montant');
-        
-        $this->solde = $totalFactures - $totalPaiements;
-        $this->save();
-        
-        return $this->solde;
+        return $this->hasMany(Annulation::class);
     }
 
-    public function getHistorique()
+    public function avoirsDisponibles()
     {
-        $devis = $this->devis()->with('lignes')->get()->map(fn($d) => [
-            'type' => 'devis',
-            'document' => $d,
-            'date' => $d->created_at,
-        ]);
-
-        $ordres = $this->ordres()->with('lignes')->get()->map(fn($o) => [
-            'type' => 'ordre',
-            'document' => $o,
-            'date' => $o->created_at,
-        ]);
-
-        $factures = $this->factures()->with('lignes')->get()->map(fn($f) => [
-            'type' => 'facture',
-            'document' => $f,
-            'date' => $f->created_at,
-        ]);
-
-        $paiements = $this->paiements()->get()->map(fn($p) => [
-            'type' => 'paiement',
-            'document' => $p,
-            'date' => $p->date,
-        ]);
-
-        return collect()
-            ->merge($devis)
-            ->merge($ordres)
-            ->merge($factures)
-            ->merge($paiements)
-            ->sortByDesc('date')
-            ->values();
+        return $this->hasMany(Annulation::class)
+            ->where('avoir_genere', true)
+            ->where('solde_avoir', '>', 0);
     }
 }
