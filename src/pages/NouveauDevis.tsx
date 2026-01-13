@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,19 +9,23 @@ import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ApiErrorState } from "@/components/ApiErrorState";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useConfiguration } from "@/hooks/use-commercial";
-import { CategorieDocument, getCategoriesLabels, typesOperationConteneur } from "@/types/documents";
+import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
 import {
   CategorieSelector,
   ClientInfoCard,
   RecapitulatifCard,
+  DevisStepper,
+  DevisPreview,
+} from "@/components/devis/shared";
+import {
   DevisConteneursForm,
   DevisConventionnelForm,
   DevisIndependantForm,
-} from "@/components/devis";
+} from "@/components/devis/forms";
 import type { DevisConteneursData } from "@/components/devis/forms/DevisConteneursForm";
 import type { DevisConventionnelData } from "@/components/devis/forms/DevisConventionnelForm";
 import type { DevisIndependantData } from "@/components/devis/forms/DevisIndependantForm";
-import RemiseInput, { RemiseData, RemiseType } from "@/components/shared/RemiseInput";
+import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 
 export default function NouveauDevisPage() {
   const navigate = useNavigate();
@@ -43,6 +47,9 @@ export default function NouveauDevisPage() {
   const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
+
+  // Stepper
+  const [currentStep, setCurrentStep] = useState(1);
 
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
   const [clientId, setClientId] = useState("");
@@ -78,12 +85,56 @@ export default function NouveauDevisPage() {
   const css = Math.round(montantHTApresRemise * TAUX_CSS);
   const montantTTC = montantHTApresRemise + tva + css;
 
+  // Client sélectionné pour la preview
+  const selectedClient = useMemo(() => {
+    return clients.find((c: any) => String(c.id) === clientId);
+  }, [clients, clientId]);
+
+  // Calcul de l'étape courante automatiquement
+  const calculateCurrentStep = () => {
+    if (!categorie) return 1;
+    if (!clientId) return 2;
+    const hasContent = 
+      (categorie === "conteneurs" && conteneursData && conteneursData.conteneurs.length > 0) ||
+      (categorie === "conventionnel" && conventionnelData && conventionnelData.lots.length > 0) ||
+      (categorie === "operations_independantes" && independantData && independantData.prestations.length > 0);
+    if (!hasContent) return 3;
+    return 4;
+  };
+
   const handleCategorieChange = (value: CategorieDocument) => {
     setCategorie(value);
     setConteneursData(null);
     setConventionnelData(null);
     setIndependantData(null);
     setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
+    setCurrentStep(2);
+  };
+
+  const handleNextStep = () => {
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const canProceedToNext = () => {
+    switch (currentStep) {
+      case 1: return !!categorie;
+      case 2: return !!clientId;
+      case 3: 
+        if (categorie === "conteneurs") return conteneursData && conteneursData.numeroBL;
+        if (categorie === "conventionnel") return conventionnelData && conventionnelData.numeroBL;
+        if (categorie === "operations_independantes") return independantData && independantData.typeOperationIndep;
+        return false;
+      case 4: return true;
+      default: return true;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,7 +164,6 @@ export default function NouveauDevisPage() {
       date_arrivee: new Date().toISOString().split('T')[0],
       validite_jours: Math.ceil((new Date(dateValidite).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
       notes: notes || null,
-      // Remise
       remise_type: remiseData.type || null,
       remise_valeur: remiseData.valeur || 0,
       remise_montant: remiseData.montantCalcule || 0,
@@ -136,7 +186,7 @@ export default function NouveauDevisPage() {
         prix_unitaire: c.prixUnitaire || 0,
         armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
         operations: c.operations.map(op => ({
-          type_operation: op.type, // Envoyer le code (arrivee, stockage...) pas le label
+          type_operation: op.type,
           description: op.description || "",
           quantite: op.quantite,
           prix_unitaire: op.prixUnitaire
@@ -182,8 +232,6 @@ export default function NouveauDevisPage() {
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
   const loadError = clientsError || armateursError || transitairesError || representantsError || configError;
 
-  // Important: en cas de CORS, React Query peut "re-try" et laisser isLoading=true.
-  // On préfère afficher l'erreur dès qu'elle existe.
   if (loadError) {
     return (
       <MainLayout title="Nouveau devis">
@@ -220,108 +268,215 @@ export default function NouveauDevisPage() {
             <p className="text-muted-foreground text-sm">Créer un nouveau devis client</p>
           </div>
         </div>
-       </div>
+      </div>
 
-       {createDevisMutation.error && (
-         <div className="mb-6 animate-fade-in">
-           <ApiErrorState
-             variant="inline"
-             title="Erreur lors de la création du devis"
-             error={createDevisMutation.error}
-             onRetry={() => createDevisMutation.reset()}
-           />
-         </div>
-       )}
+      {/* Stepper */}
+      <DevisStepper 
+        currentStep={currentStep} 
+        onStepClick={(step) => {
+          if (step <= calculateCurrentStep() + 1) {
+            setCurrentStep(step);
+          }
+        }} 
+      />
 
-       <form onSubmit={handleSubmit} className="space-y-6">
-        {!categorie && <CategorieSelector onSelect={handleCategorieChange} />}
+      {createDevisMutation.error && (
+        <div className="mb-6 animate-fade-in">
+          <ApiErrorState
+            variant="inline"
+            title="Erreur lors de la création du devis"
+            error={createDevisMutation.error}
+            onRetry={() => createDevisMutation.reset()}
+          />
+        </div>
+      )}
 
-        {categorie && (
-          <div className="flex items-center gap-3 animate-fade-in">
-            <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
-              {categoriesLabels[categorie].icon}
-              <span>{categoriesLabels[categorie].label}</span>
-            </Badge>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setCategorie("")} className="text-muted-foreground transition-all duration-200 hover:text-primary">
-              Changer
-            </Button>
-          </div>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Formulaire principal */}
+        <div className="lg:col-span-2">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Étape 1: Catégorie */}
+            {currentStep === 1 && (
+              <div className="animate-fade-in">
+                <CategorieSelector onSelect={handleCategorieChange} />
+              </div>
+            )}
 
-        {categorie && (
-          <ClientInfoCard
-            clientId={clientId}
-            setClientId={setClientId}
+            {/* Étape 2: Client */}
+            {currentStep === 2 && categorie && (
+              <div className="animate-fade-in space-y-4">
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                    {categoriesLabels[categorie].icon}
+                    <span>{categoriesLabels[categorie].label}</span>
+                  </Badge>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => { setCategorie(""); setCurrentStep(1); }} className="text-muted-foreground transition-all duration-200 hover:text-primary">
+                    Changer
+                  </Button>
+                </div>
+
+                <ClientInfoCard
+                  clientId={clientId}
+                  setClientId={setClientId}
+                  dateValidite={dateValidite}
+                  setDateValidite={setDateValidite}
+                  clients={clients}
+                />
+              </div>
+            )}
+
+            {/* Étape 3: Détails */}
+            {currentStep === 3 && categorie && (
+              <div className="animate-fade-in">
+                {categorie === "conteneurs" && (
+                  <DevisConteneursForm
+                    armateurs={armateurs}
+                    transitaires={transitaires}
+                    representants={representants}
+                    onDataChange={setConteneursData}
+                  />
+                )}
+
+                {categorie === "conventionnel" && (
+                  <DevisConventionnelForm onDataChange={setConventionnelData} />
+                )}
+
+                {categorie === "operations_independantes" && (
+                  <DevisIndependantForm onDataChange={setIndependantData} />
+                )}
+              </div>
+            )}
+
+            {/* Étape 4: Récapitulatif */}
+            {currentStep === 4 && categorie && (
+              <div className="animate-fade-in space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Conditions et notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Conditions particulières, notes..."
+                      rows={4}
+                    />
+                  </CardContent>
+                </Card>
+
+                {montantHT > 0 && (
+                  <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+                )}
+
+                <RecapitulatifCard
+                  montantHT={montantHT}
+                  tva={tva}
+                  css={css}
+                  montantTTC={montantTTC}
+                  tauxTva={Math.round(TAUX_TVA * 100)}
+                  tauxCss={Math.round(TAUX_CSS * 100)}
+                  remiseMontant={remiseData.montantCalcule}
+                  remiseType={remiseData.type}
+                  remiseValeur={remiseData.valeur}
+                />
+              </div>
+            )}
+
+            {/* Étape 5: Aperçu final */}
+            {currentStep === 5 && categorie && (
+              <div className="animate-fade-in">
+                <Card className="border-primary/20">
+                  <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      Vérification finale
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <p className="text-muted-foreground mb-4">
+                      Vérifiez les informations dans l'aperçu à droite avant de créer le devis.
+                    </p>
+                    <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-green-700 dark:text-green-400">Prêt à créer</p>
+                        <p className="text-sm text-green-600 dark:text-green-500">
+                          Montant TTC: {montantTTC.toLocaleString("fr-FR")} XAF
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Navigation buttons */}
+            {categorie && (
+              <div className="flex justify-between gap-4 pb-6 animate-fade-in">
+                <div>
+                  {currentStep > 1 && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handlePrevStep}
+                      className="gap-2"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Précédent
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="flex gap-4">
+                  <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending} className="transition-all duration-200 hover:scale-105">
+                    Annuler
+                  </Button>
+                  
+                  {currentStep < 5 ? (
+                    <Button 
+                      type="button" 
+                      onClick={handleNextStep}
+                      disabled={!canProceedToNext()}
+                      className="gap-2 transition-all duration-200 hover:scale-105"
+                    >
+                      Suivant
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={createDevisMutation.isPending}>
+                      {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Créer le devis
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Preview panel */}
+        <div className="lg:col-span-1">
+          <DevisPreview
+            categorie={categorie}
+            client={selectedClient}
             dateValidite={dateValidite}
-            setDateValidite={setDateValidite}
-            clients={clients}
-          />
-        )}
-
-        {categorie === "conteneurs" && (
-          <DevisConteneursForm
-            armateurs={armateurs}
-            transitaires={transitaires}
-            representants={representants}
-            onDataChange={setConteneursData}
-          />
-        )}
-
-        {categorie === "conventionnel" && (
-          <DevisConventionnelForm onDataChange={setConventionnelData} />
-        )}
-
-        {categorie === "operations_independantes" && (
-          <DevisIndependantForm onDataChange={setIndependantData} />
-        )}
-
-        {categorie && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Conditions et notes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Conditions particulières, notes..."
-                rows={4}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Remise - avant le récapitulatif */}
-        {categorie && montantHT > 0 && (
-          <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
-        )}
-
-        {categorie && (
-          <RecapitulatifCard
+            notes={notes}
+            conteneursData={conteneursData}
+            conventionnelData={conventionnelData}
+            independantData={independantData}
             montantHT={montantHT}
             tva={tva}
             css={css}
             montantTTC={montantTTC}
-            tauxTva={Math.round(TAUX_TVA * 100)}
-            tauxCss={Math.round(TAUX_CSS * 100)}
-            remiseMontant={remiseData.montantCalcule}
-            remiseType={remiseData.type}
-            remiseValeur={remiseData.valeur}
+            remiseData={remiseData}
+            armateurs={armateurs}
+            transitaires={transitaires}
+            representants={representants}
           />
-        )}
-
-        {categorie && (
-          <div className="flex justify-end gap-4 pb-6 animate-fade-in">
-            <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending} className="transition-all duration-200 hover:scale-105">
-              Annuler
-            </Button>
-            <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={createDevisMutation.isPending}>
-              {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Créer le devis
-            </Button>
-          </div>
-        )}
-      </form>
+        </div>
+      </div>
     </MainLayout>
   );
 }
