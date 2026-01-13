@@ -210,6 +210,10 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:credits.creer');
         Route::get('stats', [CreditBancaireController::class, 'stats'])
             ->middleware('permission:credits.voir');
+        Route::get('dashboard', [CreditBancaireController::class, 'dashboard'])
+            ->middleware('permission:credits.voir');
+        Route::get('comparaison', [CreditBancaireController::class, 'comparaison'])
+            ->middleware('permission:credits.voir');
         Route::get('{creditBancaire}', [CreditBancaireController::class, 'show'])
             ->middleware('permission:credits.voir');
         Route::put('{creditBancaire}', [CreditBancaireController::class, 'update'])
