@@ -414,7 +414,7 @@ class ReportingService
     {
         return CreditBancaire::where('statut', 'actif')
             ->whereYear('date_debut', '<=', $annee)
-            ->sum('montant_interet');
+            ->sum('total_interets') ?? 0;
     }
 
     /**
