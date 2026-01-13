@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Plus, Target, TrendingUp, TrendingDown, Wallet, Building2, 
   BarChart3, PieChart, RefreshCw, Trash2, Edit2, CheckCircle2, 
@@ -207,6 +208,19 @@ export default function PrevisionsPage() {
           </Button>
         </div>
       </div>
+
+      {(previsions.length === 0) && (
+        <Alert className="mb-6">
+          <AlertTitle>Prévisions non définies pour {annee}</AlertTitle>
+          <AlertDescription>
+            Les montants « Prévu » restent à 0 tant que vous n’avez pas ajouté de prévisions.
+            Le bouton « Synchroniser » met à jour uniquement le « Réalisé ».
+            <Button variant="link" className="px-1" onClick={() => setShowNouvelleModal(true)}>
+              Ajouter une prévision
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Dashboard KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
