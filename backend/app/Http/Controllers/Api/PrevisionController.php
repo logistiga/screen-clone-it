@@ -330,9 +330,8 @@ class PrevisionController extends Controller
 
     private function getReelsBanque(int $annee, ?int $mois = null): array
     {
-        // Paiements reçus (entrées banque)
-        $paiementsQuery = Paiement::whereYear('date', $annee)
-            ->where('mode', '!=', 'Espèces');
+        // Paiements reçus (entrées banque) - tous les paiements sont considérés comme bancaires
+        $paiementsQuery = Paiement::whereYear('date', $annee);
         
         if ($mois) {
             $paiementsQuery->whereMonth('date', $mois);
