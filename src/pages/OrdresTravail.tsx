@@ -1,10 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,13 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,20 +23,27 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { 
-  Plus, Search, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, 
-  Download, CreditCard, ClipboardList, Loader2, Container, Package, 
+  Plus, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, 
+  Download, CreditCard, ClipboardList, Container, Package, 
   Truck, Ship, ArrowUpFromLine, ArrowDownToLine, Clock, RotateCcw, 
-  Warehouse, Calendar
+  Warehouse, Calendar, TrendingUp
 } from "lucide-react";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalOrdresModal } from "@/components/PaiementGlobalOrdresModal";
 import { ExportModal } from "@/components/ExportModal";
-import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture, useUpdateOrdre } from "@/hooks/use-commercial";
+import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture } from "@/hooks/use-commercial";
 import { useAnnulerOrdre } from "@/hooks/use-annulations";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "sonner";
 import { AnnulationOrdreModal } from "@/components/AnnulationOrdreModal";
+import {
+  DocumentStatCard,
+  DocumentFilters,
+  DocumentEmptyState,
+  DocumentLoadingState,
+  DocumentErrorState,
+} from "@/components/shared/documents";
 
 // Types pour les badges
 interface TypeConfig {
@@ -53,6 +51,22 @@ interface TypeConfig {
   icon: React.ReactNode;
   className: string;
 }
+
+// Options de filtres
+const statutOptions = [
+  { value: "all", label: "Tous les statuts" },
+  { value: "en_cours", label: "En cours" },
+  { value: "termine", label: "Terminé" },
+  { value: "facture", label: "Facturé" },
+  { value: "annule", label: "Annulé" },
+];
+
+const categorieOptions = [
+  { value: "all", label: "Toutes catégories" },
+  { value: "conteneurs", label: "Conteneurs" },
+  { value: "conventionnel", label: "Conventionnel" },
+  { value: "operations_independantes", label: "Indépendant" },
+];
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
@@ -74,7 +88,6 @@ export default function OrdresTravailPage() {
   
   const deleteOrdreMutation = useDeleteOrdre();
   const convertMutation = useConvertOrdreToFacture();
-  const updateOrdreMutation = useUpdateOrdre();
   
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
@@ -207,11 +220,9 @@ export default function OrdresTravailPage() {
   };
 
   // Fonction améliorée pour obtenir le badge de type/catégorie
-  // Affiche "Catégorie / Type" pour plus de clarté
   const getTypeBadge = (ordre: typeof ordresList[0]) => {
     const { categorie, type_operation, type_operation_indep } = ordre;
 
-    // 1. Conteneurs → afficher "Import" ou "Export" ou "Conteneurs / [type]"
     if (categorie === 'conteneurs') {
       const typeOp = type_operation?.toLowerCase() || '';
       if (typeOp.includes('import') || typeOp === 'import') {
@@ -232,7 +243,6 @@ export default function OrdresTravailPage() {
           </Badge>
         );
       }
-      // Fallback si pas de type_operation défini
       return (
         <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
           <Container className="h-3 w-3" />
@@ -241,12 +251,9 @@ export default function OrdresTravailPage() {
       );
     }
 
-    // 2. Opérations indépendantes → afficher "Indépendant / [type spécifique]"
     if (categorie === 'operations_independantes') {
-      // Essayer de récupérer le type depuis plusieurs sources
       let typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
       
-      // Si pas trouvé dans l'ordre, chercher dans les lignes
       if (!typeIndep || !typeIndepConfigs[typeIndep]) {
         typeIndep = getTypeFromLignes(ordre);
       }
@@ -260,7 +267,6 @@ export default function OrdresTravailPage() {
           </Badge>
         );
       }
-      // Fallback - afficher juste "Indépendant" en orange
       return (
         <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
           <Truck className="h-3 w-3" />
@@ -269,7 +275,6 @@ export default function OrdresTravailPage() {
       );
     }
 
-    // 3. Conventionnel → garder "Conventionnel"
     if (categorie === 'conventionnel') {
       return (
         <Badge className="bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
@@ -279,7 +284,6 @@ export default function OrdresTravailPage() {
       );
     }
 
-    // Fallback générique
     return (
       <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">
         {categorie || 'N/A'}
@@ -290,21 +294,7 @@ export default function OrdresTravailPage() {
   if (isLoading) {
     return (
       <MainLayout title="Ordres de Travail">
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          >
-            <Loader2 className="h-10 w-10 text-primary" />
-          </motion.div>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-muted-foreground"
-          >
-            Chargement des ordres...
-          </motion.p>
-        </div>
+        <DocumentLoadingState message="Chargement des ordres..." />
       </MainLayout>
     );
   }
@@ -312,17 +302,10 @@ export default function OrdresTravailPage() {
   if (error) {
     return (
       <MainLayout title="Ordres de Travail">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center py-16 text-center"
-        >
-          <p className="text-destructive mb-4">Erreur lors du chargement des ordres</p>
-          <Button variant="outline" onClick={() => refetch()} className="gap-2">
-            <RotateCcw className="h-4 w-4" />
-            Réessayer
-          </Button>
-        </motion.div>
+        <DocumentErrorState 
+          message="Erreur lors du chargement des ordres"
+          onRetry={() => refetch()}
+        />
       </MainLayout>
     );
   }
@@ -331,410 +314,270 @@ export default function OrdresTravailPage() {
   if (ordresList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return (
       <MainLayout title="Ordres de Travail">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col items-center justify-center py-16 text-center"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
-          >
-            <ClipboardList className="h-20 w-20 text-muted-foreground/50 mb-6" />
-          </motion.div>
-          <h2 className="text-2xl font-semibold mb-2">Aucun ordre de travail</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Commencez par créer votre premier ordre de travail pour gérer vos opérations.
-          </p>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button onClick={() => navigate("/ordres/nouveau")} className="gap-2" size="lg">
-              <Plus className="h-5 w-5" />
-              Créer un ordre
-            </Button>
-          </motion.div>
-        </motion.div>
+        <DocumentEmptyState
+          icon={ClipboardList}
+          title="Aucun ordre de travail"
+          description="Commencez par créer votre premier ordre de travail pour gérer vos opérations."
+          actionLabel="Créer un ordre"
+          onAction={() => navigate("/ordres/nouveau")}
+        />
       </MainLayout>
     );
   }
 
   return (
     <MainLayout title="Ordres de Travail">
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="space-y-6"
-      >
-        {/* Stats Cards avec animation */}
-        <div className="grid gap-4 md:grid-cols-4">
-          {[
-            { 
-              title: "Total Ordres", 
-              value: totalItems, 
-              icon: ClipboardList, 
-              color: "primary",
-              delay: 0 
-            },
-            { 
-              title: "Montant Total", 
-              value: formatMontant(stats.totalOrdres), 
-              icon: Wallet, 
-              color: "blue-500",
-              textColor: "text-blue-600 dark:text-blue-400",
-              delay: 0.1 
-            },
-            { 
-              title: "Total Payé", 
-              value: formatMontant(stats.totalPaye), 
-              icon: CreditCard, 
-              color: "green-500",
-              textColor: "text-green-600 dark:text-green-400",
-              delay: 0.2 
-            },
-            { 
-              title: "En cours", 
-              value: stats.ordresEnCours, 
-              icon: Clock, 
-              color: "orange-500",
-              textColor: "text-orange-500",
-              delay: 0.3 
-            },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: stat.delay, duration: 0.4 }}
-            >
-              <Card className={`group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-l-4 border-l-${stat.color}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <stat.icon className="h-4 w-4" />
-                    {stat.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <motion.div 
-                    className={`text-2xl md:text-3xl font-bold ${stat.textColor || ''}`}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: stat.delay + 0.2, duration: 0.3 }}
-                  >
-                    {stat.value}
-                  </motion.div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+      <div className="space-y-6 animate-fade-in">
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DocumentStatCard
+            title="Total Ordres"
+            value={totalItems}
+            icon={ClipboardList}
+            variant="primary"
+            subtitle="Documents créés"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Montant Total"
+            value={formatMontant(stats.totalOrdres)}
+            icon={TrendingUp}
+            variant="info"
+            subtitle="Valeur cumulée"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Total Payé"
+            value={formatMontant(stats.totalPaye)}
+            icon={CreditCard}
+            variant="success"
+            subtitle={`${stats.totalOrdres > 0 ? Math.round((stats.totalPaye / stats.totalOrdres) * 100) : 0}% encaissé`}
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="En cours"
+            value={stats.ordresEnCours}
+            icon={Clock}
+            variant="warning"
+            subtitle="Ordres actifs"
+            delay={0.3}
+          />
         </div>
 
-        {/* Filtres et Actions */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card/50 backdrop-blur-sm p-4 rounded-lg border"
-        >
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input 
-                placeholder="Rechercher..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className="pl-9 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
-              />
-            </div>
-            <Select value={statutFilter} onValueChange={setStatutFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="en_cours">En cours</SelectItem>
-                <SelectItem value="termine">Terminé</SelectItem>
-                <SelectItem value="facture">Facturé</SelectItem>
-                <SelectItem value="annule">Annulé</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={categorieFilter} onValueChange={setCategorieFilter}>
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Toutes catégories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes catégories</SelectItem>
-                <SelectItem value="conteneurs">Conteneurs</SelectItem>
-                <SelectItem value="conventionnel">Conventionnel</SelectItem>
-                <SelectItem value="operations_independantes">Indépendant</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button variant="outline" className="gap-2" onClick={() => setPaiementGlobalOpen(true)}>
-                <CreditCard className="h-4 w-4" />
-                Paiement global
-              </Button>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
-                <Download className="h-4 w-4" />
-                Exporter
-              </Button>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button className="gap-2 shadow-md" onClick={() => navigate("/ordres/nouveau")}>
-                <Plus className="h-4 w-4" />
-                Nouvel ordre
-              </Button>
-            </motion.div>
-          </div>
-        </motion.div>
+        {/* Filters */}
+        <DocumentFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Rechercher par numéro, client..."
+          statutFilter={statutFilter}
+          onStatutChange={setStatutFilter}
+          statutOptions={statutOptions}
+          categorieFilter={categorieFilter}
+          onCategorieChange={setCategorieFilter}
+          categorieOptions={categorieOptions}
+        />
 
-        {/* Table avec animations */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="font-semibold">Numéro</TableHead>
-                    <TableHead className="font-semibold">Client</TableHead>
-                    <TableHead className="font-semibold">Date</TableHead>
-                    <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="text-right font-semibold">Montant</TableHead>
-                    <TableHead className="font-semibold">Statut</TableHead>
-                    <TableHead className="w-44 font-semibold">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence mode="popLayout">
-                    {ordresList.map((ordre, index) => {
-                      const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
-                      return (
-                        <motion.tr
-                          key={ordre.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ delay: index * 0.03, duration: 0.3 }}
-                          layout
-                          className="border-b transition-colors hover:bg-muted/50 group"
-                        >
-                          <TableCell 
-                            className="font-medium text-primary hover:underline cursor-pointer transition-colors" 
-                            onClick={() => navigate(`/ordres/${ordre.id}`)}
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}>
+            <CreditCard className="h-4 w-4" />
+            Paiement global
+          </Button>
+          <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setExportOpen(true)}>
+            <Download className="h-4 w-4" />
+            Exporter
+          </Button>
+          <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/ordres/nouveau")}>
+            <Plus className="h-4 w-4" />
+            Nouvel ordre
+          </Button>
+        </div>
+
+        {/* Table */}
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Numéro</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Total TTC</TableHead>
+                  <TableHead className="text-right">Payé</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="w-48">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ordresList.map((ordre, index) => {
+                  const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
+                  return (
+                    <TableRow 
+                      key={ordre.id} 
+                      className="cursor-pointer hover:bg-muted/50 transition-all duration-200 animate-fade-in"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <TableCell 
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                        onClick={() => navigate(`/ordres/${ordre.id}`)}
+                      >
+                        {ordre.numero}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                            {ordre.client?.nom?.substring(0, 2).toUpperCase() || '??'}
+                          </div>
+                          <span className="truncate max-w-[150px]">{ordre.client?.nom}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatDate(ordre.date || ordre.created_at)}</TableCell>
+                      <TableCell>{getTypeBadge(ordre)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={(ordre.montant_paye || 0) > 0 ? "text-emerald-600 dark:text-emerald-400" : ""}>
+                          {formatMontant(ordre.montant_paye)}
+                        </span>
+                        {resteAPayer > 0 && ordre.statut !== 'facture' && (
+                          <div className="text-xs text-destructive">
+                            Reste: {formatMontant(resteAPayer)}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
+                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {ordre.statut === 'termine' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Convertir en facture"
+                              className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
+                              onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Paiement" 
+                              className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
+                              onClick={() => setPaiementModal({ id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer })}
+                            >
+                              <Wallet className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          {ordre.statut !== 'annule' && ordre.statut !== 'facture' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Annuler"
+                              className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
+                              onClick={() => setAnnulationModal({ id: Number(ordre.id), numero: ordre.numero })}
+                            >
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Supprimer"
+                            className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10"
+                            onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}
                           >
-                            {ordre.numero}
-                          </TableCell>
-                          <TableCell className="font-medium">{ordre.client?.nom}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {formatDate(ordre.date || ordre.date_creation || ordre.created_at)}
-                          </TableCell>
-                          <TableCell>{getTypeBadge(ordre)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="font-semibold">{formatMontant(ordre.montant_ttc)}</div>
-                            {(ordre.montant_paye || 0) > 0 && (
-                              <div className="text-sm text-green-600 font-medium">
-                                Payé: {formatMontant(ordre.montant_paye)}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  title="Voir" 
-                                  onClick={() => navigate(`/ordres/${ordre.id}`)} 
-                                  className="h-8 w-8 hover:bg-primary/10"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </motion.div>
-                              
-                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    title="Modifier" 
-                                    onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} 
-                                    className="h-8 w-8 hover:bg-blue-500/10"
-                                  >
-                                    <Edit className="h-4 w-4 text-blue-600" />
-                                  </Button>
-                                </motion.div>
-                              )}
-                              
-                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
-                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    title="Paiement" 
-                                    className="h-8 w-8 text-green-600 hover:bg-green-500/10"
-                                    onClick={() => setPaiementModal({ id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer })}
-                                  >
-                                    <Wallet className="h-4 w-4" />
-                                  </Button>
-                                </motion.div>
-                              )}
-                              
-                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    title="Facturer" 
-                                    className="h-8 w-8 text-primary hover:bg-primary/10"
-                                    onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
-                                  >
-                                    <ArrowRight className="h-4 w-4" />
-                                  </Button>
-                                </motion.div>
-                              )}
-                              
-                              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  title="PDF" 
-                                  onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} 
-                                  className="h-8 w-8 hover:bg-muted"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                </Button>
-                              </motion.div>
-                              
-                              {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                                <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    title="Annuler" 
-                                    className="h-8 w-8 text-orange-600 hover:bg-orange-500/10"
-                                    onClick={() => setAnnulationModal({ id: Number(ordre.id), numero: ordre.numero })}
-                                  >
-                                    <Ban className="h-4 w-4" />
-                                  </Button>
-                                </motion.div>
-                              )}
-                              
-                              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  title="Supprimer" 
-                                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                  onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </motion.div>
-                            </div>
-                          </TableCell>
-                        </motion.tr>
-                      );
-                    })}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                totalItems={totalItems}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {ordresList.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Aucun ordre trouvé avec ces critères
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Modal Annulation avec motif */}
-      <AnnulationOrdreModal
-        open={!!annulationModal}
-        onOpenChange={(open) => !open && setAnnulationModal(null)}
-        ordreId={annulationModal?.id || null}
-        ordreNumero={annulationModal?.numero || ''}
-      />
-
-      {/* Modal Suppression */}
-      <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent className="animate-scale-in">
+      {/* Modales */}
+      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              Confirmer la suppression
+            <AlertDialogTitle>
+              {confirmAction?.type === 'supprimer' ? 'Confirmer la suppression' : 'Convertir en facture'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer l'ordre <strong>{confirmAction?.numero}</strong> ? Cette action est irréversible.
+              {confirmAction?.type === 'supprimer' 
+                ? `Êtes-vous sûr de vouloir supprimer l'ordre ${confirmAction?.numero} ? Cette action est irréversible.`
+                : `Voulez-vous convertir l'ordre ${confirmAction?.numero} en facture ?`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90" disabled={deleteOrdreMutation.isPending}>
-              {deleteOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleAction} 
+              className={confirmAction?.type === 'supprimer' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {confirmAction?.type === 'supprimer' ? 'Supprimer' : 'Convertir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal Facturation */}
-      <AlertDialog open={confirmAction?.type === 'facturer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent className="animate-scale-in">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Convertir en facture
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Voulez-vous convertir l'ordre <strong>{confirmAction?.numero}</strong> en facture ?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} disabled={convertMutation.isPending}>
-              {convertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Convertir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {annulationModal && (
+        <AnnulationOrdreModal
+          open={!!annulationModal}
+          onOpenChange={() => setAnnulationModal(null)}
+          ordreId={annulationModal.id}
+          ordreNumero={annulationModal.numero}
+        />
+      )}
 
-      {/* Modal Paiement */}
       {paiementModal && (
         <PaiementModal
           open={!!paiementModal}
-          onOpenChange={(open) => !open && setPaiementModal(null)}
+          onOpenChange={() => setPaiementModal(null)}
           documentType="ordre"
           documentId={paiementModal.id}
           documentNumero={paiementModal.numero}
           montantRestant={paiementModal.montantRestant}
-          onSuccess={() => {
-            setPaiementModal(null);
-            refetch();
-          }}
         />
       )}
 
-      {/* Modal Paiement Global Ordres */}
       <PaiementGlobalOrdresModal
         open={paiementGlobalOpen}
         onOpenChange={setPaiementGlobalOpen}
-        onSuccess={() => refetch()}
       />
 
-      {/* Modal Export */}
       <ExportModal
         open={exportOpen}
         onOpenChange={setExportOpen}
