@@ -136,50 +136,48 @@ class PrevisionController extends Controller
     {
         $annee = $request->get('annee', date('Y'));
 
-        // Statistiques globales
+        // Récupérer les données réelles depuis les mouvements de caisse et paiements
+        $reelCaisse = $this->getReelsCaisseAnnee($annee);
+        $reelBanque = $this->getReelsBanqueAnnee($annee);
+
+        // Prévisions enregistrées
+        $prevuRecettesCaisse = Prevision::where('type', 'recette')
+            ->where('source', 'caisse')
+            ->where('annee', $annee)
+            ->sum('montant_prevu');
+        $prevuRecettesBanque = Prevision::where('type', 'recette')
+            ->where('source', 'banque')
+            ->where('annee', $annee)
+            ->sum('montant_prevu');
+        $prevuDepensesCaisse = Prevision::where('type', 'depense')
+            ->where('source', 'caisse')
+            ->where('annee', $annee)
+            ->sum('montant_prevu');
+        $prevuDepensesBanque = Prevision::where('type', 'depense')
+            ->where('source', 'banque')
+            ->where('annee', $annee)
+            ->sum('montant_prevu');
+
+        // Statistiques globales avec données réelles dynamiques
         $stats = [
             'recettes' => [
                 'caisse' => [
-                    'prevu' => Prevision::where('type', 'recette')
-                        ->where('source', 'caisse')
-                        ->where('annee', $annee)
-                        ->sum('montant_prevu'),
-                    'realise' => Prevision::where('type', 'recette')
-                        ->where('source', 'caisse')
-                        ->where('annee', $annee)
-                        ->sum('montant_realise'),
+                    'prevu' => $prevuRecettesCaisse,
+                    'realise' => $reelCaisse['entrees'],
                 ],
                 'banque' => [
-                    'prevu' => Prevision::where('type', 'recette')
-                        ->where('source', 'banque')
-                        ->where('annee', $annee)
-                        ->sum('montant_prevu'),
-                    'realise' => Prevision::where('type', 'recette')
-                        ->where('source', 'banque')
-                        ->where('annee', $annee)
-                        ->sum('montant_realise'),
+                    'prevu' => $prevuRecettesBanque,
+                    'realise' => $reelBanque['entrees'],
                 ],
             ],
             'depenses' => [
                 'caisse' => [
-                    'prevu' => Prevision::where('type', 'depense')
-                        ->where('source', 'caisse')
-                        ->where('annee', $annee)
-                        ->sum('montant_prevu'),
-                    'realise' => Prevision::where('type', 'depense')
-                        ->where('source', 'caisse')
-                        ->where('annee', $annee)
-                        ->sum('montant_realise'),
+                    'prevu' => $prevuDepensesCaisse,
+                    'realise' => $reelCaisse['sorties'],
                 ],
                 'banque' => [
-                    'prevu' => Prevision::where('type', 'depense')
-                        ->where('source', 'banque')
-                        ->where('annee', $annee)
-                        ->sum('montant_prevu'),
-                    'realise' => Prevision::where('type', 'depense')
-                        ->where('source', 'banque')
-                        ->where('annee', $annee)
-                        ->sum('montant_realise'),
+                    'prevu' => $prevuDepensesBanque,
+                    'realise' => $reelBanque['sorties'],
                 ],
             ],
         ];
@@ -201,9 +199,9 @@ class PrevisionController extends Controller
             ->groupBy('categorie', 'type', 'source')
             ->get();
 
-        // Taux de réalisation global
-        $totalPrevu = Prevision::where('annee', $annee)->sum('montant_prevu');
-        $totalRealise = Prevision::where('annee', $annee)->sum('montant_realise');
+        // Taux de réalisation global basé sur les données réelles
+        $totalPrevu = $prevuRecettesCaisse + $prevuRecettesBanque + $prevuDepensesCaisse + $prevuDepensesBanque;
+        $totalRealise = $reelCaisse['entrees'] + $reelCaisse['sorties'] + $reelBanque['entrees'] + $reelBanque['sorties'];
         $tauxGlobal = $totalPrevu > 0 ? round(($totalRealise / $totalPrevu) * 100, 2) : 0;
 
         // Compteurs de statut
@@ -224,6 +222,38 @@ class PrevisionController extends Controller
             'taux_global' => $tauxGlobal,
             'compteurs' => $compteurs,
         ]);
+    }
+
+    private function getReelsCaisseAnnee(int $annee): array
+    {
+        $mouvements = MouvementCaisse::whereYear('date', $annee)->get();
+        
+        $entrees = $mouvements->filter(function($m) {
+            return in_array(strtolower($m->type), ['entree', 'entrée']);
+        })->sum('montant');
+        
+        $sorties = $mouvements->filter(function($m) {
+            return in_array(strtolower($m->type), ['sortie']);
+        })->sum('montant');
+
+        return [
+            'entrees' => (float) $entrees,
+            'sorties' => (float) $sorties,
+        ];
+    }
+
+    private function getReelsBanqueAnnee(int $annee): array
+    {
+        // Paiements reçus = entrées banque
+        $paiementsRecus = Paiement::whereYear('date', $annee)->sum('montant');
+        
+        // Pour les sorties bancaires, on pourrait ajouter d'autres sources
+        // comme les remboursements de crédits, virements sortants, etc.
+
+        return [
+            'entrees' => (float) $paiementsRecus,
+            'sorties' => 0,
+        ];
     }
 
     public function categories(): JsonResponse
