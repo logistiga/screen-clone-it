@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { ApiErrorState } from "@/components/ApiErrorState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -25,8 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { 
   Plus, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, 
-  FileCheck, Loader2, Check, Container, Package, Wrench,
-  TrendingUp, Clock, CheckCircle, XCircle
+  FileCheck, Check, Container, Package, Wrench,
+  TrendingUp, Clock, CheckCircle
 } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
@@ -34,14 +33,36 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { getOperationsIndepLabels, TypeOperationIndep } from "@/types/documents";
 import {
-  DevisStatCard,
-  DevisStatCardSkeleton,
   DevisCard,
   DevisGridSkeleton,
   DevisTableSkeleton,
-  DevisFilters,
 } from "@/components/devis/shared";
+import {
+  DocumentStatCard,
+  DocumentFilters,
+  DocumentEmptyState,
+  DocumentLoadingState,
+  DocumentErrorState,
+} from "@/components/shared/documents";
 import { cn } from "@/lib/utils";
+
+// Options de filtres
+const statutOptions = [
+  { value: "all", label: "Tous statuts" },
+  { value: "brouillon", label: "Brouillon" },
+  { value: "envoye", label: "Envoyé" },
+  { value: "accepte", label: "Accepté" },
+  { value: "refuse", label: "Refusé" },
+  { value: "expire", label: "Expiré" },
+  { value: "converti", label: "Converti" },
+];
+
+const categorieOptions = [
+  { value: "all", label: "Toutes catégories" },
+  { value: "Conteneur", label: "Conteneurs" },
+  { value: "Lot", label: "Conventionnel" },
+  { value: "Independant", label: "Indépendant" },
+];
 
 export default function DevisPage() {
   const navigate = useNavigate();
@@ -54,7 +75,7 @@ export default function DevisPage() {
   const [pageSize, setPageSize] = useState(10);
   
   // API hooks
-  const { data: devisData, isLoading, error } = useDevis({
+  const { data: devisData, isLoading, error, refetch } = useDevis({
     search: searchTerm || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     page: currentPage,
@@ -120,16 +141,15 @@ export default function DevisPage() {
   const totalMontant = devisList.reduce((sum, d) => sum + (d.montant_ttc || 0), 0);
   const devisAcceptes = devisList.filter(d => d.statut === 'accepte').length;
   const devisEnAttente = devisList.filter(d => d.statut === 'envoye' || d.statut === 'brouillon').length;
-  const devisRefuses = devisList.filter(d => d.statut === 'refuse').length;
 
   const getStatutBadge = (statut: string) => {
     const config: Record<string, { className: string }> = {
-      brouillon: { className: "bg-gray-100 text-gray-700 border-gray-300" },
-      envoye: { className: "bg-blue-100 text-blue-700 border-blue-300" },
-      accepte: { className: "bg-emerald-100 text-emerald-700 border-emerald-300" },
-      refuse: { className: "bg-red-100 text-red-700 border-red-300" },
-      expire: { className: "bg-orange-100 text-orange-700 border-orange-300" },
-      converti: { className: "bg-purple-100 text-purple-700 border-purple-300" },
+      brouillon: { className: "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-900/30 dark:text-gray-200" },
+      envoye: { className: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200" },
+      accepte: { className: "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200" },
+      refuse: { className: "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-200" },
+      expire: { className: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-200" },
+      converti: { className: "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-200" },
     };
     const style = config[statut] || config.brouillon;
     return (
@@ -141,9 +161,9 @@ export default function DevisPage() {
 
   const getCategorieBadge = (typeDocument: string) => {
     const config: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
-      Conteneur: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800" },
-      Lot: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-amber-100 text-amber-800" },
-      Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800" },
+      Conteneur: { label: "Conteneurs", icon: <Container className="h-3 w-3" />, className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" },
+      Lot: { label: "Conventionnel", icon: <Package className="h-3 w-3" />, className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200" },
+      Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200" },
     };
     const cat = config[typeDocument] || config.Conteneur;
     return (
@@ -165,23 +185,10 @@ export default function DevisPage() {
     return '-';
   };
 
-  // État vide
-  if (!isLoading && devisList.length === 0 && !searchTerm && statutFilter === "all") {
+  if (isLoading) {
     return (
       <MainLayout title="Devis">
-        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <div className="p-4 rounded-full bg-primary/10 mb-4">
-            <FileCheck className="h-12 w-12 text-primary" />
-          </div>
-          <h2 className="text-2xl font-semibold mb-2">Aucun devis</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Commencez par créer votre premier devis pour proposer vos services à vos clients.
-          </p>
-          <Button onClick={() => navigate("/devis/nouveau")} className="gap-2 shadow-md">
-            <Plus className="h-4 w-4" />
-            Créer un devis
-          </Button>
-        </div>
+        <DocumentLoadingState message="Chargement des devis..." />
       </MainLayout>
     );
   }
@@ -189,10 +196,24 @@ export default function DevisPage() {
   if (error) {
     return (
       <MainLayout title="Devis">
-        <ApiErrorState
-          title="Erreur lors du chargement des devis"
-          error={error}
-          onRetry={() => window.location.reload()}
+        <DocumentErrorState 
+          message="Erreur lors du chargement des devis"
+          onRetry={() => refetch()}
+        />
+      </MainLayout>
+    );
+  }
+
+  // État vide
+  if (devisList.length === 0 && !searchTerm && statutFilter === "all") {
+    return (
+      <MainLayout title="Devis">
+        <DocumentEmptyState
+          icon={FileCheck}
+          title="Aucun devis"
+          description="Commencez par créer votre premier devis pour proposer vos services à vos clients."
+          actionLabel="Créer un devis"
+          onAction={() => navigate("/devis/nouveau")}
         />
       </MainLayout>
     );
@@ -203,61 +224,58 @@ export default function DevisPage() {
       <div className="space-y-6 animate-fade-in">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {isLoading ? (
-            <>
-              <DevisStatCardSkeleton />
-              <DevisStatCardSkeleton />
-              <DevisStatCardSkeleton />
-              <DevisStatCardSkeleton />
-            </>
-          ) : (
-            <>
-              <DevisStatCard
-                title="Total Devis"
-                value={totalItems}
-                icon={FileText}
-                variant="primary"
-                subtitle="Documents créés"
-              />
-              <DevisStatCard
-                title="Montant Total"
-                value={formatMontant(totalMontant)}
-                icon={TrendingUp}
-                variant="info"
-                subtitle="Valeur cumulée"
-              />
-              <DevisStatCard
-                title="Acceptés"
-                value={devisAcceptes}
-                icon={CheckCircle}
-                variant="success"
-                subtitle={`${totalItems > 0 ? Math.round((devisAcceptes / totalItems) * 100) : 0}% de conversion`}
-              />
-              <DevisStatCard
-                title="En attente"
-                value={devisEnAttente}
-                icon={Clock}
-                variant="warning"
-                subtitle="Brouillons et envoyés"
-              />
-            </>
-          )}
+          <DocumentStatCard
+            title="Total Devis"
+            value={totalItems}
+            icon={FileText}
+            variant="primary"
+            subtitle="Documents créés"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Montant Total"
+            value={formatMontant(totalMontant)}
+            icon={TrendingUp}
+            variant="info"
+            subtitle="Valeur cumulée"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Acceptés"
+            value={devisAcceptes}
+            icon={CheckCircle}
+            variant="success"
+            subtitle={`${totalItems > 0 ? Math.round((devisAcceptes / totalItems) * 100) : 0}% de conversion`}
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="En attente"
+            value={devisEnAttente}
+            icon={Clock}
+            variant="warning"
+            subtitle="Brouillons et envoyés"
+            delay={0.3}
+          />
         </div>
 
         {/* Filters & Actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <DevisFilters
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <DocumentFilters
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
+            searchPlaceholder="Rechercher par numéro, client..."
             statutFilter={statutFilter}
             onStatutChange={setStatutFilter}
+            statutOptions={statutOptions}
             categorieFilter={categorieFilter}
             onCategorieChange={setCategorieFilter}
+            categorieOptions={categorieOptions}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            showViewToggle
           />
           <Button 
-            className="gap-2 shadow-md transition-all duration-200 hover:scale-105" 
+            className="gap-2 shadow-md transition-all duration-200 hover:scale-105 shrink-0" 
             onClick={() => navigate("/devis/nouveau")}
           >
             <Plus className="h-4 w-4" />
@@ -266,33 +284,7 @@ export default function DevisPage() {
         </div>
 
         {/* Content */}
-        {isLoading ? (
-          viewMode === 'grid' ? (
-            <DevisGridSkeleton count={6} />
-          ) : (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Numéro</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Catégorie</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Montant TTC</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="w-48">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <DevisTableSkeleton count={5} />
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )
-        ) : viewMode === 'grid' ? (
+        {viewMode === 'grid' ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDevis.map((d, index) => (
               <div 
@@ -354,40 +346,40 @@ export default function DevisPage() {
                       <TableCell>{getStatutBadge(d.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir" className="h-8 w-8" onClick={() => navigate(`/devis/${d.id}`)}>
+                          <Button variant="ghost" size="icon" title="Voir" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => navigate(`/devis/${d.id}`)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
-                            <Button variant="ghost" size="icon" title="Modifier" className="h-8 w-8" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
+                            <Button variant="ghost" size="icon" title="Modifier" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => navigate(`/devis/${d.id}/modifier`)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" title="PDF" className="h-8 w-8" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
+                          <Button variant="ghost" size="icon" title="PDF" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-muted" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
                             <FileText className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Email" className="h-8 w-8 text-blue-600"
+                          <Button variant="ghost" size="icon" title="Email" className="h-8 w-8 text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
                             onClick={() => setEmailModal({ numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
                             <Mail className="h-4 w-4" />
                           </Button>
                           {(d.statut === 'brouillon' || d.statut === 'envoye') && (
-                            <Button variant="ghost" size="icon" title="Valider" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                            <Button variant="ghost" size="icon" title="Valider" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
                               onClick={() => setConfirmAction({ type: 'valider', id: d.id, numero: d.numero })}>
                               <Check className="h-4 w-4" />
                             </Button>
                           )}
                           {d.statut === 'accepte' && (
-                            <Button variant="ghost" size="icon" title="Convertir" className="h-8 w-8 text-primary"
+                            <Button variant="ghost" size="icon" title="Convertir" className="h-8 w-8 text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
                               onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           )}
                           {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
-                            <Button variant="ghost" size="icon" title="Annuler" className="h-8 w-8 text-orange-600 hover:bg-orange-50"
+                            <Button variant="ghost" size="icon" title="Annuler" className="h-8 w-8 text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
                               onClick={() => setConfirmAction({ type: 'annuler', id: d.id, numero: d.numero })}>
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" title="Supprimer" className="h-8 w-8 text-destructive hover:bg-red-50"
+                          <Button variant="ghost" size="icon" title="Supprimer" className="h-8 w-8 text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10"
                             onClick={() => setConfirmAction({ type: 'supprimer', id: d.id, numero: d.numero })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -417,7 +409,7 @@ export default function DevisPage() {
         )}
 
         {/* Pagination for grid view */}
-        {viewMode === 'grid' && !isLoading && (
+        {viewMode === 'grid' && (
           <Card className="p-4">
             <TablePagination
               currentPage={currentPage}
@@ -431,83 +423,42 @@ export default function DevisPage() {
         )}
       </div>
 
-      {/* Modal Annulation */}
-      <AlertDialog open={confirmAction?.type === 'annuler'} onOpenChange={(open) => !open && setConfirmAction(null)}>
+      {/* Modales */}
+      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmAction?.type === 'annuler' && 'Annuler le devis'}
+              {confirmAction?.type === 'valider' && 'Valider le devis'}
+              {confirmAction?.type === 'supprimer' && 'Supprimer le devis'}
+              {confirmAction?.type === 'convertir' && 'Convertir en ordre'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir annuler le devis <strong>{confirmAction?.numero}</strong> ?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-orange-600 hover:bg-orange-700" disabled={updateDevisMutation.isPending}>
-              {updateDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal Suppression */}
-      <AlertDialog open={confirmAction?.type === 'supprimer'} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer le devis <strong>{confirmAction?.numero}</strong> ? Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-destructive hover:bg-destructive/90" disabled={deleteDevisMutation.isPending}>
-              {deleteDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal Validation */}
-      <AlertDialog open={confirmAction?.type === 'valider'} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Valider le devis</AlertDialogTitle>
-            <AlertDialogDescription>
-              Voulez-vous marquer le devis <strong>{confirmAction?.numero}</strong> comme accepté ?
+              {confirmAction?.type === 'annuler' && `Êtes-vous sûr de vouloir annuler le devis ${confirmAction?.numero} ?`}
+              {confirmAction?.type === 'valider' && `Êtes-vous sûr de vouloir valider le devis ${confirmAction?.numero} ?`}
+              {confirmAction?.type === 'supprimer' && `Êtes-vous sûr de vouloir supprimer le devis ${confirmAction?.numero} ? Cette action est irréversible.`}
+              {confirmAction?.type === 'convertir' && `Voulez-vous convertir le devis ${confirmAction?.numero} en ordre de travail ?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} className="bg-emerald-600 hover:bg-emerald-700" disabled={updateDevisMutation.isPending}>
-              {updateDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+            <AlertDialogAction 
+              onClick={handleAction}
+              className={confirmAction?.type === 'supprimer' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {confirmAction?.type === 'annuler' && 'Annuler le devis'}
+              {confirmAction?.type === 'valider' && 'Valider'}
+              {confirmAction?.type === 'supprimer' && 'Supprimer'}
+              {confirmAction?.type === 'convertir' && 'Convertir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal Conversion */}
-      <AlertDialog open={confirmAction?.type === 'convertir'} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Convertir en ordre de travail</AlertDialogTitle>
-            <AlertDialogDescription>
-              Voulez-vous convertir le devis <strong>{confirmAction?.numero}</strong> en ordre de travail ?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAction} disabled={convertMutation.isPending}>
-              {convertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Convertir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal Email */}
       {emailModal && (
         <EmailModal
           open={!!emailModal}
-          onOpenChange={(open) => !open && setEmailModal(null)}
+          onOpenChange={() => setEmailModal(null)}
           documentType="devis"
           documentNumero={emailModal.numero}
           clientEmail={emailModal.clientEmail}

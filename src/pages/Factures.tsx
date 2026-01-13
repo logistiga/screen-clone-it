@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,13 +13,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -30,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Loader2, Container, Package, Truck } from "lucide-react";
+import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock } from "lucide-react";
 import { EmailModal } from "@/components/EmailModal";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
@@ -39,6 +31,31 @@ import { AnnulationModal } from "@/components/AnnulationModal";
 import { useFactures, useDeleteFacture } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
+import {
+  DocumentStatCard,
+  DocumentStatCardSkeleton,
+  DocumentFilters,
+  DocumentEmptyState,
+  DocumentLoadingState,
+  DocumentErrorState,
+} from "@/components/shared/documents";
+
+// Options de filtres
+const statutOptions = [
+  { value: "all", label: "Tous les statuts" },
+  { value: "brouillon", label: "Brouillon" },
+  { value: "validee", label: "Validée" },
+  { value: "payee", label: "Payée" },
+  { value: "partiellement_payee", label: "Partielle" },
+  { value: "annulee", label: "Annulée" },
+];
+
+const categorieOptions = [
+  { value: "all", label: "Toutes catégories" },
+  { value: "conteneurs", label: "Conteneurs" },
+  { value: "conventionnel", label: "Conventionnel" },
+  { value: "operations_independantes", label: "Indépendant" },
+];
 
 export default function FacturesPage() {
   const navigate = useNavigate();
@@ -94,6 +111,7 @@ export default function FacturesPage() {
   const totalFactures = facturesList.reduce((sum, f) => sum + (f.montant_ttc || 0), 0);
   const totalPaye = facturesList.reduce((sum, f) => sum + (f.montant_paye || 0), 0);
   const totalImpaye = totalFactures - totalPaye;
+  const facturesEnAttente = facturesList.filter(f => f.statut === 'brouillon' || f.statut === 'validee').length;
 
   const getStatutBadge = (statut: string) => {
     const configs: Record<string, { label: string; className: string }> = {
@@ -155,9 +173,7 @@ export default function FacturesPage() {
   if (isLoading) {
     return (
       <MainLayout title="Factures">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <DocumentLoadingState message="Chargement des factures..." />
       </MainLayout>
     );
   }
@@ -165,12 +181,10 @@ export default function FacturesPage() {
   if (error) {
     return (
       <MainLayout title="Factures">
-        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <p className="text-destructive">Erreur lors du chargement des factures</p>
-          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4 transition-all duration-200 hover:scale-105">
-            Réessayer
-          </Button>
-        </div>
+        <DocumentErrorState 
+          message="Erreur lors du chargement des factures"
+          onRetry={() => refetch()}
+        />
       </MainLayout>
     );
   }
@@ -179,17 +193,13 @@ export default function FacturesPage() {
   if (facturesList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return (
       <MainLayout title="Factures">
-        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <Receipt className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Aucune facture</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Commencez par créer votre première facture pour gérer vos encaissements.
-          </p>
-          <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/factures/nouvelle")}>
-            <Plus className="h-4 w-4" />
-            Nouvelle facture
-          </Button>
-        </div>
+        <DocumentEmptyState
+          icon={Receipt}
+          title="Aucune facture"
+          description="Commencez par créer votre première facture pour gérer vos encaissements."
+          actionLabel="Nouvelle facture"
+          onAction={() => navigate("/factures/nouvelle")}
+        />
       </MainLayout>
     );
   }
@@ -198,92 +208,68 @@ export default function FacturesPage() {
     <MainLayout title="Factures">
       <div className="space-y-6 animate-fade-in">
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Factures</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalItems}</div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatMontant(totalFactures)}</div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Encaissé</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatMontant(totalPaye)}</div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Impayé</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{formatMontant(totalImpaye)}</div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DocumentStatCard
+            title="Total Factures"
+            value={totalItems}
+            icon={Receipt}
+            variant="primary"
+            subtitle="Documents créés"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Montant Total"
+            value={formatMontant(totalFactures)}
+            icon={TrendingUp}
+            variant="info"
+            subtitle="Valeur cumulée"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Total Encaissé"
+            value={formatMontant(totalPaye)}
+            icon={CreditCard}
+            variant="success"
+            subtitle={`${totalFactures > 0 ? Math.round((totalPaye / totalFactures) * 100) : 0}% encaissé`}
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="En attente"
+            value={facturesEnAttente}
+            icon={Clock}
+            variant="warning"
+            subtitle="Brouillons et validées"
+            delay={0.3}
+          />
         </div>
 
+        {/* Filters */}
+        <DocumentFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Rechercher par numéro, client..."
+          statutFilter={statutFilter}
+          onStatutChange={setStatutFilter}
+          statutOptions={statutOptions}
+          categorieFilter={categorieFilter}
+          onCategorieChange={setCategorieFilter}
+          categorieOptions={categorieOptions}
+        />
+
         {/* Actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={statutFilter} onValueChange={setStatutFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="brouillon">Brouillon</SelectItem>
-                <SelectItem value="validee">Validée</SelectItem>
-                <SelectItem value="payee">Payée</SelectItem>
-                <SelectItem value="partiellement_payee">Partielle</SelectItem>
-                <SelectItem value="annulee">Annulée</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={categorieFilter} onValueChange={setCategorieFilter}>
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Toutes catégories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes catégories</SelectItem>
-                <SelectItem value="conteneurs">Conteneurs</SelectItem>
-                <SelectItem value="conventionnel">Conventionnel</SelectItem>
-                <SelectItem value="operations_independantes">Indépendant</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}>
-              <CreditCard className="h-4 w-4" />
-              Paiement global
-            </Button>
-            <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setExportOpen(true)}>
-              <Download className="h-4 w-4" />
-              Exporter
-            </Button>
-            <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/factures/nouvelle")}>
-              <Plus className="h-4 w-4" />
-              Nouvelle facture
-            </Button>
-          </div>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}>
+            <CreditCard className="h-4 w-4" />
+            Paiement global
+          </Button>
+          <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setExportOpen(true)}>
+            <Download className="h-4 w-4" />
+            Exporter
+          </Button>
+          <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/factures/nouvelle")}>
+            <Plus className="h-4 w-4" />
+            Nouvelle facture
+          </Button>
         </div>
 
         {/* Table */}
@@ -317,12 +303,19 @@ export default function FacturesPage() {
                       >
                         {facture.numero}
                       </TableCell>
-                      <TableCell>{facture.client?.nom}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                            {facture.client?.nom?.substring(0, 2).toUpperCase() || '??'}
+                          </div>
+                          <span className="truncate max-w-[150px]">{facture.client?.nom}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>{formatDate(facture.date_facture || facture.date || facture.created_at)}</TableCell>
                       <TableCell>{getCategorieBadge(facture.categorie)}</TableCell>
                       <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
-                        <span className={(facture.montant_paye || 0) > 0 ? "text-green-600" : ""}>
+                        <span className={(facture.montant_paye || 0) > 0 ? "text-emerald-600 dark:text-emerald-400" : ""}>
                           {formatMontant(facture.montant_paye)}
                         </span>
                         {resteAPayer > 0 && facture.statut !== 'payee' && (
@@ -347,7 +340,7 @@ export default function FacturesPage() {
                               variant="ghost" 
                               size="icon" 
                               title="Paiement" 
-                              className="text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10"
+                              className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
                               onClick={() => setPaiementModal({ id: facture.id, numero: facture.numero, montantRestant: resteAPayer, clientId: facture.client?.id ? Number(facture.client.id) : undefined })}
                             >
                               <Wallet className="h-4 w-4" />
@@ -379,9 +372,9 @@ export default function FacturesPage() {
                               onClick={() => setAnnulationModal({
                                 id: facture.id,
                                 numero: facture.numero,
-                                montantTTC: facture.montant_ttc,
-                                montantPaye: facture.montant_paye,
-                                clientNom: facture.client?.nom || ''
+                                montantTTC: facture.montant_ttc || 0,
+                                montantPaye: facture.montant_paye || 0,
+                                clientNom: facture.client?.nom || ""
                               })}
                             >
                               <Ban className="h-4 w-4" />
@@ -391,7 +384,7 @@ export default function FacturesPage() {
                             variant="ghost" 
                             size="icon" 
                             title="Supprimer"
-                            className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
+                            className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10"
                             onClick={() => setConfirmDelete({ id: facture.id, numero: facture.numero })}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -401,6 +394,13 @@ export default function FacturesPage() {
                     </TableRow>
                   );
                 })}
+                {facturesList.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Aucune facture trouvée avec ces critères
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
             <TablePagination
@@ -415,30 +415,29 @@ export default function FacturesPage() {
         </Card>
       </div>
 
-      {/* Modal suppression */}
-      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
-        <AlertDialogContent className="animate-scale-in">
+      {/* Modales */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer la facture <strong>{confirmDelete?.numero}</strong> ? 
+              Êtes-vous sûr de vouloir supprimer la facture {confirmDelete?.numero} ?
               Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Non, garder</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={deleteFactureMutation.isPending}>
-              {deleteFactureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Oui, supprimer"}
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal email */}
       {emailModal && (
         <EmailModal
           open={emailModal.open}
-          onOpenChange={(open) => !open && setEmailModal(null)}
+          onOpenChange={() => setEmailModal(null)}
           documentType="facture"
           documentNumero={emailModal.documentNumero}
           clientEmail={emailModal.clientEmail}
@@ -446,49 +445,36 @@ export default function FacturesPage() {
         />
       )}
 
-      {/* Modal paiement */}
       {paiementModal && (
         <PaiementModal
           open={!!paiementModal}
-          onOpenChange={(open) => !open && setPaiementModal(null)}
+          onOpenChange={() => setPaiementModal(null)}
           documentType="facture"
           documentId={paiementModal.id}
           documentNumero={paiementModal.numero}
           montantRestant={paiementModal.montantRestant}
-          clientId={paiementModal.clientId}
-          onSuccess={() => {
-            setPaiementModal(null);
-            refetch();
-          }}
+          clientId={paiementModal.clientId ? Number(paiementModal.clientId) : undefined}
         />
       )}
 
-      {/* Modal annulation */}
       {annulationModal && (
         <AnnulationModal
           open={!!annulationModal}
-          onOpenChange={(open) => !open && setAnnulationModal(null)}
+          onOpenChange={() => setAnnulationModal(null)}
           documentType="facture"
-          documentId={Number(annulationModal.id)}
+          documentId={annulationModal.id}
           documentNumero={annulationModal.numero}
           montantTTC={annulationModal.montantTTC}
           montantPaye={annulationModal.montantPaye}
           clientNom={annulationModal.clientNom}
-          onSuccess={() => {
-            setAnnulationModal(null);
-            refetch();
-          }}
         />
       )}
 
-      {/* Modal paiement global */}
       <PaiementGlobalModal
         open={paiementGlobalOpen}
         onOpenChange={setPaiementGlobalOpen}
-        onSuccess={() => refetch()}
       />
 
-      {/* Modal export */}
       <ExportModal
         open={exportOpen}
         onOpenChange={setExportOpen}
