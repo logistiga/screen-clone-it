@@ -17,8 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { banques } from "@/data/mockData";
+import { useBanques } from "@/hooks/use-commercial";
+import { useCreateCredit } from "@/hooks/use-credits";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface NouveauCreditModalProps {
   open: boolean;
@@ -26,6 +28,9 @@ interface NouveauCreditModalProps {
 }
 
 export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalProps) {
+  const { data: banques = [], isLoading: isLoadingBanques } = useBanques({ actif: true });
+  const createCredit = useCreateCredit();
+  
   const [formData, setFormData] = useState({
     banqueId: "",
     montantEmprunte: "",
@@ -36,7 +41,7 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
     notes: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.banqueId || !formData.montantEmprunte || !formData.tauxInteret || !formData.dureeEnMois || !formData.dateDebut || !formData.objet) {
@@ -44,27 +49,32 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
       return;
     }
 
-    const montant = parseFloat(formData.montantEmprunte);
-    const taux = parseFloat(formData.tauxInteret);
-    const duree = parseInt(formData.dureeEnMois);
+    try {
+      await createCredit.mutateAsync({
+        banque_id: parseInt(formData.banqueId),
+        montant_principal: parseFloat(formData.montantEmprunte),
+        taux_interet: parseFloat(formData.tauxInteret),
+        duree_mois: parseInt(formData.dureeEnMois),
+        date_debut: formData.dateDebut,
+        objet: formData.objet,
+        notes: formData.notes || undefined,
+      });
 
-    // Calcul de la mensualité (formule d'annuité constante)
-    const tauxMensuel = taux / 100 / 12;
-    const mensualite = montant * (tauxMensuel * Math.pow(1 + tauxMensuel, duree)) / (Math.pow(1 + tauxMensuel, duree) - 1);
-    const totalInterets = (mensualite * duree) - montant;
-
-    toast.success(`Crédit de ${montant.toLocaleString('fr-FR')} FCFA créé avec succès. Mensualité: ${Math.round(mensualite).toLocaleString('fr-FR')} FCFA`);
-    
-    setFormData({
-      banqueId: "",
-      montantEmprunte: "",
-      tauxInteret: "",
-      dureeEnMois: "",
-      dateDebut: "",
-      objet: "",
-      notes: ""
-    });
-    onOpenChange(false);
+      toast.success("Crédit bancaire créé avec succès");
+      
+      setFormData({
+        banqueId: "",
+        montantEmprunte: "",
+        tauxInteret: "",
+        dureeEnMois: "",
+        dateDebut: "",
+        objet: "",
+        notes: ""
+      });
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Erreur lors de la création du crédit");
+    }
   };
 
   const calculerMensualite = () => {
@@ -96,11 +106,11 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
             <Label htmlFor="banque">Banque *</Label>
             <Select value={formData.banqueId} onValueChange={(value) => setFormData({...formData, banqueId: value})}>
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une banque" />
+                <SelectValue placeholder={isLoadingBanques ? "Chargement..." : "Sélectionner une banque"} />
               </SelectTrigger>
               <SelectContent>
                 {banques.filter(b => b.actif).map(banque => (
-                  <SelectItem key={banque.id} value={banque.id}>{banque.nom}</SelectItem>
+                  <SelectItem key={banque.id} value={String(banque.id)}>{banque.nom}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -193,7 +203,10 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button type="submit">Créer le crédit</Button>
+            <Button type="submit" disabled={createCredit.isPending}>
+              {createCredit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Créer le crédit
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
