@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FormError } from "@/components/ui/form-error";
 import {
   TypeOperationIndep,
   LignePrestationEtendue,
@@ -9,7 +10,9 @@ import {
   getInitialPrestationEtendue,
   calculateDaysBetween,
 } from "@/types/documents";
+import { ordreIndependantSchema } from "@/lib/validations/ordre-schemas";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
+import { cn } from "@/lib/utils";
 
 interface OrdreIndependantFormProps {
   onDataChange: (data: OrdreIndependantData) => void;
@@ -29,6 +32,10 @@ export default function OrdreIndependantForm({
   const lastInitKey = useRef<string>("");
   const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
   const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
+  
+  // Validation errors state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Synchroniser l'état interne avec initialData (sans écraser les edits si rien n'a changé)
   useEffect(() => {
@@ -62,6 +69,44 @@ export default function OrdreIndependantForm({
 
     lastInitKey.current = initKey;
   }, [initialData]);
+
+  // Validate on blur
+  const validateField = useCallback((fieldPath: string) => {
+    const data = {
+      typeOperationIndep,
+      prestations,
+    };
+
+    const result = ordreIndependantSchema.safeParse(data);
+    
+    if (!result.success) {
+      const fieldError = result.error.errors.find(e => e.path.join('.') === fieldPath);
+      if (fieldError) {
+        setErrors(prev => ({ ...prev, [fieldPath]: fieldError.message }));
+      } else {
+        setErrors(prev => {
+          const next = { ...prev };
+          delete next[fieldPath];
+          return next;
+        });
+      }
+    } else {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldPath];
+        return next;
+      });
+    }
+  }, [typeOperationIndep, prestations]);
+
+  const handleBlur = (fieldPath: string) => {
+    setTouched(prev => ({ ...prev, [fieldPath]: true }));
+    validateField(fieldPath);
+  };
+
+  const getFieldError = (fieldPath: string) => {
+    return touched[fieldPath] ? errors[fieldPath] : undefined;
+  };
 
   const operationsIndepLabels = getOperationsIndepLabels();
 
@@ -121,6 +166,17 @@ export default function OrdreIndependantForm({
     updateParent(newPrestations);
   };
 
+  const handleTypeChange = (key: TypeOperationIndep) => {
+    setTypeOperationIndep(key);
+    setTouched(prev => ({ ...prev, typeOperationIndep: true }));
+    // Clear the error when a valid type is selected
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next['typeOperationIndep'];
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Sélection du type d'opération */}
@@ -129,7 +185,7 @@ export default function OrdreIndependantForm({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
-                Type d'opération indépendante
+                Type d'opération indépendante *
                 {typeOperationIndep && (
                   <Badge variant="secondary" className="ml-2">
                     {operationsIndepLabels[typeOperationIndep]?.label}
@@ -147,18 +203,21 @@ export default function OrdreIndependantForm({
             {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
               const op = operationsIndepLabels[key];
               const isSelected = typeOperationIndep === key;
+              const hasError = touched['typeOperationIndep'] && !typeOperationIndep;
               return (
                 <motion.button
                   key={key}
                   type="button"
-                  onClick={() => setTypeOperationIndep(key)}
+                  onClick={() => handleTypeChange(key)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 text-center relative overflow-hidden ${
+                  className={cn(
+                    "p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 text-center relative overflow-hidden",
                     isSelected 
                       ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20" 
-                      : "border-border hover:border-primary/50 hover:bg-muted/50"
-                  }`}
+                      : "border-border hover:border-primary/50 hover:bg-muted/50",
+                    hasError && "border-destructive"
+                  )}
                 >
                   {isSelected && (
                     <motion.div
@@ -181,6 +240,7 @@ export default function OrdreIndependantForm({
               );
             })}
           </div>
+          <FormError message={getFieldError('typeOperationIndep')} />
         </CardContent>
       </Card>
 
@@ -200,6 +260,9 @@ export default function OrdreIndependantForm({
               onAddPrestation={handleAddPrestation}
               onRemovePrestation={handleRemovePrestation}
               onPrestationChange={handlePrestationChange}
+              errors={errors}
+              touched={touched}
+              onBlur={handleBlur}
             />
           </motion.div>
         )}

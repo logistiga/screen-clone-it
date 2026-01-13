@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Package, FileText, Plus, Trash2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormError } from "@/components/ui/form-error";
 import {
   LigneLot,
   getInitialLot,
   calculateTotalLots,
 } from "@/types/documents";
+import { ordreConventionnelSchema } from "@/lib/validations/ordre-schemas";
+import { cn } from "@/lib/utils";
 
 interface OrdreConventionnelFormProps {
   onDataChange: (data: OrdreConventionnelData) => void;
@@ -36,6 +39,10 @@ export default function OrdreConventionnelForm({
   const [lieuChargement, setLieuChargement] = useState("");
   const [lieuDechargement, setLieuDechargement] = useState("");
   const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
+  
+  // Validation errors state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Initialisation depuis initialData
   useEffect(() => {
@@ -49,6 +56,46 @@ export default function OrdreConventionnelForm({
       setIsInitialized(true);
     }
   }, [initialData, isInitialized]);
+
+  // Validate on blur
+  const validateField = useCallback((fieldPath: string) => {
+    const data = {
+      numeroBL,
+      lieuChargement,
+      lieuDechargement,
+      lots,
+    };
+
+    const result = ordreConventionnelSchema.safeParse(data);
+    
+    if (!result.success) {
+      const fieldError = result.error.errors.find(e => e.path.join('.') === fieldPath);
+      if (fieldError) {
+        setErrors(prev => ({ ...prev, [fieldPath]: fieldError.message }));
+      } else {
+        setErrors(prev => {
+          const next = { ...prev };
+          delete next[fieldPath];
+          return next;
+        });
+      }
+    } else {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldPath];
+        return next;
+      });
+    }
+  }, [numeroBL, lieuChargement, lieuDechargement, lots]);
+
+  const handleBlur = (fieldPath: string) => {
+    setTouched(prev => ({ ...prev, [fieldPath]: true }));
+    validateField(fieldPath);
+  };
+
+  const getFieldError = (fieldPath: string) => {
+    return touched[fieldPath] ? errors[fieldPath] : undefined;
+  };
 
   const updateParent = (newLots: LigneLot[]) => {
     const montantHT = calculateTotalLots(newLots);
@@ -114,14 +161,16 @@ export default function OrdreConventionnelForm({
               placeholder="Ex: MSCUAB123456"
               value={numeroBL}
               onChange={(e) => setNumeroBL(e.target.value.toUpperCase())}
-              className="font-mono"
+              onBlur={() => handleBlur('numeroBL')}
+              className={cn("font-mono", getFieldError('numeroBL') && "border-destructive")}
             />
+            <FormError message={getFieldError('numeroBL')} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-amber-600">
                 <MapPin className="h-4 w-4" />
-                Lieu de chargement *
+                Lieu de chargement
               </Label>
               <Input
                 placeholder="Ex: Port d'Owendo"
@@ -132,7 +181,7 @@ export default function OrdreConventionnelForm({
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-amber-600">
                 <MapPin className="h-4 w-4" />
-                Lieu de déchargement *
+                Lieu de déchargement
               </Label>
               <Input
                 placeholder="Ex: Entrepôt client"
@@ -159,6 +208,7 @@ export default function OrdreConventionnelForm({
           </div>
         </CardHeader>
         <CardContent>
+          <FormError message={getFieldError('lots')} />
           <div className="space-y-6">
             {lots.map((lot, index) => (
               <div key={lot.id} className="space-y-4">
@@ -187,23 +237,29 @@ export default function OrdreConventionnelForm({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Description</Label>
+                    <Label>Description *</Label>
                     <Input
                       placeholder="Description de la marchandise"
                       value={lot.description}
                       onChange={(e) => handleLotChange(lot.id, 'description', e.target.value)}
+                      onBlur={() => handleBlur(`lots.${index}.description`)}
+                      className={cn(getFieldError(`lots.${index}.description`) && "border-destructive")}
                     />
+                    <FormError message={getFieldError(`lots.${index}.description`)} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Quantité</Label>
+                    <Label>Quantité *</Label>
                     <Input
                       type="number"
                       min="1"
                       value={lot.quantite}
                       onChange={(e) => handleLotChange(lot.id, 'quantite', parseInt(e.target.value) || 0)}
+                      onBlur={() => handleBlur(`lots.${index}.quantite`)}
+                      className={cn(getFieldError(`lots.${index}.quantite`) && "border-destructive")}
                     />
+                    <FormError message={getFieldError(`lots.${index}.quantite`)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Prix unitaire (FCFA)</Label>
