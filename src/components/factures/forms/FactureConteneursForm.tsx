@@ -19,6 +19,8 @@ import {
   getInitialConteneur,
   calculateTotalConteneurs,
 } from "@/types/documents";
+import { FormError } from "@/components/ui/form-error";
+import { fieldSchemas } from "@/lib/validations/facture-schemas";
 
 interface Armateur {
   id: string | number;
@@ -76,6 +78,10 @@ export default function FactureConteneursForm({
   const [primeRepresentant, setPrimeRepresentant] = useState<number>(0);
   const [conteneurs, setConteneurs] = useState<LigneConteneur[]>([getInitialConteneur()]);
 
+  // Validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   // Sync initialData une seule fois
   useEffect(() => {
     if (!initialData) return;
@@ -94,6 +100,37 @@ export default function FactureConteneursForm({
     }
     lastInitKey.current = initKey;
   }, [initialData]);
+
+  // Field validation
+  const validateField = (fieldName: string, value: unknown): string | null => {
+    try {
+      if (fieldName === "numeroBL") {
+        fieldSchemas.numeroBL.parse(value);
+      } else if (fieldName === "armateurId") {
+        fieldSchemas.armateurId.parse(value);
+      } else if (fieldName.includes("numero")) {
+        fieldSchemas.numeroConteneur.parse(value);
+      } else if (fieldName.includes("taille")) {
+        if (!value || value === "") return "La taille est obligatoire";
+      }
+      return null;
+    } catch (error: any) {
+      return error.errors?.[0]?.message || "Valeur invalide";
+    }
+  };
+
+  const handleBlur = (fieldName: string, value: unknown) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    const error = validateField(fieldName, value);
+    setErrors((prev) => {
+      if (error) {
+        return { ...prev, [fieldName]: error };
+      }
+      const { [fieldName]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
   const updateParent = (newConteneurs: LigneConteneur[]) => {
     const montantHT = calculateTotalConteneurs(newConteneurs);
     onDataChange({
@@ -208,13 +245,22 @@ export default function FactureConteneursForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Type d'opération *</Label>
-              <Select value={typeOperation} onValueChange={(v) => setTypeOperation(v as TypeOperation)}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+              <Select 
+                value={typeOperation} 
+                onValueChange={(v) => {
+                  setTypeOperation(v as TypeOperation);
+                  handleBlur("typeOperation", v);
+                }}
+              >
+                <SelectTrigger className={touched.typeOperation && !typeOperation ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Sélectionner" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="import">Import</SelectItem>
                   <SelectItem value="export">Export</SelectItem>
                 </SelectContent>
               </Select>
+              <FormError message={touched.typeOperation && !typeOperation ? "Le type d'opération est obligatoire" : undefined} />
             </div>
             <div className="space-y-2">
               <Label>Numéro BL *</Label>
@@ -222,19 +268,30 @@ export default function FactureConteneursForm({
                 placeholder="Ex: MSCUAB123456"
                 value={numeroBL}
                 onChange={(e) => setNumeroBL(e.target.value.toUpperCase())}
-                className="font-mono"
+                onBlur={() => handleBlur("numeroBL", numeroBL)}
+                className={`font-mono ${touched.numeroBL && errors.numeroBL ? "border-destructive" : ""}`}
               />
+              <FormError message={touched.numeroBL ? errors.numeroBL : undefined} />
             </div>
             <div className="space-y-2">
               <Label>Armateur *</Label>
-              <Select value={armateurId} onValueChange={setArmateurId}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+              <Select 
+                value={armateurId} 
+                onValueChange={(v) => {
+                  setArmateurId(v);
+                  handleBlur("armateurId", v);
+                }}
+              >
+                <SelectTrigger className={touched.armateurId && errors.armateurId ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Sélectionner" />
+                </SelectTrigger>
                 <SelectContent>
                   {armateurs.map((a) => (
                     <SelectItem key={a.id} value={String(a.id)}>{a.nom}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <FormError message={touched.armateurId ? errors.armateurId : undefined} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -303,152 +360,168 @@ export default function FactureConteneursForm({
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {conteneurs.map((conteneur, index) => (
-              <div key={conteneur.id} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm text-muted-foreground">Conteneur {index + 1}</span>
-                  {conteneurs.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveConteneur(conteneur.id)}
-                      className="text-destructive h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>N° Conteneur</Label>
-                    <Input
-                      placeholder="Ex: MSCU1234567"
-                      value={conteneur.numero}
-                      onChange={(e) => handleConteneurChange(conteneur.id, 'numero', e.target.value.toUpperCase())}
-                      className="font-mono"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Input
-                      placeholder="Description de la marchandise"
-                      value={conteneur.description}
-                      onChange={(e) => handleConteneurChange(conteneur.id, 'description', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Taille</Label>
-                    <Select value={conteneur.taille} onValueChange={(v) => handleConteneurChange(conteneur.id, 'taille', v)}>
-                      <SelectTrigger><SelectValue placeholder="Taille" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="20'">20'</SelectItem>
-                        <SelectItem value="40'">40'</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Prix (FCFA)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={conteneur.prixUnitaire || ""}
-                      onChange={(e) => handleConteneurChange(conteneur.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
-                      className="text-right"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
+            {conteneurs.map((conteneur, index) => {
+              const numeroFieldName = `conteneurs.${index}.numero`;
+              const tailleFieldName = `conteneurs.${index}.taille`;
+              
+              return (
+                <div key={conteneur.id} className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Opérations</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAddOperationConteneur(conteneur.id)}
-                      className="gap-1 text-xs"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Nouvelle opération
-                    </Button>
+                    <span className="font-medium text-sm text-muted-foreground">Conteneur {index + 1}</span>
+                    {conteneurs.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveConteneur(conteneur.id)}
+                        className="text-destructive h-8 w-8"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label>N° Conteneur *</Label>
+                      <Input
+                        placeholder="Ex: MSCU1234567"
+                        value={conteneur.numero}
+                        onChange={(e) => handleConteneurChange(conteneur.id, 'numero', e.target.value.toUpperCase())}
+                        onBlur={() => handleBlur(numeroFieldName, conteneur.numero)}
+                        className={`font-mono ${touched[numeroFieldName] && errors[numeroFieldName] ? "border-destructive" : ""}`}
+                      />
+                      <FormError message={touched[numeroFieldName] ? errors[numeroFieldName] : undefined} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Input
+                        placeholder="Description de la marchandise"
+                        value={conteneur.description}
+                        onChange={(e) => handleConteneurChange(conteneur.id, 'description', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Taille *</Label>
+                      <Select 
+                        value={conteneur.taille} 
+                        onValueChange={(v) => {
+                          handleConteneurChange(conteneur.id, 'taille', v);
+                          handleBlur(tailleFieldName, v);
+                        }}
+                      >
+                        <SelectTrigger className={touched[tailleFieldName] && !conteneur.taille ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Taille" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20'">20'</SelectItem>
+                          <SelectItem value="40'">40'</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormError message={touched[tailleFieldName] && !conteneur.taille ? "La taille est obligatoire" : undefined} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prix (FCFA)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={conteneur.prixUnitaire || ""}
+                        onChange={(e) => handleConteneurChange(conteneur.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                        className="text-right"
+                      />
+                    </div>
                   </div>
 
-                  {conteneur.operations.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">Aucune opération ajoutée.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {conteneur.operations.map((op, opIndex) => (
-                        <div key={op.id} className="p-3 border rounded-lg bg-muted/30 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground font-medium">Opération {opIndex + 1}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveOperationConteneur(conteneur.id, op.id)}
-                              className="text-destructive h-6 w-6"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            <div className="space-y-1 col-span-2">
-                              <Label className="text-xs">Type d'opération</Label>
-                              <Select
-                                value={op.type}
-                                onValueChange={(value) => handleOperationConteneurChange(conteneur.id, op.id, "type", value)}
-                              >
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                                <SelectContent>
-                                  {(Object.keys(typesOperationConteneur) as TypeOperationConteneur[]).map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {typesOperationConteneur[type].label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Quantité</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                className="h-9"
-                                value={op.quantite}
-                                onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "quantite", parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Prix unit. (FCFA)</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                className="h-9"
-                                value={op.prixUnitaire}
-                                onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "prixUnitaire", parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Prix total</Label>
-                              <Input
-                                type="number"
-                                className="h-9 bg-muted font-medium"
-                                value={op.prixTotal}
-                                readOnly
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Opérations</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddOperationConteneur(conteneur.id)}
+                        className="gap-1 text-xs"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Nouvelle opération
+                      </Button>
                     </div>
-                  )}
-                </div>
 
-                {index < conteneurs.length - 1 && <div className="border-b my-4" />}
-              </div>
-            ))}
+                    {conteneur.operations.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">Aucune opération ajoutée.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {conteneur.operations.map((op, opIndex) => (
+                          <div key={op.id} className="p-3 border rounded-lg bg-muted/30 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground font-medium">Opération {opIndex + 1}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveOperationConteneur(conteneur.id, op.id)}
+                                className="text-destructive h-6 w-6"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                              <div className="space-y-1 col-span-2">
+                                <Label className="text-xs">Type d'opération</Label>
+                                <Select
+                                  value={op.type}
+                                  onValueChange={(value) => handleOperationConteneurChange(conteneur.id, op.id, "type", value)}
+                                >
+                                  <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                  <SelectContent>
+                                    {(Object.keys(typesOperationConteneur) as TypeOperationConteneur[]).map((type) => (
+                                      <SelectItem key={type} value={type}>
+                                        {typesOperationConteneur[type].label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Quantité</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  className="h-9"
+                                  value={op.quantite}
+                                  onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "quantite", parseInt(e.target.value) || 0)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Prix unit. (FCFA)</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  className="h-9"
+                                  value={op.prixUnitaire}
+                                  onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "prixUnitaire", parseInt(e.target.value) || 0)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Prix total</Label>
+                                <Input
+                                  type="number"
+                                  className="h-9 bg-muted font-medium"
+                                  value={op.prixTotal}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {index < conteneurs.length - 1 && <div className="border-b my-4" />}
+                </div>
+              );
+            })}
           </div>
           
           <div className="flex justify-end pt-4 border-t mt-6">
