@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -14,20 +13,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft,
-  FileText,
-  Edit,
-  Mail,
-  ArrowRight,
   Clock,
   User,
   AlertCircle,
   Loader2,
-  Download,
-  Copy,
+  FileText,
+  Receipt,
+  Percent,
+  Coins,
+  Container,
+  Package,
+  Wrench,
+  Building2,
+  Ship,
+  MapPin,
 } from "lucide-react";
 import { useDevisById, useConvertDevisToOrdre } from "@/hooks/use-commercial";
+import {
+  DevisHeader,
+  DevisHeaderSkeleton,
+  DevisStatCard,
+  DevisStatCardSkeleton,
+  DevisTimeline,
+} from "@/components/devis/shared";
+import { cn } from "@/lib/utils";
 
 const formatMontant = (montant: number) => {
   return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
@@ -43,14 +54,22 @@ export default function DevisDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("details");
 
-  const { data: devisData, isLoading, error } = useDevisById(id || '');
+  // Cast to any for API response flexibility
+  const { data: devisResponse, isLoading, error } = useDevisById(id || '');
+  const devisData = devisResponse as any;
   const convertMutation = useConvertDevisToOrdre();
 
   if (isLoading) {
     return (
       <MainLayout title="Chargement...">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="space-y-6 animate-fade-in">
+          <DevisHeaderSkeleton />
+          <div className="grid gap-4 md:grid-cols-4">
+            <DevisStatCardSkeleton />
+            <DevisStatCardSkeleton />
+            <DevisStatCardSkeleton />
+            <DevisStatCardSkeleton />
+          </div>
         </div>
       </MainLayout>
     );
@@ -59,8 +78,10 @@ export default function DevisDetailPage() {
   if (error || !devisData) {
     return (
       <MainLayout title="Devis non trouvé">
-        <div className="flex flex-col items-center justify-center py-20">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <div className="p-4 rounded-full bg-destructive/10 mb-4">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+          </div>
           <h2 className="text-xl font-semibold mb-2">Devis non trouvé</h2>
           <p className="text-muted-foreground mb-4">
             Le devis demandé n'existe pas ou a été supprimé.
@@ -70,23 +91,6 @@ export default function DevisDetailPage() {
       </MainLayout>
     );
   }
-
-  const getStatutBadge = (statut: string) => {
-    const config: Record<string, { className: string; label: string }> = {
-      brouillon: { className: "bg-gray-100 text-gray-700 border-gray-300", label: "Brouillon" },
-      envoye: { className: "bg-blue-100 text-blue-700 border-blue-300", label: "Envoyé" },
-      accepte: { className: "bg-green-100 text-green-700 border-green-300", label: "Accepté" },
-      refuse: { className: "bg-red-100 text-red-700 border-red-300", label: "Refusé" },
-      expire: { className: "bg-orange-100 text-orange-700 border-orange-300", label: "Expiré" },
-      converti: { className: "bg-purple-100 text-purple-700 border-purple-300", label: "Converti" },
-    };
-    const style = config[statut] || config.brouillon;
-    return (
-      <Badge variant="outline" className={`${style.className} transition-all duration-200 hover:scale-105`}>
-        {style.label}
-      </Badge>
-    );
-  };
 
   const handleConvertToOrdre = async () => {
     if (!id) return;
@@ -98,187 +102,259 @@ export default function DevisDetailPage() {
     }
   };
 
+  // Calculs
+  const montantHT = devisData.montant_ht || 0;
+  const remise = devisData.remise_montant || 0;
+  const tva = devisData.montant_tva || devisData.tva || 0;
+  const css = devisData.montant_css || devisData.css || 0;
+  const montantTTC = devisData.montant_ttc || 0;
+
+  const getCategorieInfo = () => {
+    const config: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+      Conteneur: { label: "Conteneurs", icon: <Container className="h-4 w-4" />, color: "text-blue-600" },
+      Lot: { label: "Conventionnel", icon: <Package className="h-4 w-4" />, color: "text-amber-600" },
+      Independant: { label: "Indépendant", icon: <Wrench className="h-4 w-4" />, color: "text-purple-600" },
+    };
+    return config[devisData.type_document] || config.Conteneur;
+  };
+
+  const categorieInfo = getCategorieInfo();
+
   return (
     <MainLayout title={`Devis ${devisData.numero}`}>
       <div className="space-y-6 animate-fade-in">
-        {/* Header avec actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/devis")} className="transition-all duration-200 hover:scale-110">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold">{devisData.numero}</h1>
-                {getStatutBadge(devisData.statut)}
-              </div>
-              <p className="text-muted-foreground">
-                Créé le {formatDate(devisData.date_creation || devisData.date)} • Valide jusqu'au{" "}
-                {formatDate(devisData.date_validite)}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              className="gap-2 transition-all duration-200 hover:scale-105"
-              onClick={() => window.open(`/devis/${id}/pdf`, "_blank")}
-            >
-              <Download className="h-4 w-4" />
-              PDF
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 transition-all duration-200 hover:scale-105"
-              onClick={() => navigate(`/devis/${id}/modifier`)}
-              disabled={devisData.statut === 'converti'}
-            >
-              <Edit className="h-4 w-4" />
-              Modifier
-            </Button>
-            <Button variant="outline" className="gap-2 text-blue-600 transition-all duration-200 hover:scale-105 hover:bg-blue-50">
-              <Mail className="h-4 w-4" />
-              Envoyer
-            </Button>
-            {devisData.statut !== 'converti' && devisData.statut !== 'refuse' && (
-              <Button 
-                className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" 
-                onClick={handleConvertToOrdre}
-                disabled={convertMutation.isPending}
-              >
-                {convertMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowRight className="h-4 w-4" />
-                )}
-                Convertir en ordre
-              </Button>
-            )}
-          </div>
+        {/* Header moderne */}
+        <DevisHeader
+          devis={devisData}
+          onConvert={handleConvertToOrdre}
+          isConverting={convertMutation.isPending}
+        />
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DevisStatCard
+            title="Montant HT"
+            value={formatMontant(montantHT)}
+            icon={Receipt}
+            variant="primary"
+          />
+          {remise > 0 ? (
+            <DevisStatCard
+              title="Remise"
+              value={`- ${formatMontant(remise)}`}
+              icon={Percent}
+              variant="warning"
+              subtitle={devisData.remise_type === 'pourcentage' 
+                ? `${devisData.remise_valeur}%` 
+                : 'Montant fixe'}
+            />
+          ) : (
+            <DevisStatCard
+              title="TVA (18%)"
+              value={formatMontant(tva)}
+              icon={Percent}
+              variant="default"
+            />
+          )}
+          <DevisStatCard
+            title="Taxes"
+            value={formatMontant(tva + css)}
+            icon={Coins}
+            variant="info"
+            subtitle={`TVA: ${formatMontant(tva)} + CSS: ${formatMontant(css)}`}
+          />
+          <DevisStatCard
+            title="Total TTC"
+            value={formatMontant(montantTTC)}
+            icon={FileText}
+            variant="success"
+          />
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="details">Détails</TabsTrigger>
-            <TabsTrigger value="tracabilite" className="gap-2">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="details" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Détails
+            </TabsTrigger>
+            <TabsTrigger value="client" className="gap-2">
+              <User className="h-4 w-4" />
+              Client
+            </TabsTrigger>
+            <TabsTrigger value="historique" className="gap-2">
               <Clock className="h-4 w-4" />
               Historique
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 mt-6">
-            {/* Infos client */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5 text-primary" />
-                    Client
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="font-semibold text-lg">{devisData.client?.nom}</p>
-                  <p className="text-muted-foreground">{devisData.client?.email}</p>
-                  <p className="text-muted-foreground">{devisData.client?.telephone}</p>
-                  <p className="text-muted-foreground">
-                    {devisData.client?.adresse}, {devisData.client?.ville}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Récapitulatif
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Montant HT</span>
-                    <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">TVA (18%)</span>
-                    <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CSS (1%)</span>
-                    <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total TTC</span>
-                    <span className="text-primary">{formatMontant(devisData.montant_ttc || 0)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Lignes du devis */}
+            {/* Info catégorie */}
             <Card>
               <CardHeader>
-                <CardTitle>Lignes du devis</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <span className={categorieInfo.color}>{categorieInfo.icon}</span>
+                  {categorieInfo.label}
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Désignation</TableHead>
-                      <TableHead className="text-center">Quantité</TableHead>
-                      <TableHead className="text-right">Prix unitaire</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {devisData.lignes?.map((ligne: any) => (
-                      <TableRow key={ligne.id}>
-                        <TableCell>{ligne.designation}</TableCell>
-                        <TableCell className="text-center">{ligne.quantite} {ligne.unite}</TableCell>
-                        <TableCell className="text-right">
-                          {formatMontant(ligne.prix_unitaire)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatMontant(ligne.montant)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!devisData.lignes || devisData.lignes.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          Aucune ligne
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {devisData.navire && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <Ship className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Navire</p>
+                        <p className="font-medium">{devisData.navire}</p>
+                      </div>
+                    </div>
+                  )}
+                  {devisData.numero_bl && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">N° BL</p>
+                        <p className="font-medium font-mono">{devisData.numero_bl}</p>
+                      </div>
+                    </div>
+                  )}
+                  {devisData.armateur?.nom && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Armateur</p>
+                        <p className="font-medium">{devisData.armateur.nom}</p>
+                      </div>
+                    </div>
+                  )}
+                  {devisData.transitaire?.nom && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Transitaire</p>
+                        <p className="font-medium">{devisData.transitaire.nom}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            {/* Conteneurs si présents */}
-            {devisData.conteneurs && devisData.conteneurs.length > 0 && (
+            {/* Lignes du devis */}
+            {devisData.lignes && devisData.lignes.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Conteneurs</CardTitle>
+                  <CardTitle className="text-lg">Prestations</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Numéro</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Taille</TableHead>
-                        <TableHead className="text-right">Opérations</TableHead>
+                        <TableHead>Désignation</TableHead>
+                        <TableHead>Lieu</TableHead>
+                        <TableHead className="text-center">Quantité</TableHead>
+                        <TableHead className="text-right">Prix unitaire</TableHead>
+                        <TableHead className="text-right">Montant</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {devisData.conteneurs.map((conteneur: any) => (
-                        <TableRow key={conteneur.id}>
-                          <TableCell className="font-mono">{conteneur.numero}</TableCell>
-                          <TableCell>{conteneur.type}</TableCell>
-                          <TableCell>{conteneur.taille}'</TableCell>
-                          <TableCell className="text-right">{conteneur.operations?.length || 0}</TableCell>
+                      {devisData.lignes.map((ligne: any, index: number) => (
+                        <TableRow key={ligne.id || index} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                          <TableCell className="font-medium">{ligne.description || ligne.designation}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {ligne.lieu_depart && ligne.lieu_arrivee 
+                              ? `${ligne.lieu_depart} → ${ligne.lieu_arrivee}`
+                              : ligne.lieu_depart || ligne.lieu_arrivee || '-'}
+                          </TableCell>
+                          <TableCell className="text-center">{ligne.quantite}</TableCell>
+                          <TableCell className="text-right">{formatMontant(ligne.prix_unitaire)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatMontant((ligne.quantite || 1) * (ligne.prix_unitaire || 0))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Conteneurs */}
+            {devisData.conteneurs && devisData.conteneurs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Container className="h-5 w-5 text-blue-600" />
+                    Conteneurs ({devisData.conteneurs.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {devisData.conteneurs.map((conteneur: any, index: number) => (
+                    <div 
+                      key={conteneur.id || index} 
+                      className="p-4 rounded-lg border bg-muted/20 animate-fade-in"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <Container className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-mono font-semibold">{conteneur.numero}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {conteneur.taille}' - {conteneur.type || 'DRY'}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">{conteneur.operations?.length || 0} opérations</Badge>
+                      </div>
+                      
+                      {conteneur.operations && conteneur.operations.length > 0 && (
+                        <div className="space-y-2 mt-3 pt-3 border-t">
+                          {conteneur.operations.map((op: any, opIndex: number) => (
+                            <div key={opIndex} className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{op.description || op.type}</span>
+                              <span className="font-medium">{formatMontant(op.prix_unitaire * (op.quantite || 1))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lots (conventionnel) */}
+            {devisData.lots && devisData.lots.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Package className="h-5 w-5 text-amber-600" />
+                    Lots ({devisData.lots.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>N° Lot</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-center">Quantité</TableHead>
+                        <TableHead className="text-right">Prix unitaire</TableHead>
+                        <TableHead className="text-right">Montant</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {devisData.lots.map((lot: any, index: number) => (
+                        <TableRow key={lot.id || index} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                          <TableCell className="font-mono">{lot.numero_lot}</TableCell>
+                          <TableCell>{lot.description}</TableCell>
+                          <TableCell className="text-center">{lot.quantite}</TableCell>
+                          <TableCell className="text-right">{formatMontant(lot.prix_unitaire)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatMontant(lot.prix_total || (lot.quantite * lot.prix_unitaire))}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -291,52 +367,118 @@ export default function DevisDetailPage() {
             {devisData.notes && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Notes</CardTitle>
+                  <CardTitle className="text-lg">Notes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{devisData.notes}</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{devisData.notes}</p>
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
 
-          <TabsContent value="tracabilite" className="mt-6">
-            <Card>
+            {/* Récapitulatif financier */}
+            <Card className="bg-gradient-to-br from-primary/5 to-primary/10">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Historique des actions
-                </CardTitle>
+                <CardTitle className="text-lg">Récapitulatif financier</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
-                    <div className="p-2 rounded-full bg-blue-100">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Création du devis</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(devisData.created_at)}
-                      </p>
-                    </div>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Montant HT</span>
+                  <span className="font-medium">{formatMontant(montantHT)}</span>
+                </div>
+                {remise > 0 && (
+                  <div className="flex justify-between text-amber-600">
+                    <span>Remise ({devisData.remise_type === 'pourcentage' ? `${devisData.remise_valeur}%` : 'fixe'})</span>
+                    <span className="font-medium">- {formatMontant(remise)}</span>
                   </div>
-                  {devisData.updated_at !== devisData.created_at && (
-                    <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
-                      <div className="p-2 rounded-full bg-orange-100">
-                        <Edit className="h-4 w-4 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Dernière modification</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(devisData.updated_at)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">TVA (18%)</span>
+                  <span>{formatMontant(tva)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">CSS (1%)</span>
+                  <span>{formatMontant(css)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total TTC</span>
+                  <span className="text-primary">{formatMontant(montantTTC)}</span>
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="client" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <User className="h-5 w-5 text-primary" />
+                  Informations client
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-4">
+                  {/* Avatar client */}
+                  <div className={cn(
+                    "h-16 w-16 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg",
+                    "bg-gradient-to-br from-primary to-primary/80"
+                  )}>
+                    {devisData.client?.nom?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '??'}
+                  </div>
+                  
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">{devisData.client?.nom}</h3>
+                      {devisData.client?.type && (
+                        <Badge variant="outline" className="mt-1">{devisData.client.type}</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {devisData.client?.email && (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-blue-600 text-sm">@</span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Email</p>
+                            <p className="font-medium">{devisData.client.email}</p>
+                          </div>
+                        </div>
+                      )}
+                      {devisData.client?.telephone && (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                          <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <span className="text-emerald-600 text-sm">📞</span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Téléphone</p>
+                            <p className="font-medium">{devisData.client.telephone}</p>
+                          </div>
+                        </div>
+                      )}
+                      {(devisData.client?.adresse || devisData.client?.ville) && (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 md:col-span-2">
+                          <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                            <MapPin className="h-4 w-4 text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Adresse</p>
+                            <p className="font-medium">
+                              {[devisData.client.adresse, devisData.client.ville].filter(Boolean).join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="historique" className="mt-6">
+            <DevisTimeline devis={devisData} />
           </TabsContent>
         </Tabs>
       </div>
