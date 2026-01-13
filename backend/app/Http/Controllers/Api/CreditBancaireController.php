@@ -249,33 +249,42 @@ class CreditBancaireController extends Controller
     {
         $annee = $request->get('annee', date('Y'));
         
-        // Stats globales
-        $creditsActifs = CreditBancaire::where('statut', 'Actif')->get();
-        $totalCreditsActifs = $creditsActifs->sum('montant_total');
-        $totalRembourse = RemboursementCredit::whereYear('date_remboursement', $annee)->sum('montant');
-        $totalRembourseTous = RemboursementCredit::sum('montant');
+        // Stats globales - utilise les vraies colonnes: montant_emprunte, total_interets, montant_rembourse
+        $creditsActifs = CreditBancaire::where('statut', 'actif')
+            ->orWhere('statut', 'Actif')
+            ->get();
         
-        $resteGlobal = $totalCreditsActifs - $creditsActifs->sum(function ($c) {
-            return $c->remboursements()->sum('montant');
+        // Calculer le total (montant_emprunte + total_interets)
+        $totalCreditsActifs = $creditsActifs->sum(function ($c) {
+            return $c->montant_emprunte + $c->total_interets;
         });
         
-        $echeancesEnRetard = EcheanceCredit::where('statut', '!=', 'Payée')
+        $totalRembourseTous = $creditsActifs->sum('montant_rembourse');
+        
+        $resteGlobal = $creditsActifs->sum(function ($c) {
+            return ($c->montant_emprunte + $c->total_interets) - $c->montant_rembourse;
+        });
+        
+        $echeancesEnRetard = EcheanceCredit::where('statut', '!=', 'payee')
+            ->where('statut', '!=', 'Payée')
             ->where('date_echeance', '<', now())
             ->count();
         
-        $totalInterets = $creditsActifs->sum('montant_interet');
+        $totalInterets = $creditsActifs->sum('total_interets');
         
         // Par banque
-        $parBanque = CreditBancaire::where('statut', 'Actif')
+        $parBanque = CreditBancaire::where(function ($q) {
+                $q->where('statut', 'actif')->orWhere('statut', 'Actif');
+            })
             ->with('banque')
             ->get()
             ->groupBy('banque_id')
             ->map(function ($credits, $banqueId) {
                 $banque = $credits->first()->banque;
-                $total = $credits->sum('montant_total');
-                $rembourse = $credits->sum(function ($c) {
-                    return $c->remboursements()->sum('montant');
+                $total = $credits->sum(function ($c) {
+                    return $c->montant_emprunte + $c->total_interets;
                 });
+                $rembourse = $credits->sum('montant_rembourse');
                 return [
                     'banque_id' => $banqueId,
                     'banque_nom' => $banque?->nom ?? 'Non spécifiée',
@@ -287,9 +296,9 @@ class CreditBancaireController extends Controller
         
         // Par statut
         $parStatut = [
-            'actif' => CreditBancaire::where('statut', 'Actif')->count(),
-            'solde' => CreditBancaire::where('statut', 'Soldé')->count(),
-            'en_defaut' => CreditBancaire::where('statut', 'En défaut')->count(),
+            'actif' => CreditBancaire::where('statut', 'actif')->orWhere('statut', 'Actif')->count(),
+            'solde' => CreditBancaire::where('statut', 'termine')->orWhere('statut', 'Soldé')->orWhere('statut', 'soldé')->count(),
+            'en_defaut' => CreditBancaire::where('statut', 'en_retard')->orWhere('statut', 'En défaut')->count(),
         ];
         
         // Evolution mensuelle
@@ -299,11 +308,11 @@ class CreditBancaireController extends Controller
         for ($mois = 1; $mois <= 12; $mois++) {
             $emprunte = CreditBancaire::whereYear('date_debut', $annee)
                 ->whereMonth('date_debut', $mois)
-                ->sum('montant_principal');
+                ->sum('montant_emprunte');
             
-            $rembourse = RemboursementCredit::whereYear('date_remboursement', $annee)
-                ->whereMonth('date_remboursement', $mois)
-                ->sum('montant');
+            $rembourse = CreditBancaire::whereYear('date_debut', $annee)
+                ->whereMonth('date_debut', $mois)
+                ->sum('montant_rembourse');
             
             $evolutionMensuelle[] = [
                 'mois' => $mois,
@@ -316,6 +325,7 @@ class CreditBancaireController extends Controller
         
         // Prochaines échéances
         $prochainesEcheances = EcheanceCredit::with('credit.banque')
+            ->where('statut', '!=', 'payee')
             ->where('statut', '!=', 'Payée')
             ->where('date_echeance', '>=', now())
             ->orderBy('date_echeance')
@@ -324,18 +334,19 @@ class CreditBancaireController extends Controller
             ->map(function ($e) {
                 return [
                     'id' => $e->id,
-                    'credit_id' => $e->credit_bancaire_id,
+                    'credit_id' => $e->credit_id,
                     'credit_numero' => $e->credit?->numero,
                     'banque' => $e->credit?->banque?->nom,
-                    'numero_echeance' => $e->numero_echeance,
+                    'numero_echeance' => $e->numero,
                     'date_echeance' => $e->date_echeance?->toDateString(),
-                    'montant' => round($e->montant, 2),
+                    'montant' => round($e->montant_total ?? $e->montant ?? 0, 2),
                     'statut' => $e->statut,
                 ];
             });
         
         // Échéances en retard
         $echeancesRetard = EcheanceCredit::with('credit.banque')
+            ->where('statut', '!=', 'payee')
             ->where('statut', '!=', 'Payée')
             ->where('date_echeance', '<', now())
             ->orderBy('date_echeance')
@@ -343,12 +354,12 @@ class CreditBancaireController extends Controller
             ->map(function ($e) {
                 return [
                     'id' => $e->id,
-                    'credit_id' => $e->credit_bancaire_id,
+                    'credit_id' => $e->credit_id,
                     'credit_numero' => $e->credit?->numero,
                     'banque' => $e->credit?->banque?->nom,
-                    'numero_echeance' => $e->numero_echeance,
+                    'numero_echeance' => $e->numero,
                     'date_echeance' => $e->date_echeance?->toDateString(),
-                    'montant' => round($e->montant, 2),
+                    'montant' => round($e->montant_total ?? $e->montant ?? 0, 2),
                     'jours_retard' => now()->diffInDays($e->date_echeance),
                     'statut' => 'En retard',
                 ];
@@ -378,37 +389,49 @@ class CreditBancaireController extends Controller
     {
         $annee = $request->get('annee', date('Y'));
         
-        // Totaux par statut
+        // Totaux par statut - utilise les vraies colonnes
+        $creditsActifs = CreditBancaire::where('statut', 'actif')->orWhere('statut', 'Actif')->get();
+        $creditsSoldes = CreditBancaire::where('statut', 'termine')->orWhere('statut', 'Soldé')->orWhere('statut', 'soldé')->get();
+        $creditsDefaut = CreditBancaire::where('statut', 'en_retard')->orWhere('statut', 'En défaut')->get();
+        
         $totauxStatut = [
             'actif' => [
-                'nombre' => CreditBancaire::where('statut', 'Actif')->count(),
-                'montant' => round(CreditBancaire::where('statut', 'Actif')->sum('montant_total'), 2),
+                'nombre' => $creditsActifs->count(),
+                'montant' => round($creditsActifs->sum(function ($c) {
+                    return $c->montant_emprunte + $c->total_interets;
+                }), 2),
             ],
             'solde' => [
-                'nombre' => CreditBancaire::where('statut', 'Soldé')->count(),
-                'montant' => round(CreditBancaire::where('statut', 'Soldé')->sum('montant_total'), 2),
+                'nombre' => $creditsSoldes->count(),
+                'montant' => round($creditsSoldes->sum(function ($c) {
+                    return $c->montant_emprunte + $c->total_interets;
+                }), 2),
             ],
             'en_defaut' => [
-                'nombre' => CreditBancaire::where('statut', 'En défaut')->count(),
-                'montant' => round(CreditBancaire::where('statut', 'En défaut')->sum('montant_total'), 2),
+                'nombre' => $creditsDefaut->count(),
+                'montant' => round($creditsDefaut->sum(function ($c) {
+                    return $c->montant_emprunte + $c->total_interets;
+                }), 2),
             ],
         ];
         
         // Répartition par banque
         $repartitionBanque = CreditBancaire::with('banque')
-            ->selectRaw('banque_id, SUM(montant_principal) as principal, SUM(montant_interet) as interets, SUM(montant_total) as total, COUNT(*) as nombre')
-            ->groupBy('banque_id')
             ->get()
-            ->map(function ($item) {
+            ->groupBy('banque_id')
+            ->map(function ($credits, $banqueId) {
+                $banque = $credits->first()->banque;
                 return [
-                    'banque_id' => $item->banque_id,
-                    'banque_nom' => $item->banque?->nom ?? 'Non spécifiée',
-                    'principal' => round($item->principal, 2),
-                    'interets' => round($item->interets, 2),
-                    'total' => round($item->total, 2),
-                    'nombre' => $item->nombre,
+                    'banque_id' => $banqueId,
+                    'banque_nom' => $banque?->nom ?? 'Non spécifiée',
+                    'principal' => round($credits->sum('montant_emprunte'), 2),
+                    'interets' => round($credits->sum('total_interets'), 2),
+                    'total' => round($credits->sum(function ($c) {
+                        return $c->montant_emprunte + $c->total_interets;
+                    }), 2),
+                    'nombre' => $credits->count(),
                 ];
-            });
+            })->values();
         
         // Calendrier des échéances (prochains 6 mois)
         $calendrierEcheances = [];
@@ -419,6 +442,7 @@ class CreditBancaireController extends Controller
             
             $echeancesMois = EcheanceCredit::whereYear('date_echeance', $an)
                 ->whereMonth('date_echeance', $mois)
+                ->where('statut', '!=', 'payee')
                 ->where('statut', '!=', 'Payée')
                 ->get();
             
@@ -427,30 +451,35 @@ class CreditBancaireController extends Controller
                 'annee' => $an,
                 'periode' => $date->format('M Y'),
                 'nombre' => $echeancesMois->count(),
-                'montant' => round($echeancesMois->sum('montant'), 2),
+                'montant' => round($echeancesMois->sum('montant_total'), 2),
             ];
         }
         
         // Top crédits par montant
         $topCredits = CreditBancaire::with('banque')
-            ->where('statut', 'Actif')
-            ->orderByDesc('montant_total')
-            ->limit(5)
+            ->where(function ($q) {
+                $q->where('statut', 'actif')->orWhere('statut', 'Actif');
+            })
             ->get()
+            ->sortByDesc(function ($c) {
+                return $c->montant_emprunte + $c->total_interets;
+            })
+            ->take(5)
             ->map(function ($c) {
-                $rembourse = $c->remboursements()->sum('montant');
+                $total = $c->montant_emprunte + $c->total_interets;
+                $rembourse = $c->montant_rembourse;
                 return [
                     'id' => $c->id,
                     'numero' => $c->numero,
                     'banque' => $c->banque?->nom,
                     'objet' => $c->objet,
-                    'montant_total' => round($c->montant_total, 2),
+                    'montant_total' => round($total, 2),
                     'rembourse' => round($rembourse, 2),
-                    'reste' => round($c->montant_total - $rembourse, 2),
-                    'taux_remboursement' => $c->montant_total > 0 ? round(($rembourse / $c->montant_total) * 100, 1) : 0,
-                    'date_fin' => $c->date_fin,
+                    'reste' => round($total - $rembourse, 2),
+                    'taux_remboursement' => $total > 0 ? round(($rembourse / $total) * 100, 1) : 0,
+                    'date_fin' => $c->date_fin?->toDateString(),
                 ];
-            });
+            })->values();
         
         return response()->json([
             'totaux_statut' => $totauxStatut,
@@ -466,22 +495,21 @@ class CreditBancaireController extends Controller
         
         $moisNoms = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
         
-        $parMois = [];
-        $soldeRestantCumule = CreditBancaire::whereYear('date_debut', '<', $annee)->sum('montant_total')
-            - RemboursementCredit::whereYear('date_remboursement', '<', $annee)->sum('montant');
+        // Calcul du solde initial avant l'année
+        $creditsAvant = CreditBancaire::whereYear('date_debut', '<', $annee)->get();
+        $soldeRestantCumule = $creditsAvant->sum(function ($c) {
+            return ($c->montant_emprunte + $c->total_interets) - $c->montant_rembourse;
+        });
         
+        $parMois = [];
         for ($mois = 1; $mois <= 12; $mois++) {
-            $emprunte = CreditBancaire::whereYear('date_debut', $annee)
+            $creditsMois = CreditBancaire::whereYear('date_debut', $annee)
                 ->whereMonth('date_debut', $mois)
-                ->sum('montant_principal');
+                ->get();
             
-            $interets = CreditBancaire::whereYear('date_debut', $annee)
-                ->whereMonth('date_debut', $mois)
-                ->sum('montant_interet');
-            
-            $rembourse = RemboursementCredit::whereYear('date_remboursement', $annee)
-                ->whereMonth('date_remboursement', $mois)
-                ->sum('montant');
+            $emprunte = $creditsMois->sum('montant_emprunte');
+            $interets = $creditsMois->sum('total_interets');
+            $rembourse = $creditsMois->sum('montant_rembourse');
             
             $soldeRestantCumule += $emprunte + $interets - $rembourse;
             
@@ -496,12 +524,18 @@ class CreditBancaireController extends Controller
         }
         
         // Totaux annuels
+        $creditsAnnee = CreditBancaire::whereYear('date_debut', $annee)->get();
+        $tousCreditsActifs = CreditBancaire::where(function ($q) {
+            $q->where('statut', 'actif')->orWhere('statut', 'Actif');
+        })->get();
+        
         $totaux = [
-            'emprunte' => round(CreditBancaire::whereYear('date_debut', $annee)->sum('montant_principal'), 2),
-            'rembourse' => round(RemboursementCredit::whereYear('date_remboursement', $annee)->sum('montant'), 2),
-            'interets' => round(CreditBancaire::whereYear('date_debut', $annee)->sum('montant_interet'), 2),
-            'reste' => round(CreditBancaire::where('statut', 'Actif')->sum('montant_total') 
-                - RemboursementCredit::sum('montant'), 2),
+            'emprunte' => round($creditsAnnee->sum('montant_emprunte'), 2),
+            'rembourse' => round($creditsAnnee->sum('montant_rembourse'), 2),
+            'interets' => round($creditsAnnee->sum('total_interets'), 2),
+            'reste' => round($tousCreditsActifs->sum(function ($c) {
+                return ($c->montant_emprunte + $c->total_interets) - $c->montant_rembourse;
+            }), 2),
         ];
         
         return response()->json([
