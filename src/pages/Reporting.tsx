@@ -35,8 +35,12 @@ import {
 
 const COLORS = ["#E63946", "#4A4A4A", "#F4A261", "#2A9D8F", "#264653", "#8338EC", "#FF006E"];
 
-const formatMontant = (montant: number): string => {
-  return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(montant) + ' FCFA';
+const formatMontant = (montant: number | null | undefined): string => {
+  const value = Number(montant);
+  if (isNaN(value) || montant === null || montant === undefined) {
+    return '0 FCFA';
+  }
+  return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(value) + ' FCFA';
 };
 
 const moisLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
@@ -116,7 +120,14 @@ export default function ReportingPage() {
   }, [creances]);
 
   const topDebiteurs = creances?.top_debiteurs || [];
-  const topClientsActivite = activiteClients?.top_clients || [];
+  const topClientsActivite = (activiteClients?.top_clients || []).map((c: any) => ({
+    ...c,
+    ca_total: Number(c.ca_total) || 0,
+    nb_factures: Number(c.nb_factures) || 0,
+    paiements: Number(c.paiements) || 0,
+    solde_du: Number(c.solde_du) || 0,
+    client_nom: c.client_nom || 'Client inconnu',
+  }));
 
   const rentabiliteMensuelle = useMemo(() => {
     if (!rentabilite?.mensuel) return [];
