@@ -161,52 +161,38 @@ class CreditBancaireController extends Controller
     public function rembourser(RembourserCreditRequest $request, CreditBancaire $creditBancaire): JsonResponse
     {
         $montantRembourse = $creditBancaire->remboursements()->sum('montant');
-        $resteAPayer = $creditBancaire->montant_total - $montantRembourse;
+        $totalCredit = ($creditBancaire->montant_emprunte + $creditBancaire->total_interets);
+        $resteAPayer = $totalCredit - $montantRembourse;
 
         if ($request->montant > $resteAPayer) {
             return response()->json([
                 'message' => 'Le montant dépasse le reste à payer',
-                'reste_a_payer' => $resteAPayer
+                'reste_a_payer' => $resteAPayer,
             ], 422);
         }
 
         try {
             DB::beginTransaction();
 
+            // On stocke banque_id pour les paiements non cash afin de distinguer la source (banque vs caisse)
+            $banqueId = $request->mode_paiement === 'Espèces' ? null : $creditBancaire->banque_id;
+
             $remboursement = RemboursementCredit::create([
-                'credit_bancaire_id' => $creditBancaire->id,
+                'credit_id' => $creditBancaire->id,
                 'echeance_id' => $request->echeance_id,
+                'banque_id' => $banqueId,
                 'montant' => $request->montant,
-                'mode_paiement' => $request->mode_paiement,
+                'date' => now(),
                 'reference' => $request->reference,
-                'date_remboursement' => now(),
                 'notes' => $request->notes,
-                'user_id' => auth()->id(),
             ]);
 
-            if ($request->mode_paiement === 'Espèces') {
-                MouvementCaisse::create([
-                    'type' => 'sortie',
-                    'categorie' => 'Remboursement crédit',
-                    'montant' => $request->montant,
-                    'description' => "Remboursement crédit {$creditBancaire->numero}",
-                    'reference' => $request->reference,
-                    'date' => now(),
-                    'source' => 'caisse',
-                ]);
-            }
-
-            if ($request->echeance_id) {
-                $echeance = EcheanceCredit::find($request->echeance_id);
-                $echeance->update(['statut' => 'Payée', 'date_paiement' => now()]);
-            }
-
-            $nouveauMontantRembourse = $montantRembourse + $request->montant;
-            if ($nouveauMontantRembourse >= $creditBancaire->montant_total) {
-                $creditBancaire->update(['statut' => 'Soldé']);
-            }
-
-            Audit::log('create', 'remboursement', "Remboursement: {$request->montant} pour crédit {$creditBancaire->numero}", $remboursement->id);
+            Audit::log(
+                'create',
+                'remboursement',
+                "Remboursement: {$request->montant} pour crédit {$creditBancaire->numero}",
+                $remboursement->id
+            );
 
             DB::commit();
 

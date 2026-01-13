@@ -17,7 +17,7 @@ class RembourserCreditRequest extends FormRequest
             'montant' => 'required|numeric|min:0.01|max:999999999.99',
             'mode_paiement' => 'required|in:Espèces,Chèque,Virement',
             'reference' => 'nullable|string|max:100',
-            'echeance_id' => 'nullable|exists:echeances_credit,id',
+            'echeance_id' => 'nullable|exists:echeances_credits,id',
             'notes' => 'nullable|string|max:500',
         ];
     }
