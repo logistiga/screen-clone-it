@@ -17,18 +17,17 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Client } from "@/lib/api/commercial";
 import { formatDate } from "@/data/mockData";
-import { usePdfDownload } from "@/hooks/use-pdf-download";
 
 interface ClientDetailHeaderProps {
   client: Client;
   onDelete: () => void;
   onEmail?: () => void;
+  onExportReleve?: () => void;
 }
 
-export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHeaderProps) {
+export function ClientDetailHeader({ client, onDelete, onEmail, onExportReleve }: ClientDetailHeaderProps) {
   const navigate = useNavigate();
   const solde = Number(client.solde) || 0;
-  const { downloadPdf } = usePdfDownload({ filename: `client-${client.nom}.pdf` });
   
   // Calculer l'ancienneté du client
   const getClientAge = () => {
@@ -69,10 +68,10 @@ export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHe
               variant="outline" 
               size="sm"
               className="gap-2 bg-white/80 dark:bg-black/20 backdrop-blur-sm"
-              onClick={downloadPdf}
+              onClick={onExportReleve}
             >
               <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Télécharger PDF</span>
+              <span className="hidden sm:inline">Exporter relevé</span>
             </Button>
             <Button 
               variant="outline" 
@@ -111,7 +110,7 @@ export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHe
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={downloadPdf}>
+                <DropdownMenuItem onClick={onExportReleve}>
                   <Download className="h-4 w-4 mr-2" />
                   Exporter relevé
                 </DropdownMenuItem>
