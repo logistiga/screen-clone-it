@@ -754,3 +754,268 @@ export function useCategorieMouvements(id: string, params?: { date_debut?: strin
     enabled: !!id,
   });
 }
+
+// ============ PRIMES HOOKS ============
+import { primesApi, Prime, PayerPrimeData } from '@/lib/api/commercial';
+
+export function usePrimes(params?: { search?: string; representant_id?: string; transitaire_id?: string; statut?: string; page?: number; per_page?: number }) {
+  return useQuery({
+    queryKey: ['primes', params],
+    queryFn: () => primesApi.getAll(params),
+  });
+}
+
+export function usePrimeById(id: string) {
+  return useQuery({
+    queryKey: ['primes', id],
+    queryFn: () => primesApi.getById(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreatePrime() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: primesApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['primes'] });
+      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
+      queryClient.invalidateQueries({ queryKey: ['representants'] });
+      toast.success('Prime créée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la création de la prime');
+    },
+  });
+}
+
+export function useUpdatePrime() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Prime> }) => primesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['primes'] });
+      toast.success('Prime modifiée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification de la prime');
+    },
+  });
+}
+
+export function useDeletePrime() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: primesApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['primes'] });
+      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
+      queryClient.invalidateQueries({ queryKey: ['representants'] });
+      toast.success('Prime supprimée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression de la prime');
+    },
+  });
+}
+
+export function usePayerPrime() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: PayerPrimeData }) => primesApi.payer(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['primes'] });
+      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
+      queryClient.invalidateQueries({ queryKey: ['representants'] });
+      queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
+      toast.success('Paiement de prime enregistré avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors du paiement de la prime');
+    },
+  });
+}
+
+export function usePrimesStats(params?: { date_debut?: string; date_fin?: string }) {
+  return useQuery({
+    queryKey: ['primes', 'stats', params],
+    queryFn: () => primesApi.getStats(params),
+  });
+}
+
+// ============ ADDITIONAL HOOKS ============
+
+// Paiements stats
+export function usePaiementsStats(params?: { date_debut?: string; date_fin?: string }) {
+  return useQuery({
+    queryKey: ['paiements', 'stats', params],
+    queryFn: () => paiementsApi.getStats(params),
+  });
+}
+
+// Paiement global pour ordres
+export function useCreatePaiementGlobalOrdres() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: paiementsApi.createGlobalOrdres,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      queryClient.invalidateQueries({ queryKey: ['ordres'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success('Paiement global enregistré avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement du paiement global');
+    },
+  });
+}
+
+// Banque stats
+export function useBanqueStats(id: string, params?: { date_debut?: string; date_fin?: string }) {
+  return useQuery({
+    queryKey: ['banques', id, 'stats', params],
+    queryFn: () => banquesApi.getStats(id, params),
+    enabled: !!id,
+  });
+}
+
+// Categories depenses stats
+export function useCategoriesDepensesStats() {
+  return useQuery({
+    queryKey: ['categories-depenses', 'stats'],
+    queryFn: categoriesDepensesApi.getStats,
+  });
+}
+
+// Update configuration numerotation
+export function useUpdateNumerotation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: configurationApi.updateNumerotation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuration'] });
+      toast.success('Numérotation mise à jour avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour de la numérotation');
+    },
+  });
+}
+
+// Sync compteurs
+export function useSyncCompteurs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: configurationApi.syncCompteurs,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuration'] });
+      toast.success('Compteurs synchronisés avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la synchronisation des compteurs');
+    },
+  });
+}
+
+// Duplicate devis
+export function useDuplicateDevis() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: devisApi.duplicate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devis'] });
+      toast.success('Devis dupliqué avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la duplication du devis');
+    },
+  });
+}
+
+// Send devis email
+export function useSendDevisEmail() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { destinataire: string; sujet: string; message: string } }) => 
+      devisApi.sendEmail(id, data),
+    onSuccess: () => {
+      toast.success('Email envoyé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi de l\'email');
+    },
+  });
+}
+
+// Duplicate facture
+export function useDuplicateFacture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: facturesApi.duplicate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      toast.success('Facture dupliquée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la duplication de la facture');
+    },
+  });
+}
+
+// Send facture email
+export function useSendFactureEmail() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { destinataire: string; sujet: string; message: string } }) => 
+      facturesApi.sendEmail(id, data),
+    onSuccess: () => {
+      toast.success('Email envoyé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi de l\'email');
+    },
+  });
+}
+
+// Update armateur
+export function useUpdateArmateur() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Armateur> }) => armateursApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['armateurs'] });
+      toast.success('Armateur modifié avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification de l\'armateur');
+    },
+  });
+}
+
+// Update transitaire
+export function useUpdateTransitaire() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Transitaire> }) => transitairesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
+      toast.success('Transitaire modifié avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification du transitaire');
+    },
+  });
+}
+
+// Update representant
+export function useUpdateRepresentant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Representant> }) => representantsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['representants'] });
+      toast.success('Représentant modifié avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification du représentant');
+    },
+  });
+}
