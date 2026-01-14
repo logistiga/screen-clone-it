@@ -47,13 +47,15 @@ export function PageTransition({ children }: PageTransitionProps) {
               transition={{ duration: 0.2, ease: customEase }}
               className="flex flex-col items-center gap-4"
             >
-              {/* Container du GIF */}
+              {/* Container du GIF - même style que login */}
               <div className="relative">
                 <div className="absolute inset-0 blur-xl bg-primary/20 rounded-full scale-125" />
-                <img 
+                <motion.img 
                   src={loadingGif} 
                   alt="Chargement..." 
-                  className="relative h-20 w-20 object-contain"
+                  className="relative h-28 w-28 object-contain"
+                  animate={{ scale: [1, 1.03, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
               </div>
               

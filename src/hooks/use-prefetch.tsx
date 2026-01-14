@@ -50,6 +50,32 @@ export function usePrefetch() {
   const queryClient = useQueryClient();
 
   const prefetchRoute = useCallback(async (url: string) => {
+    // Vérifier les routes dynamiques (ex: /clients/123)
+    const clientDetailMatch = url.match(/^\/clients\/(\d+)$/);
+    if (clientDetailMatch) {
+      const clientId = clientDetailMatch[1];
+      const queryKey = ['clients', clientId];
+      
+      const existingData = queryClient.getQueryData(queryKey);
+      const queryState = queryClient.getQueryState(queryKey);
+      
+      if (existingData && queryState?.dataUpdatedAt) {
+        const isStale = Date.now() - queryState.dataUpdatedAt > PREFETCH_STALE_TIME;
+        if (!isStale) return;
+      }
+      
+      try {
+        await queryClient.prefetchQuery({
+          queryKey,
+          queryFn: () => clientsApi.getById(clientId),
+          staleTime: PREFETCH_STALE_TIME,
+        });
+      } catch (error) {
+        console.debug('Prefetch error for client', clientId, error);
+      }
+      return;
+    }
+    
     const prefetchFn = prefetchMap[url];
     const queryKey = queryKeyMap[url];
     
@@ -80,5 +106,28 @@ export function usePrefetch() {
     }
   }, [queryClient]);
 
-  return { prefetchRoute };
+  // Précharger un client spécifique
+  const prefetchClient = useCallback(async (clientId: string | number) => {
+    const queryKey = ['clients', String(clientId)];
+    
+    const existingData = queryClient.getQueryData(queryKey);
+    const queryState = queryClient.getQueryState(queryKey);
+    
+    if (existingData && queryState?.dataUpdatedAt) {
+      const isStale = Date.now() - queryState.dataUpdatedAt > PREFETCH_STALE_TIME;
+      if (!isStale) return;
+    }
+    
+    try {
+      await queryClient.prefetchQuery({
+        queryKey,
+        queryFn: () => clientsApi.getById(String(clientId)),
+        staleTime: PREFETCH_STALE_TIME,
+      });
+    } catch (error) {
+      console.debug('Prefetch error for client', clientId, error);
+    }
+  }, [queryClient]);
+
+  return { prefetchRoute, prefetchClient };
 }
