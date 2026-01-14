@@ -559,18 +559,17 @@ export function PartenaireDetailContent({
                         <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`/ordres/${ordre.id}/pdf`, '_blank');
-                            }}
+                          <a
+                            href={`/ordres/${ordre.id}/pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Download className="h-4 w-4" />
-                            PDF
-                          </Button>
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                              <Download className="h-4 w-4" />
+                              PDF
+                            </Button>
+                          </a>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -620,18 +619,17 @@ export function PartenaireDetailContent({
                         <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`/factures/${facture.id}/pdf`, '_blank');
-                            }}
+                          <a
+                            href={`/factures/${facture.id}/pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Download className="h-4 w-4" />
-                            PDF
-                          </Button>
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                              <Download className="h-4 w-4" />
+                              PDF
+                            </Button>
+                          </a>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -681,18 +679,17 @@ export function PartenaireDetailContent({
                         <TableCell className="text-right font-medium">{formatMontant(devis.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(devis.statut)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`/devis/${devis.id}/pdf`, '_blank');
-                            }}
+                          <a
+                            href={`/devis/${devis.id}/pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Download className="h-4 w-4" />
-                            PDF
-                          </Button>
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                              <Download className="h-4 w-4" />
+                              PDF
+                            </Button>
+                          </a>
                         </TableCell>
                       </TableRow>
                     ))}
