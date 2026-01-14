@@ -28,6 +28,7 @@ import {
 import { Plus, Eye, Edit, Trash2, Users, Loader2, Receipt, Banknote, TrendingUp, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/use-commercial";
+import { usePrefetch } from "@/hooks/use-prefetch";
 import { formatMontant } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { ClientAvatar, ClientHealthBadge, ClientCard, ClientFilters } from "@/components/clients";
@@ -39,6 +40,7 @@ type SortOrder = "asc" | "desc";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
+  const { prefetchClient } = usePrefetch();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; nom: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -334,6 +336,7 @@ export default function ClientsPage() {
                       index={index}
                       className="group cursor-pointer"
                       onClick={() => navigate(`/clients/${client.id}`)}
+                      onMouseEnter={() => prefetchClient(client.id)}
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">

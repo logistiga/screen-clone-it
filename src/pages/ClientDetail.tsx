@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,7 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
 import { useClient, useDeleteClient } from "@/hooks/use-commercial";
 import { ClientDetailHeader, ExportReleveModal } from "@/components/clients";
+import loadingGif from "@/assets/loading-transition.gif";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -55,13 +57,32 @@ export default function ClientDetailPage() {
     queryKey: ['client-avoirs', id],
     queryFn: () => getAvoirsClient(Number(id)),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   });
 
   if (isLoading) {
     return (
       <MainLayout title="Chargement...">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex items-center justify-center py-20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center gap-4"
+          >
+            <div className="relative">
+              <div className="absolute inset-0 blur-xl bg-primary/20 rounded-full scale-125" />
+              <motion.img 
+                src={loadingGif} 
+                alt="Chargement..." 
+                className="relative h-28 w-28 object-contain"
+                animate={{ scale: [1, 1.03, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Chargement du client...
+            </p>
+          </motion.div>
         </div>
       </MainLayout>
     );
