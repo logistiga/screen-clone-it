@@ -95,8 +95,14 @@ export default function DevisDetailPage() {
   const handleConvertToOrdre = async () => {
     if (!id) return;
     try {
-      await convertMutation.mutateAsync(id);
-      navigate("/ordres");
+      const result = await convertMutation.mutateAsync(id);
+      // Rediriger vers l'ordre créé en mode édition pour compléter les données
+      const ordreId = result?.data?.id;
+      if (ordreId) {
+        navigate(`/ordres/${ordreId}/modifier`);
+      } else {
+        navigate("/ordres");
+      }
     } catch (error) {
       // Error handled by mutation
     }

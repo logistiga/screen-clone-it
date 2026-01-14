@@ -186,10 +186,13 @@ export function useConvertDevisToOrdre() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: devisApi.convertToOrdre,
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['devis'] });
       queryClient.invalidateQueries({ queryKey: ['ordres'] });
-      toast.success('Devis converti en ordre de travail');
+      const ordreId = result?.data?.id;
+      toast.success('Devis converti en ordre de travail', {
+        description: ordreId ? 'Vous allez être redirigé vers l\'ordre créé' : undefined,
+      });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erreur lors de la conversion');
