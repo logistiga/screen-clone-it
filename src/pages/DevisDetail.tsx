@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ShareModal } from "@/components/ShareModal";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,7 @@ export default function DevisDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("details");
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Cast to any for API response flexibility
   const { data: devisResponse, isLoading, error } = useDevisById(id || '');
@@ -134,6 +136,7 @@ export default function DevisDetailPage() {
           devis={devisData}
           onConvert={handleConvertToOrdre}
           isConverting={convertMutation.isPending}
+          onShare={() => setShowShareModal(true)}
         />
 
         {/* Stats Cards */}
@@ -488,6 +491,19 @@ export default function DevisDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        open={showShareModal}
+        onOpenChange={setShowShareModal}
+        documentType="devis"
+        documentId={id || ''}
+        documentNumero={devisData.numero}
+        clientEmail={devisData.client?.email}
+        clientNom={devisData.client?.nom}
+        clientTelephone={devisData.client?.telephone}
+        montantTTC={devisData.montant_ttc}
+      />
     </MainLayout>
   );
 }

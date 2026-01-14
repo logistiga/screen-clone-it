@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  ArrowLeft, Download, Edit, Mail, ArrowRight, Copy, 
+  ArrowLeft, Download, Edit, Share2, ArrowRight, Copy, 
   Clock, CalendarDays, FileText, Loader2
 } from "lucide-react";
 import { formatDate } from "@/data/mockData";
@@ -14,6 +14,7 @@ interface DevisHeaderProps {
   devis: any;
   onConvert?: () => void;
   isConverting?: boolean;
+  onShare?: () => void;
 }
 
 const statutConfig: Record<string, { className: string; label: string; bgClass: string }> = {
@@ -25,7 +26,7 @@ const statutConfig: Record<string, { className: string; label: string; bgClass: 
   converti: { className: "bg-purple-100 text-purple-700 border-purple-300", label: "Converti", bgClass: "from-purple-500/10 to-purple-500/5" },
 };
 
-export function DevisHeader({ devis, onConvert, isConverting }: DevisHeaderProps) {
+export function DevisHeader({ devis, onConvert, isConverting, onShare }: DevisHeaderProps) {
   const navigate = useNavigate();
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
   const { downloadPdf } = usePdfDownload({ filename: `devis-${devis.numero}.pdf` });
@@ -126,9 +127,10 @@ export function DevisHeader({ devis, onConvert, isConverting }: DevisHeaderProps
             variant="outline" 
             size="sm"
             className="gap-2 text-blue-600 bg-background/50 backdrop-blur-sm hover:bg-blue-50"
+            onClick={onShare}
           >
-            <Mail className="h-4 w-4" />
-            Envoyer
+            <Share2 className="h-4 w-4" />
+            Partager
           </Button>
           {devis.statut !== 'converti' && devis.statut !== 'refuse' && onConvert && (
             <Button 
