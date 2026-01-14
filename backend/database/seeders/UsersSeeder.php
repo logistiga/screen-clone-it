@@ -10,70 +10,66 @@ class UsersSeeder extends Seeder
 {
     public function run(): void
     {
-        // Directeur
-        $directeur = User::create([
-            'nom' => 'Jean Directeur',
-            'email' => 'directeur@logistiga.com',
-            'password' => Hash::make('Directeur@123'),
-            'telephone' => '+241 01 11 11 11',
-            'actif' => true,
-            'email_verified_at' => now(),
-        ]);
-        $directeur->assignRole('directeur');
+        $users = [
+            [
+                'nom' => 'Jean Directeur',
+                'email' => 'directeur@logistiga.com',
+                'password' => Hash::make('Directeur@123'),
+                'telephone' => '+241 01 11 11 11',
+                'role' => 'directeur',
+            ],
+            [
+                'nom' => 'Marie Commercial',
+                'email' => 'commercial@logistiga.com',
+                'password' => Hash::make('Commercial@123'),
+                'telephone' => '+241 01 22 22 22',
+                'role' => 'commercial',
+            ],
+            [
+                'nom' => 'Pierre Ventes',
+                'email' => 'ventes@logistiga.com',
+                'password' => Hash::make('Ventes@123'),
+                'telephone' => '+241 01 22 22 23',
+                'role' => 'commercial',
+            ],
+            [
+                'nom' => 'Sophie Comptable',
+                'email' => 'comptable@logistiga.com',
+                'password' => Hash::make('Comptable@123'),
+                'telephone' => '+241 01 33 33 33',
+                'role' => 'comptable',
+            ],
+            [
+                'nom' => 'Paul Caissier',
+                'email' => 'caissier@logistiga.com',
+                'password' => Hash::make('Caissier@123'),
+                'telephone' => '+241 01 44 44 44',
+                'role' => 'caissier',
+            ],
+            [
+                'nom' => 'Luc Opérateur',
+                'email' => 'operateur@logistiga.com',
+                'password' => Hash::make('Operateur@123'),
+                'telephone' => '+241 01 55 55 55',
+                'role' => 'operateur',
+            ],
+        ];
 
-        // Commercial 1
-        $commercial1 = User::create([
-            'nom' => 'Marie Commercial',
-            'email' => 'commercial@logistiga.com',
-            'password' => Hash::make('Commercial@123'),
-            'telephone' => '+241 01 22 22 22',
-            'actif' => true,
-            'email_verified_at' => now(),
-        ]);
-        $commercial1->assignRole('commercial');
+        foreach ($users as $userData) {
+            $role = $userData['role'];
+            unset($userData['role']);
 
-        // Commercial 2
-        $commercial2 = User::create([
-            'nom' => 'Pierre Ventes',
-            'email' => 'ventes@logistiga.com',
-            'password' => Hash::make('Ventes@123'),
-            'telephone' => '+241 01 22 22 23',
-            'actif' => true,
-            'email_verified_at' => now(),
-        ]);
-        $commercial2->assignRole('commercial');
+            $user = User::firstOrCreate(
+                ['email' => $userData['email']],
+                array_merge($userData, [
+                    'actif' => true,
+                    'email_verified_at' => now(),
+                ])
+            );
 
-        // Comptable
-        $comptable = User::create([
-            'nom' => 'Sophie Comptable',
-            'email' => 'comptable@logistiga.com',
-            'password' => Hash::make('Comptable@123'),
-            'telephone' => '+241 01 33 33 33',
-            'actif' => true,
-            'email_verified_at' => now(),
-        ]);
-        $comptable->assignRole('comptable');
-
-        // Caissier
-        $caissier = User::create([
-            'nom' => 'Paul Caissier',
-            'email' => 'caissier@logistiga.com',
-            'password' => Hash::make('Caissier@123'),
-            'telephone' => '+241 01 44 44 44',
-            'actif' => true,
-            'email_verified_at' => now(),
-        ]);
-        $caissier->assignRole('caissier');
-
-        // Opérateur
-        $operateur = User::create([
-            'nom' => 'Luc Opérateur',
-            'email' => 'operateur@logistiga.com',
-            'password' => Hash::make('Operateur@123'),
-            'telephone' => '+241 01 55 55 55',
-            'actif' => true,
-            'email_verified_at' => now(),
-        ]);
-        $operateur->assignRole('operateur');
+            if (!$user->hasRole($role)) {
+                $user->assignRole($role);
+            }
+        }
     }
 }
