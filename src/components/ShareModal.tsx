@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Send, User, AtSign, MessageCircle, Copy, Check, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { openWhatsAppShare } from "@/lib/whatsapp";
 
 interface ShareModalProps {
   open: boolean;
@@ -131,17 +132,7 @@ L'équipe Lojistiga`;
   };
 
   const handleOpenWhatsApp = () => {
-    // Clean phone number for WhatsApp
-    let phone = clientTelephone || "";
-    phone = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
-    
-    // If no phone, open WhatsApp web without a number
-    const encodedMessage = encodeURIComponent(whatsappMessage);
-    const whatsappUrl = phone 
-      ? `https://wa.me/${phone.startsWith('+') ? phone.slice(1) : phone}?text=${encodedMessage}`
-      : `https://wa.me/?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
+    openWhatsAppShare({ text: whatsappMessage, phone: clientTelephone });
     onOpenChange(false);
   };
 

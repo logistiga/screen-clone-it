@@ -40,6 +40,7 @@ import {
   DevisTimeline,
 } from "@/components/devis/shared";
 import { cn } from "@/lib/utils";
+import { openWhatsAppShare } from "@/lib/whatsapp";
 
 const formatMontant = (montant: number) => {
   return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
@@ -158,15 +159,7 @@ Pour toute question, n'hésitez pas à nous contacter.
 Cordialement,
 L'équipe Lojistiga`;
 
-            // Format phone: sans +, sans espaces, uniquement chiffres
-            let phone = (devisData.client?.telephone || "").replace(/[^0-9]/g, "");
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = phone 
-              ? `https://wa.me/${phone}?text=${encodedMessage}`
-              : `https://wa.me/?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+            openWhatsAppShare({ text: message, phone: devisData.client?.telephone });
           }}
           onEmail={() => setShowEmailModal(true)}
         />
