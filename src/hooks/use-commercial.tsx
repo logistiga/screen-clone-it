@@ -32,11 +32,17 @@ import {
 import { toast } from 'sonner';
 import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
 
+// Configuration de cache globale
+const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
+const STALE_TIME = 2 * 60 * 1000; // 2 minutes
+
 // Clients hooks
 export function useClients(params?: { search?: string; page?: number; per_page?: number }) {
   return useQuery({
     queryKey: ['clients', params],
     queryFn: () => clientsApi.getAll(params),
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -45,6 +51,8 @@ export function useClient(id: string) {
     queryKey: ['clients', id],
     queryFn: () => clientsApi.getById(id),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -98,6 +106,8 @@ export function useDevis(params?: { search?: string; statut?: string; client_id?
     // Évite de marteler le backend en cas d'erreur (et de spammer la console)
     retry: 0,
     refetchOnWindowFocus: false,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -106,6 +116,8 @@ export function useDevisById(id: string) {
     queryKey: ['devis', id],
     queryFn: () => devisApi.getById(id),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -205,6 +217,8 @@ export function useOrdres(params?: { search?: string; statut?: string; categorie
   return useQuery({
     queryKey: ['ordres', params],
     queryFn: () => ordresApi.getAll(params),
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -213,6 +227,8 @@ export function useOrdresStats(params?: { search?: string; statut?: string; cate
   return useQuery({
     queryKey: ['ordres', 'stats', params],
     queryFn: () => ordresApi.getStats(params),
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -221,6 +237,8 @@ export function useOrdreById(id: string) {
     queryKey: ['ordres', id],
     queryFn: () => ordresApi.getById(id),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -286,6 +304,8 @@ export function useFactures(params?: { search?: string; statut?: string; categor
   return useQuery({
     queryKey: ['factures', params],
     queryFn: () => facturesApi.getAll(params),
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -294,6 +314,8 @@ export function useFactureById(id: string) {
     queryKey: ['factures', id],
     queryFn: () => facturesApi.getById(id),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -357,6 +379,8 @@ export function useFacturesImpayes(clientId?: string) {
   return useQuery({
     queryKey: ['factures', 'impayes', clientId],
     queryFn: () => facturesApi.getImpayes(clientId),
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -365,6 +389,8 @@ export function useArmateurs() {
   return useQuery({
     queryKey: ['armateurs'],
     queryFn: armateursApi.getAll,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -387,6 +413,8 @@ export function useArmateurById(id: string | undefined) {
     queryKey: ['armateurs', id],
     queryFn: () => armateursApi.getById(id!),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -409,6 +437,8 @@ export function useTransitaires() {
   return useQuery({
     queryKey: ['transitaires'],
     queryFn: transitairesApi.getAll,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -417,6 +447,8 @@ export function useTransitaireById(id: string | undefined) {
     queryKey: ['transitaires', id],
     queryFn: () => transitairesApi.getById(id!),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -453,6 +485,8 @@ export function useRepresentants() {
   return useQuery({
     queryKey: ['representants'],
     queryFn: representantsApi.getAll,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
@@ -461,6 +495,8 @@ export function useRepresentantById(id: string | undefined) {
     queryKey: ['representants', id],
     queryFn: () => representantsApi.getById(id!),
     enabled: !!id,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
   });
 }
 
