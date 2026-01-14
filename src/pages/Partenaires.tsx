@@ -183,8 +183,8 @@ export default function PartenairesPage() {
   };
 
   // Calculer le montant global des primes non payées
-  const primesTransitaires = transitaires.reduce((acc, t) => acc + ((t.primes_dues || 0) - (t.primes_payees || 0)), 0);
-  const primesRepresentants = representants.reduce((acc, r) => acc + ((r.primes_dues || 0) - (r.primes_payees || 0)), 0);
+  const primesTransitaires = transitaires.reduce((acc, t) => acc + (t.primes_dues || 0), 0);
+  const primesRepresentants = representants.reduce((acc, r) => acc + (r.primes_dues || 0), 0);
   const totalPrimesAPayer = primesTransitaires + primesRepresentants;
 
   // Stats calculations
@@ -354,7 +354,7 @@ export default function PartenairesPage() {
                             </TableRow>
                           ) : (
                             paginatedTransitaires.map((transitaire) => {
-                              const primesAPayer = (transitaire.primes_dues || 0) - (transitaire.primes_payees || 0);
+                              const primesAPayer = transitaire.primes_dues || 0;
                               return (
                                 <TableRow key={transitaire.id} className="group hover:bg-muted/50">
                                   <TableCell>
@@ -453,7 +453,7 @@ export default function PartenairesPage() {
                           telephone={transitaire.telephone}
                           adresse={transitaire.adresse}
                           actif={transitaire.actif !== false}
-                          primesAPayer={(transitaire.primes_dues || 0) - (transitaire.primes_payees || 0)}
+                          primesAPayer={transitaire.primes_dues || 0}
                           type="transitaire"
                           onView={() => navigate(`/partenaires/transitaires/${transitaire.id}`)}
                           onDelete={() => setDeleteConfirm({ id: transitaire.id, nom: transitaire.nom, type: "Transitaire" })}
@@ -566,7 +566,7 @@ export default function PartenairesPage() {
                             </TableRow>
                           ) : (
                             paginatedRepresentants.map((representant) => {
-                              const primesAPayer = (representant.primes_dues || 0) - (representant.primes_payees || 0);
+                              const primesAPayer = representant.primes_dues || 0;
                               const displayName = representant.prenom 
                                 ? `${representant.prenom} ${representant.nom}` 
                                 : representant.nom;
@@ -669,7 +669,7 @@ export default function PartenairesPage() {
                           telephone={representant.telephone}
                           adresse={representant.adresse}
                           actif={representant.actif !== false}
-                          primesAPayer={(representant.primes_dues || 0) - (representant.primes_payees || 0)}
+                          primesAPayer={representant.primes_dues || 0}
                           type="representant"
                           onView={() => navigate(`/partenaires/representants/${representant.id}`)}
                           onDelete={() => setDeleteConfirm({ id: representant.id, nom: representant.nom, type: "Représentant" })}
