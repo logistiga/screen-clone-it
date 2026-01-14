@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Eye, Edit, FileText, MessageCircle, ArrowRight, Trash2, Ban, Check,
+  Eye, Edit, FileText, MessageCircle, Mail, ArrowRight, Trash2, Ban, Check,
   Container, Package, Wrench, Clock, User, Building2
 } from "lucide-react";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -14,6 +14,7 @@ interface DevisCardProps {
   devis: any;
   onAction: (type: 'annuler' | 'supprimer' | 'convertir' | 'valider', id: string, numero: string) => void;
   onWhatsApp: (devis: any) => void;
+  onEmail: (numero: string, email: string, nom: string) => void;
 }
 
 const statutConfig: Record<string, { className: string; icon?: React.ReactNode }> = {
@@ -31,7 +32,7 @@ const categorieConfig: Record<string, { label: string; icon: React.ReactNode; cl
   Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800" },
 };
 
-export function DevisCard({ devis, onAction, onWhatsApp }: DevisCardProps) {
+export function DevisCard({ devis, onAction, onWhatsApp, onEmail }: DevisCardProps) {
   const navigate = useNavigate();
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
   const categorie = categorieConfig[devis.type_document] || categorieConfig.Conteneur;
@@ -175,6 +176,15 @@ export function DevisCard({ devis, onAction, onWhatsApp }: DevisCardProps) {
               onClick={() => window.open(`/devis/${devis.id}/pdf`, '_blank')}
             >
               <FileText className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 text-blue-600"
+              title="Email"
+              onClick={() => onEmail(devis.numero, devis.client?.email || '', devis.client?.nom || '')}
+            >
+              <Mail className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 

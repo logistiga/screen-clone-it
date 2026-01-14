@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { EmailModal } from "@/components/EmailModal";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,7 @@ export default function DevisDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("details");
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Cast to any for API response flexibility
   const { data: devisResponse, isLoading, error } = useDevisById(id || '');
@@ -166,6 +168,7 @@ L'équipe Lojistiga`;
             
             window.open(whatsappUrl, '_blank');
           }}
+          onEmail={() => setShowEmailModal(true)}
         />
 
         {/* Stats Cards */}
@@ -520,6 +523,16 @@ L'équipe Lojistiga`;
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Email Modal */}
+      <EmailModal
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        documentType="devis"
+        documentNumero={devisData.numero}
+        clientEmail={devisData.client?.email}
+        clientNom={devisData.client?.nom}
+      />
     </MainLayout>
   );
 }
