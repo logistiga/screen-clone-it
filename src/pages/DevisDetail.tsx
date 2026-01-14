@@ -166,7 +166,7 @@ L'équipe Lojistiga`;
               ? `https://wa.me/${phone}?text=${encodedMessage}`
               : `https://wa.me/?text=${encodedMessage}`;
             
-            window.open(whatsappUrl, '_blank');
+            window.open(whatsappUrl, "_blank", "noopener,noreferrer");
           }}
           onEmail={() => setShowEmailModal(true)}
         />
