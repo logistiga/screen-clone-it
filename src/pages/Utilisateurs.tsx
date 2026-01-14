@@ -74,7 +74,7 @@ export default function UtilisateursPage() {
   const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState({
-    name: '',
+    nom: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -145,7 +145,7 @@ export default function UtilisateursPage() {
   // Gestion du formulaire
   const resetForm = () => {
     setFormData({
-      name: '',
+      nom: '',
       email: '',
       password: '',
       password_confirmation: '',
@@ -167,7 +167,7 @@ export default function UtilisateursPage() {
     setSelectedUser(user);
     setIsEditing(true);
     setFormData({
-      name: user.name,
+      nom: user.nom,
       email: user.email,
       password: '',
       password_confirmation: '',
@@ -187,7 +187,7 @@ export default function UtilisateursPage() {
   };
 
   const validateForm = (): boolean => {
-    if (!formData.name.trim()) return false;
+    if (!formData.nom.trim()) return false;
     if (!formData.email.trim()) return false;
     if (!isEditing && (!formData.password || formData.password.length < 8)) return false;
     if (!isEditing && formData.password !== formData.password_confirmation) return false;
@@ -201,7 +201,7 @@ export default function UtilisateursPage() {
 
     if (isEditing && selectedUser) {
       const updateData: UpdateUserData = {
-        name: formData.name.trim(),
+        nom: formData.nom.trim(),
         email: formData.email.trim(),
         role: formData.role,
         actif: formData.actif,
@@ -215,7 +215,7 @@ export default function UtilisateursPage() {
       await updateUser.mutateAsync({ id: selectedUser.id, data: updateData });
     } else {
       const createData: CreateUserData = {
-        name: formData.name.trim(),
+        nom: formData.nom.trim(),
         email: formData.email.trim(),
         password: formData.password,
         password_confirmation: formData.password_confirmation,
@@ -494,11 +494,11 @@ export default function UtilisateursPage() {
                                   <div className="flex items-center gap-3">
                                     <Avatar className="h-10 w-10 border-2 border-primary/20">
                                       <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
-                                        {getInitials(user.name)}
+                                        {getInitials(user.nom)}
                                       </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                      <p className="font-medium text-foreground">{user.name}</p>
+                                      <p className="font-medium text-foreground">{user.nom}</p>
                                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                                         <Mail className="h-3.5 w-3.5" />
                                         {user.email}
@@ -732,11 +732,11 @@ export default function UtilisateursPage() {
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nom complet *</Label>
+                <Label htmlFor="nom">Nom complet *</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  id="nom"
+                  value={formData.nom}
+                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   placeholder="Jean Dupont"
                 />
               </div>
@@ -856,7 +856,7 @@ export default function UtilisateursPage() {
                 Supprimer cet utilisateur ?
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Êtes-vous sûr de vouloir supprimer l'utilisateur "<strong>{selectedUser?.name}</strong>" ?
+                Êtes-vous sûr de vouloir supprimer l'utilisateur "<strong>{selectedUser?.nom}</strong>" ?
                 Cette action est irréversible.
               </AlertDialogDescription>
             </AlertDialogHeader>
