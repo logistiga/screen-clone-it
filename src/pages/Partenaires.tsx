@@ -68,9 +68,14 @@ export default function PartenairesPage() {
   const [armateursPageSize, setArmateursPageSize] = useState(10);
 
   // Fetch data from API
-  const { data: transitaires = [], isLoading: isLoadingTransitaires, error: errorTransitaires, refetch: refetchTransitaires } = useTransitaires();
-  const { data: representants = [], isLoading: isLoadingRepresentants, error: errorRepresentants, refetch: refetchRepresentants } = useRepresentants();
-  const { data: armateurs = [], isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
+  const { data: transitairesData, isLoading: isLoadingTransitaires, error: errorTransitaires, refetch: refetchTransitaires } = useTransitaires();
+  const { data: representantsData, isLoading: isLoadingRepresentants, error: errorRepresentants, refetch: refetchRepresentants } = useRepresentants();
+  const { data: armateursData, isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
+
+  // Ensure arrays
+  const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
+  const representants = Array.isArray(representantsData) ? representantsData : [];
+  const armateurs = Array.isArray(armateursData) ? armateursData : [];
 
   // Helper to get error message
   const getErrorMessage = (error: unknown): { title: string; description: string; details?: string } => {
