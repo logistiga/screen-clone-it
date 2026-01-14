@@ -597,4 +597,9 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('test', [EmailConfigController::class, 'sendTest'])
             ->middleware('permission:configuration.modifier');
     });
+
+    // ============================================
+    // NOTIFICATIONS IN-APP (ALERTS)
+    // ============================================
+    require __DIR__.'/api_notifications.php';
 });
