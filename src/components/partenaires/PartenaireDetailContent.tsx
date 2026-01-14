@@ -539,25 +539,44 @@ export function PartenaireDetailContent({
                       <TableHead>Client</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ordres.map((ordre) => (
                       <TableRow 
                         key={ordre.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/ordres/${ordre.id}`)}
+                        className="hover:bg-muted/50"
                       >
-                        <TableCell className="font-medium text-primary">{ordre.numero}</TableCell>
+                        <TableCell 
+                          className="font-medium text-primary cursor-pointer"
+                          onClick={() => navigate(`/ordres/${ordre.id}`)}
+                        >
+                          {ordre.numero}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(ordre.date || ordre.created_at)}</TableCell>
                         <TableCell>{ordre.client?.nom || '-'}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(ordre.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`/ordres/${ordre.id}/pdf`, '_blank');
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                            PDF
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {ordres.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                           <ClipboardList className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucun ordre de travail
                         </TableCell>
@@ -581,25 +600,44 @@ export function PartenaireDetailContent({
                       <TableHead>Client</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {factures.map((facture) => (
                       <TableRow 
                         key={facture.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/factures/${facture.id}`)}
+                        className="hover:bg-muted/50"
                       >
-                        <TableCell className="font-medium text-primary">{facture.numero}</TableCell>
+                        <TableCell 
+                          className="font-medium text-primary cursor-pointer"
+                          onClick={() => navigate(`/factures/${facture.id}`)}
+                        >
+                          {facture.numero}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(facture.date_facture || facture.created_at)}</TableCell>
                         <TableCell>{facture.client?.nom || '-'}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(facture.statut)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`/factures/${facture.id}/pdf`, '_blank');
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                            PDF
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {factures.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                           <Receipt className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucune facture
                         </TableCell>
@@ -623,25 +661,44 @@ export function PartenaireDetailContent({
                       <TableHead>Client</TableHead>
                       <TableHead className="text-right">Montant TTC</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {devisList.map((devis) => (
                       <TableRow 
                         key={devis.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/devis/${devis.id}`)}
+                        className="hover:bg-muted/50"
                       >
-                        <TableCell className="font-medium text-primary">{devis.numero}</TableCell>
+                        <TableCell 
+                          className="font-medium text-primary cursor-pointer"
+                          onClick={() => navigate(`/devis/${devis.id}`)}
+                        >
+                          {devis.numero}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(devis.date || devis.created_at)}</TableCell>
                         <TableCell>{devis.client?.nom || '-'}</TableCell>
                         <TableCell className="text-right font-medium">{formatMontant(devis.montant_ttc)}</TableCell>
                         <TableCell>{getStatutBadge(devis.statut)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`/devis/${devis.id}/pdf`, '_blank');
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                            PDF
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {devisList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                           <FileText className="h-10 w-10 mx-auto mb-2 opacity-20" />
                           Aucun devis
                         </TableCell>
