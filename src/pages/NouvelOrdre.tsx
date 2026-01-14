@@ -296,9 +296,10 @@ export default function NouvelOrdrePage() {
       representant_id: conteneursData?.representantId || null,
       prime_transitaire: conteneursData?.primeTransitaire || 0,
       prime_representant: conteneursData?.primeRepresentant || 0,
-      remise_type: remiseData.type || null,
-      remise_valeur: remiseData.valeur || 0,
-      remise_montant: remiseData.montantCalcule || 0,
+      // Backend attend null, "pourcentage" ou "montant" - pas "none"
+      remise_type: remiseData.type === "none" ? null : remiseData.type,
+      remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
+      remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataApi,
@@ -306,17 +307,35 @@ export default function NouvelOrdrePage() {
     };
 
     try {
-      await createOrdreMutation.mutateAsync(data);
+      const result = await createOrdreMutation.mutateAsync(data);
       clear(); // Clear draft on success
       toast.success("Ordre de travail créé avec succès");
-      navigate("/ordres");
+      // Rediriger vers l'ordre créé en mode édition
+      const ordreId = result?.id;
+      if (ordreId) {
+        navigate(`/ordres/${ordreId}/modifier`);
+      } else {
+        navigate("/ordres");
+      }
     } catch (error: any) {
-      const apiMessage = error?.response?.data?.message;
-      const apiError = error?.response?.data?.error;
+      const response = error?.response?.data;
+      const apiMessage = response?.message;
+      const apiErrors = response?.errors;
 
-      if (apiError) {
+      // Afficher les erreurs de validation détaillées (422)
+      if (apiErrors && typeof apiErrors === 'object') {
+        const errorMessages = Object.entries(apiErrors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        
+        console.error('Validation errors:', apiErrors);
+        toast.error(apiMessage || "Erreurs de validation", {
+          description: errorMessages,
+          duration: 8000,
+        });
+      } else if (response?.error) {
         toast.error(apiMessage || "Erreur lors de la création de l'ordre", {
-          description: String(apiError),
+          description: String(response.error),
         });
       } else {
         toast.error(apiMessage || "Erreur lors de la création de l'ordre");
