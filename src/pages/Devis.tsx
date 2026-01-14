@@ -153,12 +153,12 @@ Pour toute question, n'hésitez pas à nous contacter.
 Cordialement,
 L'équipe Lojistiga`;
 
-    let phone = devis.client?.telephone || "";
-    phone = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
+    // Format phone: sans +, sans espaces, uniquement chiffres
+    let phone = (devis.client?.telephone || "").replace(/[^0-9]/g, "");
     
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = phone 
-      ? `https://wa.me/${phone.startsWith('+') ? phone.slice(1) : phone}?text=${encodedMessage}`
+      ? `https://wa.me/${phone}?text=${encodedMessage}`
       : `https://wa.me/?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
