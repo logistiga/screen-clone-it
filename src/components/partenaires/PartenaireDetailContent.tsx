@@ -481,7 +481,7 @@ export function PartenaireDetailContent({
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="gap-2"
                                 onClick={() => {
                                   const primesData = (paiement.primes || []).map(p => ({
                                     numero: p.ordre?.numero || p.facture?.numero || `Prime #${p.id}`,
