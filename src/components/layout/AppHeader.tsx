@@ -71,15 +71,15 @@ export function AppHeader({ title }: AppHeaderProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/profil")} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" />
               <span>Mon profil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/profil?tab=security")} className="cursor-pointer">
               <KeyRound className="mr-2 h-4 w-4" />
               <span>Changer le mot de passe</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/parametres")} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               <span>Paramètres</span>
             </DropdownMenuItem>
