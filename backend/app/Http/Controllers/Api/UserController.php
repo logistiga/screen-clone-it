@@ -19,7 +19,7 @@ class UserController extends Controller
         if ($request->has('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+                $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
@@ -32,7 +32,7 @@ class UserController extends Controller
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $users = $query->orderBy('name')->paginate($request->get('per_page', 15));
+        $users = $query->orderBy('nom')->paginate($request->get('per_page', 15));
 
         return response()->json($users);
     }
@@ -40,7 +40,7 @@ class UserController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'nom' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|exists:roles,name',
@@ -52,7 +52,7 @@ class UserController extends Controller
         }
 
         $user = User::create([
-            'name' => $request->name,
+            'nom' => $request->nom,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'actif' => $request->actif ?? true,
@@ -72,7 +72,7 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
+            'nom' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'sometimes|exists:roles,name',
@@ -83,7 +83,7 @@ class UserController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $data = $request->only(['name', 'email', 'actif']);
+        $data = $request->only(['nom', 'email', 'actif']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -178,7 +178,7 @@ class UserController extends Controller
         $user = auth()->user();
 
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
+            'nom' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
         ]);
 
@@ -186,7 +186,7 @@ class UserController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user->update($request->only(['name', 'email']));
+        $user->update($request->only(['nom', 'email']));
 
         return response()->json($user);
     }
