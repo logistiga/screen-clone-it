@@ -62,6 +62,7 @@ import CategoriesDepensesPage from "./pages/CategoriesDepenses";
 import CategorieDepenseDetailPage from "./pages/CategorieDepenseDetail";
 import RecuPrimePDFPage from "./pages/RecuPrimePDF";
 import ProfilPage from "./pages/Profil";
+import NotificationsPage from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +121,7 @@ const App = () => (
               <Route path="/utilisateurs" element={<ProtectedRoute><UtilisateursPage /></ProtectedRoute>} />
               <Route path="/roles" element={<ProtectedRoute><RolesPage /></ProtectedRoute>} />
               <Route path="/profil" element={<ProtectedRoute><ProfilPage /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
               <Route path="/tracabilite" element={<ProtectedRoute><TracabilitePage /></ProtectedRoute>} />
               <Route path="/emails" element={<ProtectedRoute><EmailsPage /></ProtectedRoute>} />
               <Route path="/taxes" element={<ProtectedRoute><TaxesPage /></ProtectedRoute>} />

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Bell, Check, Trash2, X, AlertTriangle, Info, CheckCircle, CreditCard, Receipt, FileText, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, Check, Trash2, X, AlertTriangle, Info, CheckCircle, CreditCard, Receipt, FileText, Users, RefreshCw, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,66 +9,9 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-export interface Notification {
-  id: string;
-  type: "info" | "warning" | "success" | "error";
-  title: string;
-  message: string;
-  date: string;
-  read: boolean;
-  link?: string;
-  icon?: "facture" | "credit" | "devis" | "client";
-}
-
-// Notifications de démonstration
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "warning",
-    title: "Facture en retard",
-    message: "La facture FAC-2026-0003 de TOTAL GABON est en retard de paiement.",
-    date: "2026-01-06T10:30:00",
-    read: false,
-    icon: "facture"
-  },
-  {
-    id: "2",
-    type: "info",
-    title: "Échéance crédit",
-    message: "Une échéance de crédit arrive à terme dans 3 jours.",
-    date: "2026-01-06T09:15:00",
-    read: false,
-    icon: "credit"
-  },
-  {
-    id: "3",
-    type: "success",
-    title: "Paiement reçu",
-    message: "Paiement de 1 249 500 FCFA reçu pour la facture FAC-2026-0001.",
-    date: "2026-01-05T16:45:00",
-    read: true,
-    icon: "facture"
-  },
-  {
-    id: "4",
-    type: "info",
-    title: "Nouveau devis créé",
-    message: "Le devis DEV-2026-0003 a été créé pour MAUREL & PROM.",
-    date: "2026-01-05T14:20:00",
-    read: true,
-    icon: "devis"
-  },
-  {
-    id: "5",
-    type: "warning",
-    title: "Devis expirant",
-    message: "Le devis DEV-2026-0001 expire dans 2 jours.",
-    date: "2026-01-05T11:00:00",
-    read: true,
-    icon: "devis"
-  },
-];
+import { useNotificationCenter, useNewNotificationDetector } from "@/hooks/use-notifications";
+import { Notification } from "@/services/notificationsService";
+import { useState } from "react";
 
 const getIconForNotification = (notification: Notification) => {
   switch (notification.icon) {
@@ -80,6 +23,10 @@ const getIconForNotification = (notification: Notification) => {
       return FileText;
     case "client":
       return Users;
+    case "paiement":
+      return Wallet;
+    case "ordre":
+      return FileText;
     default:
       switch (notification.type) {
         case "warning":
@@ -108,40 +55,59 @@ const getTypeStyles = (type: Notification["type"]) => {
 };
 
 export function NotificationCenter() {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const clearAll = () => {
-    setNotifications([]);
-  };
+  
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+    refresh,
+  } = useNotificationCenter();
+  
+  // Détecteur de nouvelles notifications (affiche un toast)
+  useNewNotificationDetector();
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
 
-    if (hours < 1) return "À l'instant";
+    if (minutes < 1) return "À l'instant";
+    if (minutes < 60) return `Il y a ${minutes} min`;
     if (hours < 24) return `Il y a ${hours}h`;
     if (days === 1) return "Hier";
-    return `Il y a ${days} jours`;
+    if (days < 7) return `Il y a ${days} jours`;
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    markAsRead(notification.id);
+    
+    // Navigation basée sur le type de notification
+    if (notification.link) {
+      navigate(notification.link);
+      setOpen(false);
+    } else if (notification.icon === 'facture') {
+      navigate('/factures');
+      setOpen(false);
+    } else if (notification.icon === 'credit') {
+      navigate('/credits');
+      setOpen(false);
+    } else if (notification.icon === 'devis') {
+      navigate('/devis');
+      setOpen(false);
+    } else if (notification.icon === 'paiement') {
+      navigate('/paiements');
+      setOpen(false);
+    }
   };
 
   return (
@@ -151,7 +117,7 @@ export function NotificationCenter() {
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground"
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground animate-pulse"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
@@ -164,11 +130,24 @@ export function NotificationCenter() {
             <h4 className="font-semibold">Notifications</h4>
             {unreadCount > 0 && (
               <Badge variant="secondary" className="text-xs">
-                {unreadCount} nouvelles
+                {unreadCount} nouvelle{unreadCount > 1 ? 's' : ''}
               </Badge>
             )}
           </div>
           <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={refresh}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
             {unreadCount > 0 && (
               <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs">
                 <Check className="h-3 w-3 mr-1" />
@@ -185,10 +164,16 @@ export function NotificationCenter() {
         </div>
 
         <ScrollArea className="h-[400px]">
-          {notifications.length === 0 ? (
+          {isLoading && notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-10 w-10 mb-3 animate-spin opacity-50" />
+              <p className="text-sm">Chargement...</p>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="h-10 w-10 mb-3 opacity-50" />
               <p className="text-sm">Aucune notification</p>
+              <p className="text-xs mt-1">Vous êtes à jour !</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -201,7 +186,7 @@ export function NotificationCenter() {
                       "p-4 hover:bg-muted/50 transition-colors cursor-pointer relative group",
                       !notification.read && "bg-primary/5"
                     )}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex gap-3">
                       <div className={cn("p-2 rounded-full shrink-0", getTypeStyles(notification.type))}>
@@ -209,7 +194,10 @@ export function NotificationCenter() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={cn("text-sm font-medium", !notification.read && "text-foreground")}>
+                          <p className={cn(
+                            "text-sm font-medium",
+                            !notification.read ? "text-foreground" : "text-muted-foreground"
+                          )}>
                             {notification.title}
                           </p>
                           <Button
@@ -241,6 +229,23 @@ export function NotificationCenter() {
             </div>
           )}
         </ScrollArea>
+        
+        {/* Footer avec lien vers toutes les notifications */}
+        {notifications.length > 0 && (
+          <div className="p-3 border-t text-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-xs text-primary w-full"
+              onClick={() => {
+                navigate('/notifications');
+                setOpen(false);
+              }}
+            >
+              Voir toutes les notifications
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
