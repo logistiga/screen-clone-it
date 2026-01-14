@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Eye, Edit, FileText, Share2, ArrowRight, Trash2, Ban, Check,
+  Eye, Edit, FileText, MessageCircle, ArrowRight, Trash2, Ban, Check,
   Container, Package, Wrench, Clock, User, Building2
 } from "lucide-react";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 interface DevisCardProps {
   devis: any;
   onAction: (type: 'annuler' | 'supprimer' | 'convertir' | 'valider', id: string, numero: string) => void;
-  onShare: (id: string, numero: string, email: string, nom: string, telephone: string, montantTTC: number) => void;
+  onWhatsApp: (devis: any) => void;
 }
 
 const statutConfig: Record<string, { className: string; icon?: React.ReactNode }> = {
@@ -31,7 +31,7 @@ const categorieConfig: Record<string, { label: string; icon: React.ReactNode; cl
   Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800" },
 };
 
-export function DevisCard({ devis, onAction, onShare }: DevisCardProps) {
+export function DevisCard({ devis, onAction, onWhatsApp }: DevisCardProps) {
   const navigate = useNavigate();
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
   const categorie = categorieConfig[devis.type_document] || categorieConfig.Conteneur;
@@ -179,10 +179,11 @@ export function DevisCard({ devis, onAction, onShare }: DevisCardProps) {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-8 w-8 p-0 text-blue-600"
-              onClick={() => onShare(devis.id, devis.numero, devis.client?.email || '', devis.client?.nom || '', devis.client?.telephone || '', devis.montant_ttc || 0)}
+              className="h-8 w-8 p-0 text-emerald-600"
+              title="WhatsApp"
+              onClick={() => onWhatsApp(devis)}
             >
-              <Share2 className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
           </div>
           
