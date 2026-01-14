@@ -11,8 +11,8 @@ import { ClientAvatar } from "./ClientAvatar";
 import { ClientHealthBadge } from "./ClientHealthBadge";
 import { 
   ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar,
-  MoreHorizontal, FileText, Receipt, ClipboardList, MessageCircle,
-  Download, History, Merge, QrCode
+  MoreHorizontal, FileText, Receipt, ClipboardList,
+  Download, History
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Client } from "@/lib/api/commercial";
@@ -110,24 +110,14 @@ export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHe
                     Envoyer un email
                   </DropdownMenuItem>
                 )}
-                {client.telephone && (
-                  <DropdownMenuItem onClick={() => window.open(`https://wa.me/${client.telephone.replace(/[^0-9]/g, '')}`, '_blank')}>
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    WhatsApp
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {}}>
+                <DropdownMenuItem onClick={downloadPdf}>
                   <Download className="h-4 w-4 mr-2" />
                   Exporter relevé
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {}}>
+                <DropdownMenuItem onClick={() => navigate(`/clients/${client.id}/historique`)}>
                   <History className="h-4 w-4 mr-2" />
                   Historique complet
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {}}>
-                  <QrCode className="h-4 w-4 mr-2" />
-                  Générer QR Code
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
@@ -217,16 +207,6 @@ export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHe
             <Receipt className="h-4 w-4" />
             Facture
           </Button>
-          {client.telephone && (
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="gap-2"
-              onClick={() => window.open(`https://wa.me/${client.telephone.replace(/[^0-9]/g, '')}`, '_blank')}
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
     </div>
