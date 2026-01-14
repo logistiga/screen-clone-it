@@ -17,6 +17,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Client } from "@/lib/api/commercial";
 import { formatDate } from "@/data/mockData";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
 
 interface ClientDetailHeaderProps {
   client: Client;
@@ -27,6 +28,7 @@ interface ClientDetailHeaderProps {
 export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHeaderProps) {
   const navigate = useNavigate();
   const solde = Number(client.solde) || 0;
+  const { downloadPdf } = usePdfDownload({ filename: `client-${client.nom}.pdf` });
   
   // Calculer l'ancienneté du client
   const getClientAge = () => {
@@ -63,6 +65,15 @@ export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHe
           </Button>
           
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="gap-2 bg-white/80 dark:bg-black/20 backdrop-blur-sm"
+              onClick={downloadPdf}
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Télécharger PDF</span>
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
