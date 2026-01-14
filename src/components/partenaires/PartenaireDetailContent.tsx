@@ -16,8 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft, Edit, CreditCard, History, DollarSign, Printer, 
-  ClipboardList, Receipt, FileText, Banknote, CheckCircle2, Ship 
+  ClipboardList, Receipt, FileText, Banknote, CheckCircle2, Ship, Download 
 } from "lucide-react";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { PaiementPrimeModal } from "@/components/PaiementPrimeModal";
 import { 
@@ -71,6 +72,12 @@ export function PartenaireDetailContent({
   const navigate = useNavigate();
   const [showPaiementModal, setShowPaiementModal] = useState(false);
   const [selectedPrimes, setSelectedPrimes] = useState<string[]>([]);
+  
+  // PDF download
+  const pdfFilename = partenaire 
+    ? `${type === 'representant' && partenaire.prenom ? `${partenaire.prenom}-${partenaire.nom}` : partenaire.nom}-fiche.pdf`
+    : 'partenaire-fiche.pdf';
+  const { downloadPdf } = usePdfDownload({ filename: pdfFilename });
 
   // Labels par type
   const typeLabels: Record<PartenaireType, { singular: string; notFound: string }> = {
@@ -237,6 +244,10 @@ export function PartenaireDetailContent({
             Retour
           </Button>
           <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={downloadPdf}>
+              <Download className="h-4 w-4" />
+              Télécharger PDF
+            </Button>
             <Button variant="outline" className="gap-2">
               <Edit className="h-4 w-4" />
               Modifier
