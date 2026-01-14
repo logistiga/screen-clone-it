@@ -23,11 +23,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { 
-  Plus, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Share2, 
+  Plus, Eye, Edit, ArrowRight, FileText, Ban, Trash2, MessageCircle, 
   FileCheck, Check, Container, Package, Wrench,
   TrendingUp, Clock, CheckCircle
 } from "lucide-react";
-import { ShareModal } from "@/components/ShareModal";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
@@ -92,14 +91,6 @@ export default function DevisPage() {
     id: string;
     numero: string;
   } | null>(null);
-  const [shareModal, setShareModal] = useState<{
-    id: string;
-    numero: string;
-    clientEmail: string;
-    clientNom: string;
-    clientTelephone: string;
-    montantTTC: number;
-  } | null>(null);
 
   // Handlers consolidés
   const handleAction = async () => {
@@ -133,8 +124,37 @@ export default function DevisPage() {
     setConfirmAction({ type, id, numero });
   };
 
-  const handleCardShare = (id: string, numero: string, email: string, nom: string, telephone: string, montantTTC: number) => {
-    setShareModal({ id, numero, clientEmail: email, clientNom: nom, clientTelephone: telephone, montantTTC });
+  const handleWhatsAppShare = (devis: any) => {
+    const pdfUrl = `${window.location.origin}/devis/${devis.id}/pdf`;
+    const montant = new Intl.NumberFormat('fr-FR').format(devis.montant_ttc || 0) + ' FCFA';
+    const message = `Bonjour${devis.client?.nom ? ` ${devis.client.nom}` : ''},
+
+Veuillez trouver ci-dessous votre devis n° *${devis.numero}* d'un montant de *${montant}*.
+
+📄 *Détails du devis :*
+• Client : ${devis.client?.nom || '-'}
+• Montant HT : ${new Intl.NumberFormat('fr-FR').format(devis.montant_ht || 0)} FCFA
+• TVA : ${new Intl.NumberFormat('fr-FR').format(devis.montant_tva || 0)} FCFA
+• Montant TTC : ${montant}
+• Date de validité : ${devis.date_validite ? new Date(devis.date_validite).toLocaleDateString('fr-FR') : '-'}
+
+📎 *Lien du document PDF :*
+${pdfUrl}
+
+Pour toute question, n'hésitez pas à nous contacter.
+
+Cordialement,
+L'équipe Lojistiga`;
+
+    let phone = devis.client?.telephone || "";
+    phone = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = phone 
+      ? `https://wa.me/${phone.startsWith('+') ? phone.slice(1) : phone}?text=${encodedMessage}`
+      : `https://wa.me/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
   };
 
   const devisList = devisData?.data || [];
@@ -304,7 +324,7 @@ export default function DevisPage() {
                 <DevisCard 
                   devis={d} 
                   onAction={handleCardAction}
-                  onShare={handleCardShare}
+                  onWhatsApp={handleWhatsAppShare}
                 />
               </div>
             ))}
@@ -319,7 +339,6 @@ export default function DevisPage() {
                     <TableHead>Client</TableHead>
                     <TableHead>Catégorie</TableHead>
                     <TableHead>Type d'opération</TableHead>
-                    <TableHead>Date</TableHead>
                     <TableHead className="text-right">Montant TTC</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="w-48">Actions</TableHead>
@@ -350,7 +369,6 @@ export default function DevisPage() {
                           d.type_operation_indep ?? d.type_operation ?? d.lignes?.[0]?.type_operation
                         )}
                       </TableCell>
-                      <TableCell>{formatDate(d.date_creation || d.date)}</TableCell>
                       <TableCell className="text-right font-semibold">{formatMontant(d.montant_ttc)}</TableCell>
                       <TableCell>{getStatutBadge(d.statut)}</TableCell>
                       <TableCell>
@@ -366,16 +384,9 @@ export default function DevisPage() {
                           <Button variant="ghost" size="icon" title="PDF" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-muted" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
                             <FileText className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Partager" className="h-8 w-8 text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
-                            onClick={() => setShareModal({ 
-                              id: d.id, 
-                              numero: d.numero, 
-                              clientEmail: d.client?.email || '', 
-                              clientNom: d.client?.nom || '',
-                              clientTelephone: d.client?.telephone || '',
-                              montantTTC: d.montant_ttc || 0
-                            })}>
-                            <Share2 className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" title="WhatsApp" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
+                            onClick={() => handleWhatsAppShare(d)}>
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
                           {(d.statut === 'brouillon' || d.statut === 'envoye') && (
                             <Button variant="ghost" size="icon" title="Valider" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
@@ -405,7 +416,7 @@ export default function DevisPage() {
                   ))}
                   {filteredDevis.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Aucun devis trouvé avec ces critères
                       </TableCell>
                     </TableRow>
@@ -471,19 +482,6 @@ export default function DevisPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {shareModal && (
-        <ShareModal
-          open={!!shareModal}
-          onOpenChange={() => setShareModal(null)}
-          documentType="devis"
-          documentId={shareModal.id}
-          documentNumero={shareModal.numero}
-          clientEmail={shareModal.clientEmail}
-          clientNom={shareModal.clientNom}
-          clientTelephone={shareModal.clientTelephone}
-          montantTTC={shareModal.montantTTC}
-        />
-      )}
     </MainLayout>
   );
 }

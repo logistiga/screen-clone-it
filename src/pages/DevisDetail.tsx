@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ShareModal } from "@/components/ShareModal";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +53,6 @@ export default function DevisDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("details");
-  const [showShareModal, setShowShareModal] = useState(false);
 
   // Cast to any for API response flexibility
   const { data: devisResponse, isLoading, error } = useDevisById(id || '');
@@ -136,7 +134,38 @@ export default function DevisDetailPage() {
           devis={devisData}
           onConvert={handleConvertToOrdre}
           isConverting={convertMutation.isPending}
-          onShare={() => setShowShareModal(true)}
+          onWhatsApp={() => {
+            const pdfUrl = `${window.location.origin}/devis/${devisData.id}/pdf`;
+            const montant = new Intl.NumberFormat('fr-FR').format(devisData.montant_ttc || 0) + ' FCFA';
+            const message = `Bonjour${devisData.client?.nom ? ` ${devisData.client.nom}` : ''},
+
+Veuillez trouver ci-dessous votre devis n° *${devisData.numero}* d'un montant de *${montant}*.
+
+📄 *Détails du devis :*
+• Client : ${devisData.client?.nom || '-'}
+• Montant HT : ${new Intl.NumberFormat('fr-FR').format(devisData.montant_ht || 0)} FCFA
+• TVA : ${new Intl.NumberFormat('fr-FR').format(devisData.montant_tva || 0)} FCFA
+• Montant TTC : ${montant}
+• Date de validité : ${devisData.date_validite ? new Date(devisData.date_validite).toLocaleDateString('fr-FR') : '-'}
+
+📎 *Lien du document PDF :*
+${pdfUrl}
+
+Pour toute question, n'hésitez pas à nous contacter.
+
+Cordialement,
+L'équipe Lojistiga`;
+
+            let phone = devisData.client?.telephone || "";
+            phone = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
+            
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = phone 
+              ? `https://wa.me/${phone.startsWith('+') ? phone.slice(1) : phone}?text=${encodedMessage}`
+              : `https://wa.me/?text=${encodedMessage}`;
+            
+            window.open(whatsappUrl, '_blank');
+          }}
         />
 
         {/* Stats Cards */}
@@ -491,19 +520,6 @@ export default function DevisDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Share Modal */}
-      <ShareModal
-        open={showShareModal}
-        onOpenChange={setShowShareModal}
-        documentType="devis"
-        documentId={id || ''}
-        documentNumero={devisData.numero}
-        clientEmail={devisData.client?.email}
-        clientNom={devisData.client?.nom}
-        clientTelephone={devisData.client?.telephone}
-        montantTTC={devisData.montant_ttc}
-      />
     </MainLayout>
   );
 }
