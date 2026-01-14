@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,8 +33,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Trash2, Percent, Save } from "lucide-react";
+import { Plus, Edit, Trash2, Percent, Save, RefreshCw, CheckCircle2, XCircle, Calculator } from "lucide-react";
 import { toast } from "sonner";
+import { DocumentStatCard } from "@/components/shared/documents/DocumentStatCard";
+import { DocumentFilters } from "@/components/shared/documents/DocumentFilters";
+import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
 
 interface Taxe {
   id: string;
@@ -66,12 +70,29 @@ const initialTaxes: Taxe[] = [
   },
 ];
 
+const statusOptions = [
+  { value: "all", label: "Tous les statuts" },
+  { value: "active", label: "Actives" },
+  { value: "inactive", label: "Inactives" },
+];
+
+const typeOptions = [
+  { value: "all", label: "Tous les types" },
+  { value: "obligatoire", label: "Obligatoires" },
+  { value: "optionnel", label: "Optionnelles" },
+];
+
 export default function TaxesPage() {
   const [taxes, setTaxes] = useState<Taxe[]>(initialTaxes);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedTaxe, setSelectedTaxe] = useState<Taxe | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statutFilter, setStatutFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,6 +103,34 @@ export default function TaxesPage() {
     obligatoire: false,
     active: true,
   });
+
+  // Filtered taxes
+  const filteredTaxes = useMemo(() => {
+    return taxes.filter((taxe) => {
+      const matchesSearch = 
+        taxe.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        taxe.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        taxe.description.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatut = 
+        statutFilter === "all" ||
+        (statutFilter === "active" && taxe.active) ||
+        (statutFilter === "inactive" && !taxe.active);
+      
+      const matchesType = 
+        typeFilter === "all" ||
+        (typeFilter === "obligatoire" && taxe.obligatoire) ||
+        (typeFilter === "optionnel" && !taxe.obligatoire);
+      
+      return matchesSearch && matchesStatut && matchesType;
+    });
+  }, [taxes, searchTerm, statutFilter, typeFilter]);
+
+  // Stats
+  const totalTaxes = taxes.length;
+  const activeTaxes = taxes.filter((t) => t.active).length;
+  const inactiveTaxes = taxes.filter((t) => !t.active).length;
+  const tauxTotal = taxes.filter((t) => t.active).reduce((sum, t) => sum + t.taux, 0);
 
   const resetForm = () => {
     setFormData({
@@ -129,7 +178,6 @@ export default function TaxesPage() {
     }
 
     if (isEditing && selectedTaxe) {
-      // Update existing
       setTaxes(
         taxes.map((t) =>
           t.id === selectedTaxe.id
@@ -147,7 +195,6 @@ export default function TaxesPage() {
       );
       toast.success(`Taxe ${formData.code} modifiée avec succès`);
     } else {
-      // Add new
       const newTaxe: Taxe = {
         id: String(Date.now()),
         code: formData.code.toUpperCase(),
@@ -194,138 +241,204 @@ export default function TaxesPage() {
     );
   };
 
+  const handleRefresh = () => {
+    toast.success("Données actualisées");
+  };
+
   return (
     <MainLayout title="Taxes">
-      <div className="space-y-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-6"
+      >
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Percent className="h-6 w-6 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Percent className="h-6 w-6 text-primary" />
+              </div>
               Configuration des Taxes
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mt-1">
               Gérez les taxes applicables aux factures et ordres de travail
             </p>
           </div>
-          <Button onClick={handleOpenAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle taxe
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleOpenAdd} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nouvelle taxe
+            </Button>
+          </div>
         </div>
 
-        {/* Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Liste des taxes</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Code</TableHead>
-                  <TableHead>Nom</TableHead>
-                  <TableHead className="text-center">Taux</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-center">Obligatoire</TableHead>
-                  <TableHead className="text-center">Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {taxes.map((taxe) => (
-                  <TableRow key={taxe.id}>
-                    <TableCell className="font-mono font-bold">
-                      {taxe.code}
-                    </TableCell>
-                    <TableCell className="font-medium">{taxe.nom}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className="text-lg">
-                        {taxe.taux}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground max-w-xs truncate">
-                      {taxe.description}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {taxe.obligatoire ? (
-                        <Badge variant="default">Oui</Badge>
-                      ) : (
-                        <Badge variant="outline">Non</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={taxe.active}
-                        onCheckedChange={() => handleToggleActive(taxe)}
-                        disabled={taxe.obligatoire}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(taxe)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => handleOpenDelete(taxe)}
-                          disabled={taxe.obligatoire}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DocumentStatCard
+            title="Total taxes"
+            value={totalTaxes}
+            icon={Percent}
+            variant="primary"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Taxes actives"
+            value={activeTaxes}
+            icon={CheckCircle2}
+            variant="success"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Taxes inactives"
+            value={inactiveTaxes}
+            icon={XCircle}
+            variant="warning"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Taux total cumulé"
+            value={`${tauxTotal}%`}
+            icon={Calculator}
+            variant="info"
+            delay={0.3}
+          />
+        </div>
 
-        {/* Summary Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Résumé</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <p className="text-3xl font-bold text-primary">
-                  {taxes.length}
-                </p>
-                <p className="text-sm text-muted-foreground">Taxes configurées</p>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <p className="text-3xl font-bold text-green-600">
-                  {taxes.filter((t) => t.active).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Taxes actives</p>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <p className="text-3xl font-bold text-amber-600">
-                  {taxes
-                    .filter((t) => t.active)
-                    .reduce((sum, t) => sum + t.taux, 0)}
-                  %
-                </p>
-                <p className="text-sm text-muted-foreground">Taux total cumulé</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Filters */}
+        <DocumentFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Rechercher une taxe..."
+          statutFilter={statutFilter}
+          onStatutChange={setStatutFilter}
+          statutOptions={statusOptions}
+          categorieFilter={typeFilter}
+          onCategorieChange={setTypeFilter}
+          categorieOptions={typeOptions}
+        />
+
+        {/* Table */}
+        {filteredTaxes.length === 0 ? (
+          <DocumentEmptyState
+            icon={Percent}
+            title={searchTerm || statutFilter !== "all" || typeFilter !== "all" 
+              ? "Aucune taxe trouvée" 
+              : "Aucune taxe configurée"}
+            description={searchTerm || statutFilter !== "all" || typeFilter !== "all"
+              ? "Essayez de modifier vos critères de recherche"
+              : "Commencez par ajouter votre première taxe"}
+            actionLabel={!searchTerm && statutFilter === "all" && typeFilter === "all" ? "Nouvelle taxe" : undefined}
+            onAction={!searchTerm && statutFilter === "all" && typeFilter === "all" ? handleOpenAdd : undefined}
+          />
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">Liste des taxes</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="font-semibold">Code</TableHead>
+                      <TableHead className="font-semibold">Nom</TableHead>
+                      <TableHead className="text-center font-semibold">Taux</TableHead>
+                      <TableHead className="font-semibold">Description</TableHead>
+                      <TableHead className="text-center font-semibold">Type</TableHead>
+                      <TableHead className="text-center font-semibold">Statut</TableHead>
+                      <TableHead className="text-right font-semibold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTaxes.map((taxe, index) => (
+                      <motion.tr
+                        key={taxe.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                      >
+                        <TableCell className="font-mono font-bold text-primary">
+                          {taxe.code}
+                        </TableCell>
+                        <TableCell className="font-medium">{taxe.nom}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge 
+                            variant="secondary" 
+                            className="text-sm font-semibold bg-primary/10 text-primary border-0"
+                          >
+                            {taxe.taux}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground max-w-xs truncate">
+                          {taxe.description}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {taxe.obligatoire ? (
+                            <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                              Obligatoire
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              Optionnelle
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={taxe.active}
+                            onCheckedChange={() => handleToggleActive(taxe)}
+                            disabled={taxe.obligatoire}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(taxe)}
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => handleOpenDelete(taxe)}
+                              disabled={taxe.obligatoire}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </motion.div>
 
       {/* Add/Edit Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Percent className="h-5 w-5 text-primary" />
+              </div>
               {isEditing ? "Modifier la taxe" : "Nouvelle taxe"}
             </DialogTitle>
             <DialogDescription>
@@ -346,6 +459,7 @@ export default function TaxesPage() {
                     setFormData({ ...formData, code: e.target.value.toUpperCase() })
                   }
                   maxLength={10}
+                  className="font-mono"
                 />
               </div>
               <div className="space-y-2">
@@ -386,8 +500,8 @@ export default function TaxesPage() {
                 }
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-3">
                 <Switch
                   id="obligatoire"
                   checked={formData.obligatoire}
@@ -395,9 +509,9 @@ export default function TaxesPage() {
                     setFormData({ ...formData, obligatoire: checked })
                   }
                 />
-                <Label htmlFor="obligatoire">Taxe obligatoire</Label>
+                <Label htmlFor="obligatoire" className="cursor-pointer">Taxe obligatoire</Label>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Switch
                   id="active"
                   checked={formData.active}
@@ -405,7 +519,7 @@ export default function TaxesPage() {
                     setFormData({ ...formData, active: checked })
                   }
                 />
-                <Label htmlFor="active">Active</Label>
+                <Label htmlFor="active" className="cursor-pointer">Active</Label>
               </div>
             </div>
             <DialogFooter>
@@ -416,8 +530,8 @@ export default function TaxesPage() {
               >
                 Annuler
               </Button>
-              <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
+              <Button type="submit" className="gap-2">
+                <Save className="h-4 w-4" />
                 {isEditing ? "Enregistrer" : "Ajouter"}
               </Button>
             </DialogFooter>
