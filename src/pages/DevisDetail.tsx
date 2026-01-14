@@ -159,7 +159,7 @@ Pour toute question, n'hésitez pas à nous contacter.
 Cordialement,
 L'équipe Lojistiga`;
 
-            openWhatsAppShare({ text: message, phone: devisData.client?.telephone });
+            openWhatsAppShare(message);
           }}
           onEmail={() => setShowEmailModal(true)}
         />

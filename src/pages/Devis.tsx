@@ -154,7 +154,7 @@ Pour toute question, n'hésitez pas à nous contacter.
 Cordialement,
 L'équipe Lojistiga`;
 
-    openWhatsAppShare({ text: message, phone: devis.client?.telephone });
+    openWhatsAppShare(message);
   };
 
   const devisList = devisData?.data || [];

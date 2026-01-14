@@ -132,7 +132,7 @@ L'équipe Lojistiga`;
   };
 
   const handleOpenWhatsApp = () => {
-    openWhatsAppShare({ text: whatsappMessage, phone: clientTelephone });
+    openWhatsAppShare(whatsappMessage);
     onOpenChange(false);
   };
 
