@@ -69,6 +69,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('graphiques', [DashboardController::class, 'graphiques']);
         Route::get('alertes', [DashboardController::class, 'alertes']);
         Route::get('activite-recente', [DashboardController::class, 'activiteRecente']);
+        Route::post('invalidate-cache', [DashboardController::class, 'invalidateCache'])
+            ->middleware('permission:configuration.modifier');
     });
 
     // ============================================
