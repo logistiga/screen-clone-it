@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\CreditBancaireController;
 use App\Http\Controllers\Api\PrevisionController;
 use App\Http\Controllers\Api\AnnulationController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\ConfigurationController;
 use App\Http\Controllers\Api\DashboardController;
@@ -412,6 +413,24 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::get('profile', [UserController::class, 'profile']);
     Route::put('profile', [UserController::class, 'updateProfile']);
     Route::put('password', [UserController::class, 'updatePassword']);
+
+    // ============================================
+    // ROLES & PERMISSIONS (Admin uniquement)
+    // ============================================
+    Route::prefix('roles')->middleware(['audit', 'permission:utilisateurs.voir'])->group(function () {
+        Route::get('/', [RoleController::class, 'index']);
+        Route::get('stats', [RoleController::class, 'stats']);
+        Route::get('permissions', [RoleController::class, 'permissions']);
+        Route::post('/', [RoleController::class, 'store'])
+            ->middleware('permission:utilisateurs.creer');
+        Route::get('{role}', [RoleController::class, 'show']);
+        Route::put('{role}', [RoleController::class, 'update'])
+            ->middleware('permission:utilisateurs.modifier');
+        Route::delete('{role}', [RoleController::class, 'destroy'])
+            ->middleware('permission:utilisateurs.supprimer');
+        Route::post('{role}/duplicate', [RoleController::class, 'duplicate'])
+            ->middleware('permission:utilisateurs.creer');
+    });
 
     // ============================================
     // AUDIT & TRACABILITE
