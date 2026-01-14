@@ -44,7 +44,7 @@ export default function ProfilPage() {
   
   // Formulaire informations
   const [profileForm, setProfileForm] = useState({
-    name: '',
+    nom: '',
     email: '',
   });
   const [profileFormDirty, setProfileFormDirty] = useState(false);
@@ -65,31 +65,31 @@ export default function ProfilPage() {
   useState(() => {
     if (profile) {
       setProfileForm({
-        name: profile.name,
+        nom: profile.nom,
         email: profile.email,
       });
     }
   });
 
   // Mettre à jour le formulaire quand le profil change
-  if (profile && !profileFormDirty && (profileForm.name !== profile.name || profileForm.email !== profile.email)) {
+  if (profile && !profileFormDirty && (profileForm.nom !== profile.nom || profileForm.email !== profile.email)) {
     setProfileForm({
-      name: profile.name,
+      nom: profile.nom,
       email: profile.email,
     });
   }
 
-  const getInitials = (name?: string | null): string => {
-    if (!name) return "U";
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || "U";
+  const getInitials = (nom?: string | null): string => {
+    if (!nom) return "U";
+    return nom.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || "U";
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profileForm.name.trim() || !profileForm.email.trim()) return;
+    if (!profileForm.nom.trim() || !profileForm.email.trim()) return;
     
     await updateProfile.mutateAsync({
-      name: profileForm.name.trim(),
+      nom: profileForm.nom.trim(),
       email: profileForm.email.trim(),
     });
     setProfileFormDirty(false);
@@ -221,10 +221,10 @@ export default function ProfilPage() {
                 <div className="relative group">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
                     {profile?.avatar_url ? (
-                      <AvatarImage src={profile.avatar_url} alt={profile?.name || "Utilisateur"} />
+                      <AvatarImage src={profile.avatar_url} alt={profile?.nom || "Utilisateur"} />
                     ) : null}
                     <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                      {getInitials(profile?.name)}
+                      {getInitials(profile?.nom)}
                     </AvatarFallback>
                   </Avatar>
                   
@@ -267,7 +267,7 @@ export default function ProfilPage() {
                 </div>
                 
                 <div className="flex-1 text-center sm:text-left sm:pb-2">
-                  <h2 className="text-2xl font-bold">{profile.name}</h2>
+                  <h2 className="text-2xl font-bold">{profile.nom}</h2>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Mail className="h-4 w-4" />
@@ -347,12 +347,12 @@ export default function ProfilPage() {
                 <CardContent>
                   <form onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Nom complet</Label>
+                      <Label htmlFor="nom">Nom complet</Label>
                       <Input
-                        id="name"
-                        value={profileForm.name}
+                        id="nom"
+                        value={profileForm.nom}
                         onChange={(e) => {
-                          setProfileForm({ ...profileForm, name: e.target.value });
+                          setProfileForm({ ...profileForm, nom: e.target.value });
                           setProfileFormDirty(true);
                         }}
                         placeholder="Votre nom complet"
@@ -378,7 +378,7 @@ export default function ProfilPage() {
                     <div className="flex justify-end">
                       <Button 
                         type="submit" 
-                        disabled={!profileFormDirty || !profileForm.name.trim() || !profileForm.email.trim() || updateProfile.isPending}
+                        disabled={!profileFormDirty || !profileForm.nom.trim() || !profileForm.email.trim() || updateProfile.isPending}
                         className="gap-2"
                       >
                         {updateProfile.isPending ? (

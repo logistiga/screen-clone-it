@@ -10,7 +10,7 @@ export interface UserRole {
 
 export interface User {
   id: number;
-  name: string;
+  nom: string;
   email: string;
   actif: boolean;
   email_verified_at: string | null;
@@ -56,7 +56,7 @@ export interface UserFilters {
 }
 
 export interface CreateUserData {
-  name: string;
+  nom: string;
   email: string;
   password: string;
   password_confirmation: string;
@@ -65,7 +65,7 @@ export interface CreateUserData {
 }
 
 export interface UpdateUserData {
-  name?: string;
+  nom?: string;
   email?: string;
   password?: string;
   password_confirmation?: string;
@@ -168,7 +168,7 @@ export const userService = {
   },
 
   // Mettre à jour le profil
-  async updateProfile(data: { name?: string; email?: string }): Promise<User> {
+  async updateProfile(data: { nom?: string; email?: string }): Promise<User> {
     const response = await api.put('/profile', data);
     return response.data;
   },

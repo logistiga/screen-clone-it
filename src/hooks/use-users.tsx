@@ -166,7 +166,7 @@ export function useUpdateProfile() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (data: { name?: string; email?: string }) =>
+    mutationFn: (data: { nom?: string; email?: string }) =>
       userService.updateProfile(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PROFILE_KEY] });
