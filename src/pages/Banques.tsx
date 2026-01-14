@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,10 +32,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Trash2, Building2, Save, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Building2, Save, Loader2, Wallet, CheckCircle, CreditCard } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { useBanques, useCreateBanque, useUpdateBanque, useDeleteBanque } from "@/hooks/use-commercial";
 import { Banque } from "@/lib/api/commercial";
+import { DocumentStatCard } from "@/components/shared/documents/DocumentStatCard";
+import { DocumentFilters } from "@/components/shared/documents/DocumentFilters";
+import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
+import { DocumentLoadingState } from "@/components/shared/documents/DocumentLoadingState";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+};
 
 export default function BanquesPage() {
   const { data: banques = [], isLoading, error } = useBanques();
@@ -46,6 +64,7 @@ export default function BanquesPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedBanque, setSelectedBanque] = useState<Banque | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     nom: "",
@@ -118,14 +137,26 @@ export default function BanquesPage() {
     });
   };
 
+  // Filtrage
+  const filteredBanques = banques.filter((banque) => {
+    const matchesSearch = !searchTerm || 
+      banque.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      banque.numero_compte?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      banque.iban?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  // Statistiques
   const totalSolde = banques.filter((b) => b.actif).reduce((sum, b) => sum + (b.solde || 0), 0);
+  const comptesActifs = banques.filter((b) => b.actif).length;
+  const comptesInactifs = banques.filter((b) => !b.actif).length;
 
   if (isLoading) {
     return (
       <MainLayout title="Gestion des Banques">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <DocumentLoadingState 
+          message="Chargement des banques..."
+        />
       </MainLayout>
     );
   }
@@ -147,17 +178,13 @@ export default function BanquesPage() {
   if (banques.length === 0) {
     return (
       <MainLayout title="Gestion des Banques">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Aucun compte bancaire</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Ajoutez vos comptes bancaires pour gérer les paiements par virement et chèque.
-          </p>
-          <Button onClick={handleOpenAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle banque
-          </Button>
-        </div>
+        <DocumentEmptyState
+          icon={Building2}
+          title="Aucun compte bancaire"
+          description="Ajoutez vos comptes bancaires pour gérer les paiements par virement et chèque."
+          actionLabel="Nouvelle banque"
+          onAction={handleOpenAdd}
+        />
 
         <Dialog open={showModal} onOpenChange={setShowModal}>
           <DialogContent className="max-w-lg">
@@ -241,117 +268,176 @@ export default function BanquesPage() {
 
   return (
     <MainLayout title="Gestion des Banques">
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <motion.div 
+        className="space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        {/* Header */}
+        <motion.div 
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          variants={itemVariants}
+        >
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-primary" />
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
               Gestion des Banques
             </h1>
-            <p className="text-muted-foreground">Gérez vos comptes bancaires</p>
+            <p className="text-muted-foreground mt-1">Gérez vos comptes bancaires</p>
           </div>
           <Button onClick={handleOpenAdd} className="transition-all duration-200 hover:scale-105">
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle banque
           </Button>
+        </motion.div>
+
+        {/* Statistiques */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DocumentStatCard
+            title="Total Comptes"
+            value={banques.length}
+            icon={CreditCard}
+            subtitle="comptes bancaires"
+            variant="primary"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Comptes Actifs"
+            value={comptesActifs}
+            icon={CheckCircle}
+            subtitle="en service"
+            variant="success"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Comptes Inactifs"
+            value={comptesInactifs}
+            icon={Building2}
+            subtitle="désactivés"
+            variant="warning"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Solde Total"
+            value={formatMontant(totalSolde)}
+            icon={Wallet}
+            subtitle="comptes actifs"
+            variant={totalSolde >= 0 ? "info" : "danger"}
+            delay={0.3}
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-primary">{banques.length}</p>
-                <p className="text-sm text-muted-foreground">Comptes bancaires</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">
-                  {banques.filter((b) => b.actif).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Comptes actifs</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{formatMontant(totalSolde)}</p>
-                <p className="text-sm text-muted-foreground">Solde total (actifs)</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Filtres */}
+        <motion.div variants={itemVariants}>
+          <DocumentFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Rechercher par nom, n° compte, IBAN..."
+          />
+        </motion.div>
 
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Liste des comptes bancaires</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Banque</TableHead>
-                  <TableHead>N° Compte</TableHead>
-                  <TableHead>IBAN</TableHead>
-                  <TableHead>SWIFT</TableHead>
-                  <TableHead className="text-right">Solde</TableHead>
-                  <TableHead className="text-center">Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {banques.map((banque, index) => (
-                  <TableRow 
-                    key={banque.id}
-                    className="transition-all duration-200 animate-fade-in hover:bg-muted/50"
-                    style={{ animationDelay: `${index * 30}ms` }}
+        {/* Table */}
+        <motion.div variants={itemVariants}>
+          <Card className="overflow-hidden border-0 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                Liste des comptes bancaires
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({filteredBanques.length} {filteredBanques.length > 1 ? "comptes" : "compte"})
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredBanques.length === 0 ? (
+                <div className="py-12 text-center">
+                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">Aucun compte ne correspond à votre recherche</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setSearchTerm("")}
                   >
-                    <TableCell>
-                      <p className="font-medium">{banque.nom}</p>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{banque.numero_compte || '-'}</TableCell>
-                    <TableCell className="font-mono text-xs">{banque.iban || '-'}</TableCell>
-                    <TableCell className="font-mono">{banque.swift || '-'}</TableCell>
-                    <TableCell className="text-right font-medium">{formatMontant(banque.solde || 0)}</TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={banque.actif}
-                        onCheckedChange={() => handleToggleActif(banque)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(banque)}
-                          className="transition-all duration-200 hover:scale-110 hover:bg-primary/10"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                          onClick={() => {
-                            setSelectedBanque(banque);
-                            setShowDeleteDialog(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+                    Réinitialiser la recherche
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Banque</TableHead>
+                      <TableHead>N° Compte</TableHead>
+                      <TableHead>IBAN</TableHead>
+                      <TableHead>SWIFT</TableHead>
+                      <TableHead className="text-right">Solde</TableHead>
+                      <TableHead className="text-center">Statut</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBanques.map((banque, index) => (
+                      <motion.tr
+                        key={banque.id}
+                        variants={itemVariants}
+                        className="border-b transition-colors hover:bg-muted/50"
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${banque.actif ? 'bg-primary/10' : 'bg-muted'}`}>
+                              <Building2 className={`h-4 w-4 ${banque.actif ? 'text-primary' : 'text-muted-foreground'}`} />
+                            </div>
+                            <p className="font-medium">{banque.nom}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{banque.numero_compte || '-'}</TableCell>
+                        <TableCell className="font-mono text-xs">{banque.iban || '-'}</TableCell>
+                        <TableCell className="font-mono">{banque.swift || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={`font-medium ${(banque.solde || 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {formatMontant(banque.solde || 0)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={banque.actif}
+                            onCheckedChange={() => handleToggleActif(banque)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(banque)}
+                              className="transition-all duration-200 hover:scale-110 hover:bg-primary/10"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
+                              onClick={() => {
+                                setSelectedBanque(banque);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-lg">

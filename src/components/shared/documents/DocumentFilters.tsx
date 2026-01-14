@@ -20,10 +20,10 @@ interface DocumentFiltersProps {
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
   
-  // Statut filter
-  statutFilter: string;
-  onStatutChange: (value: string) => void;
-  statutOptions: FilterOption[];
+  // Statut filter (optional)
+  statutFilter?: string;
+  onStatutChange?: (value: string) => void;
+  statutOptions?: FilterOption[];
   
   // Categorie filter (optional)
   categorieFilter?: string;
@@ -51,12 +51,12 @@ export function DocumentFilters({
   showViewToggle = false,
 }: DocumentFiltersProps) {
   const activeFilters = [
-    statutFilter !== 'all' && statutFilter,
+    statutFilter && statutFilter !== 'all' && statutFilter,
     categorieFilter && categorieFilter !== 'all' && categorieFilter,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
-    onStatutChange('all');
+    onStatutChange?.('all');
     onCategorieChange?.('all');
   };
 
@@ -83,18 +83,20 @@ export function DocumentFilters({
         </div>
 
         {/* Statut filter */}
-        <Select value={statutFilter} onValueChange={onStatutChange}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Statut" />
-          </SelectTrigger>
-          <SelectContent>
-            {statutOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {statutOptions && onStatutChange && (
+          <Select value={statutFilter || 'all'} onValueChange={onStatutChange}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              {statutOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Categorie filter */}
         {categorieOptions && onCategorieChange && (
