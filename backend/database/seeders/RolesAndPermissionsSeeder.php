@@ -21,21 +21,21 @@ class RolesAndPermissionsSeeder extends Seeder
 
         foreach ($modules as $module) {
             foreach ($actions as $action) {
-                Permission::create(['name' => "{$module}.{$action}"]);
+                Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
             }
         }
 
         // Rôle Administrateur
-        $admin = Role::create(['name' => 'administrateur']);
-        $admin->givePermissionTo(Permission::all());
+        $admin = Role::firstOrCreate(['name' => 'administrateur']);
+        $admin->syncPermissions(Permission::all());
 
         // Rôle Directeur (tous les droits comme admin)
-        $directeur = Role::create(['name' => 'directeur']);
-        $directeur->givePermissionTo(Permission::all());
+        $directeur = Role::firstOrCreate(['name' => 'directeur']);
+        $directeur->syncPermissions(Permission::all());
 
         // Rôle Comptable
-        $comptable = Role::create(['name' => 'comptable']);
-        $comptable->givePermissionTo([
+        $comptable = Role::firstOrCreate(['name' => 'comptable']);
+        $comptable->syncPermissions([
             'clients.voir', 'devis.voir', 'ordres.voir',
             'factures.voir', 'factures.creer', 'factures.modifier',
             'paiements.voir', 'paiements.creer',
@@ -46,8 +46,8 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         // Rôle Caissier
-        $caissier = Role::create(['name' => 'caissier']);
-        $caissier->givePermissionTo([
+        $caissier = Role::firstOrCreate(['name' => 'caissier']);
+        $caissier->syncPermissions([
             'clients.voir',
             'paiements.voir', 'paiements.creer',
             'caisse.voir', 'caisse.creer',
@@ -55,8 +55,8 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         // Rôle Commercial
-        $commercial = Role::create(['name' => 'commercial']);
-        $commercial->givePermissionTo([
+        $commercial = Role::firstOrCreate(['name' => 'commercial']);
+        $commercial->syncPermissions([
             'clients.voir', 'clients.creer', 'clients.modifier',
             'devis.voir', 'devis.creer', 'devis.modifier',
             'ordres.voir', 'ordres.creer',
@@ -65,8 +65,8 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         // Rôle Opérateur
-        $operateur = Role::create(['name' => 'operateur']);
-        $operateur->givePermissionTo([
+        $operateur = Role::firstOrCreate(['name' => 'operateur']);
+        $operateur->syncPermissions([
             'clients.voir',
             'ordres.voir', 'ordres.modifier',
             'factures.voir',
