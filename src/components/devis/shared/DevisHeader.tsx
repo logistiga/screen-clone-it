@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/data/mockData";
 import { cn } from "@/lib/utils";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
 
 interface DevisHeaderProps {
   devis: any;
@@ -27,6 +28,7 @@ const statutConfig: Record<string, { className: string; label: string; bgClass: 
 export function DevisHeader({ devis, onConvert, isConverting }: DevisHeaderProps) {
   const navigate = useNavigate();
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
+  const { downloadPdf } = usePdfDownload({ filename: `devis-${devis.numero}.pdf` });
 
   // Avatar du client
   const clientInitials = devis.client?.nom
@@ -105,10 +107,10 @@ export function DevisHeader({ devis, onConvert, isConverting }: DevisHeaderProps
             variant="outline"
             size="sm"
             className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80"
-            onClick={() => window.open(`/devis/${devis.id}/pdf`, "_blank")}
+            onClick={downloadPdf}
           >
             <Download className="h-4 w-4" />
-            PDF
+            Télécharger PDF
           </Button>
           <Button
             variant="outline"

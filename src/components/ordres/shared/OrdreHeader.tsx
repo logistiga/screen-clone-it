@@ -9,8 +9,10 @@ import {
   ArrowRight,
   Wallet,
   Loader2,
+  Download,
 } from "lucide-react";
 import { formatDate } from "@/data/mockData";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
 import {
   typeIndepConfigs,
   typeConteneurConfigs,
@@ -40,6 +42,7 @@ export function OrdreHeader({
 }: OrdreHeaderProps) {
   const navigate = useNavigate();
   const statutConfig = getStatutConfig(ordre.statut);
+  const { downloadPdf } = usePdfDownload({ filename: `ordre-${ordre.numero}.pdf` });
 
   const getTypeBadge = () => {
     const { categorie, type_operation, type_operation_indep } = ordre;
@@ -148,10 +151,10 @@ export function OrdreHeader({
           <Button
             variant="outline"
             className="gap-2"
-            onClick={() => window.open(`/ordres/${id}/pdf`, "_blank")}
+            onClick={downloadPdf}
           >
-            <FileText className="h-4 w-4" />
-            PDF
+            <Download className="h-4 w-4" />
+            Télécharger PDF
           </Button>
         </motion.div>
         {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
