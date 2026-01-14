@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { configurationApi } from "@/lib/api/commercial";
-import { Loader2, RefreshCw } from "lucide-react";
+import { 
+  Hash, 
+  FileText, 
+  ClipboardList, 
+  Receipt, 
+  FileX, 
+  RefreshCw, 
+  Save,
+  Calendar
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DocumentStatCard } from "@/components/shared/documents/DocumentStatCard";
+import { DocumentLoadingState } from "@/components/shared/documents/DocumentLoadingState";
+import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
 
 interface NumerotationData {
   prefixe_devis: string;
@@ -25,7 +38,7 @@ interface NumerotationData {
 export default function NumerotationPage() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['numerotation'],
     queryFn: configurationApi.getNumerotation,
   });
@@ -115,9 +128,7 @@ export default function NumerotationPage() {
   if (isLoading) {
     return (
       <MainLayout title="Numérotation">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <DocumentLoadingState message="Chargement de la configuration..." />
       </MainLayout>
     );
   }
@@ -125,136 +136,263 @@ export default function NumerotationPage() {
   if (error) {
     return (
       <MainLayout title="Numérotation">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-destructive">Erreur lors du chargement de la configuration</p>
-          <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
-            Réessayer
-          </Button>
-        </div>
+        <DocumentEmptyState
+          icon={Hash}
+          title="Erreur de chargement"
+          description="Impossible de charger la configuration de numérotation. Veuillez réessayer."
+          actionLabel="Réessayer"
+          onAction={() => refetch()}
+        />
       </MainLayout>
     );
   }
 
   return (
     <MainLayout title="Numérotation">
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Format de numérotation</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Préfixe Devis</Label>
-              <Input 
-                value={formData.prefixe_devis} 
-                onChange={(e) => handleInputChange('prefixe_devis', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Ex: {getExemple(formData.prefixe_devis, formData.prochain_numero_devis)}
-              </p>
-            </div>
-            <div>
-              <Label>Préfixe Ordres de travail</Label>
-              <Input 
-                value={formData.prefixe_ordre} 
-                onChange={(e) => handleInputChange('prefixe_ordre', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Ex: {getExemple(formData.prefixe_ordre, formData.prochain_numero_ordre)}
-              </p>
-            </div>
-            <div>
-              <Label>Préfixe Factures</Label>
-              <Input 
-                value={formData.prefixe_facture} 
-                onChange={(e) => handleInputChange('prefixe_facture', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Ex: {getExemple(formData.prefixe_facture, formData.prochain_numero_facture)}
-              </p>
-            </div>
-            <div>
-              <Label>Préfixe Avoirs</Label>
-              <Input 
-                value={formData.prefixe_avoir} 
-                onChange={(e) => handleInputChange('prefixe_avoir', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Ex: {getExemple(formData.prefixe_avoir, formData.prochain_numero_avoir)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch 
-                checked={formData.format_annee} 
-                onCheckedChange={(checked) => handleInputChange('format_annee', checked)}
-              />
-              <Label>Inclure l'année dans la numérotation</Label>
-            </div>
-            <Button className="w-full" onClick={handleSaveFormat} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Enregistrer le format
-            </Button>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Compteurs actuels</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleSyncCompteurs}
-              disabled={syncMutation.isPending}
-              className="gap-2"
-            >
-              {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Synchroniser
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Prochain n° Devis</Label>
-              <Input 
-                type="number" 
-                value={formData.prochain_numero_devis}
-                onChange={(e) => handleInputChange('prochain_numero_devis', parseInt(e.target.value) || 1)}
-                min={1}
-              />
-            </div>
-            <div>
-              <Label>Prochain n° Ordre</Label>
-              <Input 
-                type="number" 
-                value={formData.prochain_numero_ordre}
-                onChange={(e) => handleInputChange('prochain_numero_ordre', parseInt(e.target.value) || 1)}
-                min={1}
-              />
-            </div>
-            <div>
-              <Label>Prochain n° Facture</Label>
-              <Input 
-                type="number" 
-                value={formData.prochain_numero_facture}
-                onChange={(e) => handleInputChange('prochain_numero_facture', parseInt(e.target.value) || 1)}
-                min={1}
-              />
-            </div>
-            <div>
-              <Label>Prochain n° Avoir</Label>
-              <Input 
-                type="number" 
-                value={formData.prochain_numero_avoir}
-                onChange={(e) => handleInputChange('prochain_numero_avoir', parseInt(e.target.value) || 1)}
-                min={1}
-              />
-            </div>
-            <Button className="w-full" onClick={handleSaveCompteurs} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Mettre à jour les compteurs
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-6"
+      >
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Numérotation</h1>
+            <p className="text-muted-foreground">
+              Configurez les préfixes et compteurs pour vos documents
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DocumentStatCard
+            title="Prochain Devis"
+            value={getExemple(formData.prefixe_devis, formData.prochain_numero_devis)}
+            icon={FileText}
+            variant="primary"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Prochain Ordre"
+            value={getExemple(formData.prefixe_ordre, formData.prochain_numero_ordre)}
+            icon={ClipboardList}
+            variant="info"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Prochaine Facture"
+            value={getExemple(formData.prefixe_facture, formData.prochain_numero_facture)}
+            icon={Receipt}
+            variant="success"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Prochain Avoir"
+            value={getExemple(formData.prefixe_avoir, formData.prochain_numero_avoir)}
+            icon={FileX}
+            variant="warning"
+            delay={0.3}
+          />
+        </div>
+
+        {/* Configuration Cards */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Format Card */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          >
+            <Card className="h-full">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-primary/10">
+                    <Hash className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Format de numérotation</CardTitle>
+                    <p className="text-sm text-muted-foreground">Définissez les préfixes de vos documents</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Préfixe Devis</Label>
+                    <Input 
+                      value={formData.prefixe_devis} 
+                      onChange={(e) => handleInputChange('prefixe_devis', e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Préfixe Ordres</Label>
+                    <Input 
+                      value={formData.prefixe_ordre} 
+                      onChange={(e) => handleInputChange('prefixe_ordre', e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Préfixe Factures</Label>
+                    <Input 
+                      value={formData.prefixe_facture} 
+                      onChange={(e) => handleInputChange('prefixe_facture', e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Préfixe Avoirs</Label>
+                    <Input 
+                      value={formData.prefixe_avoir} 
+                      onChange={(e) => handleInputChange('prefixe_avoir', e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Inclure l'année</p>
+                      <p className="text-xs text-muted-foreground">Format: PREFIXE-ANNÉE-NUMÉRO</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={formData.format_annee} 
+                    onCheckedChange={(checked) => handleInputChange('format_annee', checked)}
+                  />
+                </div>
+
+                <Button 
+                  className="w-full gap-2" 
+                  onClick={handleSaveFormat} 
+                  disabled={updateMutation.isPending}
+                >
+                  <Save className="h-4 w-4" />
+                  Enregistrer le format
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+          
+          {/* Compteurs Card */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+          >
+            <Card className="h-full">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10">
+                      <RefreshCw className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Compteurs actuels</CardTitle>
+                      <p className="text-sm text-muted-foreground">Gérez les numéros séquentiels</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleSyncCompteurs}
+                    disabled={syncMutation.isPending}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                    Sync
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      N° Devis
+                    </Label>
+                    <Input 
+                      type="number" 
+                      value={formData.prochain_numero_devis}
+                      onChange={(e) => handleInputChange('prochain_numero_devis', parseInt(e.target.value) || 1)}
+                      min={1}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <ClipboardList className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      N° Ordre
+                    </Label>
+                    <Input 
+                      type="number" 
+                      value={formData.prochain_numero_ordre}
+                      onChange={(e) => handleInputChange('prochain_numero_ordre', parseInt(e.target.value) || 1)}
+                      min={1}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Receipt className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      N° Facture
+                    </Label>
+                    <Input 
+                      type="number" 
+                      value={formData.prochain_numero_facture}
+                      onChange={(e) => handleInputChange('prochain_numero_facture', parseInt(e.target.value) || 1)}
+                      min={1}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <FileX className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      N° Avoir
+                    </Label>
+                    <Input 
+                      type="number" 
+                      value={formData.prochain_numero_avoir}
+                      onChange={(e) => handleInputChange('prochain_numero_avoir', parseInt(e.target.value) || 1)}
+                      min={1}
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    ⚠️ Modifier manuellement les compteurs peut créer des doublons. Utilisez la synchronisation automatique.
+                  </p>
+                </div>
+
+                <Button 
+                  className="w-full gap-2" 
+                  onClick={handleSaveCompteurs} 
+                  disabled={updateMutation.isPending}
+                >
+                  <Save className="h-4 w-4" />
+                  Mettre à jour les compteurs
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </motion.div>
     </MainLayout>
   );
 }
