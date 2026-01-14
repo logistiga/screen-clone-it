@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { 
   Users, FileText, ClipboardList, Receipt, XCircle,
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
@@ -9,6 +9,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
+import { usePrefetch } from "@/hooks/use-prefetch";
 import {
   Sidebar,
   SidebarContent,
@@ -91,6 +92,7 @@ const menuItems = {
 export function AppSidebar() {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
+  const { prefetchRoute } = usePrefetch();
   const isCollapsed = state === "collapsed";
   
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -104,10 +106,16 @@ export function AppSidebar() {
     setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Gestionnaire de préchargement au survol
+  const handleMouseEnter = useCallback((url: string) => {
+    prefetchRoute(url);
+  }, [prefetchRoute]);
+
   const renderMenuItem = (item: { title: string; url: string; icon: any }, isActive: boolean) => {
     const content = (
       <NavLink
         to={item.url}
+        onMouseEnter={() => handleMouseEnter(item.url)}
         className={cn(
           "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 relative",
           isCollapsed && "justify-center px-2",
