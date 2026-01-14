@@ -17,13 +17,15 @@ use App\Http\Controllers\Api\AlertController;
 */
 
 Route::middleware('auth:sanctum')->group(function () {
-    // Notifications in-app
-    Route::get('/notifications', [AlertController::class, 'index']);
-    Route::get('/notifications/unread-count', [AlertController::class, 'unreadCount']);
-    Route::get('/notifications/alerts', [AlertController::class, 'alerts']);
-    Route::get('/notifications/stats', [AlertController::class, 'stats']);
-    Route::put('/notifications/{id}/read', [AlertController::class, 'markAsRead']);
-    Route::put('/notifications/mark-all-read', [AlertController::class, 'markAllAsRead']);
-    Route::delete('/notifications/{id}', [AlertController::class, 'destroy']);
-    Route::delete('/notifications', [AlertController::class, 'destroyAll']);
+    // Notifications in-app (préfixe 'alerts' pour éviter conflit avec emails)
+    Route::prefix('alerts')->group(function () {
+        Route::get('/', [AlertController::class, 'index']);
+        Route::get('/unread-count', [AlertController::class, 'unreadCount']);
+        Route::get('/system', [AlertController::class, 'alerts']);
+        Route::get('/stats', [AlertController::class, 'stats']);
+        Route::put('/{id}/read', [AlertController::class, 'markAsRead']);
+        Route::put('/mark-all-read', [AlertController::class, 'markAllAsRead']);
+        Route::delete('/{id}', [AlertController::class, 'destroy']);
+        Route::delete('/', [AlertController::class, 'destroyAll']);
+    });
 });

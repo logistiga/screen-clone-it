@@ -49,15 +49,18 @@ const normalizeNotification = (raw: any): Notification => ({
 // Cache pour éviter les logs répétitifs
 let hasLoggedApiUnavailable = false;
 
+// Base path pour les notifications in-app (différent des emails qui utilisent /notifications)
+const ALERTS_BASE_PATH = '/alerts';
+
 export const notificationsService = {
-  // Récupérer toutes les notifications
+  // Récupérer toutes les notifications in-app
   getAll: async (params?: { 
     page?: number; 
     per_page?: number; 
     unread_only?: boolean 
   }): Promise<NotificationsResponse> => {
     try {
-      const response = await api.get('/notifications', { params });
+      const response = await api.get(ALERTS_BASE_PATH, { params });
       const data = response.data;
       hasLoggedApiUnavailable = false; // Reset si l'API fonctionne
       
@@ -73,7 +76,7 @@ export const notificationsService = {
     } catch (error: any) {
       // Ne log qu'une seule fois pour éviter le spam
       if (!hasLoggedApiUnavailable && error?.response?.status === 404) {
-        console.info('Notifications API: endpoint non configuré, utilisation du mode démo');
+        console.info('Alerts API: endpoint non configuré, utilisation du mode démo');
         hasLoggedApiUnavailable = true;
       }
       return { data: [], unread_count: 0, total: 0 };
@@ -83,7 +86,7 @@ export const notificationsService = {
   // Récupérer le nombre de notifications non lues
   getUnreadCount: async (): Promise<number> => {
     try {
-      const response = await api.get('/notifications/unread-count');
+      const response = await api.get(`${ALERTS_BASE_PATH}/unread-count`);
       return safeNumber(response.data?.count ?? response.data?.unread_count ?? response.data);
     } catch {
       return 0;
@@ -92,28 +95,28 @@ export const notificationsService = {
 
   // Marquer une notification comme lue
   markAsRead: async (id: string): Promise<void> => {
-    await api.put(`/notifications/${id}/read`);
+    await api.put(`${ALERTS_BASE_PATH}/${id}/read`);
   },
 
   // Marquer toutes les notifications comme lues
   markAllAsRead: async (): Promise<void> => {
-    await api.put('/notifications/mark-all-read');
+    await api.put(`${ALERTS_BASE_PATH}/mark-all-read`);
   },
 
   // Supprimer une notification
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/notifications/${id}`);
+    await api.delete(`${ALERTS_BASE_PATH}/${id}`);
   },
 
   // Supprimer toutes les notifications
   deleteAll: async (): Promise<void> => {
-    await api.delete('/notifications');
+    await api.delete(ALERTS_BASE_PATH);
   },
 
   // Récupérer les alertes système (factures en retard, échéances, etc.)
   getAlerts: async (): Promise<Notification[]> => {
     try {
-      const response = await api.get('/notifications/alerts');
+      const response = await api.get(`${ALERTS_BASE_PATH}/system`);
       const data = response.data;
       return Array.isArray(data?.data) 
         ? data.data.map(normalizeNotification)
@@ -128,7 +131,7 @@ export const notificationsService = {
   // Statistiques des notifications
   getStats: async (): Promise<NotificationStats> => {
     try {
-      const response = await api.get('/notifications/stats');
+      const response = await api.get(`${ALERTS_BASE_PATH}/stats`);
       const data = response.data;
       return {
         total: safeNumber(data?.total),
