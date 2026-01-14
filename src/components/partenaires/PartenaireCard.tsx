@@ -95,7 +95,7 @@ export function PartenaireCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t">
           {onView && (
             <Button variant="ghost" size="sm" onClick={onView} className="gap-1.5">
               <Eye className="h-4 w-4" />
