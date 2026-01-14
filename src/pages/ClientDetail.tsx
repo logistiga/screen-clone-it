@@ -664,7 +664,11 @@ export default function ClientDetailPage() {
       <ExportReleveModal
         open={exportModalOpen}
         onOpenChange={setExportModalOpen}
-        clientName={client.nom}
+        client={client}
+        factures={clientFactures}
+        ordres={clientOrdres}
+        devis={clientDevis}
+        paiements={clientPaiements}
       />
     </MainLayout>
   );
