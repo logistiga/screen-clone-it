@@ -25,11 +25,13 @@ import {
   Mail,
   Receipt,
   Loader2,
+  Download,
 } from "lucide-react";
 import { useFactureById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailModal } from "@/components/EmailModal";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -39,6 +41,7 @@ export default function FactureDetailPage() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   const { data: facture, isLoading, error, refetch } = useFactureById(id || "");
+  const { downloadPdf } = usePdfDownload({ filename: facture ? `facture-${facture.numero}.pdf` : 'facture.pdf' });
 
   if (isLoading) {
     return (
@@ -142,10 +145,10 @@ export default function FactureDetailPage() {
             <Button
               variant="outline"
               className="gap-2 transition-all duration-200 hover:scale-105"
-              onClick={() => window.open(`/factures/${id}/pdf`, "_blank")}
+              onClick={downloadPdf}
             >
-              <FileText className="h-4 w-4" />
-              PDF
+              <Download className="h-4 w-4" />
+              Télécharger PDF
             </Button>
             <Button
               variant="outline"
