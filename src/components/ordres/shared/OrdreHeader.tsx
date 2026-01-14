@@ -122,7 +122,7 @@ export function OrdreHeader({
     >
       <div className="flex items-center gap-4">
         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-          <Button variant="ghost" size="icon" onClick={() => navigate("/ordres")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </motion.div>
