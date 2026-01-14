@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Eye, Edit, FileText, Mail, ArrowRight, Trash2, Ban, Check,
+  Eye, Edit, FileText, Share2, ArrowRight, Trash2, Ban, Check,
   Container, Package, Wrench, Clock, User, Building2
 } from "lucide-react";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 interface DevisCardProps {
   devis: any;
   onAction: (type: 'annuler' | 'supprimer' | 'convertir' | 'valider', id: string, numero: string) => void;
-  onEmail: (numero: string, email: string, nom: string) => void;
+  onShare: (id: string, numero: string, email: string, nom: string, telephone: string, montantTTC: number) => void;
 }
 
 const statutConfig: Record<string, { className: string; icon?: React.ReactNode }> = {
@@ -31,7 +31,7 @@ const categorieConfig: Record<string, { label: string; icon: React.ReactNode; cl
   Independant: { label: "Indépendant", icon: <Wrench className="h-3 w-3" />, className: "bg-purple-100 text-purple-800" },
 };
 
-export function DevisCard({ devis, onAction, onEmail }: DevisCardProps) {
+export function DevisCard({ devis, onAction, onShare }: DevisCardProps) {
   const navigate = useNavigate();
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
   const categorie = categorieConfig[devis.type_document] || categorieConfig.Conteneur;
@@ -180,9 +180,9 @@ export function DevisCard({ devis, onAction, onEmail }: DevisCardProps) {
               variant="ghost" 
               size="sm" 
               className="h-8 w-8 p-0 text-blue-600"
-              onClick={() => onEmail(devis.numero, devis.client?.email || '', devis.client?.nom || '')}
+              onClick={() => onShare(devis.id, devis.numero, devis.client?.email || '', devis.client?.nom || '', devis.client?.telephone || '', devis.montant_ttc || 0)}
             >
-              <Mail className="h-4 w-4" />
+              <Share2 className="h-4 w-4" />
             </Button>
           </div>
           

@@ -23,11 +23,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { 
-  Plus, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Mail, 
+  Plus, Eye, Edit, ArrowRight, FileText, Ban, Trash2, Share2, 
   FileCheck, Check, Container, Package, Wrench,
   TrendingUp, Clock, CheckCircle
 } from "lucide-react";
-import { EmailModal } from "@/components/EmailModal";
+import { ShareModal } from "@/components/ShareModal";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
@@ -92,10 +92,13 @@ export default function DevisPage() {
     id: string;
     numero: string;
   } | null>(null);
-  const [emailModal, setEmailModal] = useState<{
+  const [shareModal, setShareModal] = useState<{
+    id: string;
     numero: string;
     clientEmail: string;
     clientNom: string;
+    clientTelephone: string;
+    montantTTC: number;
   } | null>(null);
 
   // Handlers consolidés
@@ -130,8 +133,8 @@ export default function DevisPage() {
     setConfirmAction({ type, id, numero });
   };
 
-  const handleCardEmail = (numero: string, email: string, nom: string) => {
-    setEmailModal({ numero, clientEmail: email, clientNom: nom });
+  const handleCardShare = (id: string, numero: string, email: string, nom: string, telephone: string, montantTTC: number) => {
+    setShareModal({ id, numero, clientEmail: email, clientNom: nom, clientTelephone: telephone, montantTTC });
   };
 
   const devisList = devisData?.data || [];
@@ -301,7 +304,7 @@ export default function DevisPage() {
                 <DevisCard 
                   devis={d} 
                   onAction={handleCardAction}
-                  onEmail={handleCardEmail}
+                  onShare={handleCardShare}
                 />
               </div>
             ))}
@@ -363,9 +366,16 @@ export default function DevisPage() {
                           <Button variant="ghost" size="icon" title="PDF" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-muted" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
                             <FileText className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Email" className="h-8 w-8 text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
-                            onClick={() => setEmailModal({ numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
-                            <Mail className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" title="Partager" className="h-8 w-8 text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
+                            onClick={() => setShareModal({ 
+                              id: d.id, 
+                              numero: d.numero, 
+                              clientEmail: d.client?.email || '', 
+                              clientNom: d.client?.nom || '',
+                              clientTelephone: d.client?.telephone || '',
+                              montantTTC: d.montant_ttc || 0
+                            })}>
+                            <Share2 className="h-4 w-4" />
                           </Button>
                           {(d.statut === 'brouillon' || d.statut === 'envoye') && (
                             <Button variant="ghost" size="icon" title="Valider" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
@@ -461,14 +471,17 @@ export default function DevisPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {emailModal && (
-        <EmailModal
-          open={!!emailModal}
-          onOpenChange={() => setEmailModal(null)}
+      {shareModal && (
+        <ShareModal
+          open={!!shareModal}
+          onOpenChange={() => setShareModal(null)}
           documentType="devis"
-          documentNumero={emailModal.numero}
-          clientEmail={emailModal.clientEmail}
-          clientNom={emailModal.clientNom}
+          documentId={shareModal.id}
+          documentNumero={shareModal.numero}
+          clientEmail={shareModal.clientEmail}
+          clientNom={shareModal.clientNom}
+          clientTelephone={shareModal.clientTelephone}
+          montantTTC={shareModal.montantTTC}
         />
       )}
     </MainLayout>
