@@ -91,17 +91,7 @@ export default function LoginPage() {
         {/* Contenu avec GIF */}
         <div className="flex flex-col items-center justify-center w-full p-12 relative z-10">
           {/* Logo en haut */}
-          <motion.div initial={{
-          y: -20,
-          opacity: 0
-        }} animate={{
-          y: 0,
-          opacity: 1
-        }} transition={{
-          delay: 0.2
-        }} className="absolute top-8 left-8">
-            <img src={logo} alt="LOJISTIGA" className="h-16" />
-          </motion.div>
+          
 
           {/* GIF animé au centre */}
           <motion.div initial={{
@@ -114,7 +104,7 @@ export default function LoginPage() {
           delay: 0.3,
           duration: 0.5
         }} className="relative">
-            <motion.img src={loadingGif} alt="LOJISTIGA Animation" className="w-72 h-72 object-contain" animate={{
+            <motion.img src={loadingGif} alt="LOJISTIGA Animation" className="w-72 h-72 object-scale-down" animate={{
             scale: [1, 1.02, 1]
           }} transition={{
             duration: 3,
