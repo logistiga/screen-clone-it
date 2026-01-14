@@ -22,6 +22,7 @@ export interface User {
 
 export interface UserDetail extends User {
   permissions: string[];
+  avatar_url?: string | null;
 }
 
 export interface UserStats {
@@ -179,6 +180,25 @@ export const userService = {
     password_confirmation: string;
   }): Promise<{ message: string }> {
     const response = await api.put('/password', data);
+    return response.data;
+  },
+
+  // Télécharger une photo de profil
+  async uploadAvatar(file: File): Promise<{ message: string; avatar_url: string }> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    const response = await api.post('/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Supprimer la photo de profil
+  async deleteAvatar(): Promise<{ message: string }> {
+    const response = await api.delete('/profile/avatar');
     return response.data;
   },
 };

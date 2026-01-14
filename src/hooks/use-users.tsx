@@ -216,3 +216,53 @@ export function useUpdatePassword() {
     },
   });
 }
+
+// Télécharger une photo de profil
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (file: File) => userService.uploadAvatar(file),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [PROFILE_KEY] });
+      toast({
+        title: 'Succès',
+        description: 'Photo de profil mise à jour',
+      });
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 
+                     'Erreur lors du téléchargement de la photo';
+      toast({
+        title: 'Erreur',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+// Supprimer la photo de profil
+export function useDeleteAvatar() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: () => userService.deleteAvatar(),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [PROFILE_KEY] });
+      toast({
+        title: 'Succès',
+        description: response.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.message || 'Erreur lors de la suppression',
+        variant: 'destructive',
+      });
+    },
+  });
+}
