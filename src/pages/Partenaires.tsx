@@ -745,8 +745,6 @@ export default function PartenairesPage() {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead>Nom</TableHead>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Adresse</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="w-32">Actions</TableHead>
                         </TableRow>
@@ -761,8 +759,6 @@ export default function PartenairesPage() {
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>Nom</TableHead>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Adresse</TableHead>
                             <TableHead>Statut</TableHead>
                             <TableHead className="w-32">Actions</TableHead>
                           </TableRow>
@@ -770,7 +766,7 @@ export default function PartenairesPage() {
                         <TableBody>
                           {paginatedArmateurs.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                              <TableCell colSpan={3} className="text-center py-12 text-muted-foreground">
                                 <Ship className="h-12 w-12 mx-auto mb-3 opacity-20" />
                                 <p>Aucun armateur trouvé</p>
                               </TableCell>
@@ -787,13 +783,6 @@ export default function PartenairesPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="text-sm">{armateur.email || '-'}</div>
-                                  <div className="text-xs text-muted-foreground">{armateur.telephone || '-'}</div>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                                  {armateur.adresse || '-'}
-                                </TableCell>
-                                <TableCell>
                                   <Badge 
                                     variant={armateur.actif !== false ? "default" : "secondary"}
                                     className={cn(
@@ -804,7 +793,7 @@ export default function PartenairesPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="flex items-center gap-1">
                                     <Button variant="ghost" size="icon" title="Modifier">
                                       <Edit className="h-4 w-4" />
                                     </Button>
