@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   DocumentStatCard,
   DocumentFilters,
@@ -41,238 +41,34 @@ import {
   Bell,
   RefreshCw,
   CheckCircle,
-  XCircle
+  XCircle,
+  Loader2
 } from "lucide-react";
 
-interface EmailTemplate {
-  id: string;
-  nom: string;
-  type: "devis" | "ordre" | "facture" | "relance" | "confirmation" | "notification" | "custom";
-  objet: string;
-  contenu: string;
-  variables: string[];
-  actif: boolean;
-}
+// Import React Query hooks
+import {
+  useEmailTemplates,
+  useEmailAutomations,
+  useEmailConfig,
+  useCreateEmailTemplate,
+  useUpdateEmailTemplate,
+  useDeleteEmailTemplate,
+  useDuplicateEmailTemplate,
+  useToggleEmailTemplate,
+  usePreviewEmailTemplate,
+  useCreateEmailAutomation,
+  useUpdateEmailAutomation,
+  useDeleteEmailAutomation,
+  useToggleEmailAutomation,
+  useUpdateEmailConfig,
+  useSendTestEmail,
+  useEmailDeclencheurs,
+  useEmailDelaiUnites,
+} from "@/hooks/use-emails";
 
-interface AutomationRule {
-  id: string;
-  nom: string;
-  declencheur: string;
-  templateId: string;
-  delai: number;
-  delaiUnite: "minutes" | "heures" | "jours";
-  actif: boolean;
-  conditions: string;
-}
+import type { EmailTemplate, EmailAutomation, EmailConfig } from "@/services/emailService";
 
-interface EmailConfig {
-  smtpHost: string;
-  smtpPort: string;
-  smtpUser: string;
-  smtpPassword: string;
-  expediteurNom: string;
-  expediteurEmail: string;
-  replyTo: string;
-  signature: string;
-  copieArchive: string;
-  ssl: boolean;
-}
-
-const defaultTemplates: EmailTemplate[] = [
-  {
-    id: "1",
-    nom: "Envoi de devis",
-    type: "devis",
-    objet: "Votre devis {{numero_devis}} - {{nom_entreprise}}",
-    contenu: `Bonjour {{nom_client}},
-
-Veuillez trouver ci-joint le devis n°{{numero_devis}} d'un montant de {{montant_ttc}} TTC.
-
-Ce devis est valable jusqu'au {{date_validite}}.
-
-N'hésitez pas à nous contacter pour toute question.
-
-Cordialement,
-{{signature}}`,
-    variables: ["nom_client", "numero_devis", "montant_ttc", "date_validite", "nom_entreprise", "signature"],
-    actif: true
-  },
-  {
-    id: "2",
-    nom: "Envoi d'ordre de travail",
-    type: "ordre",
-    objet: "Ordre de travail {{numero_ordre}} - {{nom_entreprise}}",
-    contenu: `Bonjour {{nom_client}},
-
-Nous vous confirmons la prise en charge de votre ordre de travail n°{{numero_ordre}}.
-
-Conteneur: {{numero_conteneur}}
-Type d'intervention: {{type_travail}}
-Date prévue: {{date_prevue}}
-
-Nous vous tiendrons informé de l'avancement.
-
-Cordialement,
-{{signature}}`,
-    variables: ["nom_client", "numero_ordre", "numero_conteneur", "type_travail", "date_prevue", "nom_entreprise", "signature"],
-    actif: true
-  },
-  {
-    id: "3",
-    nom: "Envoi de facture",
-    type: "facture",
-    objet: "Facture {{numero_facture}} - {{nom_entreprise}}",
-    contenu: `Bonjour {{nom_client}},
-
-Veuillez trouver ci-joint la facture n°{{numero_facture}} d'un montant de {{montant_ttc}} TTC.
-
-Date d'échéance: {{date_echeance}}
-
-Mode de paiement: {{mode_paiement}}
-
-Merci de votre confiance.
-
-Cordialement,
-{{signature}}`,
-    variables: ["nom_client", "numero_facture", "montant_ttc", "date_echeance", "mode_paiement", "nom_entreprise", "signature"],
-    actif: true
-  },
-  {
-    id: "4",
-    nom: "Relance paiement",
-    type: "relance",
-    objet: "Rappel - Facture {{numero_facture}} en attente",
-    contenu: `Bonjour {{nom_client}},
-
-Nous nous permettons de vous rappeler que la facture n°{{numero_facture}} d'un montant de {{montant_ttc}} TTC reste impayée.
-
-Date d'échéance dépassée: {{date_echeance}}
-Retard: {{jours_retard}} jours
-
-Merci de procéder au règlement dans les meilleurs délais.
-
-Cordialement,
-{{signature}}`,
-    variables: ["nom_client", "numero_facture", "montant_ttc", "date_echeance", "jours_retard", "nom_entreprise", "signature"],
-    actif: true
-  },
-  {
-    id: "5",
-    nom: "Confirmation de paiement",
-    type: "confirmation",
-    objet: "Confirmation de paiement - Facture {{numero_facture}}",
-    contenu: `Bonjour {{nom_client}},
-
-Nous accusons réception de votre paiement de {{montant_paye}} pour la facture n°{{numero_facture}}.
-
-Date de paiement: {{date_paiement}}
-Mode de paiement: {{mode_paiement}}
-
-Merci de votre confiance.
-
-Cordialement,
-{{signature}}`,
-    variables: ["nom_client", "numero_facture", "montant_paye", "date_paiement", "mode_paiement", "nom_entreprise", "signature"],
-    actif: true
-  },
-  {
-    id: "6",
-    nom: "Notification travaux terminés",
-    type: "notification",
-    objet: "Travaux terminés - Ordre {{numero_ordre}}",
-    contenu: `Bonjour {{nom_client}},
-
-Nous avons le plaisir de vous informer que les travaux concernant l'ordre n°{{numero_ordre}} sont terminés.
-
-Conteneur: {{numero_conteneur}}
-Date de fin: {{date_fin}}
-
-Vous pouvez récupérer votre conteneur ou nous contacter pour organiser la livraison.
-
-Cordialement,
-{{signature}}`,
-    variables: ["nom_client", "numero_ordre", "numero_conteneur", "date_fin", "nom_entreprise", "signature"],
-    actif: true
-  }
-];
-
-const defaultAutomations: AutomationRule[] = [
-  {
-    id: "1",
-    nom: "Envoi automatique devis",
-    declencheur: "creation_devis",
-    templateId: "1",
-    delai: 0,
-    delaiUnite: "minutes",
-    actif: true,
-    conditions: "Envoi immédiat après création"
-  },
-  {
-    id: "2",
-    nom: "Envoi automatique facture",
-    declencheur: "creation_facture",
-    templateId: "3",
-    delai: 0,
-    delaiUnite: "minutes",
-    actif: false,
-    conditions: "Envoi immédiat après création"
-  },
-  {
-    id: "3",
-    nom: "Relance automatique J+7",
-    declencheur: "facture_impayee",
-    templateId: "4",
-    delai: 7,
-    delaiUnite: "jours",
-    actif: true,
-    conditions: "7 jours après date d'échéance"
-  },
-  {
-    id: "4",
-    nom: "Relance automatique J+15",
-    declencheur: "facture_impayee",
-    templateId: "4",
-    delai: 15,
-    delaiUnite: "jours",
-    actif: true,
-    conditions: "15 jours après date d'échéance"
-  },
-  {
-    id: "5",
-    nom: "Confirmation paiement reçu",
-    declencheur: "paiement_recu",
-    templateId: "5",
-    delai: 0,
-    delaiUnite: "minutes",
-    actif: true,
-    conditions: "Envoi immédiat après enregistrement du paiement"
-  },
-  {
-    id: "6",
-    nom: "Notification fin travaux",
-    declencheur: "ordre_termine",
-    templateId: "6",
-    delai: 1,
-    delaiUnite: "heures",
-    actif: false,
-    conditions: "1 heure après clôture de l'ordre"
-  }
-];
-
-const defaultConfig: EmailConfig = {
-  smtpHost: "smtp.gmail.com",
-  smtpPort: "587",
-  smtpUser: "",
-  smtpPassword: "",
-  expediteurNom: "LOJISTIGA",
-  expediteurEmail: "contact@lojistiga.com",
-  replyTo: "contact@lojistiga.com",
-  signature: "L'équipe LOJISTIGA\nTél: +221 XX XXX XX XX\nEmail: contact@lojistiga.com",
-  copieArchive: "",
-  ssl: true
-};
-
-const typeLabels: Record<EmailTemplate["type"], { label: string; icon: React.ReactNode; color: string }> = {
+const typeLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   devis: { label: "Devis", icon: <FileText className="h-4 w-4" />, color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" },
   ordre: { label: "Ordre de travail", icon: <Truck className="h-4 w-4" />, color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" },
   facture: { label: "Facture", icon: <Receipt className="h-4 w-4" />, color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
@@ -280,17 +76,6 @@ const typeLabels: Record<EmailTemplate["type"], { label: string; icon: React.Rea
   confirmation: { label: "Confirmation", icon: <Check className="h-4 w-4" />, color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400" },
   notification: { label: "Notification", icon: <Bell className="h-4 w-4" />, color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400" },
   custom: { label: "Personnalisé", icon: <FileText className="h-4 w-4" />, color: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400" }
-};
-
-const declencheurLabels: Record<string, string> = {
-  creation_devis: "Création d'un devis",
-  creation_ordre: "Création d'un ordre de travail",
-  creation_facture: "Création d'une facture",
-  facture_impayee: "Facture impayée (après échéance)",
-  paiement_recu: "Paiement reçu",
-  ordre_termine: "Ordre de travail terminé",
-  devis_accepte: "Devis accepté",
-  devis_expire: "Devis expiré"
 };
 
 const typeFilterOptions = [
@@ -324,18 +109,12 @@ const itemVariants = {
 };
 
 export default function EmailsPage() {
-  const { toast } = useToast();
-  const [templates, setTemplates] = useState<EmailTemplate[]>(defaultTemplates);
-  const [automations, setAutomations] = useState<AutomationRule[]>(defaultAutomations);
-  const [config, setConfig] = useState<EmailConfig>(defaultConfig);
-  
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [automationSearch, setAutomationSearch] = useState("");
   const [automationStatusFilter, setAutomationStatusFilter] = useState("all");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Modal states
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -343,8 +122,9 @@ export default function EmailsPage() {
   const [showAutomationModal, setShowAutomationModal] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
-  const [selectedAutomation, setSelectedAutomation] = useState<AutomationRule | null>(null);
+  const [selectedAutomation, setSelectedAutomation] = useState<EmailAutomation | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [previewData, setPreviewData] = useState<{ objet: string; contenu: string } | null>(null);
   
   // Form states
   const [templateForm, setTemplateForm] = useState<Partial<EmailTemplate>>({
@@ -352,78 +132,90 @@ export default function EmailsPage() {
     type: "custom",
     objet: "",
     contenu: "",
-    variables: [],
     actif: true
   });
   
-  const [automationForm, setAutomationForm] = useState<Partial<AutomationRule>>({
+  const [automationForm, setAutomationForm] = useState<Partial<EmailAutomation>>({
     nom: "",
     declencheur: "creation_devis",
-    templateId: "",
+    template_id: 0,
     delai: 0,
-    delaiUnite: "minutes",
+    delai_unite: "minutes",
     actif: true,
     conditions: ""
   });
   
   const [testEmail, setTestEmail] = useState("");
-  const [testTemplateId, setTestTemplateId] = useState("");
-  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testTemplateId, setTestTemplateId] = useState<number | null>(null);
+  
+  // Config state
+  const [configForm, setConfigForm] = useState<Partial<EmailConfig>>({});
 
-  // Computed stats
-  const stats = useMemo(() => {
-    const totalTemplates = templates.length;
-    const activeTemplates = templates.filter(t => t.actif).length;
-    const inactiveTemplates = templates.filter(t => !t.actif).length;
-    const totalAutomations = automations.length;
-    const activeAutomations = automations.filter(a => a.actif).length;
-    
-    return {
-      totalTemplates,
-      activeTemplates,
-      inactiveTemplates,
-      totalAutomations,
-      activeAutomations
-    };
-  }, [templates, automations]);
+  // React Query hooks
+  const { 
+    data: templatesData, 
+    isLoading: isLoadingTemplates, 
+    refetch: refetchTemplates 
+  } = useEmailTemplates({
+    search: searchTerm || undefined,
+    type: typeFilter !== "all" ? typeFilter : undefined,
+    actif: statusFilter === "actif" ? true : statusFilter === "inactif" ? false : undefined,
+  });
 
-  // Filtered templates
-  const filteredTemplates = useMemo(() => {
-    return templates.filter(template => {
-      const matchesSearch = 
-        template.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        template.objet.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = typeFilter === "all" || template.type === typeFilter;
-      const matchesStatus = statusFilter === "all" || 
-        (statusFilter === "actif" && template.actif) ||
-        (statusFilter === "inactif" && !template.actif);
-      
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [templates, searchTerm, typeFilter, statusFilter]);
+  const { 
+    data: automationsData, 
+    isLoading: isLoadingAutomations, 
+    refetch: refetchAutomations 
+  } = useEmailAutomations({
+    search: automationSearch || undefined,
+    actif: automationStatusFilter === "actif" ? true : automationStatusFilter === "inactif" ? false : undefined,
+  });
 
-  // Filtered automations
-  const filteredAutomations = useMemo(() => {
-    return automations.filter(automation => {
-      const matchesSearch = 
-        automation.nom.toLowerCase().includes(automationSearch.toLowerCase()) ||
-        automation.conditions.toLowerCase().includes(automationSearch.toLowerCase());
-      const matchesStatus = automationStatusFilter === "all" || 
-        (automationStatusFilter === "actif" && automation.actif) ||
-        (automationStatusFilter === "inactif" && !automation.actif);
-      
-      return matchesSearch && matchesStatus;
-    });
-  }, [automations, automationSearch, automationStatusFilter]);
+  const { 
+    data: configData, 
+    isLoading: isLoadingConfig 
+  } = useEmailConfig();
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
-    toast({
-      title: "Données actualisées",
-      description: "Les modèles et automatisations ont été rafraîchis"
-    });
+  const { data: declencheurs } = useEmailDeclencheurs();
+  const { data: delaiUnites } = useEmailDelaiUnites();
+
+  // Mutations
+  const createTemplate = useCreateEmailTemplate();
+  const updateTemplate = useUpdateEmailTemplate();
+  const deleteTemplate = useDeleteEmailTemplate();
+  const duplicateTemplate = useDuplicateEmailTemplate();
+  const toggleTemplate = useToggleEmailTemplate();
+  const previewTemplate = usePreviewEmailTemplate();
+  
+  const createAutomation = useCreateEmailAutomation();
+  const updateAutomation = useUpdateEmailAutomation();
+  const deleteAutomation = useDeleteEmailAutomation();
+  const toggleAutomation = useToggleEmailAutomation();
+  
+  const updateConfig = useUpdateEmailConfig();
+  const sendTestEmail = useSendTestEmail();
+
+  // Update config form when data loads
+  useEffect(() => {
+    if (configData) {
+      setConfigForm(configData);
+    }
+  }, [configData]);
+
+  // Computed data
+  const templates = templatesData?.data || [];
+  const automations = automationsData?.data || [];
+
+  const stats = useMemo(() => ({
+    totalTemplates: templatesData?.total || templates.length,
+    activeTemplates: templates.filter(t => t.actif).length,
+    totalAutomations: automationsData?.total || automations.length,
+    activeAutomations: automations.filter(a => a.actif).length
+  }), [templates, automations, templatesData, automationsData]);
+
+  const handleRefresh = () => {
+    refetchTemplates();
+    refetchAutomations();
   };
 
   // Template handlers
@@ -433,7 +225,6 @@ export default function EmailsPage() {
       type: "custom",
       objet: "",
       contenu: "",
-      variables: [],
       actif: true
     });
     setIsEditing(false);
@@ -447,95 +238,46 @@ export default function EmailsPage() {
     setShowTemplateModal(true);
   };
 
-  const handlePreviewTemplate = (template: EmailTemplate) => {
+  const handlePreviewTemplate = async (template: EmailTemplate) => {
     setSelectedTemplate(template);
+    try {
+      const result = await previewTemplate.mutateAsync(template.id);
+      setPreviewData(result.preview);
+    } catch (error) {
+      setPreviewData(null);
+    }
     setShowPreviewModal(true);
   };
 
   const handleDuplicateTemplate = (template: EmailTemplate) => {
-    const newTemplate: EmailTemplate = {
-      ...template,
-      id: Date.now().toString(),
-      nom: `${template.nom} (copie)`,
-      actif: false
-    };
-    setTemplates([...templates, newTemplate]);
-    toast({
-      title: "Modèle dupliqué",
-      description: `Le modèle "${newTemplate.nom}" a été créé`
-    });
+    duplicateTemplate.mutate(template.id);
   };
 
   const handleDeleteTemplate = (template: EmailTemplate) => {
-    const usedInAutomation = automations.find(a => a.templateId === template.id);
-    if (usedInAutomation) {
-      toast({
-        title: "Suppression impossible",
-        description: "Ce modèle est utilisé dans une automatisation",
-        variant: "destructive"
-      });
-      return;
-    }
-    setTemplates(templates.filter(t => t.id !== template.id));
-    toast({
-      title: "Modèle supprimé",
-      description: `Le modèle "${template.nom}" a été supprimé`
-    });
+    deleteTemplate.mutate(template.id);
   };
 
   const handleSaveTemplate = () => {
     if (!templateForm.nom || !templateForm.objet || !templateForm.contenu) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive"
-      });
       return;
     }
 
-    const variableRegex = /\{\{(\w+)\}\}/g;
-    const extractedVars: string[] = [];
-    let match;
-    const fullText = `${templateForm.objet} ${templateForm.contenu}`;
-    while ((match = variableRegex.exec(fullText)) !== null) {
-      if (!extractedVars.includes(match[1])) {
-        extractedVars.push(match[1]);
-      }
-    }
-
     if (isEditing && selectedTemplate) {
-      setTemplates(templates.map(t => 
-        t.id === selectedTemplate.id 
-          ? { ...t, ...templateForm, variables: extractedVars } as EmailTemplate
-          : t
-      ));
-      toast({
-        title: "Modèle modifié",
-        description: `Le modèle "${templateForm.nom}" a été mis à jour`
+      updateTemplate.mutate({
+        id: selectedTemplate.id,
+        data: templateForm
+      }, {
+        onSuccess: () => setShowTemplateModal(false)
       });
     } else {
-      const newTemplate: EmailTemplate = {
-        id: Date.now().toString(),
-        nom: templateForm.nom!,
-        type: templateForm.type as EmailTemplate["type"],
-        objet: templateForm.objet!,
-        contenu: templateForm.contenu!,
-        variables: extractedVars,
-        actif: templateForm.actif!
-      };
-      setTemplates([...templates, newTemplate]);
-      toast({
-        title: "Modèle créé",
-        description: `Le modèle "${newTemplate.nom}" a été ajouté`
+      createTemplate.mutate(templateForm, {
+        onSuccess: () => setShowTemplateModal(false)
       });
     }
-    setShowTemplateModal(false);
   };
 
   const handleToggleTemplate = (template: EmailTemplate) => {
-    setTemplates(templates.map(t =>
-      t.id === template.id ? { ...t, actif: !t.actif } : t
-    ));
+    toggleTemplate.mutate(template.id);
   };
 
   // Automation handlers
@@ -543,9 +285,9 @@ export default function EmailsPage() {
     setAutomationForm({
       nom: "",
       declencheur: "creation_devis",
-      templateId: templates[0]?.id || "",
+      template_id: templates[0]?.id || 0,
       delai: 0,
-      delaiUnite: "minutes",
+      delai_unite: "minutes",
       actif: true,
       conditions: ""
     });
@@ -553,101 +295,67 @@ export default function EmailsPage() {
     setShowAutomationModal(true);
   };
 
-  const handleOpenEditAutomation = (automation: AutomationRule) => {
+  const handleOpenEditAutomation = (automation: EmailAutomation) => {
     setAutomationForm(automation);
     setSelectedAutomation(automation);
     setIsEditing(true);
     setShowAutomationModal(true);
   };
 
-  const handleDeleteAutomation = (automation: AutomationRule) => {
-    setAutomations(automations.filter(a => a.id !== automation.id));
-    toast({
-      title: "Automatisation supprimée",
-      description: `L'automatisation "${automation.nom}" a été supprimée`
-    });
+  const handleDeleteAutomation = (automation: EmailAutomation) => {
+    deleteAutomation.mutate(automation.id);
   };
 
   const handleSaveAutomation = () => {
-    if (!automationForm.nom || !automationForm.templateId) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive"
-      });
+    if (!automationForm.nom || !automationForm.template_id) {
       return;
     }
 
     if (isEditing && selectedAutomation) {
-      setAutomations(automations.map(a =>
-        a.id === selectedAutomation.id
-          ? { ...a, ...automationForm } as AutomationRule
-          : a
-      ));
-      toast({
-        title: "Automatisation modifiée",
-        description: `L'automatisation "${automationForm.nom}" a été mise à jour`
+      updateAutomation.mutate({
+        id: selectedAutomation.id,
+        data: automationForm
+      }, {
+        onSuccess: () => setShowAutomationModal(false)
       });
     } else {
-      const newAutomation: AutomationRule = {
-        id: Date.now().toString(),
-        nom: automationForm.nom!,
-        declencheur: automationForm.declencheur!,
-        templateId: automationForm.templateId!,
-        delai: automationForm.delai!,
-        delaiUnite: automationForm.delaiUnite!,
-        actif: automationForm.actif!,
-        conditions: automationForm.conditions || ""
-      };
-      setAutomations([...automations, newAutomation]);
-      toast({
-        title: "Automatisation créée",
-        description: `L'automatisation "${newAutomation.nom}" a été ajoutée`
+      createAutomation.mutate(automationForm, {
+        onSuccess: () => setShowAutomationModal(false)
       });
     }
-    setShowAutomationModal(false);
   };
 
-  const handleToggleAutomation = (automation: AutomationRule) => {
-    setAutomations(automations.map(a =>
-      a.id === automation.id ? { ...a, actif: !a.actif } : a
-    ));
+  const handleToggleAutomation = (automation: EmailAutomation) => {
+    toggleAutomation.mutate(automation.id);
   };
 
   // Config handlers
   const handleSaveConfig = () => {
-    toast({
-      title: "Configuration sauvegardée",
-      description: "Les paramètres SMTP ont été mis à jour"
-    });
+    updateConfig.mutate(configForm);
   };
 
   // Test email handler
-  const handleSendTestEmail = async () => {
+  const handleSendTestEmail = () => {
     if (!testEmail || !testTemplateId) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un modèle et entrer une adresse email",
-        variant: "destructive"
-      });
       return;
     }
-
-    setIsSendingTest(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsSendingTest(false);
-    
-    const template = templates.find(t => t.id === testTemplateId);
-    toast({
-      title: "Email de test envoyé",
-      description: `Le modèle "${template?.nom}" a été envoyé à ${testEmail}`
-    });
-    setShowTestModal(false);
-    setTestEmail("");
-    setTestTemplateId("");
+    sendTestEmail.mutate(
+      { email: testEmail, templateId: testTemplateId },
+      {
+        onSuccess: () => {
+          setShowTestModal(false);
+          setTestEmail("");
+          setTestTemplateId(null);
+        }
+      }
+    );
   };
 
-  const getTemplateById = (id: string) => templates.find(t => t.id === id);
+  const getTemplateById = (id: number) => templates.find(t => t.id === id);
+  const getDeclencheurLabel = (key: string) => declencheurs?.[key] || key;
+  const getDelaiUniteLabel = (key: string) => delaiUnites?.[key] || key;
+
+  const isRefreshing = isLoadingTemplates || isLoadingAutomations;
 
   return (
     <MainLayout title="Gestion des Emails">
@@ -755,7 +463,23 @@ export default function EmailsPage() {
               categorieOptions={typeFilterOptions}
             />
 
-            {filteredTemplates.length === 0 ? (
+            {isLoadingTemplates ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-10 w-10 rounded-xl" />
+                        <div className="space-y-2 flex-1">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-64" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : templates.length === 0 ? (
               <DocumentEmptyState
                 icon={Mail}
                 title="Aucun modèle trouvé"
@@ -770,7 +494,7 @@ export default function EmailsPage() {
                 animate="visible"
                 className="grid gap-4"
               >
-                {filteredTemplates.map((template, index) => (
+                {templates.map((template, index) => (
                   <motion.div
                     key={template.id}
                     variants={itemVariants}
@@ -780,14 +504,14 @@ export default function EmailsPage() {
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="flex items-start gap-4">
-                            <div className={`p-2.5 rounded-xl ${typeLabels[template.type].color}`}>
-                              {typeLabels[template.type].icon}
+                            <div className={`p-2.5 rounded-xl ${typeLabels[template.type]?.color || typeLabels.custom.color}`}>
+                              {typeLabels[template.type]?.icon || typeLabels.custom.icon}
                             </div>
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-medium">{template.nom}</h3>
-                                <Badge variant="outline" className={typeLabels[template.type].color}>
-                                  {typeLabels[template.type].label}
+                                <Badge variant="outline" className={typeLabels[template.type]?.color || typeLabels.custom.color}>
+                                  {typeLabels[template.type]?.label || "Personnalisé"}
                                 </Badge>
                                 {!template.actif && (
                                   <Badge variant="secondary" className="bg-muted text-muted-foreground">
@@ -798,12 +522,12 @@ export default function EmailsPage() {
                               </div>
                               <p className="text-sm text-muted-foreground line-clamp-1">{template.objet}</p>
                               <div className="flex flex-wrap gap-1 mt-2">
-                                {template.variables.slice(0, 4).map(v => (
+                                {(template.variables || []).slice(0, 4).map(v => (
                                   <Badge key={v} variant="outline" className="text-xs bg-muted/50">
                                     {`{{${v}}}`}
                                   </Badge>
                                 ))}
-                                {template.variables.length > 4 && (
+                                {(template.variables || []).length > 4 && (
                                   <Badge variant="outline" className="text-xs bg-muted/50">
                                     +{template.variables.length - 4} autres
                                   </Badge>
@@ -816,17 +540,40 @@ export default function EmailsPage() {
                             <Switch
                               checked={template.actif}
                               onCheckedChange={() => handleToggleTemplate(template)}
+                              disabled={toggleTemplate.isPending}
                             />
-                            <Button variant="ghost" size="icon" onClick={() => handlePreviewTemplate(template)} className="hover:bg-primary/10">
-                              <Eye className="h-4 w-4" />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handlePreviewTemplate(template)} 
+                              className="hover:bg-primary/10"
+                              disabled={previewTemplate.isPending}
+                            >
+                              {previewTemplate.isPending && selectedTemplate?.id === template.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleOpenEditTemplate(template)} className="hover:bg-primary/10">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDuplicateTemplate(template)} className="hover:bg-primary/10">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDuplicateTemplate(template)} 
+                              className="hover:bg-primary/10"
+                              disabled={duplicateTemplate.isPending}
+                            >
                               <Copy className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTemplate(template)} className="hover:bg-destructive/10">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDeleteTemplate(template)} 
+                              className="hover:bg-destructive/10"
+                              disabled={deleteTemplate.isPending}
+                            >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -861,7 +608,23 @@ export default function EmailsPage() {
               statutOptions={statusFilterOptions}
             />
 
-            {filteredAutomations.length === 0 ? (
+            {isLoadingAutomations ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-10 w-10 rounded-xl" />
+                        <div className="space-y-2 flex-1">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-64" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : automations.length === 0 ? (
               <DocumentEmptyState
                 icon={Zap}
                 title="Aucune automatisation trouvée"
@@ -876,8 +639,8 @@ export default function EmailsPage() {
                 animate="visible"
                 className="grid gap-4"
               >
-                {filteredAutomations.map((automation, index) => {
-                  const template = getTemplateById(automation.templateId);
+                {automations.map((automation, index) => {
+                  const template = getTemplateById(automation.template_id);
                   return (
                     <motion.div
                       key={automation.id}
@@ -907,18 +670,18 @@ export default function EmailsPage() {
                                   )}
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                  <span className="font-medium">Déclencheur:</span> {declencheurLabels[automation.declencheur]}
+                                  <span className="font-medium">Déclencheur:</span> {getDeclencheurLabel(automation.declencheur)}
                                 </p>
                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                   <span className="flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
                                     {automation.delai === 0 
                                       ? "Immédiat" 
-                                      : `${automation.delai} ${automation.delaiUnite}`}
+                                      : `${automation.delai} ${getDelaiUniteLabel(automation.delai_unite)}`}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Mail className="h-3 w-3" />
-                                    {template?.nom || "Modèle inconnu"}
+                                    {template?.nom || automation.template?.nom || "Modèle inconnu"}
                                   </span>
                                 </div>
                                 {automation.conditions && (
@@ -931,11 +694,18 @@ export default function EmailsPage() {
                               <Switch
                                 checked={automation.actif}
                                 onCheckedChange={() => handleToggleAutomation(automation)}
+                                disabled={toggleAutomation.isPending}
                               />
                               <Button variant="ghost" size="icon" onClick={() => handleOpenEditAutomation(automation)} className="hover:bg-primary/10">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDeleteAutomation(automation)} className="hover:bg-destructive/10">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDeleteAutomation(automation)} 
+                                className="hover:bg-destructive/10"
+                                disabled={deleteAutomation.isPending}
+                              >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
@@ -964,51 +734,61 @@ export default function EmailsPage() {
                       <Server className="h-5 w-5 text-primary" />
                       Configuration SMTP
                     </CardTitle>
-                    <CardDescription>Paramètres du serveur d'envoi d'emails</CardDescription>
+                    <CardDescription>Paramètres du serveur de messagerie</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Serveur SMTP</Label>
-                        <Input
-                          value={config.smtpHost}
-                          onChange={e => setConfig({ ...config, smtpHost: e.target.value })}
-                          placeholder="smtp.example.com"
-                        />
+                    {isLoadingConfig ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Port</Label>
-                        <Input
-                          value={config.smtpPort}
-                          onChange={e => setConfig({ ...config, smtpPort: e.target.value })}
-                          placeholder="587"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Utilisateur SMTP</Label>
-                        <Input
-                          value={config.smtpUser}
-                          onChange={e => setConfig({ ...config, smtpUser: e.target.value })}
-                          placeholder="user@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Mot de passe SMTP</Label>
-                        <Input
-                          type="password"
-                          value={config.smtpPassword}
-                          onChange={e => setConfig({ ...config, smtpPassword: e.target.value })}
-                          placeholder="••••••••"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                      <Switch
-                        checked={config.ssl}
-                        onCheckedChange={checked => setConfig({ ...config, ssl: checked })}
-                      />
-                      <Label>Utiliser SSL/TLS</Label>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Serveur SMTP</Label>
+                            <Input
+                              value={configForm.smtp_host || ""}
+                              onChange={e => setConfigForm({ ...configForm, smtp_host: e.target.value })}
+                              placeholder="smtp.example.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Port</Label>
+                            <Input
+                              value={configForm.smtp_port || ""}
+                              onChange={e => setConfigForm({ ...configForm, smtp_port: e.target.value })}
+                              placeholder="587"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Utilisateur</Label>
+                            <Input
+                              value={configForm.smtp_user || ""}
+                              onChange={e => setConfigForm({ ...configForm, smtp_user: e.target.value })}
+                              placeholder="user@example.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Mot de passe</Label>
+                            <Input
+                              type="password"
+                              value={configForm.smtp_password || ""}
+                              onChange={e => setConfigForm({ ...configForm, smtp_password: e.target.value })}
+                              placeholder="••••••••"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2">
+                          <Switch
+                            checked={configForm.ssl || false}
+                            onCheckedChange={checked => setConfigForm({ ...configForm, ssl: checked })}
+                          />
+                          <Label>Utiliser SSL/TLS</Label>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -1023,59 +803,77 @@ export default function EmailsPage() {
                     <CardDescription>Informations affichées dans les emails envoyés</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Nom de l'expéditeur</Label>
-                        <Input
-                          value={config.expediteurNom}
-                          onChange={e => setConfig({ ...config, expediteurNom: e.target.value })}
-                          placeholder="Mon Entreprise"
-                        />
+                    {isLoadingConfig ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-24 w-full" />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Email de l'expéditeur</Label>
-                        <Input
-                          type="email"
-                          value={config.expediteurEmail}
-                          onChange={e => setConfig({ ...config, expediteurEmail: e.target.value })}
-                          placeholder="contact@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Répondre à (Reply-To)</Label>
-                        <Input
-                          type="email"
-                          value={config.replyTo}
-                          onChange={e => setConfig({ ...config, replyTo: e.target.value })}
-                          placeholder="support@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Copie archive (BCC)</Label>
-                        <Input
-                          type="email"
-                          value={config.copieArchive}
-                          onChange={e => setConfig({ ...config, copieArchive: e.target.value })}
-                          placeholder="archive@example.com"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Signature par défaut</Label>
-                      <Textarea
-                        value={config.signature}
-                        onChange={e => setConfig({ ...config, signature: e.target.value })}
-                        rows={4}
-                        placeholder="Votre signature..."
-                      />
-                    </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Nom de l'expéditeur</Label>
+                            <Input
+                              value={configForm.expediteur_nom || ""}
+                              onChange={e => setConfigForm({ ...configForm, expediteur_nom: e.target.value })}
+                              placeholder="Mon Entreprise"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Email de l'expéditeur</Label>
+                            <Input
+                              type="email"
+                              value={configForm.expediteur_email || ""}
+                              onChange={e => setConfigForm({ ...configForm, expediteur_email: e.target.value })}
+                              placeholder="contact@example.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Répondre à (Reply-To)</Label>
+                            <Input
+                              type="email"
+                              value={configForm.reply_to || ""}
+                              onChange={e => setConfigForm({ ...configForm, reply_to: e.target.value })}
+                              placeholder="support@example.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Copie archive (BCC)</Label>
+                            <Input
+                              type="email"
+                              value={configForm.copie_archive || ""}
+                              onChange={e => setConfigForm({ ...configForm, copie_archive: e.target.value })}
+                              placeholder="archive@example.com"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Signature par défaut</Label>
+                          <Textarea
+                            value={configForm.signature || ""}
+                            onChange={e => setConfigForm({ ...configForm, signature: e.target.value })}
+                            rows={4}
+                            placeholder="Votre signature..."
+                          />
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
 
               <motion.div variants={itemVariants} className="flex justify-end">
-                <Button onClick={handleSaveConfig} className="gap-2 shadow-md">
-                  <Check className="h-4 w-4" />
+                <Button 
+                  onClick={handleSaveConfig} 
+                  className="gap-2 shadow-md"
+                  disabled={updateConfig.isPending}
+                >
+                  {updateConfig.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
                   Sauvegarder la configuration
                 </Button>
               </motion.div>
@@ -1097,7 +895,7 @@ export default function EmailsPage() {
                 <div className="space-y-2">
                   <Label>Nom du modèle *</Label>
                   <Input
-                    value={templateForm.nom}
+                    value={templateForm.nom || ""}
                     onChange={e => setTemplateForm({ ...templateForm, nom: e.target.value })}
                     placeholder="Ex: Envoi de devis"
                   />
@@ -1122,7 +920,7 @@ export default function EmailsPage() {
               <div className="space-y-2">
                 <Label>Objet de l'email *</Label>
                 <Input
-                  value={templateForm.objet}
+                  value={templateForm.objet || ""}
                   onChange={e => setTemplateForm({ ...templateForm, objet: e.target.value })}
                   placeholder="Ex: Votre devis {{numero_devis}}"
                 />
@@ -1130,7 +928,7 @@ export default function EmailsPage() {
               <div className="space-y-2">
                 <Label>Contenu de l'email *</Label>
                 <Textarea
-                  value={templateForm.contenu}
+                  value={templateForm.contenu || ""}
                   onChange={e => setTemplateForm({ ...templateForm, contenu: e.target.value })}
                   rows={12}
                   placeholder="Rédigez le contenu de l'email..."
@@ -1142,7 +940,7 @@ export default function EmailsPage() {
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <Switch
-                  checked={templateForm.actif}
+                  checked={templateForm.actif || false}
                   onCheckedChange={checked => setTemplateForm({ ...templateForm, actif: checked })}
                 />
                 <Label>Modèle actif</Label>
@@ -1152,8 +950,16 @@ export default function EmailsPage() {
               <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSaveTemplate} className="gap-2">
-                <Check className="h-4 w-4" />
+              <Button 
+                onClick={handleSaveTemplate} 
+                className="gap-2"
+                disabled={createTemplate.isPending || updateTemplate.isPending}
+              >
+                {(createTemplate.isPending || updateTemplate.isPending) ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
                 {isEditing ? "Enregistrer" : "Créer le modèle"}
               </Button>
             </DialogFooter>
@@ -1173,16 +979,16 @@ export default function EmailsPage() {
               <div className="space-y-4">
                 <div className="p-4 bg-muted/50 rounded-lg border">
                   <p className="text-sm text-muted-foreground mb-1">Objet:</p>
-                  <p className="font-medium">{selectedTemplate.objet}</p>
+                  <p className="font-medium">{previewData?.objet || selectedTemplate.objet}</p>
                 </div>
                 <div className="p-4 border rounded-lg bg-card">
                   <p className="text-sm text-muted-foreground mb-2">Contenu:</p>
-                  <pre className="whitespace-pre-wrap text-sm font-sans">{selectedTemplate.contenu}</pre>
+                  <pre className="whitespace-pre-wrap text-sm font-sans">{previewData?.contenu || selectedTemplate.contenu}</pre>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Variables disponibles:</p>
                   <div className="flex flex-wrap gap-2">
-                    {selectedTemplate.variables.map(v => (
+                    {(selectedTemplate.variables || []).map(v => (
                       <Badge key={v} variant="outline" className="bg-primary/10">{`{{${v}}}`}</Badge>
                     ))}
                   </div>
@@ -1210,7 +1016,7 @@ export default function EmailsPage() {
               <div className="space-y-2">
                 <Label>Nom de l'automatisation *</Label>
                 <Input
-                  value={automationForm.nom}
+                  value={automationForm.nom || ""}
                   onChange={e => setAutomationForm({ ...automationForm, nom: e.target.value })}
                   placeholder="Ex: Envoi automatique facture"
                 />
@@ -1225,7 +1031,7 @@ export default function EmailsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(declencheurLabels).map(([key, label]) => (
+                    {declencheurs && Object.entries(declencheurs).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1234,15 +1040,15 @@ export default function EmailsPage() {
               <div className="space-y-2">
                 <Label>Modèle d'email *</Label>
                 <Select
-                  value={automationForm.templateId}
-                  onValueChange={value => setAutomationForm({ ...automationForm, templateId: value })}
+                  value={automationForm.template_id?.toString()}
+                  onValueChange={value => setAutomationForm({ ...automationForm, template_id: parseInt(value) })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un modèle" />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.filter(t => t.actif).map(template => (
-                      <SelectItem key={template.id} value={template.id}>{template.nom}</SelectItem>
+                      <SelectItem key={template.id} value={template.id.toString()}>{template.nom}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1253,23 +1059,23 @@ export default function EmailsPage() {
                   <Input
                     type="number"
                     min="0"
-                    value={automationForm.delai}
+                    value={automationForm.delai || 0}
                     onChange={e => setAutomationForm({ ...automationForm, delai: parseInt(e.target.value) || 0 })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Unité</Label>
                   <Select
-                    value={automationForm.delaiUnite}
-                    onValueChange={value => setAutomationForm({ ...automationForm, delaiUnite: value as AutomationRule["delaiUnite"] })}
+                    value={automationForm.delai_unite}
+                    onValueChange={value => setAutomationForm({ ...automationForm, delai_unite: value as EmailAutomation["delai_unite"] })}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="minutes">Minutes</SelectItem>
-                      <SelectItem value="heures">Heures</SelectItem>
-                      <SelectItem value="jours">Jours</SelectItem>
+                      {delaiUnites && Object.entries(delaiUnites).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1277,7 +1083,7 @@ export default function EmailsPage() {
               <div className="space-y-2">
                 <Label>Conditions (optionnel)</Label>
                 <Textarea
-                  value={automationForm.conditions}
+                  value={automationForm.conditions || ""}
                   onChange={e => setAutomationForm({ ...automationForm, conditions: e.target.value })}
                   placeholder="Description des conditions d'envoi..."
                   rows={2}
@@ -1285,7 +1091,7 @@ export default function EmailsPage() {
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <Switch
-                  checked={automationForm.actif}
+                  checked={automationForm.actif || false}
                   onCheckedChange={checked => setAutomationForm({ ...automationForm, actif: checked })}
                 />
                 <Label>Automatisation active</Label>
@@ -1295,8 +1101,16 @@ export default function EmailsPage() {
               <Button variant="outline" onClick={() => setShowAutomationModal(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSaveAutomation} className="gap-2">
-                <Check className="h-4 w-4" />
+              <Button 
+                onClick={handleSaveAutomation} 
+                className="gap-2"
+                disabled={createAutomation.isPending || updateAutomation.isPending}
+              >
+                {(createAutomation.isPending || updateAutomation.isPending) ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
                 {isEditing ? "Enregistrer" : "Créer l'automatisation"}
               </Button>
             </DialogFooter>
@@ -1315,13 +1129,16 @@ export default function EmailsPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Modèle à tester *</Label>
-                <Select value={testTemplateId} onValueChange={setTestTemplateId}>
+                <Select 
+                  value={testTemplateId?.toString() || ""} 
+                  onValueChange={value => setTestTemplateId(parseInt(value))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un modèle" />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.filter(t => t.actif).map(template => (
-                      <SelectItem key={template.id} value={template.id}>{template.nom}</SelectItem>
+                      <SelectItem key={template.id} value={template.id.toString()}>{template.nom}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1343,10 +1160,14 @@ export default function EmailsPage() {
               <Button variant="outline" onClick={() => setShowTestModal(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSendTestEmail} disabled={isSendingTest} className="gap-2">
-                {isSendingTest ? (
+              <Button 
+                onClick={handleSendTestEmail} 
+                disabled={sendTestEmail.isPending} 
+                className="gap-2"
+              >
+                {sendTestEmail.isPending ? (
                   <>
-                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Envoi en cours...
                   </>
                 ) : (
