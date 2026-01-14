@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Plus,
-  Search,
   Download,
   Mail,
   Trash2,
@@ -15,23 +14,14 @@ import {
   Wrench,
   CreditCard,
   FileText,
-  Loader2,
-  RotateCcw,
   PackageOpen,
+  Calculator,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -57,27 +47,53 @@ import { useNotesDebut, useDeleteNoteDebut } from "@/hooks/use-notes-debut";
 import { NoteDebut } from "@/lib/api/notes-debut";
 import { TablePagination } from "@/components/TablePagination";
 import { formatMontant, formatDate } from "@/data/mockData";
+import {
+  DocumentStatCard,
+  DocumentFilters,
+  DocumentEmptyState,
+  DocumentLoadingState,
+} from "@/components/shared/documents";
 
 const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
   ouverture_port: {
     label: "Ouverture de port",
     icon: Anchor,
-    color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
+    color: "bg-primary/10 text-primary border-primary/20",
+  },
+  "Ouverture Port": {
+    label: "Ouverture de port",
+    icon: Anchor,
+    color: "bg-primary/10 text-primary border-primary/20",
   },
   detention: {
     label: "Détention",
     icon: Container,
-    color: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300",
+    color: "bg-warning/10 text-warning border-warning/20",
+  },
+  Detention: {
+    label: "Détention",
+    icon: Container,
+    color: "bg-warning/10 text-warning border-warning/20",
   },
   reparation: {
     label: "Réparation conteneur",
     icon: Wrench,
-    color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300",
+    color: "bg-success/10 text-success border-success/20",
+  },
+  Reparation: {
+    label: "Réparation conteneur",
+    icon: Wrench,
+    color: "bg-success/10 text-success border-success/20",
   },
   relache: {
     label: "Relâche",
     icon: PackageOpen,
-    color: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300",
+    color: "bg-accent text-accent-foreground border-accent",
+  },
+  Relache: {
+    label: "Relâche",
+    icon: PackageOpen,
+    color: "bg-accent text-accent-foreground border-accent",
   },
 };
 
@@ -87,17 +103,25 @@ const statusConfig: Record<string, { label: string; class: string }> = {
   pending: { label: "En attente", class: "bg-warning/20 text-warning" },
   facturee: { label: "Facturée", class: "bg-primary/20 text-primary" },
   invoiced: { label: "Facturée", class: "bg-primary/20 text-primary" },
-  payee: { label: "Payée", class: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-  paid: { label: "Payée", class: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+  payee: { label: "Payée", class: "bg-success/20 text-success" },
+  paid: { label: "Payée", class: "bg-success/20 text-success" },
   annulee: { label: "Annulée", class: "bg-muted text-muted-foreground" },
   cancelled: { label: "Annulée", class: "bg-muted text-muted-foreground" },
-  partielle: { label: "Partielle", class: "bg-cyan-500/20 text-cyan-600" },
-  partial: { label: "Partielle", class: "bg-cyan-500/20 text-cyan-600" },
+  partielle: { label: "Partielle", class: "bg-info/20 text-info" },
+  partial: { label: "Partielle", class: "bg-info/20 text-info" },
 };
 
+const typeFilterOptions = [
+  { value: "all", label: "Tous les types" },
+  { value: "ouverture_port", label: "Ouverture de port" },
+  { value: "detention", label: "Détention" },
+  { value: "reparation", label: "Réparation conteneur" },
+  { value: "relache", label: "Relâche" },
+];
+
 const itemVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: { opacity: 1, x: 0 },
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
 };
 
 export default function NotesDebut() {
@@ -216,9 +240,7 @@ export default function NotesDebut() {
   if (isLoading) {
     return (
       <MainLayout title="Notes de début">
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <DocumentLoadingState message="Chargement des notes..." />
       </MainLayout>
     );
   }
@@ -227,17 +249,13 @@ export default function NotesDebut() {
   if (notes.length === 0 && !hasFilters) {
     return (
       <MainLayout title="Notes de début">
-        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Aucune note de début</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Commencez par créer votre première note de début (Ouverture de port, Détention, Réparation).
-          </p>
-          <Button onClick={() => navigate("/notes-debut/nouvelle")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle note
-          </Button>
-        </div>
+        <DocumentEmptyState
+          icon={FileText}
+          title="Aucune note de début"
+          description="Commencez par créer votre première note de début (Ouverture de port, Détention, Réparation)."
+          actionLabel="Nouvelle note"
+          onAction={() => navigate("/notes-debut/nouvelle")}
+        />
       </MainLayout>
     );
   }
@@ -258,70 +276,47 @@ export default function NotesDebut() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Total notes</p>
-                <p className="text-2xl font-bold mt-1">{totalNotes}</p>
-                <p className="text-xs text-muted-foreground">notes</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Montant total</p>
-                <p className="text-2xl font-bold mt-1">{formatMontant(totalMontant)}</p>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Page</p>
-                <p className="text-2xl font-bold mt-1">{meta.current_page} / {meta.last_page}</p>
-                <p className="text-xs text-muted-foreground">{notes.length} affichées</p>
-              </CardContent>
-            </Card>
-          </motion.div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <DocumentStatCard
+            title="Total notes"
+            value={totalNotes}
+            icon={FileText}
+            subtitle="notes"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Montant total"
+            value={formatMontant(totalMontant)}
+            icon={Calculator}
+            subtitle="FCFA"
+            variant="primary"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Page actuelle"
+            value={`${meta.current_page}/${meta.last_page}`}
+            icon={FileText}
+            subtitle={`${notes.length} affichées`}
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Par page"
+            value={pageSize}
+            icon={FileText}
+            subtitle="documents"
+            delay={0.3}
+          />
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Rechercher par numéro, client, conteneur..." 
-                  value={searchTerm} 
-                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
-                  className="pl-10" 
-                />
-              </div>
-              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="ouverture_port">Ouverture de port</SelectItem>
-                  <SelectItem value="detention">Détention</SelectItem>
-                  <SelectItem value="reparation">Réparation conteneur</SelectItem>
-                  <SelectItem value="relache">Relâche</SelectItem>
-                </SelectContent>
-              </Select>
-              {hasFilters && (
-                <Button variant="ghost" onClick={clearFilters} className="gap-2">
-                  <RotateCcw className="h-4 w-4" />
-                  Réinitialiser
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <DocumentFilters
+          searchTerm={searchTerm}
+          onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
+          searchPlaceholder="Rechercher par numéro, client, conteneur..."
+          statutFilter={typeFilter}
+          onStatutChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}
+          statutOptions={typeFilterOptions}
+        />
 
         {/* Selection Info */}
         {selectedIds.length > 0 && (
