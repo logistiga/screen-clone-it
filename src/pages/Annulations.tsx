@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -12,26 +13,42 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ban, Search, MoreHorizontal, FileText, RefreshCw, Loader2, Download } from "lucide-react";
+import { Ban, MoreHorizontal, FileText, RefreshCw, Download, Calculator, Clock, CheckCircle } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
-import { useAnnulations, useAnnulationsStats, useGenererAvoir, useRembourserAnnulation } from "@/hooks/use-annulations";
+import { useAnnulations, useAnnulationsStats, useGenererAvoir } from "@/hooks/use-annulations";
 import { TablePagination } from "@/components/TablePagination";
 import { RemboursementAnnulationModal } from "@/components/RemboursementAnnulationModal";
 import type { Annulation } from "@/lib/api/annulations";
+import {
+  DocumentStatCard,
+  DocumentFilters,
+  DocumentEmptyState,
+  DocumentLoadingState,
+} from "@/components/shared/documents";
+
+const typeFilterOptions = [
+  { value: "all", label: "Tous les types" },
+  { value: "devis", label: "Devis" },
+  { value: "ordre", label: "Ordres" },
+  { value: "facture", label: "Factures" },
+];
+
+const typeColors: Record<string, string> = {
+  devis: "bg-muted text-muted-foreground",
+  ordre: "bg-primary/10 text-primary border-primary/20",
+  facture: "bg-accent text-accent-foreground",
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export default function AnnulationsPage() {
   const navigate = useNavigate();
@@ -55,13 +72,10 @@ export default function AnnulationsPage() {
   const annulations = annulationsData?.data || [];
   const meta = annulationsData?.meta;
 
+  const hasFilters = !!search || typeFilter !== "all";
+
   const getTypeBadge = (type: string) => {
-    const colors: Record<string, string> = {
-      devis: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-      ordre: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-      facture: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-    };
-    return <Badge className={colors[type]}>{type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
+    return <Badge className={typeColors[type] || typeColors.devis}>{type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
   };
 
   const handleGenererAvoir = (annulation: Annulation) => {
@@ -73,105 +87,97 @@ export default function AnnulationsPage() {
     setRemboursementModalOpen(true);
   };
 
-  // État vide
-  if (!isLoading && annulations.length === 0 && !search && typeFilter === "all") {
+  const clearFilters = () => {
+    setSearch("");
+    setTypeFilter("all");
+    setPage(1);
+  };
+
+  // Loading
+  if (isLoading) {
     return (
       <MainLayout title="Annulations & Avoirs">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Ban className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Aucune annulation</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Les annulations de devis, ordres et factures apparaîtront ici.
-            Vous pouvez annuler un document depuis sa page de détail.
-          </p>
-        </div>
+        <DocumentLoadingState message="Chargement des annulations..." />
+      </MainLayout>
+    );
+  }
+
+  // État vide
+  if (annulations.length === 0 && !hasFilters) {
+    return (
+      <MainLayout title="Annulations & Avoirs">
+        <DocumentEmptyState
+          icon={Ban}
+          title="Aucune annulation"
+          description="Les annulations de devis, ordres et factures apparaîtront ici. Vous pouvez annuler un document depuis sa page de détail."
+        />
       </MainLayout>
     );
   }
 
   return (
     <MainLayout title="Annulations & Avoirs">
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Annulations & Avoirs</h1>
+            <p className="text-muted-foreground mt-1">Gérez les annulations et les avoirs</p>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Annulations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.total || annulations.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">
-                {formatMontant(stats?.montant_total || annulations.reduce((sum, a) => sum + a.montant, 0))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avoirs Générés</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {stats?.avoirs_generes || annulations.filter(a => a.avoir_genere).length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">En attente</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {annulations.filter(a => !a.avoir_genere).length}
-              </div>
-            </CardContent>
-          </Card>
+          <DocumentStatCard
+            title="Total Annulations"
+            value={stats?.total || annulations.length}
+            icon={Ban}
+            subtitle="annulations"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Montant Total"
+            value={formatMontant(stats?.montant_total || annulations.reduce((sum, a) => sum + a.montant, 0))}
+            icon={Calculator}
+            subtitle="FCFA"
+            variant="danger"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Avoirs Générés"
+            value={stats?.avoirs_generes || annulations.filter(a => a.avoir_genere).length}
+            icon={CheckCircle}
+            subtitle="avoirs"
+            variant="success"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="En attente"
+            value={annulations.filter(a => !a.avoir_genere).length}
+            icon={Clock}
+            subtitle="à traiter"
+            variant="warning"
+            delay={0.3}
+          />
         </div>
 
         {/* Filtres */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="pl-10"
-            />
-          </div>
-          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Type de document" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les types</SelectItem>
-              <SelectItem value="devis">Devis</SelectItem>
-              <SelectItem value="ordre">Ordres</SelectItem>
-              <SelectItem value="facture">Factures</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <DocumentFilters
+          searchTerm={search}
+          onSearchChange={(value) => { setSearch(value); setPage(1); }}
+          searchPlaceholder="Rechercher par numéro, client..."
+          statutFilter={typeFilter}
+          onStatutChange={(v) => { setTypeFilter(v); setPage(1); }}
+          statutOptions={typeFilterOptions}
+        />
 
         {/* Table */}
-        <Card>
+        <Card className="border-border/50 overflow-hidden">
           <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
+                  <TableRow className="hover:bg-transparent bg-muted/50">
                     <TableHead>N° Annulation</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Document</TableHead>
@@ -186,25 +192,40 @@ export default function AnnulationsPage() {
                 <TableBody>
                   {annulations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        Aucune annulation trouvée
+                      <TableCell colSpan={9} className="py-16 text-center text-muted-foreground">
+                        <div className="flex flex-col items-center gap-2">
+                          <Ban className="h-8 w-8 opacity-50" />
+                          <p>Aucune annulation trouvée</p>
+                          {hasFilters && (
+                            <Button variant="link" onClick={clearFilters} className="text-primary">
+                              Réinitialiser les filtres
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    annulations.map((annulation) => (
-                      <TableRow key={annulation.id}>
-                        <TableCell className="font-medium">{annulation.numero}</TableCell>
+                    annulations.map((annulation, index) => (
+                      <motion.tr
+                        key={annulation.id}
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        transition={{ delay: index * 0.03 }}
+                        className="group hover:bg-muted/50 transition-colors"
+                      >
+                        <TableCell className="font-medium font-mono">{annulation.numero}</TableCell>
                         <TableCell>{getTypeBadge(annulation.type)}</TableCell>
                         <TableCell className="font-mono text-sm">{annulation.document_numero}</TableCell>
                         <TableCell>{annulation.client?.nom || '-'}</TableCell>
-                        <TableCell>{formatDate(annulation.date)}</TableCell>
-                        <TableCell className="text-right text-destructive font-medium">
+                        <TableCell className="text-muted-foreground">{formatDate(annulation.date)}</TableCell>
+                        <TableCell className="text-right text-destructive font-semibold">
                           -{formatMontant(annulation.montant)}
                         </TableCell>
                         <TableCell>
                           {annulation.avoir_genere ? (
                             <div>
-                              <Badge variant="default" className="bg-green-600">
+                              <Badge className="bg-success/20 text-success">
                                 {annulation.numero_avoir || 'Généré'}
                               </Badge>
                               {annulation.solde_avoir > 0 && (
@@ -214,20 +235,16 @@ export default function AnnulationsPage() {
                               )}
                             </div>
                           ) : (
-                            <Badge variant="outline">Non généré</Badge>
+                            <Badge variant="outline" className="text-muted-foreground">Non généré</Badge>
                           )}
                         </TableCell>
                         <TableCell>
                           {annulation.rembourse ? (
-                            <Badge variant="default" className="bg-blue-600">
-                              Remboursé
-                            </Badge>
+                            <Badge className="bg-info/20 text-info">Remboursé</Badge>
                           ) : annulation.avoir_genere ? (
                             <Badge variant="secondary">Avoir actif</Badge>
                           ) : (
-                            <Badge variant="outline" className="text-orange-600 border-orange-300">
-                              En attente
-                            </Badge>
+                            <Badge className="bg-warning/20 text-warning">En attente</Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -264,12 +281,12 @@ export default function AnnulationsPage() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
-                      </TableRow>
+                      </motion.tr>
                     ))
                   )}
                 </TableBody>
               </Table>
-            )}
+            </div>
           </CardContent>
         </Card>
 

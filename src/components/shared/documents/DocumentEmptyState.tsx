@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
-interface DocumentEmptyStateProps {
+export interface DocumentEmptyStateProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  actionLabel: string;
-  onAction: () => void;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 export function DocumentEmptyState({
@@ -49,15 +49,17 @@ export function DocumentEmptyState({
       >
         {description}
       </motion.p>
-      <motion.div 
-        whileHover={{ scale: 1.05 }} 
-        whileTap={{ scale: 0.95 }}
-      >
-        <Button onClick={onAction} className="gap-2 shadow-md" size="lg">
-          <Plus className="h-5 w-5" />
-          {actionLabel}
-        </Button>
-      </motion.div>
+      {actionLabel && onAction && (
+        <motion.div 
+          whileHover={{ scale: 1.05 }} 
+          whileTap={{ scale: 0.95 }}
+        >
+          <Button onClick={onAction} className="gap-2 shadow-md" size="lg">
+            <Plus className="h-5 w-5" />
+            {actionLabel}
+          </Button>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
