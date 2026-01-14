@@ -79,8 +79,9 @@ export default function ProfilPage() {
     });
   }
 
-  const getInitials = (name: string): string => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const getInitials = (name?: string | null): string => {
+    if (!name) return "U";
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || "U";
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -219,11 +220,11 @@ export default function ProfilPage() {
                 {/* Avatar avec bouton de modification */}
                 <div className="relative group">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                    {profile.avatar_url ? (
-                      <AvatarImage src={profile.avatar_url} alt={profile.name} />
+                    {profile?.avatar_url ? (
+                      <AvatarImage src={profile.avatar_url} alt={profile?.name || "Utilisateur"} />
                     ) : null}
                     <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                      {getInitials(profile.name)}
+                      {getInitials(profile?.name)}
                     </AvatarFallback>
                   </Avatar>
                   
