@@ -16,16 +16,15 @@ use App\Http\Controllers\Api\AlertController;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
-    // Notifications in-app (préfixe 'alerts' pour éviter conflit avec emails)
-    Route::prefix('alerts')->group(function () {
-        Route::get('/', [AlertController::class, 'index']);
-        Route::get('/unread-count', [AlertController::class, 'unreadCount']);
-        Route::get('/system', [AlertController::class, 'alerts']);
-        Route::get('/stats', [AlertController::class, 'stats']);
-        Route::put('/{id}/read', [AlertController::class, 'markAsRead']);
-        Route::put('/mark-all-read', [AlertController::class, 'markAllAsRead']);
-        Route::delete('/{id}', [AlertController::class, 'destroy']);
-        Route::delete('/', [AlertController::class, 'destroyAll']);
-    });
+// Les routes sont déjà dans le groupe auth:sanctum de api.php
+// Pas besoin de redéfinir le middleware ici
+Route::prefix('alerts')->group(function () {
+    Route::get('/', [AlertController::class, 'index']);
+    Route::get('/unread-count', [AlertController::class, 'unreadCount']);
+    Route::get('/system', [AlertController::class, 'alerts']);
+    Route::get('/stats', [AlertController::class, 'stats']);
+    Route::put('/{id}/read', [AlertController::class, 'markAsRead']);
+    Route::put('/mark-all-read', [AlertController::class, 'markAllAsRead']);
+    Route::delete('/{id}', [AlertController::class, 'destroy']);
+    Route::delete('/', [AlertController::class, 'destroyAll']);
 });
