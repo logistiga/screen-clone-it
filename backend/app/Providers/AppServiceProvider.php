@@ -98,8 +98,50 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Rate limiter général API
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Rate limiter strict pour login (5 tentatives par minute)
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by($request->input('email') . '|' . $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    $retryAfter = $headers['Retry-After'] ?? 60;
+                    return response()->json([
+                        'message' => "Trop de tentatives de connexion. Réessayez dans {$retryAfter} secondes.",
+                        'error' => 'too_many_attempts',
+                        'retry_after' => (int) $retryAfter,
+                    ], 429, $headers);
+                });
+        });
+
+        // Rate limiter pour reset password (3 tentatives par minute)
+        RateLimiter::for('password-reset', function (Request $request) {
+            return Limit::perMinute(3)
+                ->by($request->input('email') . '|' . $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    $retryAfter = $headers['Retry-After'] ?? 60;
+                    return response()->json([
+                        'message' => "Trop de demandes de réinitialisation. Réessayez dans {$retryAfter} secondes.",
+                        'error' => 'too_many_attempts',
+                        'retry_after' => (int) $retryAfter,
+                    ], 429, $headers);
+                });
+        });
+
+        // Rate limiter pour les routes sensibles (10 par minute)
+        RateLimiter::for('sensitive', function (Request $request) {
+            return Limit::perMinute(10)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Trop de requêtes. Veuillez patienter.',
+                        'error' => 'too_many_requests',
+                        'retry_after' => (int) ($headers['Retry-After'] ?? 60),
+                    ], 429, $headers);
+                });
         });
     }
 }
