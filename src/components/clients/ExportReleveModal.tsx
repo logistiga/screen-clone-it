@@ -536,9 +536,12 @@ function generatePdfHtml({
     <body>
       <div class="header">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div>
-            <h1>RELEVÉ DE COMPTE</h1>
-            <p class="subtitle">Période: ${format(dateDebut, "dd MMMM yyyy", { locale: fr })} - ${format(dateFin, "dd MMMM yyyy", { locale: fr })}</p>
+          <div style="display: flex; align-items: center; gap: 20px;">
+            <img src="${window.location.origin}/images/logo-logistiga.png" alt="Logistiga" style="height: 60px; width: auto;" />
+            <div>
+              <h1>RELEVÉ DE COMPTE</h1>
+              <p class="subtitle">Période: ${format(dateDebut, "dd MMMM yyyy", { locale: fr })} - ${format(dateFin, "dd MMMM yyyy", { locale: fr })}</p>
+            </div>
           </div>
           <div class="date">
             Généré le ${format(new Date(), "dd/MM/yyyy à HH:mm", { locale: fr })}
@@ -577,7 +580,12 @@ function generatePdfHtml({
       ${noDataMessage}
 
       <div class="footer">
-        Document généré automatiquement - ${format(new Date(), "dd/MM/yyyy HH:mm")}
+        <div style="border-top: 2px solid #e53935; padding-top: 15px; line-height: 1.6;">
+          <p style="font-weight: bold; color: #333; margin-bottom: 5px;">LOGISTIGA SAS au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</p>
+          <p>Tel : (+241) 01 70 42 30 / 01 70 56 76 - B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</p>
+          <p>Email: <a href="mailto:info@logistiga.com" style="color: #e53935;">info@logistiga.com</a> – Site web: <a href="https://www.logistiga.com" style="color: #e53935;">www.logistiga.com</a></p>
+          <p style="margin-top: 5px;">Compte BGFI N°: 40003 04140 41041658011 78 – Compte UGB N°: 40002 00043 90000338691 84</p>
+        </div>
       </div>
     </body>
     </html>
