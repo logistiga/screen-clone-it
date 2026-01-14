@@ -110,8 +110,14 @@ export default function DevisPage() {
       } else if (confirmAction.type === 'supprimer') {
         await deleteDevisMutation.mutateAsync(confirmAction.id);
       } else if (confirmAction.type === 'convertir') {
-        await convertMutation.mutateAsync(confirmAction.id);
-        navigate("/ordres");
+        const result = await convertMutation.mutateAsync(confirmAction.id);
+        // Rediriger vers l'ordre créé en mode édition
+        const ordreId = result?.data?.id;
+        if (ordreId) {
+          navigate(`/ordres/${ordreId}/modifier`);
+        } else {
+          navigate("/ordres");
+        }
       }
     } catch {
       // noop: les mutations gèrent déjà le toast d'erreur dans onError
