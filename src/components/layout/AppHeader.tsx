@@ -9,12 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useProfile } from "@/hooks/use-users";
 
 interface AppHeaderProps {
   title: string;
@@ -23,6 +24,7 @@ interface AppHeaderProps {
 export function AppHeader({ title }: AppHeaderProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { data: profile } = useProfile();
   const { toast } = useToast();
 
   const handleLogout = async () => {
@@ -58,6 +60,9 @@ export function AppHeader({ title }: AppHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <Avatar className="h-8 w-8">
+                {profile?.avatar_url ? (
+                  <AvatarImage src={profile.avatar_url} alt={user?.nom || "Utilisateur"} />
+                ) : null}
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                   {getUserInitials()}
                 </AvatarFallback>

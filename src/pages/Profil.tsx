@@ -1,20 +1,21 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   User, Mail, Shield, Lock, Eye, EyeOff, Save, 
-  Loader2, CheckCircle2, Calendar, AlertTriangle, KeyRound
+  Loader2, CheckCircle2, Calendar, AlertTriangle, KeyRound,
+  Camera, Trash2, Upload
 } from "lucide-react";
-import { useProfile, useUpdateProfile, useUpdatePassword } from "@/hooks/use-users";
+import { useProfile, useUpdateProfile, useUpdatePassword, useUploadAvatar, useDeleteAvatar } from "@/hooks/use-users";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -35,7 +36,10 @@ export default function ProfilPage() {
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const updateProfile = useUpdateProfile();
   const updatePassword = useUpdatePassword();
+  const uploadAvatar = useUploadAvatar();
+  const deleteAvatar = useDeleteAvatar();
   
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState("informations");
   
   // Formulaire informations
@@ -123,6 +127,32 @@ export default function ProfilPage() {
     );
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      return;
+    }
+
+    // Vérifier la taille (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return;
+    }
+
+    await uploadAvatar.mutateAsync(file);
+    
+    // Réinitialiser l'input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    await deleteAvatar.mutateAsync();
+  };
+
   const formatDate = (date: string): string => {
     return format(new Date(date), "dd MMMM yyyy 'à' HH:mm", { locale: fr });
   };
@@ -186,11 +216,55 @@ export default function ProfilPage() {
             <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5" />
             <CardContent className="relative pb-6">
               <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-12">
-                <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                    {getInitials(profile.name)}
-                  </AvatarFallback>
-                </Avatar>
+                {/* Avatar avec bouton de modification */}
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
+                    {profile.avatar_url ? (
+                      <AvatarImage src={profile.avatar_url} alt={profile.name} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+                      {getInitials(profile.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Overlay pour modifier la photo */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                       onClick={() => fileInputRef.current?.click()}>
+                    {uploadAvatar.isPending ? (
+                      <Loader2 className="h-6 w-6 text-white animate-spin" />
+                    ) : (
+                      <Camera className="h-6 w-6 text-white" />
+                    )}
+                  </div>
+                  
+                  {/* Bouton supprimer si une photo existe */}
+                  {profile.avatar_url && !uploadAvatar.isPending && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={handleDeleteAvatar}
+                      disabled={deleteAvatar.isPending}
+                    >
+                      {deleteAvatar.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                    </Button>
+                  )}
+                  
+                  {/* Input fichier caché */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </div>
+                
                 <div className="flex-1 text-center sm:text-left sm:pb-2">
                   <h2 className="text-2xl font-bold">{profile.name}</h2>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
@@ -205,6 +279,10 @@ export default function ProfilPage() {
                       </Badge>
                     )}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    <Upload className="h-3 w-3 inline-block mr-1" />
+                    Survolez la photo pour la modifier (max 5 Mo)
+                  </p>
                 </div>
                 {profile.email_verified_at && (
                   <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50">
