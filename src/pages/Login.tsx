@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock, Mail, LogIn, Eye, EyeOff } from "lucide-react";
+import { Loader2, Lock, Mail, LogIn, Eye, EyeOff, User, Truck, Package, Ship } from "lucide-react";
 import logo from "@/assets/logistiga-logo-new.png";
 
 export default function LoginPage() {
@@ -71,44 +71,221 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDI4M2UiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIxIDEuNzktNCA0LTRzNCAxLjc5IDQgNC0xLjc5IDQtNCA0LTQtMS43OS00LTR6bTAtMTZjMC0yLjIxIDEuNzktNCA0LTRzNCAxLjc5IDQgNC0xLjc5IDQtNCA0LTQtMS43OS00LTR6bTE2IDE2YzAtMi4yMSAxLjc5LTQgNC00czQgMS43OSA0IDQtMS43OSA0LTQgNC00LTEuNzktNC00em0tMzIgMGMwLTIuMjEgMS43OS00IDQtNHM0IDEuNzkgNCA0LTEuNzkgNC00IDQtNC0xLjc5LTQtNHptMTYtMzJjMC0yLjIxIDEuNzktNCA0LTRzNCAxLjc5IDQgNC0xLjc5IDQtNCA0LTQtMS43OS00LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
+    <div className="min-h-screen flex">
+      {/* Section gauche - Illustration avec courbe */}
+      <motion.div 
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #5B4FE9 0%, #7C3AED 50%, #4F46E5 100%)"
+        }}
+      >
+        {/* Forme courbe */}
+        <div 
+          className="absolute right-0 top-0 h-full w-32"
+          style={{
+            background: "white",
+            borderRadius: "100% 0 0 100% / 50% 0 0 50%",
+            transform: "translateX(50%)"
+          }}
+        />
+        
+        {/* Contenu illustratif */}
+        <div className="flex flex-col items-center justify-center w-full p-12 relative z-10">
+          {/* Illustration smartphone/app */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="relative"
+          >
+            {/* Téléphone stylisé */}
+            <div className="relative">
+              <div className="w-48 h-80 bg-slate-900/30 backdrop-blur-sm rounded-3xl border-4 border-white/20 flex flex-col items-center justify-center p-4 shadow-2xl">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-2 bg-white/20 rounded-full" />
+                
+                {/* Icône de camion animée */}
+                <motion.div
+                  animate={{ 
+                    y: [0, -10, 0],
+                  }}
+                  transition={{ 
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="mb-6"
+                >
+                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+                    <Truck className="h-10 w-10 text-white" />
+                  </div>
+                </motion.div>
 
-      <Card className="w-full max-w-md relative z-10 shadow-2xl border-slate-700 bg-slate-800/90 backdrop-blur-sm">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <img src={logo} alt="LOJISTIGA" className="h-16" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl font-bold text-white">Connexion</CardTitle>
-            <CardDescription className="text-slate-400">
-              Accédez à votre espace de gestion logistique
-            </CardDescription>
-          </div>
-        </CardHeader>
+                {/* Lignes de contenu */}
+                <div className="space-y-3 w-full">
+                  <div className="h-3 bg-white/30 rounded-full w-3/4 mx-auto" />
+                  <div className="h-3 bg-white/20 rounded-full w-1/2 mx-auto" />
+                  <div className="h-3 bg-white/25 rounded-full w-2/3 mx-auto" />
+                </div>
+              </div>
 
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+              {/* Icônes flottantes */}
+              <motion.div
+                animate={{ 
+                  y: [0, -8, 0],
+                  rotate: [0, 5, 0]
+                }}
+                transition={{ 
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 0.5
+                }}
+                className="absolute -left-8 top-16"
+              >
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                  <Package className="h-6 w-6 text-white" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                animate={{ 
+                  y: [0, 8, 0],
+                  rotate: [0, -5, 0]
+                }}
+                transition={{ 
+                  duration: 3.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1
+                }}
+                className="absolute -right-6 top-32"
+              >
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                  <Ship className="h-7 w-7 text-white" />
+                </div>
+              </motion.div>
+
+              {/* Personnage silhouette */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="absolute -right-16 -bottom-4"
+              >
+                <div className="relative">
+                  <div className="w-16 h-40 relative">
+                    {/* Corps simplifié */}
+                    <div className="absolute bottom-0 w-full">
+                      <div className="w-10 h-24 bg-slate-800/60 rounded-t-full mx-auto" />
+                      <div className="w-8 h-8 bg-slate-700/60 rounded-full mx-auto -mt-1" />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Étoiles/points décoratifs */}
+          <div className="absolute top-20 left-20 w-2 h-2 bg-white/40 rounded-full" />
+          <div className="absolute top-32 right-40 w-3 h-3 bg-white/30 rounded-full" />
+          <div className="absolute bottom-40 left-32 w-2 h-2 bg-white/50 rounded-full" />
+          <div className="absolute bottom-20 right-48 w-1.5 h-1.5 bg-white/40 rounded-full" />
+          
+          {/* Lune décorative */}
+          <motion.div
+            animate={{ 
+              scale: [1, 1.05, 1],
+            }}
+            transition={{ 
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="absolute bottom-24 left-24"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-yellow-200 to-yellow-300 rounded-full shadow-lg shadow-yellow-400/30" />
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Section droite - Formulaire */}
+      <motion.div 
+        initial={{ x: 100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-white dark:bg-slate-900"
+      >
+        <div className="w-full max-w-md space-y-8">
+          {/* Logo et titre */}
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-center"
+          >
+            {/* Avatar/Icon */}
+            <div className="flex justify-center mb-6">
+              <motion.div 
+                className="relative"
+                whileHover={{ scale: 1.05 }}
+              >
+                <div 
+                  className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
+                  style={{
+                    background: "linear-gradient(135deg, #5B4FE9 0%, #7C3AED 100%)"
+                  }}
+                >
+                  <User className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-white">
+                  <Lock className="h-3 w-3 text-white" />
+                </div>
+              </motion.div>
+            </div>
+
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">
+              BIENVENUE
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400">
+              Connectez-vous à votre espace LOJISTIGA
+            </p>
+          </motion.div>
+
+          {/* Formulaire */}
+          <motion.form 
+            onSubmit={handleSubmit}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="space-y-6"
+          >
             {error && (
-              <Alert variant="destructive" className="bg-red-900/50 border-red-800">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              </motion.div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-200">
+              <Label htmlFor="email" className="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <Mail className="h-4 w-4" />
                 Adresse email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="exemple@lojistiga.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-primary"
+                  className="h-12 pl-4 pr-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-violet-500 dark:focus:border-violet-500 rounded-lg transition-all"
                   autoComplete="email"
                   disabled={isLoading}
                 />
@@ -116,64 +293,82 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">
-                Mot de passe
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Mot de passe
+                </Label>
+                <button
+                  type="button"
+                  className="text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                >
+                  Mot de passe oublié?
+                </button>
+              </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-primary"
+                  className="h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-violet-500 dark:focus:border-violet-500 rounded-lg transition-all"
                   autoComplete="current-password"
                   disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
-          </CardContent>
 
-          <CardFooter className="flex flex-col gap-4">
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90"
-              disabled={isLoading}
-              size="lg"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connexion en cours...
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Se connecter
-                </>
-              )}
-            </Button>
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-semibold rounded-lg shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #5B4FE9 0%, #7C3AED 100%)"
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Connexion en cours...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-5 w-5" />
+                    CONNEXION
+                  </>
+                )}
+              </Button>
+            </motion.div>
+          </motion.form>
 
-            <p className="text-sm text-slate-400 text-center">
-              Contactez l'administrateur si vous avez oublié vos identifiants
+          {/* Logo en bas */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="pt-6 flex flex-col items-center gap-4"
+          >
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
+            <img src={logo} alt="LOJISTIGA" className="h-10 opacity-80" />
+            <p className="text-xs text-slate-400">
+              © {new Date().getFullYear()} LOJISTIGA - Tous droits réservés
             </p>
-          </CardFooter>
-        </form>
-      </Card>
-
-      {/* Footer */}
-      <div className="absolute bottom-4 text-center text-slate-500 text-sm">
-        © {new Date().getFullYear()} LOJISTIGA - Tous droits réservés
-      </div>
+          </motion.div>
+        </div>
+      </motion.div>
     </div>
   );
 }
