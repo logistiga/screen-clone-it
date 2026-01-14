@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  DocumentStatCard,
+  DocumentFilters,
+  DocumentEmptyState
+} from "@/components/shared/documents";
 import { 
   Mail, 
   Settings, 
@@ -32,7 +38,10 @@ import {
   Receipt,
   Truck,
   AlertCircle,
-  Bell
+  Bell,
+  RefreshCw,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 
 interface EmailTemplate {
@@ -264,13 +273,13 @@ const defaultConfig: EmailConfig = {
 };
 
 const typeLabels: Record<EmailTemplate["type"], { label: string; icon: React.ReactNode; color: string }> = {
-  devis: { label: "Devis", icon: <FileText className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
-  ordre: { label: "Ordre de travail", icon: <Truck className="h-4 w-4" />, color: "bg-purple-100 text-purple-800" },
-  facture: { label: "Facture", icon: <Receipt className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
-  relance: { label: "Relance", icon: <AlertCircle className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
-  confirmation: { label: "Confirmation", icon: <Check className="h-4 w-4" />, color: "bg-emerald-100 text-emerald-800" },
-  notification: { label: "Notification", icon: <Bell className="h-4 w-4" />, color: "bg-cyan-100 text-cyan-800" },
-  custom: { label: "Personnalisé", icon: <FileText className="h-4 w-4" />, color: "bg-gray-100 text-gray-800" }
+  devis: { label: "Devis", icon: <FileText className="h-4 w-4" />, color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" },
+  ordre: { label: "Ordre de travail", icon: <Truck className="h-4 w-4" />, color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" },
+  facture: { label: "Facture", icon: <Receipt className="h-4 w-4" />, color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
+  relance: { label: "Relance", icon: <AlertCircle className="h-4 w-4" />, color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" },
+  confirmation: { label: "Confirmation", icon: <Check className="h-4 w-4" />, color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  notification: { label: "Notification", icon: <Bell className="h-4 w-4" />, color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400" },
+  custom: { label: "Personnalisé", icon: <FileText className="h-4 w-4" />, color: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400" }
 };
 
 const declencheurLabels: Record<string, string> = {
@@ -284,11 +293,49 @@ const declencheurLabels: Record<string, string> = {
   devis_expire: "Devis expiré"
 };
 
+const typeFilterOptions = [
+  { value: "all", label: "Tous les types" },
+  { value: "devis", label: "Devis" },
+  { value: "ordre", label: "Ordre de travail" },
+  { value: "facture", label: "Facture" },
+  { value: "relance", label: "Relance" },
+  { value: "confirmation", label: "Confirmation" },
+  { value: "notification", label: "Notification" },
+  { value: "custom", label: "Personnalisé" }
+];
+
+const statusFilterOptions = [
+  { value: "all", label: "Tous les statuts" },
+  { value: "actif", label: "Actif" },
+  { value: "inactif", label: "Inactif" }
+];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
 export default function EmailsPage() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>(defaultTemplates);
   const [automations, setAutomations] = useState<AutomationRule[]>(defaultAutomations);
   const [config, setConfig] = useState<EmailConfig>(defaultConfig);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [automationSearch, setAutomationSearch] = useState("");
+  const [automationStatusFilter, setAutomationStatusFilter] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Modal states
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -322,6 +369,62 @@ export default function EmailsPage() {
   const [testEmail, setTestEmail] = useState("");
   const [testTemplateId, setTestTemplateId] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
+
+  // Computed stats
+  const stats = useMemo(() => {
+    const totalTemplates = templates.length;
+    const activeTemplates = templates.filter(t => t.actif).length;
+    const inactiveTemplates = templates.filter(t => !t.actif).length;
+    const totalAutomations = automations.length;
+    const activeAutomations = automations.filter(a => a.actif).length;
+    
+    return {
+      totalTemplates,
+      activeTemplates,
+      inactiveTemplates,
+      totalAutomations,
+      activeAutomations
+    };
+  }, [templates, automations]);
+
+  // Filtered templates
+  const filteredTemplates = useMemo(() => {
+    return templates.filter(template => {
+      const matchesSearch = 
+        template.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        template.objet.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = typeFilter === "all" || template.type === typeFilter;
+      const matchesStatus = statusFilter === "all" || 
+        (statusFilter === "actif" && template.actif) ||
+        (statusFilter === "inactif" && !template.actif);
+      
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [templates, searchTerm, typeFilter, statusFilter]);
+
+  // Filtered automations
+  const filteredAutomations = useMemo(() => {
+    return automations.filter(automation => {
+      const matchesSearch = 
+        automation.nom.toLowerCase().includes(automationSearch.toLowerCase()) ||
+        automation.conditions.toLowerCase().includes(automationSearch.toLowerCase());
+      const matchesStatus = automationStatusFilter === "all" || 
+        (automationStatusFilter === "actif" && automation.actif) ||
+        (automationStatusFilter === "inactif" && !automation.actif);
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [automations, automationSearch, automationStatusFilter]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
+    toast({
+      title: "Données actualisées",
+      description: "Les modèles et automatisations ont été rafraîchis"
+    });
+  };
 
   // Template handlers
   const handleOpenAddTemplate = () => {
@@ -364,7 +467,6 @@ export default function EmailsPage() {
   };
 
   const handleDeleteTemplate = (template: EmailTemplate) => {
-    // Check if template is used in automations
     const usedInAutomation = automations.find(a => a.templateId === template.id);
     if (usedInAutomation) {
       toast({
@@ -391,7 +493,6 @@ export default function EmailsPage() {
       return;
     }
 
-    // Extract variables from content
     const variableRegex = /\{\{(\w+)\}\}/g;
     const extractedVars: string[] = [];
     let match;
@@ -533,7 +634,6 @@ export default function EmailsPage() {
     }
 
     setIsSendingTest(true);
-    // Simulate sending
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsSendingTest(false);
     
@@ -551,9 +651,71 @@ export default function EmailsPage() {
 
   return (
     <MainLayout title="Gestion des Emails">
-      <Tabs defaultValue="templates" className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <TabsList>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="space-y-6"
+      >
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestion des Emails</h1>
+            <p className="text-muted-foreground">Gérez vos modèles d'emails et automatisations</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+            <Button onClick={() => setShowTestModal(true)} variant="outline" className="gap-2">
+              <TestTube className="h-4 w-4" />
+              Email de test
+            </Button>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <DocumentStatCard
+            title="Total modèles"
+            value={stats.totalTemplates}
+            icon={FileText}
+            variant="primary"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Modèles actifs"
+            value={stats.activeTemplates}
+            icon={CheckCircle}
+            variant="success"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Automatisations"
+            value={stats.totalAutomations}
+            icon={Zap}
+            variant="warning"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Auto. actives"
+            value={stats.activeAutomations}
+            icon={Bell}
+            variant="info"
+            delay={0.3}
+          />
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="templates" className="space-y-6">
+          <TabsList className="bg-muted/50">
             <TabsTrigger value="templates" className="gap-2">
               <FileText className="h-4 w-4" />
               Modèles
@@ -567,543 +729,637 @@ export default function EmailsPage() {
               Configuration
             </TabsTrigger>
           </TabsList>
-          
-          <Button onClick={() => setShowTestModal(true)} variant="outline" className="gap-2">
-            <TestTube className="h-4 w-4" />
-            Envoyer un email de test
-          </Button>
-        </div>
 
-        {/* Templates Tab */}
-        <TabsContent value="templates" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold">Modèles d'emails</h2>
-              <p className="text-muted-foreground">Gérez vos modèles d'emails pour chaque type de document</p>
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">Modèles d'emails</h2>
+                <p className="text-sm text-muted-foreground">Gérez vos modèles d'emails pour chaque type de document</p>
+              </div>
+              <Button onClick={handleOpenAddTemplate} className="gap-2 shadow-md">
+                <Plus className="h-4 w-4" />
+                Nouveau modèle
+              </Button>
             </div>
-            <Button onClick={handleOpenAddTemplate} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nouveau modèle
-            </Button>
-          </div>
 
-          <div className="grid gap-4">
-            {templates.map(template => (
-              <Card key={template.id} className={!template.actif ? "opacity-60" : ""}>
-                <CardContent className="p-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-2 rounded-lg ${typeLabels[template.type].color}`}>
-                        {typeLabels[template.type].icon}
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{template.nom}</h3>
-                          <Badge variant="outline" className={typeLabels[template.type].color}>
-                            {typeLabels[template.type].label}
-                          </Badge>
-                          {!template.actif && <Badge variant="secondary">Inactif</Badge>}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{template.objet}</p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {template.variables.slice(0, 4).map(v => (
-                            <Badge key={v} variant="outline" className="text-xs">
-                              {`{{${v}}}`}
-                            </Badge>
-                          ))}
-                          {template.variables.length > 4 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{template.variables.length - 4} autres
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={template.actif}
-                        onCheckedChange={() => handleToggleTemplate(template)}
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => handlePreviewTemplate(template)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenEditTemplate(template)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDuplicateTemplate(template)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTemplate(template)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+            <DocumentFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              searchPlaceholder="Rechercher un modèle..."
+              statutFilter={statusFilter}
+              onStatutChange={setStatusFilter}
+              statutOptions={statusFilterOptions}
+              categorieFilter={typeFilter}
+              onCategorieChange={setTypeFilter}
+              categorieOptions={typeFilterOptions}
+            />
 
-        {/* Automations Tab */}
-        <TabsContent value="automations" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold">Automatisation des emails</h2>
-              <p className="text-muted-foreground">Configurez l'envoi automatique des emails selon les événements</p>
-            </div>
-            <Button onClick={handleOpenAddAutomation} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nouvelle automatisation
-            </Button>
-          </div>
-
-          <div className="grid gap-4">
-            {automations.map(automation => {
-              const template = getTemplateById(automation.templateId);
-              return (
-                <Card key={automation.id} className={!automation.actif ? "opacity-60" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                          <Zap className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-1">
+            {filteredTemplates.length === 0 ? (
+              <DocumentEmptyState
+                icon={Mail}
+                title="Aucun modèle trouvé"
+                description="Aucun modèle d'email ne correspond à vos critères de recherche."
+                actionLabel="Nouveau modèle"
+                onAction={handleOpenAddTemplate}
+              />
+            ) : (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-4"
+              >
+                {filteredTemplates.map((template, index) => (
+                  <motion.div
+                    key={template.id}
+                    variants={itemVariants}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className={`transition-all duration-200 hover:shadow-md ${!template.actif ? "opacity-60" : ""}`}>
+                      <CardContent className="p-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            <div className={`p-2.5 rounded-xl ${typeLabels[template.type].color}`}>
+                              {typeLabels[template.type].icon}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-medium">{template.nom}</h3>
+                                <Badge variant="outline" className={typeLabels[template.type].color}>
+                                  {typeLabels[template.type].label}
+                                </Badge>
+                                {!template.actif && (
+                                  <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Inactif
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-1">{template.objet}</p>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {template.variables.slice(0, 4).map(v => (
+                                  <Badge key={v} variant="outline" className="text-xs bg-muted/50">
+                                    {`{{${v}}}`}
+                                  </Badge>
+                                ))}
+                                {template.variables.length > 4 && (
+                                  <Badge variant="outline" className="text-xs bg-muted/50">
+                                    +{template.variables.length - 4} autres
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
                           <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{automation.nom}</h3>
-                            {!automation.actif && <Badge variant="secondary">Inactif</Badge>}
+                            <Switch
+                              checked={template.actif}
+                              onCheckedChange={() => handleToggleTemplate(template)}
+                            />
+                            <Button variant="ghost" size="icon" onClick={() => handlePreviewTemplate(template)} className="hover:bg-primary/10">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditTemplate(template)} className="hover:bg-primary/10">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDuplicateTemplate(template)} className="hover:bg-primary/10">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTemplate(template)} className="hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium">Déclencheur:</span> {declencheurLabels[automation.declencheur]}
-                          </p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {automation.delai === 0 
-                                ? "Immédiat" 
-                                : `${automation.delai} ${automation.delaiUnite}`}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {template?.nom || "Modèle inconnu"}
-                            </span>
-                          </div>
-                          {automation.conditions && (
-                            <p className="text-xs text-muted-foreground italic">{automation.conditions}</p>
-                          )}
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={automation.actif}
-                          onCheckedChange={() => handleToggleAutomation(automation)}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </TabsContent>
+
+          {/* Automations Tab */}
+          <TabsContent value="automations" className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">Automatisation des emails</h2>
+                <p className="text-sm text-muted-foreground">Configurez l'envoi automatique des emails selon les événements</p>
+              </div>
+              <Button onClick={handleOpenAddAutomation} className="gap-2 shadow-md">
+                <Plus className="h-4 w-4" />
+                Nouvelle automatisation
+              </Button>
+            </div>
+
+            <DocumentFilters
+              searchTerm={automationSearch}
+              onSearchChange={setAutomationSearch}
+              searchPlaceholder="Rechercher une automatisation..."
+              statutFilter={automationStatusFilter}
+              onStatutChange={setAutomationStatusFilter}
+              statutOptions={statusFilterOptions}
+            />
+
+            {filteredAutomations.length === 0 ? (
+              <DocumentEmptyState
+                icon={Zap}
+                title="Aucune automatisation trouvée"
+                description="Aucune automatisation ne correspond à vos critères de recherche."
+                actionLabel="Nouvelle automatisation"
+                onAction={handleOpenAddAutomation}
+              />
+            ) : (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-4"
+              >
+                {filteredAutomations.map((automation, index) => {
+                  const template = getTemplateById(automation.templateId);
+                  return (
+                    <motion.div
+                      key={automation.id}
+                      variants={itemVariants}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card className={`transition-all duration-200 hover:shadow-md ${!automation.actif ? "opacity-60" : ""}`}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                              <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                                <Zap className="h-5 w-5" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="font-medium">{automation.nom}</h3>
+                                  {automation.actif ? (
+                                    <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Actif
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Inactif
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  <span className="font-medium">Déclencheur:</span> {declencheurLabels[automation.declencheur]}
+                                </p>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {automation.delai === 0 
+                                      ? "Immédiat" 
+                                      : `${automation.delai} ${automation.delaiUnite}`}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Mail className="h-3 w-3" />
+                                    {template?.nom || "Modèle inconnu"}
+                                  </span>
+                                </div>
+                                {automation.conditions && (
+                                  <p className="text-xs text-muted-foreground italic">{automation.conditions}</p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={automation.actif}
+                                onCheckedChange={() => handleToggleAutomation(automation)}
+                              />
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenEditAutomation(automation)} className="hover:bg-primary/10">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteAutomation(automation)} className="hover:bg-destructive/10">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </TabsContent>
+
+          {/* Config Tab */}
+          <TabsContent value="config" className="space-y-6">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-6"
+            >
+              <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Server className="h-5 w-5 text-primary" />
+                      Configuration SMTP
+                    </CardTitle>
+                    <CardDescription>Paramètres du serveur d'envoi d'emails</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Serveur SMTP</Label>
+                        <Input
+                          value={config.smtpHost}
+                          onChange={e => setConfig({ ...config, smtpHost: e.target.value })}
+                          placeholder="smtp.example.com"
                         />
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditAutomation(automation)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAutomation(automation)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
                       </div>
+                      <div className="space-y-2">
+                        <Label>Port</Label>
+                        <Input
+                          value={config.smtpPort}
+                          onChange={e => setConfig({ ...config, smtpPort: e.target.value })}
+                          placeholder="587"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Utilisateur SMTP</Label>
+                        <Input
+                          value={config.smtpUser}
+                          onChange={e => setConfig({ ...config, smtpUser: e.target.value })}
+                          placeholder="user@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Mot de passe SMTP</Label>
+                        <Input
+                          type="password"
+                          value={config.smtpPassword}
+                          onChange={e => setConfig({ ...config, smtpPassword: e.target.value })}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Switch
+                        checked={config.ssl}
+                        onCheckedChange={checked => setConfig({ ...config, ssl: checked })}
+                      />
+                      <Label>Utiliser SSL/TLS</Label>
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
-        </TabsContent>
+              </motion.div>
 
-        {/* Config Tab */}
-        <TabsContent value="config" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                Configuration SMTP
-              </CardTitle>
-              <CardDescription>Paramètres du serveur d'envoi d'emails</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Serveur SMTP</Label>
-                  <Input
-                    value={config.smtpHost}
-                    onChange={e => setConfig({ ...config, smtpHost: e.target.value })}
-                    placeholder="smtp.example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Port</Label>
-                  <Input
-                    value={config.smtpPort}
-                    onChange={e => setConfig({ ...config, smtpPort: e.target.value })}
-                    placeholder="587"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Utilisateur SMTP</Label>
-                  <Input
-                    value={config.smtpUser}
-                    onChange={e => setConfig({ ...config, smtpUser: e.target.value })}
-                    placeholder="user@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Mot de passe SMTP</Label>
-                  <Input
-                    type="password"
-                    value={config.smtpPassword}
-                    onChange={e => setConfig({ ...config, smtpPassword: e.target.value })}
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={config.ssl}
-                  onCheckedChange={checked => setConfig({ ...config, ssl: checked })}
-                />
-                <Label>Utiliser SSL/TLS</Label>
-              </div>
-            </CardContent>
-          </Card>
+              <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      Informations de l'expéditeur
+                    </CardTitle>
+                    <CardDescription>Informations affichées dans les emails envoyés</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nom de l'expéditeur</Label>
+                        <Input
+                          value={config.expediteurNom}
+                          onChange={e => setConfig({ ...config, expediteurNom: e.target.value })}
+                          placeholder="Mon Entreprise"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email de l'expéditeur</Label>
+                        <Input
+                          type="email"
+                          value={config.expediteurEmail}
+                          onChange={e => setConfig({ ...config, expediteurEmail: e.target.value })}
+                          placeholder="contact@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Répondre à (Reply-To)</Label>
+                        <Input
+                          type="email"
+                          value={config.replyTo}
+                          onChange={e => setConfig({ ...config, replyTo: e.target.value })}
+                          placeholder="support@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Copie archive (BCC)</Label>
+                        <Input
+                          type="email"
+                          value={config.copieArchive}
+                          onChange={e => setConfig({ ...config, copieArchive: e.target.value })}
+                          placeholder="archive@example.com"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Signature par défaut</Label>
+                      <Textarea
+                        value={config.signature}
+                        onChange={e => setConfig({ ...config, signature: e.target.value })}
+                        rows={4}
+                        placeholder="Votre signature..."
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Informations de l'expéditeur
-              </CardTitle>
-              <CardDescription>Informations affichées dans les emails envoyés</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <motion.div variants={itemVariants} className="flex justify-end">
+                <Button onClick={handleSaveConfig} className="gap-2 shadow-md">
+                  <Check className="h-4 w-4" />
+                  Sauvegarder la configuration
+                </Button>
+              </motion.div>
+            </motion.div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Template Modal */}
+        <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-primary" />
+                {isEditing ? "Modifier le modèle" : "Nouveau modèle d'email"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nom de l'expéditeur</Label>
+                  <Label>Nom du modèle *</Label>
                   <Input
-                    value={config.expediteurNom}
-                    onChange={e => setConfig({ ...config, expediteurNom: e.target.value })}
-                    placeholder="Mon Entreprise"
+                    value={templateForm.nom}
+                    onChange={e => setTemplateForm({ ...templateForm, nom: e.target.value })}
+                    placeholder="Ex: Envoi de devis"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email de l'expéditeur</Label>
-                  <Input
-                    type="email"
-                    value={config.expediteurEmail}
-                    onChange={e => setConfig({ ...config, expediteurEmail: e.target.value })}
-                    placeholder="contact@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Répondre à (Reply-To)</Label>
-                  <Input
-                    type="email"
-                    value={config.replyTo}
-                    onChange={e => setConfig({ ...config, replyTo: e.target.value })}
-                    placeholder="support@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Copie archive (BCC)</Label>
-                  <Input
-                    type="email"
-                    value={config.copieArchive}
-                    onChange={e => setConfig({ ...config, copieArchive: e.target.value })}
-                    placeholder="archive@example.com"
-                  />
+                  <Label>Type</Label>
+                  <Select
+                    value={templateForm.type}
+                    onValueChange={value => setTemplateForm({ ...templateForm, type: value as EmailTemplate["type"] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(typeLabels).map(([key, { label }]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Signature par défaut</Label>
-                <Textarea
-                  value={config.signature}
-                  onChange={e => setConfig({ ...config, signature: e.target.value })}
-                  rows={4}
-                  placeholder="Votre signature..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end">
-            <Button onClick={handleSaveConfig} className="gap-2">
-              <Check className="h-4 w-4" />
-              Sauvegarder la configuration
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Template Modal */}
-      <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing ? "Modifier le modèle" : "Nouveau modèle d'email"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nom du modèle *</Label>
+                <Label>Objet de l'email *</Label>
                 <Input
-                  value={templateForm.nom}
-                  onChange={e => setTemplateForm({ ...templateForm, nom: e.target.value })}
-                  placeholder="Ex: Envoi de devis"
+                  value={templateForm.objet}
+                  onChange={e => setTemplateForm({ ...templateForm, objet: e.target.value })}
+                  placeholder="Ex: Votre devis {{numero_devis}}"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Type</Label>
+                <Label>Contenu de l'email *</Label>
+                <Textarea
+                  value={templateForm.contenu}
+                  onChange={e => setTemplateForm({ ...templateForm, contenu: e.target.value })}
+                  rows={12}
+                  placeholder="Rédigez le contenu de l'email..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Utilisez {`{{variable}}`} pour insérer des données dynamiques. 
+                  Ex: {`{{nom_client}}`}, {`{{numero_facture}}`}, {`{{montant_ttc}}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <Switch
+                  checked={templateForm.actif}
+                  onCheckedChange={checked => setTemplateForm({ ...templateForm, actif: checked })}
+                />
+                <Label>Modèle actif</Label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSaveTemplate} className="gap-2">
+                <Check className="h-4 w-4" />
+                {isEditing ? "Enregistrer" : "Créer le modèle"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Preview Modal */}
+        <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-primary" />
+                Aperçu: {selectedTemplate?.nom}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedTemplate && (
+              <div className="space-y-4">
+                <div className="p-4 bg-muted/50 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-1">Objet:</p>
+                  <p className="font-medium">{selectedTemplate.objet}</p>
+                </div>
+                <div className="p-4 border rounded-lg bg-card">
+                  <p className="text-sm text-muted-foreground mb-2">Contenu:</p>
+                  <pre className="whitespace-pre-wrap text-sm font-sans">{selectedTemplate.contenu}</pre>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Variables disponibles:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTemplate.variables.map(v => (
+                      <Badge key={v} variant="outline" className="bg-primary/10">{`{{${v}}}`}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
+                Fermer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Automation Modal */}
+        <Dialog open={showAutomationModal} onOpenChange={setShowAutomationModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                {isEditing ? "Modifier l'automatisation" : "Nouvelle automatisation"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nom de l'automatisation *</Label>
+                <Input
+                  value={automationForm.nom}
+                  onChange={e => setAutomationForm({ ...automationForm, nom: e.target.value })}
+                  placeholder="Ex: Envoi automatique facture"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Déclencheur</Label>
                 <Select
-                  value={templateForm.type}
-                  onValueChange={value => setTemplateForm({ ...templateForm, type: value as EmailTemplate["type"] })}
+                  value={automationForm.declencheur}
+                  onValueChange={value => setAutomationForm({ ...automationForm, declencheur: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(typeLabels).map(([key, { label }]) => (
+                    {Object.entries(declencheurLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Objet de l'email *</Label>
-              <Input
-                value={templateForm.objet}
-                onChange={e => setTemplateForm({ ...templateForm, objet: e.target.value })}
-                placeholder="Ex: Votre devis {{numero_devis}}"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Contenu de l'email *</Label>
-              <Textarea
-                value={templateForm.contenu}
-                onChange={e => setTemplateForm({ ...templateForm, contenu: e.target.value })}
-                rows={12}
-                placeholder="Rédigez le contenu de l'email..."
-              />
-              <p className="text-xs text-muted-foreground">
-                Utilisez {`{{variable}}`} pour insérer des données dynamiques. 
-                Ex: {`{{nom_client}}`}, {`{{numero_facture}}`}, {`{{montant_ttc}}`}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={templateForm.actif}
-                onCheckedChange={checked => setTemplateForm({ ...templateForm, actif: checked })}
-              />
-              <Label>Modèle actif</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSaveTemplate}>
-              {isEditing ? "Enregistrer" : "Créer le modèle"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Preview Modal */}
-      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Aperçu: {selectedTemplate?.nom}</DialogTitle>
-          </DialogHeader>
-          {selectedTemplate && (
-            <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">Objet:</p>
-                <p className="font-medium">{selectedTemplate.objet}</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-2">Contenu:</p>
-                <pre className="whitespace-pre-wrap text-sm font-sans">{selectedTemplate.contenu}</pre>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Variables disponibles:</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedTemplate.variables.map(v => (
-                    <Badge key={v} variant="outline">{`{{${v}}}`}</Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Automation Modal */}
-      <Dialog open={showAutomationModal} onOpenChange={setShowAutomationModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing ? "Modifier l'automatisation" : "Nouvelle automatisation"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nom de l'automatisation *</Label>
-              <Input
-                value={automationForm.nom}
-                onChange={e => setAutomationForm({ ...automationForm, nom: e.target.value })}
-                placeholder="Ex: Envoi automatique facture"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Déclencheur</Label>
-              <Select
-                value={automationForm.declencheur}
-                onValueChange={value => setAutomationForm({ ...automationForm, declencheur: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(declencheurLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Modèle d'email *</Label>
-              <Select
-                value={automationForm.templateId}
-                onValueChange={value => setAutomationForm({ ...automationForm, templateId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un modèle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.filter(t => t.actif).map(template => (
-                    <SelectItem key={template.id} value={template.id}>{template.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Délai</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={automationForm.delai}
-                  onChange={e => setAutomationForm({ ...automationForm, delai: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Unité</Label>
+                <Label>Modèle d'email *</Label>
                 <Select
-                  value={automationForm.delaiUnite}
-                  onValueChange={value => setAutomationForm({ ...automationForm, delaiUnite: value as AutomationRule["delaiUnite"] })}
+                  value={automationForm.templateId}
+                  onValueChange={value => setAutomationForm({ ...automationForm, templateId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Sélectionner un modèle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="minutes">Minutes</SelectItem>
-                    <SelectItem value="heures">Heures</SelectItem>
-                    <SelectItem value="jours">Jours</SelectItem>
+                    {templates.filter(t => t.actif).map(template => (
+                      <SelectItem key={template.id} value={template.id}>{template.nom}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Délai</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={automationForm.delai}
+                    onChange={e => setAutomationForm({ ...automationForm, delai: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unité</Label>
+                  <Select
+                    value={automationForm.delaiUnite}
+                    onValueChange={value => setAutomationForm({ ...automationForm, delaiUnite: value as AutomationRule["delaiUnite"] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minutes</SelectItem>
+                      <SelectItem value="heures">Heures</SelectItem>
+                      <SelectItem value="jours">Jours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Conditions (optionnel)</Label>
+                <Textarea
+                  value={automationForm.conditions}
+                  onChange={e => setAutomationForm({ ...automationForm, conditions: e.target.value })}
+                  placeholder="Description des conditions d'envoi..."
+                  rows={2}
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <Switch
+                  checked={automationForm.actif}
+                  onCheckedChange={checked => setAutomationForm({ ...automationForm, actif: checked })}
+                />
+                <Label>Automatisation active</Label>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Conditions (optionnel)</Label>
-              <Textarea
-                value={automationForm.conditions}
-                onChange={e => setAutomationForm({ ...automationForm, conditions: e.target.value })}
-                placeholder="Description des conditions d'envoi..."
-                rows={2}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={automationForm.actif}
-                onCheckedChange={checked => setAutomationForm({ ...automationForm, actif: checked })}
-              />
-              <Label>Automatisation active</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAutomationModal(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSaveAutomation}>
-              {isEditing ? "Enregistrer" : "Créer l'automatisation"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAutomationModal(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSaveAutomation} className="gap-2">
+                <Check className="h-4 w-4" />
+                {isEditing ? "Enregistrer" : "Créer l'automatisation"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Test Email Modal */}
-      <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <TestTube className="h-5 w-5" />
-              Envoyer un email de test
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Modèle à tester *</Label>
-              <Select value={testTemplateId} onValueChange={setTestTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un modèle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.filter(t => t.actif).map(template => (
-                    <SelectItem key={template.id} value={template.id}>{template.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {/* Test Email Modal */}
+        <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <TestTube className="h-5 w-5 text-primary" />
+                Envoyer un email de test
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Modèle à tester *</Label>
+                <Select value={testTemplateId} onValueChange={setTestTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un modèle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.filter(t => t.actif).map(template => (
+                      <SelectItem key={template.id} value={template.id}>{template.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Adresse email de test *</Label>
+                <Input
+                  type="email"
+                  value={testEmail}
+                  onChange={e => setTestEmail(e.target.value)}
+                  placeholder="test@example.com"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Un email sera envoyé avec des données de test pour vérifier le rendu du modèle.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label>Adresse email de test *</Label>
-              <Input
-                type="email"
-                value={testEmail}
-                onChange={e => setTestEmail(e.target.value)}
-                placeholder="test@example.com"
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Un email sera envoyé avec des données de test pour vérifier le rendu du modèle.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTestModal(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSendTestEmail} disabled={isSendingTest} className="gap-2">
-              {isSendingTest ? (
-                <>Envoi en cours...</>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Envoyer le test
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTestModal(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSendTestEmail} disabled={isSendingTest} className="gap-2">
+                {isSendingTest ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Envoyer le test
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </motion.div>
     </MainLayout>
   );
 }
