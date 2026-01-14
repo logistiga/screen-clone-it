@@ -38,13 +38,14 @@ import { useToast } from "@/hooks/use-toast";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
 import { useClient, useDeleteClient } from "@/hooks/use-commercial";
-import { ClientDetailHeader } from "@/components/clients";
+import { ClientDetailHeader, ExportReleveModal } from "@/components/clients";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   
   const { data: client, isLoading, error } = useClient(id || '');
   const deleteClientMutation = useDeleteClient();
@@ -129,6 +130,7 @@ export default function ClientDetailPage() {
       <ClientDetailHeader 
         client={client} 
         onDelete={() => setDeleteConfirm(true)}
+        onExportReleve={() => setExportModalOpen(true)}
       />
 
         {/* Client Info + Stats - Improved Layout */}
@@ -657,6 +659,13 @@ export default function ClientDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Export Relevé */}
+      <ExportReleveModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        clientName={client.nom}
+      />
     </MainLayout>
   );
 }
