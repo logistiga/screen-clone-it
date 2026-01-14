@@ -328,7 +328,7 @@ export function PartenaireDetailContent({
                 </TabsTrigger>
                 <TabsTrigger value="paiements" className="gap-2">
                   <History className="h-4 w-4" />
-                  <span className="hidden sm:inline">Paiements</span> ({primes.filter(p => p.statut === 'Payée').length + allPaiements.length})
+                  <span className="hidden sm:inline">Paiements</span> ({allPaiements.length})
                 </TabsTrigger>
               </>
             )}
@@ -412,67 +412,9 @@ export function PartenaireDetailContent({
 
           {/* Paiements Tab */}
           {hasPrimes && (
-            <TabsContent value="paiements" className="mt-4 animate-fade-in space-y-4">
-              {/* Primes Payées */}
-              {primes.filter(p => p.statut === 'Payée').length > 0 && (
-                <Card className="overflow-hidden">
-                  <CardHeader className="bg-emerald-50 dark:bg-emerald-950/20 py-3">
-                    <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Primes Payées
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>Ordre/Facture</TableHead>
-                          <TableHead>Date paiement</TableHead>
-                          <TableHead className="text-right">Montant</TableHead>
-                          <TableHead>Statut</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {primes.filter(p => p.statut === 'Payée').map((prime) => (
-                          <TableRow key={prime.id} className="group hover:bg-muted/50">
-                            <TableCell 
-                              className="font-medium text-primary hover:underline cursor-pointer"
-                              onClick={() => {
-                                if (prime.ordre_id) navigate(`/ordres/${prime.ordre_id}`);
-                                else if (prime.facture_id) navigate(`/factures/${prime.facture_id}`);
-                              }}
-                            >
-                              {prime.ordre?.numero || prime.facture?.numero || '-'}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {formatDate(prime.date_paiement || prime.updated_at || prime.created_at)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                {formatMontant(prime.montant)}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200">
-                                Payée
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              )}
-
+            <TabsContent value="paiements" className="mt-4 animate-fade-in">
               {/* Historique des paiements */}
               <Card className="overflow-hidden">
-                <CardHeader className="bg-muted/30 py-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <History className="h-4 w-4" />
-                    Historique des paiements
-                  </CardTitle>
-                </CardHeader>
                 <CardContent className="p-0">
                   {allPaiements.length === 0 ? (
                     <div className="h-32 flex flex-col items-center justify-center text-muted-foreground">
