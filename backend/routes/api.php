@@ -38,11 +38,14 @@ use App\Http\Controllers\Api\EmailConfigController;
 |--------------------------------------------------------------------------
 */
 
-// Routes publiques
+// Routes publiques avec rate limiting anti brute-force
 Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login']);
-    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('login', [AuthController::class, 'login'])
+        ->middleware('throttle:login');
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:password-reset');
+    Route::post('reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:password-reset');
 });
 
 // Routes protégées par authentification
