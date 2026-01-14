@@ -9,16 +9,51 @@ use App\Models\OrdreTravail;
 use App\Models\Paiement;
 use App\Models\CreditBancaire;
 use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
 
 class NotificationService
 {
+    /**
+     * Configurer le mailer SMTP depuis les paramètres de la base de données
+     */
+    private function configureMailer(): array
+    {
+        $smtpHost = Setting::get('mail.smtp_host');
+        $smtpPort = Setting::get('mail.smtp_port');
+        $smtpUser = Setting::get('mail.smtp_user');
+        $smtpPassword = Setting::get('mail.smtp_password');
+        $ssl = Setting::get('mail.ssl', true);
+        $fromName = Setting::get('mail.from_name', 'Logistiga');
+        $fromEmail = Setting::get('mail.from_address', 'contact@logistiga.com');
+        $signature = Setting::get('mail.signature', '');
+
+        // Configurer dynamiquement le mailer si les paramètres sont définis
+        if ($smtpHost && $smtpPort && $smtpUser && $smtpPassword) {
+            Config::set('mail.mailers.smtp.host', $smtpHost);
+            Config::set('mail.mailers.smtp.port', (int) $smtpPort);
+            Config::set('mail.mailers.smtp.username', $smtpUser);
+            Config::set('mail.mailers.smtp.password', $smtpPassword);
+            Config::set('mail.mailers.smtp.encryption', $ssl ? 'tls' : null);
+            Config::set('mail.from.address', $fromEmail);
+            Config::set('mail.from.name', $fromName);
+        }
+
+        return [
+            'from_name' => $fromName,
+            'from_email' => $fromEmail,
+            'signature' => $signature,
+        ];
+    }
+
     /**
      * Envoyer une facture par email
      */
     public function envoyerFacture(Facture $facture, ?string $emailDestinataire = null, ?string $message = null): bool
     {
+        $mailConfig = $this->configureMailer();
         $client = $facture->client;
         $email = $emailDestinataire ?? $client->email;
 
@@ -32,10 +67,11 @@ class NotificationService
                 'facture' => $facture,
                 'client' => $client,
                 'message_personnalise' => $message,
-            ], function ($mail) use ($email, $facture, $client) {
+                'signature' => $mailConfig['signature'],
+            ], function ($mail) use ($email, $facture, $mailConfig) {
                 $mail->to($email)
                     ->subject("Facture N° {$facture->numero}")
-                    ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
             // Mettre à jour le statut de la facture
@@ -57,6 +93,7 @@ class NotificationService
      */
     public function envoyerDevis(Devis $devis, ?string $emailDestinataire = null, ?string $message = null): bool
     {
+        $mailConfig = $this->configureMailer();
         $client = $devis->client;
         $email = $emailDestinataire ?? $client->email;
 
@@ -70,10 +107,11 @@ class NotificationService
                 'devis' => $devis,
                 'client' => $client,
                 'message_personnalise' => $message,
-            ], function ($mail) use ($email, $devis) {
+                'signature' => $mailConfig['signature'],
+            ], function ($mail) use ($email, $devis, $mailConfig) {
                 $mail->to($email)
                     ->subject("Devis N° {$devis->numero}")
-                    ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
             $devis->update([
@@ -94,6 +132,7 @@ class NotificationService
      */
     public function envoyerOrdreTravail(OrdreTravail $ordre, ?string $emailDestinataire = null, ?string $message = null): bool
     {
+        $mailConfig = $this->configureMailer();
         $client = $ordre->client;
         $email = $emailDestinataire ?? $client->email;
 
@@ -107,10 +146,11 @@ class NotificationService
                 'ordre' => $ordre,
                 'client' => $client,
                 'message_personnalise' => $message,
-            ], function ($mail) use ($email, $ordre) {
+                'signature' => $mailConfig['signature'],
+            ], function ($mail) use ($email, $ordre, $mailConfig) {
                 $mail->to($email)
                     ->subject("Ordre de Travail N° {$ordre->numero}")
-                    ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
             Log::info("Ordre de travail {$ordre->numero} envoyé à {$email}");
@@ -126,6 +166,7 @@ class NotificationService
      */
     public function envoyerConfirmationPaiement(Paiement $paiement, ?string $emailDestinataire = null): bool
     {
+        $mailConfig = $this->configureMailer();
         $facture = $paiement->facture;
         $client = $facture->client;
         $email = $emailDestinataire ?? $client->email;
@@ -140,10 +181,11 @@ class NotificationService
                 'paiement' => $paiement,
                 'facture' => $facture,
                 'client' => $client,
-            ], function ($mail) use ($email, $paiement) {
+                'signature' => $mailConfig['signature'],
+            ], function ($mail) use ($email, $paiement, $mailConfig) {
                 $mail->to($email)
                     ->subject("Confirmation de paiement - {$paiement->reference}")
-                    ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
             Log::info("Confirmation de paiement envoyée à {$email}");
@@ -159,6 +201,7 @@ class NotificationService
      */
     public function envoyerRappelFacture(Facture $facture, int $numeroRappel = 1): bool
     {
+        $mailConfig = $this->configureMailer();
         $client = $facture->client;
         $email = $client->email;
 
@@ -175,10 +218,11 @@ class NotificationService
                 'client' => $client,
                 'numero_rappel' => $numeroRappel,
                 'niveau_urgence' => $niveauUrgence,
-            ], function ($mail) use ($email, $facture, $numeroRappel) {
+                'signature' => $mailConfig['signature'],
+            ], function ($mail) use ($email, $facture, $numeroRappel, $mailConfig) {
                 $mail->to($email)
                     ->subject("Rappel N°{$numeroRappel} - Facture {$facture->numero} impayée")
-                    ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
             // Enregistrer le rappel
