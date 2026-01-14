@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AnimatedTableRow, AnimatedTableBody } from "@/components/ui/animated-table";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -409,14 +409,14 @@ export default function OrdresTravailPage() {
                   <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <AnimatedTableBody>
                 {ordresList.map((ordre, index) => {
                   const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
                   return (
-                    <TableRow 
+                    <AnimatedTableRow 
                       key={ordre.id} 
-                      className="cursor-pointer hover:bg-muted/50 transition-all duration-200 animate-fade-in"
-                      style={{ animationDelay: `${index * 30}ms` }}
+                      index={index}
+                      className="cursor-pointer"
                     >
                       <TableCell 
                         className="font-medium text-primary hover:underline cursor-pointer"
@@ -503,7 +503,7 @@ export default function OrdresTravailPage() {
                           </Button>
                         </div>
                       </TableCell>
-                    </TableRow>
+                    </AnimatedTableRow>
                   );
                 })}
                 {ordresList.length === 0 && (
@@ -513,7 +513,7 @@ export default function OrdresTravailPage() {
                     </TableCell>
                   </TableRow>
                 )}
-              </TableBody>
+              </AnimatedTableBody>
             </Table>
             <TablePagination
               currentPage={currentPage}

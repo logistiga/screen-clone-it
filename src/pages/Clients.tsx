@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AnimatedTableRow, AnimatedTableBody } from "@/components/ui/animated-table";
 import {
   Tooltip,
   TooltipContent,
@@ -323,15 +323,16 @@ export default function ClientsPage() {
                   <TableHead className="w-[120px] text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {filteredClients.map((client: Client) => {
+              <AnimatedTableBody>
+                {filteredClients.map((client: Client, index: number) => {
                   const solde = Number(client.solde) || 0;
                   const avoirs = Number(client.solde_avoirs) || 0;
                   
                   return (
-                    <TableRow 
+                    <AnimatedTableRow 
                       key={client.id} 
-                      className="group cursor-pointer hover:bg-muted/50 transition-colors"
+                      index={index}
+                      className="group cursor-pointer"
                       onClick={() => navigate(`/clients/${client.id}`)}
                     >
                       <TableCell>
@@ -412,10 +413,10 @@ export default function ClientsPage() {
                           </TooltipProvider>
                         </div>
                       </TableCell>
-                    </TableRow>
+                    </AnimatedTableRow>
                   );
                 })}
-              </TableBody>
+              </AnimatedTableBody>
             </Table>
           </div>
 
