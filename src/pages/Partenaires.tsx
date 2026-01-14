@@ -324,8 +324,6 @@ export default function PartenairesPage() {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead>Nom</TableHead>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Adresse</TableHead>
                           <TableHead className="text-right">Primes à payer</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="w-32">Actions</TableHead>
@@ -341,8 +339,6 @@ export default function PartenairesPage() {
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>Nom</TableHead>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Adresse</TableHead>
                             <TableHead className="text-right">Primes à payer</TableHead>
                             <TableHead>Statut</TableHead>
                             <TableHead className="w-32">Actions</TableHead>
@@ -351,7 +347,7 @@ export default function PartenairesPage() {
                         <TableBody>
                           {paginatedTransitaires.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                              <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
                                 <Truck className="h-12 w-12 mx-auto mb-3 opacity-20" />
                                 <p>Aucun transitaire trouvé</p>
                               </TableCell>
@@ -371,13 +367,6 @@ export default function PartenairesPage() {
                                         {transitaire.nom}
                                       </span>
                                     </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="text-sm">{transitaire.email || '-'}</div>
-                                    <div className="text-xs text-muted-foreground">{transitaire.telephone || '-'}</div>
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                                    {transitaire.adresse || '-'}
                                   </TableCell>
                                   <TableCell className="text-right">
                                     {primesAPayer > 0 ? (
@@ -399,7 +388,7 @@ export default function PartenairesPage() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-1">
                                       <Button 
                                         variant="ghost" 
                                         size="icon" 
@@ -547,8 +536,6 @@ export default function PartenairesPage() {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead>Nom</TableHead>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Adresse</TableHead>
                           <TableHead className="text-right">Primes à payer</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="w-32">Actions</TableHead>
@@ -564,8 +551,6 @@ export default function PartenairesPage() {
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>Nom</TableHead>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Adresse</TableHead>
                             <TableHead className="text-right">Primes à payer</TableHead>
                             <TableHead>Statut</TableHead>
                             <TableHead className="w-32">Actions</TableHead>
@@ -574,7 +559,7 @@ export default function PartenairesPage() {
                         <TableBody>
                           {paginatedRepresentants.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                              <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
                                 <User className="h-12 w-12 mx-auto mb-3 opacity-20" />
                                 <p>Aucun représentant trouvé</p>
                               </TableCell>
@@ -598,13 +583,6 @@ export default function PartenairesPage() {
                                       </span>
                                     </div>
                                   </TableCell>
-                                  <TableCell>
-                                    <div className="text-sm">{representant.email || '-'}</div>
-                                    <div className="text-xs text-muted-foreground">{representant.telephone || '-'}</div>
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                                    {representant.adresse || '-'}
-                                  </TableCell>
                                   <TableCell className="text-right">
                                     {primesAPayer > 0 ? (
                                       <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 font-semibold text-amber-600 dark:text-amber-400">
@@ -625,7 +603,7 @@ export default function PartenairesPage() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-1">
                                       <Button 
                                         variant="ghost" 
                                         size="icon" 
