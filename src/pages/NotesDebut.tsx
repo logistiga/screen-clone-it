@@ -24,12 +24,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AnimatedTableRow, AnimatedTableBody } from "@/components/ui/animated-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -364,7 +364,7 @@ export default function NotesDebut() {
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <AnimatedTableBody>
                   {notes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={11} className="py-16 text-center text-muted-foreground">
@@ -390,12 +390,9 @@ export default function NotesDebut() {
                       const advance = getNoteAdvance(note);
                       
                       return (
-                        <motion.tr
+                        <AnimatedTableRow
                           key={note.id}
-                          variants={itemVariants}
-                          initial="hidden"
-                          animate="visible"
-                          transition={{ delay: index * 0.03 }}
+                          index={index}
                           className={`group hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? "bg-primary/5" : ""}`}
                           onClick={() => navigate(`/notes-debut/${note.id}`)}
                         >
@@ -490,11 +487,11 @@ export default function NotesDebut() {
                               )}
                             </div>
                           </TableCell>
-                        </motion.tr>
+                        </AnimatedTableRow>
                       );
                     })
                   )}
-                </TableBody>
+                </AnimatedTableBody>
               </Table>
             </div>
           </CardContent>
