@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import html2pdf from "html2pdf.js";
 import {
   Dialog,
   DialogContent,
@@ -78,7 +79,7 @@ export function ExportReleveModal({
     });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!dateDebut || !dateFin) return;
     
     setIsGenerating(true);
@@ -117,21 +118,32 @@ export function ExportReleveModal({
       selectedTypes,
     });
 
-    // Ouvrir dans une nouvelle fenêtre
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
+    // Créer un élément temporaire pour le PDF
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
+
+    const fileName = `Releve_${client.nom.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+
+    try {
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: fileName,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        })
+        .from(container)
+        .save();
       
-      // Attendre le chargement puis imprimer
-      setTimeout(() => {
-        printWindow.print();
-        setIsGenerating(false);
-        onOpenChange(false);
-      }, 250);
-    } else {
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    } finally {
+      document.body.removeChild(container);
       setIsGenerating(false);
-      alert('Veuillez autoriser les popups pour générer le PDF');
     }
   };
 
