@@ -15,7 +15,9 @@ export interface Prime {
   reste_a_payer?: number;
   description?: string;
   statut: string;
+  date_paiement?: string;
   created_at?: string;
+  updated_at?: string;
   ordre?: { id?: string | number; numero: string };
   facture?: { id?: string | number; numero: string };
   paiements?: PaiementPrime[];
