@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,9 +12,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Pencil, Trash2, Search, UserCheck, UserX, Mail, Phone, Calendar, Shield } from "lucide-react";
+import { Plus, Pencil, Trash2, UserCheck, UserX, Mail, Phone, Calendar, Shield, Users, RefreshCw } from "lucide-react";
 import { utilisateurs as initialUtilisateurs, roles, formatDate, Utilisateur } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
+import { DocumentStatCard, DocumentStatCardSkeleton } from "@/components/shared/documents/DocumentStatCard";
+import { DocumentFilters } from "@/components/shared/documents/DocumentFilters";
+import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function UtilisateursPage() {
   const { toast } = useToast();
@@ -21,6 +38,7 @@ export default function UtilisateursPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatut, setFilterStatut] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(false);
   
   const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -162,6 +180,14 @@ export default function UtilisateursPage() {
     return roles.find(r => r.id === roleId)?.nom || 'Non défini';
   };
 
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({ title: "Actualisé", description: "Liste des utilisateurs actualisée" });
+    }, 500);
+  };
+
   // Filtrage
   const filteredUtilisateurs = utilisateurs.filter(u => {
     const matchSearch = u.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -176,195 +202,237 @@ export default function UtilisateursPage() {
   const statsActifs = utilisateurs.filter(u => u.actif).length;
   const statsInactifs = utilisateurs.filter(u => !u.actif).length;
 
+  // Options pour les filtres
+  const statutOptions = [
+    { value: 'all', label: 'Tous les statuts' },
+    { value: 'actif', label: 'Actifs' },
+    { value: 'inactif', label: 'Inactifs' },
+  ];
+
+  const roleOptions = [
+    { value: 'all', label: 'Tous les rôles' },
+    ...roles.map(role => ({ value: role.id, label: role.nom }))
+  ];
+
   return (
     <MainLayout title="Gestion des Utilisateurs">
-      <div className="space-y-6">
-        {/* Stats rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <UserCheck className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{statsActifs}</p>
-                <p className="text-sm text-muted-foreground">Utilisateurs actifs</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-muted rounded-lg">
-                <UserX className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{statsInactifs}</p>
-                <p className="text-sm text-muted-foreground">Utilisateurs inactifs</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary/50 rounded-lg">
-                <Shield className="h-5 w-5 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{roles.length}</p>
-                <p className="text-sm text-muted-foreground">Rôles configurés</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Filtres et actions */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between">
-          <div className="flex flex-col md:flex-row gap-3 flex-1">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par nom ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filtrer par rôle" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les rôles</SelectItem>
-                {roles.map(role => (
-                  <SelectItem key={role.id} value={role.id}>{role.nom}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterStatut} onValueChange={setFilterStatut}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="actif">Actifs</SelectItem>
-                <SelectItem value="inactif">Inactifs</SelectItem>
-              </SelectContent>
-            </Select>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-6"
+      >
+        {/* Header */}
+        <motion.div variants={itemVariants} className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Gestion des Utilisateurs</h1>
+            <p className="text-muted-foreground mt-1">Gérez les utilisateurs et leurs permissions</p>
           </div>
-          <Button onClick={handleOpenAdd} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nouvel utilisateur
-          </Button>
-        </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button onClick={handleOpenAdd} className="gap-2 shadow-md">
+                <Plus className="h-4 w-4" />
+                Nouvel utilisateur
+              </Button>
+            </motion.div>
+          </div>
+        </motion.div>
 
-        {/* Table des utilisateurs */}
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Utilisateur</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Rôle</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Date création</TableHead>
-                  <TableHead>Dernière connexion</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUtilisateurs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      Aucun utilisateur trouvé
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredUtilisateurs.map(user => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={user.photo} />
-                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                              {getInitials(user.nom)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{user.nom}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-sm">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            {user.email}
-                          </div>
-                          {user.telephone && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              {user.telephone}
+        {/* Stats */}
+        <motion.div variants={itemVariants} className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <DocumentStatCard
+            title="Total Utilisateurs"
+            value={utilisateurs.length}
+            icon={Users}
+            variant="primary"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Utilisateurs Actifs"
+            value={statsActifs}
+            icon={UserCheck}
+            variant="success"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Utilisateurs Inactifs"
+            value={statsInactifs}
+            icon={UserX}
+            variant="warning"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Rôles Configurés"
+            value={roles.length}
+            icon={Shield}
+            variant="info"
+            delay={0.3}
+          />
+        </motion.div>
+
+        {/* Filtres */}
+        <motion.div variants={itemVariants}>
+          <DocumentFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Rechercher par nom ou email..."
+            statutFilter={filterStatut}
+            onStatutChange={setFilterStatut}
+            statutOptions={statutOptions}
+            categorieFilter={filterRole}
+            onCategorieChange={setFilterRole}
+            categorieOptions={roleOptions}
+          />
+        </motion.div>
+
+        {/* Contenu */}
+        {filteredUtilisateurs.length === 0 ? (
+          <DocumentEmptyState
+            icon={Users}
+            title="Aucun utilisateur trouvé"
+            description={searchTerm || filterRole !== 'all' || filterStatut !== 'all'
+              ? "Aucun utilisateur ne correspond à vos critères de recherche."
+              : "Commencez par créer votre premier utilisateur."
+            }
+            actionLabel="Nouvel utilisateur"
+            onAction={handleOpenAdd}
+          />
+        ) : (
+          <motion.div variants={itemVariants}>
+            <Card className="overflow-hidden border-none shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                  Liste des utilisateurs
+                </CardTitle>
+                <CardDescription>
+                  {filteredUtilisateurs.length} utilisateur{filteredUtilisateurs.length > 1 ? 's' : ''} affiché{filteredUtilisateurs.length > 1 ? 's' : ''}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="font-semibold">Utilisateur</TableHead>
+                        <TableHead className="font-semibold">Contact</TableHead>
+                        <TableHead className="font-semibold">Rôle</TableHead>
+                        <TableHead className="font-semibold">Statut</TableHead>
+                        <TableHead className="font-semibold">Date création</TableHead>
+                        <TableHead className="font-semibold">Dernière connexion</TableHead>
+                        <TableHead className="text-right font-semibold">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUtilisateurs.map((user, index) => (
+                        <motion.tr
+                          key={user.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="border-b hover:bg-muted/30 transition-colors"
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10 border-2 border-primary/20">
+                                <AvatarImage src={user.photo} />
+                                <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
+                                  {getInitials(user.nom)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium text-foreground">{user.nom}</span>
                             </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="gap-1">
-                          <Shield className="h-3 w-3" />
-                          {getRoleName(user.roleId)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={user.actif}
-                            onCheckedChange={() => handleToggleActif(user)}
-                          />
-                          <Badge className={user.actif ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-muted text-muted-foreground"}>
-                            {user.actif ? 'Actif' : 'Inactif'}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(user.dateCreation)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {user.derniereConnexion ? (
-                          <span className="text-sm">{formatDate(user.derniereConnexion)}</span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Jamais</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} title="Modifier">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-destructive hover:text-destructive" 
-                            onClick={() => handleOpenDelete(user)}
-                            title="Supprimer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 text-sm">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-foreground">{user.email}</span>
+                              </div>
+                              {user.telephone && (
+                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                  <Phone className="h-3.5 w-3.5" />
+                                  {user.telephone}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="gap-1.5 font-medium border-primary/30 bg-primary/5">
+                              <Shield className="h-3 w-3 text-primary" />
+                              {getRoleName(user.roleId)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={user.actif}
+                                onCheckedChange={() => handleToggleActif(user)}
+                              />
+                              <Badge className={user.actif 
+                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20" 
+                                : "bg-muted text-muted-foreground"
+                              }>
+                                {user.actif ? 'Actif' : 'Inactif'}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Calendar className="h-3.5 w-3.5" />
+                              {formatDate(user.dateCreation)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {user.derniereConnexion ? (
+                              <span className="text-sm text-foreground">{formatDate(user.derniereConnexion)}</span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground italic">Jamais</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleOpenEdit(user)} 
+                                title="Modifier"
+                                className="hover:bg-primary/10 hover:text-primary"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                onClick={() => handleOpenDelete(user)}
+                                title="Supprimer"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </motion.tr>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Modal Ajout/Modification */}
         <Dialog open={showModal} onOpenChange={setShowModal}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>{isEditing ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                {isEditing ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
+                {isEditing ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}
+              </DialogTitle>
             </DialogHeader>
             
             <div className="space-y-4">
@@ -375,6 +443,7 @@ export default function UtilisateursPage() {
                   value={formData.nom}
                   onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   placeholder="Jean Dupont"
+                  className="transition-all focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
@@ -386,6 +455,7 @@ export default function UtilisateursPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="jean.dupont@exemple.com"
+                  className="transition-all focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
@@ -396,20 +466,21 @@ export default function UtilisateursPage() {
                   value={formData.telephone}
                   onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                   placeholder="+241 01 23 45 67"
+                  className="transition-all focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="role">Rôle *</Label>
                 <Select value={formData.roleId} onValueChange={(value) => setFormData({ ...formData, roleId: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="transition-all focus:ring-2 focus:ring-primary/20">
                     <SelectValue placeholder="Sélectionner un rôle" />
                   </SelectTrigger>
                   <SelectContent>
                     {roles.map(role => (
                       <SelectItem key={role.id} value={role.id}>
                         <div className="flex items-center gap-2">
-                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <Shield className="h-4 w-4 text-primary" />
                           {role.nom}
                         </div>
                       </SelectItem>
@@ -418,9 +489,9 @@ export default function UtilisateursPage() {
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                 <div>
-                  <Label htmlFor="actif">Compte actif</Label>
+                  <Label htmlFor="actif" className="font-medium">Compte actif</Label>
                   <p className="text-sm text-muted-foreground">L'utilisateur peut se connecter</p>
                 </div>
                 <Switch
@@ -431,11 +502,11 @@ export default function UtilisateursPage() {
               </div>
             </div>
 
-            <DialogFooter className="gap-2">
+            <DialogFooter className="gap-2 mt-4">
               <Button variant="outline" onClick={() => setShowModal(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSubmit}>
+              <Button onClick={handleSubmit} className="gap-2">
                 {isEditing ? 'Enregistrer' : 'Créer'}
               </Button>
             </DialogFooter>
@@ -446,7 +517,10 @@ export default function UtilisateursPage() {
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer cet utilisateur ?</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" />
+                Supprimer cet utilisateur ?
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 Êtes-vous sûr de vouloir supprimer l'utilisateur "{selectedUser?.nom}" ?
                 Cette action est irréversible.
@@ -460,7 +534,7 @@ export default function UtilisateursPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
+      </motion.div>
     </MainLayout>
   );
 }
