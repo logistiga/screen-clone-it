@@ -12,7 +12,7 @@ export const NOTIFICATIONS_KEY = ['notifications'];
 // Configuration du polling - intervalle plus court pour temps réel
 const POLLING_INTERVAL_ACTIVE = 10000; // 10 secondes quand l'onglet est actif
 const POLLING_INTERVAL_BACKGROUND = 60000; // 1 minute en arrière-plan
-const ALERTS_POLLING_INTERVAL = 30000; // 30 secondes pour les alertes
+const ALERTS_POLLING_INTERVAL = 2 * 60 * 60 * 1000; // 2 heures pour les alertes
 
 // Hook pour détecter si l'onglet est actif
 function useTabVisibility() {
@@ -69,9 +69,12 @@ export function useAlerts() {
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'alerts'],
     queryFn: notificationsService.getAlerts,
-    staleTime: 30000,
+    staleTime: ALERTS_POLLING_INTERVAL,
+    gcTime: ALERTS_POLLING_INTERVAL * 2,
     refetchInterval: ALERTS_POLLING_INTERVAL,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
+    retry: 1,
   });
 }
 
