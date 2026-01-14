@@ -46,6 +46,9 @@ const normalizeNotification = (raw: any): Notification => ({
   metadata: raw?.metadata ?? raw?.meta ?? undefined,
 });
 
+// Cache pour éviter les logs répétitifs
+let hasLoggedApiUnavailable = false;
+
 export const notificationsService = {
   // Récupérer toutes les notifications
   getAll: async (params?: { 
@@ -56,6 +59,7 @@ export const notificationsService = {
     try {
       const response = await api.get('/notifications', { params });
       const data = response.data;
+      hasLoggedApiUnavailable = false; // Reset si l'API fonctionne
       
       return {
         data: Array.isArray(data?.data) 
@@ -66,9 +70,12 @@ export const notificationsService = {
         unread_count: safeNumber(data?.unread_count ?? data?.non_lues),
         total: safeNumber(data?.total ?? data?.data?.length ?? 0),
       };
-    } catch (error) {
-      // Si l'endpoint n'existe pas, retourner une liste vide
-      console.warn('Notifications API not available, using empty list');
+    } catch (error: any) {
+      // Ne log qu'une seule fois pour éviter le spam
+      if (!hasLoggedApiUnavailable && error?.response?.status === 404) {
+        console.info('Notifications API: endpoint non configuré, utilisation du mode démo');
+        hasLoggedApiUnavailable = true;
+      }
       return { data: [], unread_count: 0, total: 0 };
     }
   },
