@@ -27,6 +27,9 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PrimeController;
 use App\Http\Controllers\Api\NoteDebutController;
 use App\Http\Controllers\Api\CategorieDepenseController;
+use App\Http\Controllers\Api\EmailTemplateController;
+use App\Http\Controllers\Api\EmailAutomationController;
+use App\Http\Controllers\Api\EmailConfigController;
 
 /*
 |--------------------------------------------------------------------------
@@ -519,5 +522,55 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.voir');
         Route::post('email-personnalise', [NotificationController::class, 'envoyerEmailPersonnalise'])
             ->middleware('permission:factures.modifier');
+    });
+
+    // ============================================
+    // EMAIL TEMPLATES & AUTOMATIONS
+    // ============================================
+    Route::prefix('email-templates')->middleware('audit')->group(function () {
+        Route::get('/', [EmailTemplateController::class, 'index'])
+            ->middleware('permission:configuration.voir');
+        Route::post('/', [EmailTemplateController::class, 'store'])
+            ->middleware('permission:configuration.modifier');
+        Route::get('types', [EmailTemplateController::class, 'types']);
+        Route::get('{template}', [EmailTemplateController::class, 'show'])
+            ->middleware('permission:configuration.voir');
+        Route::put('{template}', [EmailTemplateController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::delete('{template}', [EmailTemplateController::class, 'destroy'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('{template}/duplicate', [EmailTemplateController::class, 'duplicate'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('{template}/toggle', [EmailTemplateController::class, 'toggleActif'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('{template}/preview', [EmailTemplateController::class, 'preview'])
+            ->middleware('permission:configuration.voir');
+    });
+
+    Route::prefix('email-automations')->middleware('audit')->group(function () {
+        Route::get('/', [EmailAutomationController::class, 'index'])
+            ->middleware('permission:configuration.voir');
+        Route::post('/', [EmailAutomationController::class, 'store'])
+            ->middleware('permission:configuration.modifier');
+        Route::get('declencheurs', [EmailAutomationController::class, 'declencheurs']);
+        Route::get('delai-unites', [EmailAutomationController::class, 'delaiUnites']);
+        Route::get('for-declencheur/{declencheur}', [EmailAutomationController::class, 'forDeclencheur']);
+        Route::get('{automation}', [EmailAutomationController::class, 'show'])
+            ->middleware('permission:configuration.voir');
+        Route::put('{automation}', [EmailAutomationController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::delete('{automation}', [EmailAutomationController::class, 'destroy'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('{automation}/toggle', [EmailAutomationController::class, 'toggleActif'])
+            ->middleware('permission:configuration.modifier');
+    });
+
+    Route::prefix('email-config')->middleware('audit')->group(function () {
+        Route::get('/', [EmailConfigController::class, 'index'])
+            ->middleware('permission:configuration.voir');
+        Route::put('/', [EmailConfigController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('test', [EmailConfigController::class, 'sendTest'])
+            ->middleware('permission:configuration.modifier');
     });
 });
