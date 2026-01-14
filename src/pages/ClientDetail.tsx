@@ -345,7 +345,7 @@ export default function ClientDetailPage() {
                           <TableCell className="text-right text-green-600">{formatMontant(facture.montant_paye || 0)}</TableCell>
                           <TableCell>{getStatutBadge(facture.statut)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center justify-center gap-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/factures/${facture.id}`)}>
@@ -412,7 +412,7 @@ export default function ClientDetailPage() {
                           <TableCell className="text-right text-green-600">{formatMontant(ordre.montant_paye || 0)}</TableCell>
                           <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center justify-center gap-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/ordres/${ordre.id}`)}>
@@ -473,7 +473,7 @@ export default function ClientDetailPage() {
                           <TableCell className="text-right font-medium">{formatMontant(d.montant_ttc)}</TableCell>
                           <TableCell>{getStatutBadge(d.statut)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center justify-center gap-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/devis/${d.id}`)}>
@@ -605,7 +605,7 @@ export default function ClientDetailPage() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center justify-center gap-1">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button 
