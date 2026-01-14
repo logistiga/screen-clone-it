@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotificationCenter } from "@/hooks/use-notifications";
-import { Notification } from "@/services/notificationsService";
+import type { Notification } from "@/services/notificationsService";
 import {
   Select,
   SelectContent,

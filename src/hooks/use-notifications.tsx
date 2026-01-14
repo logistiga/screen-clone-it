@@ -1,34 +1,66 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { notificationsService, Notification } from '@/services/notificationsService';
+import { notificationsService } from '@/services/notificationsService';
+import type { Notification as AppNotification } from '@/services/notificationsService';
 import { toast } from 'sonner';
 
-export const NOTIFICATIONS_KEY = ['notifications'];
-const POLLING_INTERVAL = 30000; // 30 secondes
+// Re-export le type pour les autres fichiers
+export type { AppNotification };
 
-// Hook pour récupérer les notifications avec polling
+export const NOTIFICATIONS_KEY = ['notifications'];
+
+// Configuration du polling - intervalle plus court pour temps réel
+const POLLING_INTERVAL_ACTIVE = 10000; // 10 secondes quand l'onglet est actif
+const POLLING_INTERVAL_BACKGROUND = 60000; // 1 minute en arrière-plan
+const ALERTS_POLLING_INTERVAL = 30000; // 30 secondes pour les alertes
+
+// Hook pour détecter si l'onglet est actif
+function useTabVisibility() {
+  const [isVisible, setIsVisible] = useState(!document.hidden);
+  
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+  
+  return isVisible;
+}
+
+// Hook pour récupérer les notifications avec polling adaptatif
 export function useNotifications(params?: { 
   page?: number; 
   per_page?: number; 
   unread_only?: boolean 
 }) {
+  const isTabVisible = useTabVisibility();
+  const pollingInterval = isTabVisible ? POLLING_INTERVAL_ACTIVE : POLLING_INTERVAL_BACKGROUND;
+  
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, params],
     queryFn: () => notificationsService.getAll(params),
-    staleTime: 10000, // 10 secondes
-    refetchInterval: POLLING_INTERVAL,
-    refetchIntervalInBackground: false,
+    staleTime: 5000, // 5 secondes
+    refetchInterval: pollingInterval,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 }
 
-// Hook pour récupérer le nombre de notifications non lues avec polling
+// Hook pour récupérer le nombre de notifications non lues avec polling rapide
 export function useUnreadCount() {
+  const isTabVisible = useTabVisibility();
+  const pollingInterval = isTabVisible ? POLLING_INTERVAL_ACTIVE : POLLING_INTERVAL_BACKGROUND;
+  
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'unread-count'],
     queryFn: notificationsService.getUnreadCount,
-    staleTime: 10000,
-    refetchInterval: POLLING_INTERVAL,
-    refetchIntervalInBackground: false,
+    staleTime: 5000,
+    refetchInterval: pollingInterval,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -37,8 +69,9 @@ export function useAlerts() {
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'alerts'],
     queryFn: notificationsService.getAlerts,
-    staleTime: 60000, // 1 minute
-    refetchInterval: 60000,
+    staleTime: 30000,
+    refetchInterval: ALERTS_POLLING_INTERVAL,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -94,48 +127,121 @@ export function useDeleteAllNotifications() {
   });
 }
 
-// Hook pour détecter les nouvelles notifications
-export function useNewNotificationDetector(onNewNotification?: (notification: Notification) => void) {
-  const previousCountRef = useRef<number | null>(null);
-  const { data: notifications } = useNotifications({ per_page: 10 });
+// Configuration des notifications push
+interface PushNotificationOptions {
+  enableSound?: boolean;
+  enableBrowserNotification?: boolean;
+  onNewNotification?: (notification: AppNotification) => void;
+}
+
+// Hook pour les notifications push en temps réel
+export function useRealtimeNotifications(options: PushNotificationOptions = {}) {
+  const { enableSound = false, enableBrowserNotification = false, onNewNotification } = options;
+  const previousNotificationsRef = useRef<Set<string>>(new Set());
+  const isInitializedRef = useRef(false);
+  const { data: notifications, refetch } = useNotifications({ per_page: 20 });
   
+  // Demander la permission pour les notifications browser
   useEffect(() => {
-    if (!notifications) return;
+    if (enableBrowserNotification && 'Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
+    }
+  }, [enableBrowserNotification]);
+  
+  // Détecter les nouvelles notifications
+  useEffect(() => {
+    if (!notifications?.data) return;
     
-    const currentCount = notifications.unread_count;
+    const currentIds = new Set(notifications.data.map(n => n.id));
     
-    // Si c'est la première fois, on initialise juste le compteur
-    if (previousCountRef.current === null) {
-      previousCountRef.current = currentCount;
+    // Première initialisation - juste stocker les IDs
+    if (!isInitializedRef.current) {
+      previousNotificationsRef.current = currentIds;
+      isInitializedRef.current = true;
       return;
     }
     
-    // Si on a plus de notifications non lues qu'avant
-    if (currentCount > previousCountRef.current) {
-      const newCount = currentCount - previousCountRef.current;
-      
-      // Notifier l'utilisateur
-      toast.info(`${newCount} nouvelle${newCount > 1 ? 's' : ''} notification${newCount > 1 ? 's' : ''}`, {
-        description: 'Cliquez sur la cloche pour voir les détails',
+    // Trouver les nouvelles notifications non lues
+    const newNotifications = notifications.data.filter(
+      n => !previousNotificationsRef.current.has(n.id) && !n.read
+    );
+    
+    if (newNotifications.length > 0) {
+      // Afficher toast pour chaque nouvelle notification
+      newNotifications.forEach(notification => {
+        const toastType = notification.type === 'error' ? 'error' 
+          : notification.type === 'warning' ? 'warning'
+          : notification.type === 'success' ? 'success'
+          : 'info';
+        
+        toast[toastType](notification.title, {
+          description: notification.message,
+          duration: 5000,
+          action: notification.link ? {
+            label: 'Voir',
+            onClick: () => window.location.href = notification.link!,
+          } : undefined,
+        });
+        
+        // Callback personnalisé
+        onNewNotification?.(notification);
       });
       
-      // Si callback fourni, appeler avec la dernière notification
-      if (onNewNotification && notifications.data.length > 0) {
-        const latestUnread = notifications.data.find(n => !n.read);
-        if (latestUnread) {
-          onNewNotification(latestUnread);
-        }
+      // Jouer un son si activé
+      if (enableSound) {
+        playNotificationSound();
+      }
+      
+      // Notification browser si activé et autorisé
+      if (enableBrowserNotification && 'Notification' in window && window.Notification.permission === 'granted') {
+        newNotifications.forEach(notification => {
+          new window.Notification(notification.title, {
+            body: notification.message,
+            icon: '/favicon.ico',
+            tag: notification.id,
+          });
+        });
       }
     }
     
-    previousCountRef.current = currentCount;
-  }, [notifications, onNewNotification]);
+    previousNotificationsRef.current = currentIds;
+  }, [notifications, enableSound, enableBrowserNotification, onNewNotification]);
+  
+  return { refetch };
+}
+
+// Jouer un son de notification
+function playNotificationSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (e) {
+    // Ignorer les erreurs audio
+  }
+}
+
+// Hook pour détecter les nouvelles notifications (legacy - gardé pour compatibilité)
+export function useNewNotificationDetector(onNewNotification?: (notification: AppNotification) => void) {
+  useRealtimeNotifications({ onNewNotification });
 }
 
 // Hook combiné pour le centre de notifications avec state local pour fallback
 export function useNotificationCenter() {
   const queryClient = useQueryClient();
-  const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
+  const [localNotifications, setLocalNotifications] = useState<AppNotification[]>([]);
   const [useLocal, setUseLocal] = useState(false);
   
   const { data, isLoading, error } = useNotifications({ per_page: 50 });
@@ -200,6 +306,7 @@ export function useNotificationCenter() {
   const markAllAsRead = useCallback(() => {
     if (useLocal) {
       setLocalNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      toast.success('Toutes les notifications ont été marquées comme lues');
     } else {
       markAllAsReadMutation.mutate();
     }
@@ -216,14 +323,17 @@ export function useNotificationCenter() {
   const clearAll = useCallback(() => {
     if (useLocal) {
       setLocalNotifications([]);
+      toast.success('Toutes les notifications ont été supprimées');
     } else {
       deleteAllMutation.mutate();
     }
   }, [useLocal, deleteAllMutation]);
   
   const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
-  }, [queryClient]);
+    if (!useLocal) {
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+    }
+  }, [useLocal, queryClient]);
   
   return {
     notifications,
@@ -236,4 +346,12 @@ export function useNotificationCenter() {
     refresh,
     isUsingLocalData: useLocal,
   };
+}
+
+// Hook pour activer les notifications temps réel dans l'app
+export function useEnableRealtimeNotifications() {
+  useRealtimeNotifications({
+    enableSound: false, // Désactivé par défaut, peut être activé dans les préférences
+    enableBrowserNotification: false, // Désactivé par défaut
+  });
 }
