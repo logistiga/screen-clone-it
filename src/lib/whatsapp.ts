@@ -12,7 +12,14 @@ export function openWhatsAppShare(text: string, phone?: string) {
     ? `https://wa.me/${cleanPhone}?text=${encodedText}`
     : `https://wa.me/?text=${encodedText}`;
 
-  // Ouverture directe comme ClientShareButton
-  window.open(url, "_blank", "noopener,noreferrer");
+  // Essaye d'ouvrir un nouvel onglet; si bloqué (iframe/popup), bascule sur la navigation
+  try {
+    const win = window.open(url, "_blank", "noopener,noreferrer");
+    if (!win) window.location.href = url;
+  } catch {
+    window.location.href = url;
+  }
+
   return url;
 }
+
