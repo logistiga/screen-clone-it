@@ -301,16 +301,6 @@ export default function ClientsPage() {
                       {getSortIcon("nom")}
                     </button>
                   </TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>
-                    <button 
-                      className="flex items-center hover:text-foreground transition-colors"
-                      onClick={() => handleSort("ville")}
-                    >
-                      Ville
-                      {getSortIcon("ville")}
-                    </button>
-                  </TableHead>
                   <TableHead className="text-right">
                     <button 
                       className="flex items-center justify-end w-full hover:text-foreground transition-colors"
@@ -348,15 +338,6 @@ export default function ClientsPage() {
                             )}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {client.email && <p className="truncate max-w-[200px]">{client.email}</p>}
-                          {client.telephone && <p className="text-muted-foreground">{client.telephone}</p>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-muted-foreground">{client.ville || "-"}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className={solde > 0 ? "font-semibold text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
