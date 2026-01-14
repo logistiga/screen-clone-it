@@ -57,7 +57,7 @@ export function ClientDetailHeader({ client, onDelete, onEmail }: ClientDetailHe
       <div className="relative p-6">
         {/* Top row - Back button and actions */}
         <div className="flex items-center justify-between mb-6">
-          <Button variant="ghost" onClick={() => navigate("/clients")} className="gap-2 hover:bg-white/50 dark:hover:bg-black/20">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 hover:bg-white/50 dark:hover:bg-black/20">
             <ArrowLeft className="h-4 w-4" />
             Retour
           </Button>

@@ -232,9 +232,9 @@ export function PartenaireDetailContent({
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Button variant="ghost" onClick={() => navigate("/partenaires")} className="gap-2 w-fit">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 w-fit">
             <ArrowLeft className="h-4 w-4" />
-            Retour aux partenaires
+            Retour
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2">

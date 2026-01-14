@@ -60,7 +60,7 @@ export function DevisHeader({ devis, onConvert, isConverting }: DevisHeaderProps
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => navigate("/devis")} 
+            onClick={() => navigate(-1)} 
             className="shrink-0 bg-background/50 backdrop-blur-sm hover:bg-background/80"
           >
             <ArrowLeft className="h-5 w-5" />
