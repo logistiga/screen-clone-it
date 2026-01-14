@@ -3,23 +3,16 @@
 namespace App\Observers;
 
 use App\Models\Client;
-use App\Services\NotificationService;
+use App\Events\ClientCreated;
 
 class ClientObserver
 {
-    protected NotificationService $notificationService;
-
-    public function __construct(NotificationService $notificationService)
-    {
-        $this->notificationService = $notificationService;
-    }
-
     /**
      * Handle the Client "created" event.
      */
     public function created(Client $client): void
     {
-        // Envoyer une notification
-        $this->notificationService->notifyNewClient($client);
+        // Dispatcher l'événement au lieu d'appeler directement le service
+        event(new ClientCreated($client));
     }
 }

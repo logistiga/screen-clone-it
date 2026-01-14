@@ -3,31 +3,20 @@
 namespace App\Observers;
 
 use App\Models\Facture;
-use App\Services\NotificationService;
-use App\Services\CacheService;
+use App\Events\FactureCreated;
+use App\Events\FactureUpdated;
 
 class FactureObserver
 {
-    protected NotificationService $notificationService;
-
-    public function __construct(NotificationService $notificationService)
-    {
-        $this->notificationService = $notificationService;
-    }
-
     /**
      * Handle the Facture "created" event.
      */
     public function created(Facture $facture): void
     {
-        // Charger les relations nécessaires
         $facture->load('client');
         
-        // Envoyer une notification
-        $this->notificationService->notifyNewFacture($facture);
-
-        // Invalider le cache dashboard
-        CacheService::invalidateDashboard();
+        // Dispatcher l'événement au lieu d'appeler directement le service
+        event(new FactureCreated($facture));
     }
 
     /**
@@ -35,14 +24,8 @@ class FactureObserver
      */
     public function updated(Facture $facture): void
     {
-        CacheService::invalidateDashboard();
-    }
-
-    /**
-     * Handle the Facture "deleted" event.
-     */
-    public function deleted(Facture $facture): void
-    {
-        CacheService::invalidateDashboard();
+        $changedAttributes = $facture->getChanges();
+        
+        event(new FactureUpdated($facture, $changedAttributes));
     }
 }
