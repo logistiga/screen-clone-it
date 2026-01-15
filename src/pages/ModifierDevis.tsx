@@ -47,9 +47,21 @@ export default function ModifierDevisPage() {
   const updateDevisMutation = useUpdateDevis();
 
   const clients = clientsData?.data || [];
-  const armateurs = armateursData || [];
-  const transitaires = transitairesData || [];
-  const representants = representantsData || [];
+  const armateurs = Array.isArray(armateursData)
+    ? armateursData
+    : Array.isArray((armateursData as any)?.data)
+      ? (armateursData as any).data
+      : [];
+  const transitaires = Array.isArray(transitairesData)
+    ? transitairesData
+    : Array.isArray((transitairesData as any)?.data)
+      ? (transitairesData as any).data
+      : [];
+  const representants = Array.isArray(representantsData)
+    ? representantsData
+    : Array.isArray((representantsData as any)?.data)
+      ? (representantsData as any).data
+      : [];
   
   const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
   const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
