@@ -56,6 +56,19 @@ export function EmailModal({
     return new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
   };
 
+  const getDocumentLabel = () => {
+    switch (documentType) {
+      case "devis":
+        return "Devis";
+      case "ordre":
+        return "Ordre de travail";
+      case "facture":
+        return "Facture";
+      default:
+        return "Document";
+    }
+  };
+
   // Générer le message avec détails financiers
   const getDefaultMessage = () => {
     let msg = `Bonjour${clientNom ? ` ${clientNom}` : ''},\n\nVeuillez trouver ci-joint votre ${getDocumentLabel().toLowerCase()} ${documentNumero}.\n\n`;
@@ -79,19 +92,6 @@ export function EmailModal({
 
   const [message, setMessage] = useState(getDefaultMessage());
   const [isSending, setIsSending] = useState(false);
-
-  const getDocumentLabel = () => {
-    switch (documentType) {
-      case "devis":
-        return "Devis";
-      case "ordre":
-        return "Ordre de travail";
-      case "facture":
-        return "Facture";
-      default:
-        return "Document";
-    }
-  };
 
   const handleSend = async () => {
     const email = emailOption === "client" ? clientEmail : customEmail;
