@@ -201,7 +201,7 @@ export function PaiementModal({
 
         <div className="space-y-4 py-4">
           {/* Avoirs disponibles section */}
-          {clientId && documentType === "facture" && (
+          {clientId && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Gift className="h-4 w-4 text-amber-600" />
