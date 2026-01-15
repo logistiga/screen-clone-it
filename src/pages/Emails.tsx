@@ -147,6 +147,7 @@ export default function EmailsPage() {
   
   const [testEmail, setTestEmail] = useState("");
   const [testTemplateId, setTestTemplateId] = useState<number | null>(null);
+  const [quickTestEmail, setQuickTestEmail] = useState("");
   
   // Config state
   const [configForm, setConfigForm] = useState<Partial<EmailConfig>>({});
@@ -786,6 +787,41 @@ export default function EmailsPage() {
                             onCheckedChange={checked => setConfigForm({ ...configForm, ssl: checked })}
                           />
                           <Label>Utiliser SSL/TLS</Label>
+                        </div>
+                        
+                        {/* Test email section */}
+                        <div className="border-t pt-4 mt-4">
+                          <Label className="text-sm font-medium mb-2 block">Tester la configuration SMTP</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="email"
+                              value={quickTestEmail}
+                              onChange={e => setQuickTestEmail(e.target.value)}
+                              placeholder="votre-email@example.com"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                if (quickTestEmail) {
+                                  sendTestEmail.mutate({ email: quickTestEmail });
+                                }
+                              }}
+                              disabled={!quickTestEmail || sendTestEmail.isPending}
+                              className="gap-2"
+                            >
+                              {sendTestEmail.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4" />
+                              )}
+                              Envoyer un test
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Un email de test sera envoyé pour vérifier la configuration SMTP
+                          </p>
                         </div>
                       </>
                     )}
