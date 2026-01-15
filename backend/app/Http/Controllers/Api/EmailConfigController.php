@@ -152,24 +152,24 @@ class EmailConfigController extends Controller
      */
     private function configureMailer(): void
     {
-        $smtpHost = Setting::where('key', 'mail.smtp_host')->first()?->value;
-        $smtpPort = Setting::where('key', 'mail.smtp_port')->first()?->value;
-        $smtpUser = Setting::where('key', 'mail.smtp_user')->first()?->value;
+        $smtpHost = Setting::get('mail.smtp_host');
+        $smtpPort = Setting::get('mail.smtp_port');
+        $smtpUser = Setting::get('mail.smtp_user');
+        $smtpPassword = Setting::get('mail.smtp_password');
+        $ssl = Setting::get('mail.ssl', true);
         
-        // Le mot de passe est chiffré, il faut le déchiffrer
-        $smtpPasswordSetting = Setting::where('key', 'mail.smtp_password')->first();
-        $smtpPassword = null;
-        if ($smtpPasswordSetting) {
-            try {
-                $smtpPassword = $smtpPasswordSetting->type === 'encrypted' 
-                    ? decrypt($smtpPasswordSetting->value) 
-                    : $smtpPasswordSetting->value;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning('Impossible de déchiffrer le mot de passe SMTP');
-            }
+        // Convertir ssl en booléen si c'est une chaîne
+        if (is_string($ssl)) {
+            $ssl = filter_var($ssl, FILTER_VALIDATE_BOOLEAN);
         }
-        
-        $ssl = $this->getSetting('mail.ssl', true);
+
+        \Illuminate\Support\Facades\Log::info('Configuration SMTP chargée pour test', [
+            'host' => $smtpHost,
+            'port' => $smtpPort,
+            'user' => $smtpUser,
+            'password_set' => !empty($smtpPassword),
+            'ssl' => $ssl,
+        ]);
 
         if ($smtpHost && $smtpPort && $smtpUser && $smtpPassword) {
             Config::set('mail.mailers.smtp.host', $smtpHost);
@@ -178,10 +178,8 @@ class EmailConfigController extends Controller
             Config::set('mail.mailers.smtp.password', $smtpPassword);
             Config::set('mail.mailers.smtp.encryption', $ssl ? 'tls' : null);
             
-            \Illuminate\Support\Facades\Log::debug('Mailer SMTP configuré pour test', [
-                'host' => $smtpHost,
-                'port' => $smtpPort,
-                'user' => $smtpUser,
+            \Illuminate\Support\Facades\Log::info('Mailer SMTP configuré dynamiquement', [
+                'encryption' => $ssl ? 'tls' : 'none',
             ]);
         } else {
             \Illuminate\Support\Facades\Log::warning('Configuration SMTP incomplète pour test', [
