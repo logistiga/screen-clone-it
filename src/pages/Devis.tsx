@@ -141,9 +141,10 @@ Veuillez trouver ci-dessous votre devis n° *${devis.numero}* d'un montant de *$
 
 📄 *Détails du devis :*
 • Client : ${devis.client?.nom || '-'}
-• Montant HT : ${new Intl.NumberFormat('fr-FR').format(devis.montant_ht || 0)} FCFA
+• Montant HT : ${new Intl.NumberFormat('fr-FR').format(devis.montant_ht || 0)} FCFA${devis.remise_montant > 0 ? `
+• Remise : -${new Intl.NumberFormat('fr-FR').format(devis.remise_montant)} FCFA` : ''}
 • TVA : ${new Intl.NumberFormat('fr-FR').format(devis.montant_tva || 0)} FCFA
-• Montant TTC : ${montant}
+• *Total TTC : ${montant}*
 • Date de validité : ${devis.date_validite ? new Date(devis.date_validite).toLocaleDateString('fr-FR') : '-'}
 
 📎 *Lien du document PDF :*

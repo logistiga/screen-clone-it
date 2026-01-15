@@ -32,6 +32,7 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailModal } from "@/components/EmailModal";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
+import { HistoriqueTimeline } from "@/components/shared/HistoriqueTimeline";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -109,18 +110,7 @@ export default function FactureDetailPage() {
     );
   };
 
-  // Traçabilité mock
-  const tracabilite = [
-    {
-      id: "1",
-      action: "Création",
-      utilisateur: "Système",
-      date: facture.created_at || facture.date_facture,
-      details: "Facture créée",
-      icon: FileText,
-      color: "text-blue-600",
-    },
-  ];
+  // Import du composant d'historique partagé sera utilisé dans le TabsContent
 
   return (
     <MainLayout title={`Facture ${facture.numero}`}>
@@ -401,48 +391,13 @@ export default function FactureDetailPage() {
           </TabsContent>
 
           <TabsContent value="tracabilite" className="mt-6">
-            <Card className="transition-all duration-300 hover:shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Historique des actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative">
-                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-                  <div className="space-y-6">
-                    {tracabilite.map((action, index) => {
-                      const IconComponent = action.icon;
-                      return (
-                        <div 
-                          key={action.id} 
-                          className="relative flex gap-4 pl-10 animate-fade-in"
-                          style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                          <div
-                            className={`absolute left-0 p-2 rounded-full bg-background border-2 ${action.color.replace("text-", "border-")} transition-all duration-200 hover:scale-110`}
-                          >
-                            <IconComponent className={`h-4 w-4 ${action.color}`} />
-                          </div>
-                          <div className="flex-1 bg-muted/30 rounded-lg p-4 transition-all duration-200 hover:bg-muted/50">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-semibold">{action.action}</span>
-                              <span className="text-sm text-muted-foreground">{formatDate(action.date)}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                              <User className="h-3 w-3" />
-                              <span>{action.utilisateur}</span>
-                            </div>
-                            <p className="text-sm">{action.details}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <HistoriqueTimeline
+              documentId={facture.id}
+              documentNumero={facture.numero}
+              module="factures"
+              createdAt={facture.created_at || facture.date_facture}
+              title="Historique des actions"
+            />
           </TabsContent>
         </Tabs>
       </div>
