@@ -38,6 +38,16 @@ export default function RemiseInput({
 }: RemiseInputProps) {
   const [type, setType] = useState<RemiseType>(initialType);
   const [valeur, setValeur] = useState<number>(initialValeur);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Synchroniser avec les props initiales quand elles changent (mode édition)
+  useEffect(() => {
+    if (!hasInitialized && initialType !== "none") {
+      setType(initialType);
+      setValeur(initialValeur);
+      setHasInitialized(true);
+    }
+  }, [initialType, initialValeur, hasInitialized]);
 
   // Calculer le montant de la remise
   const calculerMontantRemise = (): number => {
