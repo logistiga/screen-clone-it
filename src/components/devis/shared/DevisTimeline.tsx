@@ -153,35 +153,49 @@ const extractChanges = (oldValues: any, newValues: any): FieldChange[] => {
   
   if (!newValues || typeof newValues !== "object") return changes;
   
-  // Champs importants à surveiller
+  // Champs importants à surveiller (inclut les alias tva/css du backend)
   const importantFields = [
-    "montant_ht", "montant_ttc", "montant_tva", "montant_css",
+    "montant_ht", "montant_ttc", "montant_tva", "montant_css", "tva", "css",
     "remise_valeur", "remise_montant", "remise_type",
     "statut", "date_validite",
     "navire", "voyage", "port_origine", "port_destination",
     "notes", "observations", "type_operation"
   ];
+
+  // Mapping pour les alias de champs (backend → affichage)
+  const fieldAliases: Record<string, string> = {
+    tva: "montant_tva",
+    css: "montant_css",
+  };
+  
+  const processedFields = new Set<string>();
   
   for (const field of importantFields) {
+    // Éviter les doublons (tva vs montant_tva)
+    const displayField = fieldAliases[field] || field;
+    if (processedFields.has(displayField)) continue;
+    
     const oldVal = oldValues?.[field];
     const newVal = newValues?.[field];
     
-    // Comparer les valeurs (ignorer si les deux sont vides)
-    if (oldVal !== newVal && !(isEmpty(oldVal) && isEmpty(newVal))) {
+    // Comparer les valeurs (ignorer si les deux sont vraiment vides, mais pas si l'une est 0)
+    if (oldVal !== newVal && !(isEmptyValue(oldVal) && isEmptyValue(newVal))) {
       changes.push({
-        field,
-        label: fieldLabels[field] || field,
+        field: displayField,
+        label: fieldLabels[displayField] || fieldLabels[field] || field,
         oldValue: oldVal,
         newValue: newVal,
       });
+      processedFields.add(displayField);
     }
   }
   
   return changes;
 };
 
-const isEmpty = (val: any): boolean => {
-  return val === null || val === undefined || val === "" || val === 0;
+// Vérifier si une valeur est vraiment vide (0 n'est PAS vide pour les montants)
+const isEmptyValue = (val: any): boolean => {
+  return val === null || val === undefined || val === "";
 };
 
 // Mapper l'action d'audit vers le type d'événement
