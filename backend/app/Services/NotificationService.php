@@ -95,12 +95,7 @@ class NotificationService
             Log::info("Facture {$facture->numero} envoyée à {$email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Erreur envoi facture {$facture->numero}: " . $e->getMessage(), [
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            // Ne pas logger ici, le controller s'en charge
             throw $e;
         }
     }
@@ -132,18 +127,20 @@ class NotificationService
         }
 
         try {
-            // Log pour debug
-            Log::info('Envoi devis email - payload', [
-                'devis_id' => $devis->id,
-                'devis_numero' => $devis->numero,
-                'client_exists' => (bool) $client,
-                'email_destinataire' => $email,
-                'date_creation' => $devis->date_creation,
-                'date_validite' => $devis->date_validite,
-                'tva' => $devis->tva,
-                'montant_ht' => $devis->montant_ht,
-                'montant_ttc' => $devis->montant_ttc,
-            ]);
+            // Log pour debug uniquement
+            if (config('app.debug')) {
+                Log::info('Envoi devis email - payload', [
+                    'devis_id' => $devis->id,
+                    'devis_numero' => $devis->numero,
+                    'client_exists' => (bool) $client,
+                    'email_destinataire' => $email,
+                    'date_creation' => $devis->date_creation,
+                    'date_validite' => $devis->date_validite,
+                    'tva' => $devis->tva,
+                    'montant_ht' => $devis->montant_ht,
+                    'montant_ttc' => $devis->montant_ttc,
+                ]);
+            }
 
             Mail::send('emails.devis', [
                 'devis' => $devis,
@@ -164,13 +161,8 @@ class NotificationService
             Log::info("Devis {$devis->numero} envoyé à {$email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Erreur envoi devis {$devis->numero}: " . $e->getMessage(), [
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e; // Re-throw pour que le controller puisse aussi logger/répondre
+            // Ne pas logger ici, le controller s'en charge
+            throw $e;
         }
     }
 
@@ -215,12 +207,7 @@ class NotificationService
             Log::info("Ordre de travail {$ordre->numero} envoyé à {$email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Erreur envoi ordre {$ordre->numero}: " . $e->getMessage(), [
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            // Ne pas logger ici, le controller s'en charge
             throw $e;
         }
     }
@@ -265,12 +252,7 @@ class NotificationService
             Log::info("Confirmation de paiement envoyée à {$email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Erreur envoi confirmation paiement: " . $e->getMessage(), [
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            // Ne pas logger ici, le controller s'en charge
             throw $e;
         }
     }
@@ -317,12 +299,7 @@ class NotificationService
             Log::info("Rappel {$numeroRappel} envoyé pour facture {$facture->numero}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Erreur envoi rappel facture {$facture->numero}: " . $e->getMessage(), [
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            // Ne pas logger ici, le controller s'en charge
             throw $e;
         }
     }
