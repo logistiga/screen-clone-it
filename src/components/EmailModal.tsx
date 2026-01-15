@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Send, User, AtSign } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Mail, Send, User, AtSign, Building2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// Interface pour les contacts additionnels
+interface ContactOption {
+  id: string;
+  nom: string;
+  email: string;
+  type: "client" | "transitaire" | "contact" | "autre";
+  label?: string;
+}
 
 interface EmailModalProps {
   open: boolean;
@@ -28,6 +38,15 @@ interface EmailModalProps {
   remiseType?: string;
   tva?: number;
   css?: number;
+  // Nouveaux props pour contacts additionnels
+  transitaireEmail?: string;
+  transitaireNom?: string;
+  contacts?: Array<{
+    id: string | number;
+    nom: string;
+    email?: string;
+    fonction?: string;
+  }>;
 }
 
 export function EmailModal({
@@ -43,9 +62,12 @@ export function EmailModal({
   remiseType,
   tva,
   css,
+  transitaireEmail,
+  transitaireNom,
+  contacts = [],
 }: EmailModalProps) {
   const { toast } = useToast();
-  const [emailOption, setEmailOption] = useState<"client" | "autre">(
+  const [selectedContact, setSelectedContact] = useState<string>(
     clientEmail ? "client" : "autre"
   );
   const [customEmail, setCustomEmail] = useState("");
@@ -69,9 +91,70 @@ export function EmailModal({
     }
   };
 
+  // Construire la liste des contacts disponibles
+  const availableContacts: ContactOption[] = useMemo(() => {
+    const list: ContactOption[] = [];
+    
+    // Client principal
+    if (clientEmail) {
+      list.push({
+        id: "client",
+        nom: clientNom || "Client",
+        email: clientEmail,
+        type: "client",
+        label: "Client principal"
+      });
+    }
+    
+    // Transitaire
+    if (transitaireEmail) {
+      list.push({
+        id: "transitaire",
+        nom: transitaireNom || "Transitaire",
+        email: transitaireEmail,
+        type: "transitaire",
+        label: "Transitaire"
+      });
+    }
+    
+    // Contacts additionnels du client
+    contacts.forEach((contact) => {
+      if (contact.email) {
+        list.push({
+          id: `contact-${contact.id}`,
+          nom: contact.nom,
+          email: contact.email,
+          type: "contact",
+          label: contact.fonction || "Contact"
+        });
+      }
+    });
+    
+    return list;
+  }, [clientEmail, clientNom, transitaireEmail, transitaireNom, contacts]);
+
+  // Obtenir l'email sélectionné
+  const getSelectedEmail = (): string | undefined => {
+    if (selectedContact === "autre") {
+      return customEmail;
+    }
+    const contact = availableContacts.find(c => c.id === selectedContact);
+    return contact?.email;
+  };
+
+  // Obtenir le nom du destinataire sélectionné
+  const getSelectedName = (): string | undefined => {
+    if (selectedContact === "autre") {
+      return undefined;
+    }
+    const contact = availableContacts.find(c => c.id === selectedContact);
+    return contact?.nom;
+  };
+
   // Générer le message avec détails financiers
   const getDefaultMessage = () => {
-    let msg = `Bonjour${clientNom ? ` ${clientNom}` : ''},\n\nVeuillez trouver ci-joint votre ${getDocumentLabel().toLowerCase()} ${documentNumero}.\n\n`;
+    const recipientName = getSelectedName();
+    let msg = `Bonjour${recipientName ? ` ${recipientName}` : ''},\n\nVeuillez trouver ci-joint votre ${getDocumentLabel().toLowerCase()} ${documentNumero}.\n\n`;
     
     if (montantHT || montantTTC) {
       msg += `📄 Détails :\n`;
@@ -93,13 +176,32 @@ export function EmailModal({
   const [message, setMessage] = useState(getDefaultMessage());
   const [isSending, setIsSending] = useState(false);
 
+  // Mettre à jour le message quand le contact change
+  const handleContactChange = (value: string) => {
+    setSelectedContact(value);
+    // Optionnel: régénérer le message avec le nouveau nom
+  };
+
+  const getContactIcon = (type: ContactOption["type"]) => {
+    switch (type) {
+      case "client":
+        return <User className="h-4 w-4 text-primary" />;
+      case "transitaire":
+        return <Building2 className="h-4 w-4 text-blue-600" />;
+      case "contact":
+        return <Users className="h-4 w-4 text-emerald-600" />;
+      default:
+        return <AtSign className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
   const handleSend = async () => {
-    const email = emailOption === "client" ? clientEmail : customEmail;
+    const email = getSelectedEmail();
 
     if (!email) {
       toast({
         title: "Erreur",
-        description: "Veuillez saisir une adresse email.",
+        description: "Veuillez sélectionner ou saisir une adresse email.",
         variant: "destructive",
       });
       return;
@@ -123,7 +225,7 @@ export function EmailModal({
 
     toast({
       title: "Email envoyé",
-      description: `Le ${documentType} ${documentNumero} a été envoyé à ${email}`,
+      description: `Le ${getDocumentLabel().toLowerCase()} ${documentNumero} a été envoyé à ${email}`,
     });
 
     setIsSending(false);
@@ -139,8 +241,7 @@ export function EmailModal({
             Envoyer par email
           </DialogTitle>
           <DialogDescription>
-            Envoyer le {getDocumentLabel().toLowerCase()} <strong>{documentNumero}</strong> par
-            email
+            Envoyer le {getDocumentLabel().toLowerCase()} <strong>{documentNumero}</strong> par email
           </DialogDescription>
         </DialogHeader>
 
@@ -148,33 +249,48 @@ export function EmailModal({
           {/* Choix du destinataire */}
           <div className="space-y-3">
             <Label>Destinataire</Label>
-            <RadioGroup value={emailOption} onValueChange={(v) => setEmailOption(v as any)}>
-              {clientEmail && (
-                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                  <RadioGroupItem value="client" id="client" />
-                  <Label htmlFor="client" className="flex-1 cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{clientNom}</span>
+            <RadioGroup value={selectedContact} onValueChange={handleContactChange}>
+              <ScrollArea className={availableContacts.length > 3 ? "h-[180px]" : ""}>
+                <div className="space-y-2 pr-2">
+                  {/* Contacts disponibles */}
+                  {availableContacts.map((contact) => (
+                    <div 
+                      key={contact.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <RadioGroupItem value={contact.id} id={contact.id} />
+                      <Label htmlFor={contact.id} className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          {getContactIcon(contact.type)}
+                          <span className="font-medium">{contact.nom}</span>
+                          {contact.label && (
+                            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                              {contact.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{contact.email}</p>
+                      </Label>
                     </div>
-                    <p className="text-sm text-muted-foreground">{clientEmail}</p>
-                  </Label>
-                </div>
-              )}
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                <RadioGroupItem value="autre" id="autre" />
-                <Label htmlFor="autre" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <AtSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Autre adresse email</span>
+                  ))}
+                  
+                  {/* Option pour autre adresse */}
+                  <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
+                    <RadioGroupItem value="autre" id="autre" />
+                    <Label htmlFor="autre" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <AtSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Autre adresse email</span>
+                      </div>
+                    </Label>
                   </div>
-                </Label>
-              </div>
+                </div>
+              </ScrollArea>
             </RadioGroup>
           </div>
 
           {/* Champ email personnalisé */}
-          {emailOption === "autre" && (
+          {selectedContact === "autre" && (
             <div className="space-y-2">
               <Label htmlFor="customEmail">Adresse email</Label>
               <Input
