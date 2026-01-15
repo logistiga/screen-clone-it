@@ -10,6 +10,7 @@ use App\Models\Paiement;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
@@ -30,22 +31,35 @@ class NotificationController extends Controller
             'message' => 'nullable|string|max:1000',
         ]);
 
-        $success = $this->notificationService->envoyerFacture(
-            $facture,
-            $request->email,
-            $request->message
-        );
+        try {
+            $success = $this->notificationService->envoyerFacture(
+                $facture,
+                $request->email,
+                $request->message
+            );
 
-        if ($success) {
+            if ($success) {
+                return response()->json([
+                    'message' => 'Facture envoyée avec succès',
+                    'facture' => $facture->fresh(),
+                ]);
+            }
+
             return response()->json([
-                'message' => 'Facture envoyée avec succès',
-                'facture' => $facture->fresh(),
+                'message' => 'Erreur lors de l\'envoi de la facture',
+            ], 500);
+        } catch (\Throwable $e) {
+            Log::error("Controller: Erreur envoi facture {$facture->numero}", [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
-        }
 
-        return response()->json([
-            'message' => 'Erreur lors de l\'envoi de la facture',
-        ], 500);
+            return response()->json([
+                'message' => 'Erreur lors de l\'envoi de la facture: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -58,22 +72,35 @@ class NotificationController extends Controller
             'message' => 'nullable|string|max:1000',
         ]);
 
-        $success = $this->notificationService->envoyerDevis(
-            $devis,
-            $request->email,
-            $request->message
-        );
+        try {
+            $success = $this->notificationService->envoyerDevis(
+                $devis,
+                $request->email,
+                $request->message
+            );
 
-        if ($success) {
+            if ($success) {
+                return response()->json([
+                    'message' => 'Devis envoyé avec succès',
+                    'devis' => $devis->fresh(),
+                ]);
+            }
+
             return response()->json([
-                'message' => 'Devis envoyé avec succès',
-                'devis' => $devis->fresh(),
+                'message' => 'Erreur lors de l\'envoi du devis',
+            ], 500);
+        } catch (\Throwable $e) {
+            Log::error("Controller: Erreur envoi devis {$devis->numero}", [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
-        }
 
-        return response()->json([
-            'message' => 'Erreur lors de l\'envoi du devis',
-        ], 500);
+            return response()->json([
+                'message' => 'Erreur lors de l\'envoi du devis: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
