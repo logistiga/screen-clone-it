@@ -142,6 +142,15 @@ class DevisController extends Controller
 
         try {
             $data = $request->validated();
+            
+            // Capturer les anciennes valeurs AVANT la modification
+            $oldValues = $devis->only([
+                'montant_ht', 'montant_ttc', 'montant_tva', 'montant_css',
+                'remise_type', 'remise_valeur', 'remise_montant',
+                'statut', 'date_validite', 'navire', 'voyage',
+                'port_origine', 'port_destination', 'notes', 'observations',
+                'type_operation', 'client_id', 'transitaire_id', 'armateur_id'
+            ]);
 
             DB::transaction(function () use ($devis, $data) {
                 // Normaliser
@@ -173,8 +182,18 @@ class DevisController extends Controller
 
                 $devis->calculerTotaux();
             });
+            
+            // Récupérer les nouvelles valeurs APRÈS la modification
+            $devis->refresh();
+            $newValues = $devis->only([
+                'montant_ht', 'montant_ttc', 'montant_tva', 'montant_css',
+                'remise_type', 'remise_valeur', 'remise_montant',
+                'statut', 'date_validite', 'navire', 'voyage',
+                'port_origine', 'port_destination', 'notes', 'observations',
+                'type_operation', 'client_id', 'transitaire_id', 'armateur_id'
+            ]);
 
-            Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis->id);
+            Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis, $oldValues, $newValues);
 
             return response()->json(new DevisResource($devis->fresh(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots'])));
 
