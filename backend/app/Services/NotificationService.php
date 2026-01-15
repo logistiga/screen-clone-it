@@ -89,7 +89,6 @@ class NotificationService
             // Mettre à jour le statut de la facture
             $facture->update([
                 'statut' => 'envoye',
-                'date_envoi' => now(),
             ]);
 
             Log::info("Facture {$facture->numero} envoyée à {$email}");
@@ -155,7 +154,6 @@ class NotificationService
 
             $devis->update([
                 'statut' => 'envoye',
-                'date_envoi' => now(),
             ]);
 
             Log::info("Devis {$devis->numero} envoyé à {$email}");
