@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class OrdreTravail extends Model
 {
@@ -147,5 +148,55 @@ class OrdreTravail extends Model
     public function scopeCategorie($query, $categorie)
     {
         return $query->where('categorie', $categorie);
+    }
+
+    /**
+     * Générer un numéro d'ordre unique
+     */
+    public static function genererNumero(): string
+    {
+        $annee = date('Y');
+        
+        return DB::transaction(function () use ($annee) {
+            $config = Configuration::where('key', 'numerotation')->lockForUpdate()->first();
+            
+            if (!$config) {
+                $config = Configuration::create([
+                    'key' => 'numerotation',
+                    'data' => Configuration::DEFAULTS['numerotation'],
+                ]);
+            }
+            
+            $prefixe = $config->data['prefixe_ordre'] ?? 'OT';
+
+            // Trouver le numéro maximum existant
+            $maxNumero = self::withTrashed()
+                ->where('numero', 'like', $prefixe . '-' . $annee . '-%')
+                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as max_num")
+                ->value('max_num');
+
+            $prochainNumero = ($maxNumero ?? 0) + 1;
+
+            // S'assurer que le numéro est au moins égal au compteur stocké
+            $compteurStocke = $config->data['prochain_numero_ordre'] ?? 1;
+            if ($prochainNumero < $compteurStocke) {
+                $prochainNumero = $compteurStocke;
+            }
+
+            // Vérifier l'unicité
+            $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            while (self::withTrashed()->where('numero', $numero)->exists()) {
+                $prochainNumero++;
+                $numero = sprintf('%s-%s-%04d', $prefixe, $annee, $prochainNumero);
+            }
+
+            // Mettre à jour le compteur
+            $data = $config->data;
+            $data['prochain_numero_ordre'] = $prochainNumero + 1;
+            $config->data = $data;
+            $config->save();
+
+            return $numero;
+        });
     }
 }

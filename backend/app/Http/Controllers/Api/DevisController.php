@@ -10,6 +10,7 @@ use App\Http\Resources\OrdreTravailResource;
 use App\Models\Devis;
 use App\Models\OrdreTravail;
 use App\Models\Audit;
+use App\Services\OrdreTravail\OrdreServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
