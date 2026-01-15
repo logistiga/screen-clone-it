@@ -5,7 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 // Types
 export interface AuditUser {
   id: number;
-  name: string;
+  name?: string;
+  nom?: string;
   email?: string;
   role?: string;
 }

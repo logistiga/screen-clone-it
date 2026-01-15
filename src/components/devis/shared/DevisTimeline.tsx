@@ -127,7 +127,7 @@ export function DevisTimeline({ devis }: DevisTimelineProps) {
           date: entry.created_at,
           time: formatTime(entry.created_at),
           description: entry.details || `${entry.action} effectuée`,
-          user: entry.user?.name,
+          user: entry.user?.name || entry.user?.nom,
         }))
     : [];
 
