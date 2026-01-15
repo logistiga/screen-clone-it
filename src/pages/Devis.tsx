@@ -27,7 +27,7 @@ import {
   FileCheck, Check, Container, Package, Wrench,
   TrendingUp, Clock, CheckCircle
 } from "lucide-react";
-import { EmailModal } from "@/components/EmailModal";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
@@ -93,12 +93,7 @@ export default function DevisPage() {
     id: string;
     numero: string;
   } | null>(null);
-  const [emailModal, setEmailModal] = useState<{
-    id: string;
-    numero: string;
-    clientEmail: string;
-    clientNom: string;
-  } | null>(null);
+  const [emailModal, setEmailModal] = useState<any | null>(null);
 
   // Handlers consolidés
   const handleAction = async () => {
@@ -326,7 +321,7 @@ L'équipe Lojistiga`;
                   devis={d} 
                   onAction={handleCardAction}
                   onWhatsApp={handleWhatsAppShare}
-                  onEmail={(numero, email, nom) => setEmailModal({ id: d.id, numero, clientEmail: email, clientNom: nom })}
+                  onEmail={() => setEmailModal(d)}
                 />
               </div>
             ))}
@@ -387,7 +382,7 @@ L'équipe Lojistiga`;
                             <FileText className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" title="Email" className="h-8 w-8 text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
-                            onClick={() => setEmailModal({ id: d.id, numero: d.numero, clientEmail: d.client?.email || '', clientNom: d.client?.nom || '' })}>
+                            onClick={() => setEmailModal(d)}>
                             <Mail className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" title="WhatsApp" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
@@ -489,13 +484,33 @@ L'équipe Lojistiga`;
       </AlertDialog>
 
       {emailModal && (
-        <EmailModal
+        <EmailModalWithTemplate
           open={!!emailModal}
           onOpenChange={() => setEmailModal(null)}
           documentType="devis"
-          documentNumero={emailModal.numero}
-          clientEmail={emailModal.clientEmail}
-          clientNom={emailModal.clientNom}
+          documentData={{
+            id: emailModal.id,
+            numero: emailModal.numero,
+            clientNom: emailModal.client?.nom,
+            clientEmail: emailModal.client?.email,
+            transitaireNom: emailModal.transitaire?.nom,
+            transitaireEmail: emailModal.transitaire?.email,
+            armateurNom: emailModal.armateur?.nom,
+            armateurEmail: emailModal.armateur?.email,
+            representantNom: emailModal.representant?.nom,
+            representantEmail: emailModal.representant?.email,
+            contacts: emailModal.client?.contacts || [],
+            montantHT: emailModal.montant_ht,
+            montantTTC: emailModal.montant_ttc,
+            remiseMontant: emailModal.remise_montant,
+            remiseType: emailModal.remise_type,
+            tva: emailModal.montant_tva,
+            css: emailModal.montant_css,
+            dateCreation: emailModal.date_creation,
+            dateValidite: emailModal.date_validite,
+            statut: emailModal.statut,
+            categorie: emailModal.type_document,
+          }}
         />
       )}
     </MainLayout>
