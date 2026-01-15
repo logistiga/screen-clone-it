@@ -54,11 +54,23 @@ class NotificationService
     public function envoyerFacture(Facture $facture, ?string $emailDestinataire = null, ?string $message = null): bool
     {
         $mailConfig = $this->configureMailer();
+        
+        // Charger le client si pas déjà chargé
+        $facture->loadMissing('client');
         $client = $facture->client;
-        $email = $emailDestinataire ?? $client->email;
+        
+        // Déterminer l'email destinataire
+        $email = $emailDestinataire;
+        if (!$email && $client) {
+            $email = $client->email;
+        }
 
         if (!$email) {
-            Log::warning("Impossible d'envoyer la facture {$facture->numero}: pas d'email");
+            Log::warning("Impossible d'envoyer la facture {$facture->numero}: pas d'email", [
+                'facture_id' => $facture->id,
+                'client_id' => $facture->client_id,
+                'client_exists' => (bool) $client,
+            ]);
             return false;
         }
 
@@ -66,7 +78,7 @@ class NotificationService
             Mail::send('emails.facture', [
                 'facture' => $facture,
                 'client' => $client,
-                'message_personnalise' => $message,
+                'message_personnalise' => $message ?? '',
                 'signature' => $mailConfig['signature'],
             ], function ($mail) use ($email, $facture, $mailConfig) {
                 $mail->to($email)
@@ -82,9 +94,14 @@ class NotificationService
 
             Log::info("Facture {$facture->numero} envoyée à {$email}");
             return true;
-        } catch (\Exception $e) {
-            Log::error("Erreur envoi facture {$facture->numero}: " . $e->getMessage());
-            return false;
+        } catch (\Throwable $e) {
+            Log::error("Erreur envoi facture {$facture->numero}: " . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
     }
 
@@ -163,11 +180,23 @@ class NotificationService
     public function envoyerOrdreTravail(OrdreTravail $ordre, ?string $emailDestinataire = null, ?string $message = null): bool
     {
         $mailConfig = $this->configureMailer();
+        
+        // Charger le client si pas déjà chargé
+        $ordre->loadMissing('client');
         $client = $ordre->client;
-        $email = $emailDestinataire ?? $client->email;
+        
+        // Déterminer l'email destinataire
+        $email = $emailDestinataire;
+        if (!$email && $client) {
+            $email = $client->email;
+        }
 
         if (!$email) {
-            Log::warning("Impossible d'envoyer l'ordre {$ordre->numero}: pas d'email");
+            Log::warning("Impossible d'envoyer l'ordre {$ordre->numero}: pas d'email", [
+                'ordre_id' => $ordre->id,
+                'client_id' => $ordre->client_id,
+                'client_exists' => (bool) $client,
+            ]);
             return false;
         }
 
@@ -175,7 +204,7 @@ class NotificationService
             Mail::send('emails.ordre-travail', [
                 'ordre' => $ordre,
                 'client' => $client,
-                'message_personnalise' => $message,
+                'message_personnalise' => $message ?? '',
                 'signature' => $mailConfig['signature'],
             ], function ($mail) use ($email, $ordre, $mailConfig) {
                 $mail->to($email)
@@ -185,9 +214,14 @@ class NotificationService
 
             Log::info("Ordre de travail {$ordre->numero} envoyé à {$email}");
             return true;
-        } catch (\Exception $e) {
-            Log::error("Erreur envoi ordre {$ordre->numero}: " . $e->getMessage());
-            return false;
+        } catch (\Throwable $e) {
+            Log::error("Erreur envoi ordre {$ordre->numero}: " . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
     }
 
@@ -197,12 +231,21 @@ class NotificationService
     public function envoyerConfirmationPaiement(Paiement $paiement, ?string $emailDestinataire = null): bool
     {
         $mailConfig = $this->configureMailer();
+        
+        $paiement->loadMissing(['facture.client', 'ordre.client']);
         $facture = $paiement->facture;
-        $client = $facture->client;
-        $email = $emailDestinataire ?? $client->email;
+        $ordre = $paiement->ordre;
+        $client = $facture?->client ?? $ordre?->client;
+        
+        $email = $emailDestinataire;
+        if (!$email && $client) {
+            $email = $client->email;
+        }
 
         if (!$email) {
-            Log::warning("Impossible d'envoyer la confirmation de paiement: pas d'email");
+            Log::warning("Impossible d'envoyer la confirmation de paiement: pas d'email", [
+                'paiement_id' => $paiement->id,
+            ]);
             return false;
         }
 
@@ -210,6 +253,7 @@ class NotificationService
             Mail::send('emails.confirmation-paiement', [
                 'paiement' => $paiement,
                 'facture' => $facture,
+                'ordre' => $ordre,
                 'client' => $client,
                 'signature' => $mailConfig['signature'],
             ], function ($mail) use ($email, $paiement, $mailConfig) {
@@ -220,9 +264,14 @@ class NotificationService
 
             Log::info("Confirmation de paiement envoyée à {$email}");
             return true;
-        } catch (\Exception $e) {
-            Log::error("Erreur envoi confirmation paiement: " . $e->getMessage());
-            return false;
+        } catch (\Throwable $e) {
+            Log::error("Erreur envoi confirmation paiement: " . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
     }
 
@@ -232,11 +281,17 @@ class NotificationService
     public function envoyerRappelFacture(Facture $facture, int $numeroRappel = 1): bool
     {
         $mailConfig = $this->configureMailer();
+        
+        $facture->loadMissing('client');
         $client = $facture->client;
-        $email = $client->email;
+        
+        $email = $client?->email;
 
         if (!$email) {
-            Log::warning("Impossible d'envoyer le rappel pour facture {$facture->numero}: pas d'email");
+            Log::warning("Impossible d'envoyer le rappel pour facture {$facture->numero}: pas d'email", [
+                'facture_id' => $facture->id,
+                'client_exists' => (bool) $client,
+            ]);
             return false;
         }
 
@@ -261,9 +316,14 @@ class NotificationService
 
             Log::info("Rappel {$numeroRappel} envoyé pour facture {$facture->numero}");
             return true;
-        } catch (\Exception $e) {
-            Log::error("Erreur envoi rappel facture {$facture->numero}: " . $e->getMessage());
-            return false;
+        } catch (\Throwable $e) {
+            Log::error("Erreur envoi rappel facture {$facture->numero}: " . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
     }
 
