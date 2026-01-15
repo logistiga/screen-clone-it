@@ -12,20 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Send, User, AtSign, Building2, Users, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { emailTemplateService, notificationService, EmailTemplate } from "@/services/emailService";
+import { emailTemplateService, notificationService } from "@/services/emailService";
 
 // Interface pour les contacts
 interface ContactOption {
@@ -95,8 +86,6 @@ export function EmailModalWithTemplate({
   const [selectedContact, setSelectedContact] = useState<string>("client");
   const [customEmail, setCustomEmail] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [objet, setObjet] = useState("");
-  const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
 
   // Charger les templates du type correspondant
@@ -246,13 +235,18 @@ export function EmailModalWithTemplate({
     return result;
   };
 
-  // Appliquer le template sélectionné
+  // Définir le template par défaut à l'ouverture
   useEffect(() => {
+    if (open && templates.length > 0 && !selectedTemplateId) {
+      setSelectedTemplateId(templates[0].id.toString());
+    }
+  }, [open, templates, isLoadingTemplates]);
+
+  // Obtenir le contenu du template pour l'envoi
+  const getTemplateContent = (): { objet: string; message: string } => {
     if (selectedTemplateId && templates.length > 0) {
       const template = templates.find(t => t.id.toString() === selectedTemplateId);
       if (template) {
-        setObjet(replaceVariables(template.objet));
-        // Convertir le contenu HTML en texte simple pour le textarea
         const plainText = template.contenu
           .replace(/<br\s*\/?>/gi, '\n')
           .replace(/<\/p>/gi, '\n\n')
@@ -260,21 +254,18 @@ export function EmailModalWithTemplate({
           .replace(/&nbsp;/g, ' ')
           .replace(/\n\n\n+/g, '\n\n')
           .trim();
-        setMessage(replaceVariables(plainText));
+        return {
+          objet: replaceVariables(template.objet),
+          message: replaceVariables(plainText)
+        };
       }
     }
-  }, [selectedTemplateId, templates]);
-
-  // Définir le template par défaut et le message par défaut à l'ouverture
-  useEffect(() => {
-    if (open && templates.length > 0 && !selectedTemplateId) {
-      setSelectedTemplateId(templates[0].id.toString());
-    } else if (open && templates.length === 0 && !isLoadingTemplates) {
-      // Pas de template, utiliser un message par défaut
-      setObjet(`Votre ${getDocumentLabel()} ${documentData.numero}`);
-      setMessage(getDefaultMessage());
-    }
-  }, [open, templates, isLoadingTemplates]);
+    // Pas de template, utiliser un message par défaut
+    return {
+      objet: `Votre ${getDocumentLabel()} ${documentData.numero}`,
+      message: getDefaultMessage()
+    };
+  };
 
   const getDocumentLabel = () => {
     switch (documentType) {
@@ -374,16 +365,17 @@ export function EmailModalWithTemplate({
     try {
       // Appeler le bon service selon le type de document
       const documentId = typeof documentData.id === 'string' ? parseInt(documentData.id) : documentData.id;
+      const templateContent = getTemplateContent();
       
       switch (documentType) {
         case 'devis':
-          await notificationService.envoyerDevis(documentId, email, message);
+          await notificationService.envoyerDevis(documentId, email, templateContent.message);
           break;
         case 'ordre':
-          await notificationService.envoyerOrdre(documentId, email, message);
+          await notificationService.envoyerOrdre(documentId, email, templateContent.message);
           break;
         case 'facture':
-          await notificationService.envoyerFacture(documentId, email, message);
+          await notificationService.envoyerFacture(documentId, email, templateContent.message);
           break;
       }
 
@@ -418,56 +410,37 @@ export function EmailModalWithTemplate({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
-          {/* Sélection du template */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Modèle d'email
-            </Label>
+        <div className="space-y-4 py-4">
+          {/* Indicateur du template utilisé */}
+          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Modèle utilisé :</span>
             {isLoadingTemplates ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Chargement des modèles...
-              </div>
+              <span className="text-sm flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Chargement...
+              </span>
             ) : templates.length > 0 ? (
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un modèle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <span>{template.nom}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {template.type}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Badge variant="secondary">
+                {templates.find(t => t.id.toString() === selectedTemplateId)?.nom || templates[0]?.nom}
+              </Badge>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Aucun modèle disponible pour ce type de document.
-              </p>
+              <Badge variant="outline">Modèle par défaut</Badge>
             )}
           </div>
-
-          <Separator />
 
           {/* Choix du destinataire */}
           <div className="space-y-3">
             <Label>Destinataire</Label>
             <RadioGroup value={selectedContact} onValueChange={setSelectedContact}>
-              <ScrollArea className={availableContacts.length > 3 ? "h-[160px]" : ""}>
+              <ScrollArea className={availableContacts.length > 4 ? "h-[200px]" : ""}>
                 <div className="space-y-2 pr-2">
                   {/* Contacts disponibles */}
                   {availableContacts.map((contact) => (
                     <div 
                       key={contact.id}
                       className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => setSelectedContact(contact.id)}
                     >
                       <RadioGroupItem value={contact.id} id={contact.id} />
                       <Label htmlFor={contact.id} className="flex-1 cursor-pointer">
@@ -486,7 +459,10 @@ export function EmailModalWithTemplate({
                   ))}
                   
                   {/* Option pour autre adresse */}
-                  <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
+                  <div 
+                    className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedContact("autre")}
+                  >
                     <RadioGroupItem value="autre" id="autre" />
                     <Label htmlFor="autre" className="flex-1 cursor-pointer">
                       <div className="flex items-center gap-2">
@@ -510,35 +486,10 @@ export function EmailModalWithTemplate({
                 placeholder="exemple@domaine.com"
                 value={customEmail}
                 onChange={(e) => setCustomEmail(e.target.value)}
+                autoFocus
               />
             </div>
           )}
-
-          <Separator />
-
-          {/* Objet */}
-          <div className="space-y-2">
-            <Label htmlFor="objet">Objet</Label>
-            <Input
-              id="objet"
-              value={objet}
-              onChange={(e) => setObjet(e.target.value)}
-              placeholder="Objet de l'email"
-            />
-          </div>
-
-          {/* Message */}
-          <div className="space-y-2">
-            <Label htmlFor="message">Message</Label>
-            <Textarea
-              id="message"
-              rows={8}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Contenu du message..."
-              className="resize-none"
-            />
-          </div>
         </div>
 
         <DialogFooter>
