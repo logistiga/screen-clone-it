@@ -3,9 +3,8 @@
 namespace App\Services\OrdreTravail;
 
 use App\Models\OrdreTravail;
-use App\Models\Configuration;
 use App\Services\OperationsIndependantes\OperationIndependanteFactory;
-use Illuminate\Support\Facades\Log;
+use App\Traits\CalculeTotauxTrait;
 
 /**
  * Service spécialisé pour les ordres de travail de type Opérations Indépendantes.
@@ -13,6 +12,8 @@ use Illuminate\Support\Facades\Log;
  */
 class OrdreIndependantService
 {
+    use CalculeTotauxTrait;
+
     protected OperationIndependanteFactory $operationFactory;
 
     public function __construct(OperationIndependanteFactory $operationFactory)
@@ -71,45 +72,13 @@ class OrdreIndependantService
      */
     public function calculerTotaux(OrdreTravail $ordre): void
     {
-        // Recharger les lignes
-        $ordre->load('lignes');
-        
-        $montantHT = $this->calculerTotalHT($ordre);
-        
-        // Appliquer la remise si présente
-        $remiseMontant = (float) ($ordre->remise_montant ?? 0);
-        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
-        
-        // Récupérer les taux depuis la configuration taxes
-        $taxesConfig = Configuration::getOrCreate('taxes');
-        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
-        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
-        
-        // Appliquer taxes selon catégorie
-        if ($ordre->categorie === 'non_assujetti') {
-            $montantTVA = 0;
-            $montantCSS = 0;
-        } else {
-            // Calculer les taxes sur le montant après remise
-            $montantTVA = $montantHTApresRemise * ($tauxTVA / 100);
-            $montantCSS = $montantHTApresRemise * ($tauxCSS / 100);
+        // Charger les lignes uniquement si non chargées
+        if (!$ordre->relationLoaded('lignes')) {
+            $ordre->load('lignes');
         }
         
-        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
-        
-        $ordre->update([
-            'montant_ht' => round($montantHT, 2),
-            'tva' => round($montantTVA, 2),
-            'css' => round($montantCSS, 2),
-            'montant_ttc' => round($montantTTC, 2),
-        ]);
-        
-        Log::info('Totaux opérations indépendantes OT calculés', [
-            'ordre_id' => $ordre->id,
-            'nb_lignes' => $ordre->lignes->count(),
-            'montant_ht' => $montantHT,
-            'remise_montant' => $remiseMontant,
-        ]);
+        $montantHTBrut = $this->calculerTotalHT($ordre);
+        $this->appliquerTotaux($ordre, $montantHTBrut, 'opérations indépendantes OT');
     }
 
     /**
