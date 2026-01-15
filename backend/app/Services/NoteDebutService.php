@@ -3,86 +3,81 @@
 namespace App\Services;
 
 use App\Models\NoteDebut;
-use App\Models\Configuration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Service pour la gestion des Notes de Débit.
+ * Optimisé avec délégation au modèle pour les calculs.
+ */
 class NoteDebutService
 {
     /**
-     * Créer une nouvelle note de début
+     * Créer une nouvelle note de débit
      */
     public function creer(array $data): NoteDebut
     {
         return DB::transaction(function () use ($data) {
-            // Normaliser le type pour la génération du numéro
-            $typeNormalise = $this->normaliserType($data['type'] ?? 'surestarie');
-            
-            // Générer le numéro
-            $data['numero'] = $this->genererNumero($typeNormalise);
+            // Normaliser et générer le numéro
+            $typeNormalise = NoteDebut::normaliserType($data['type'] ?? 'detention');
+            $data['numero'] = NoteDebut::genererNumero($typeNormalise);
             $data['statut'] = $data['statut'] ?? 'brouillon';
+            $data['date_creation'] = $data['date_creation'] ?? now()->toDateString();
 
-            // date_creation est obligatoire en base (pas de valeur par défaut)
-            if (!isset($data['date_creation']) || empty($data['date_creation'])) {
-                $data['date_creation'] = now()->toDateString();
-            }
-
-            // Calculer le montant si non fourni
-            if (!isset($data['montant_ht']) && isset($data['nombre_jours']) && isset($data['tarif_journalier'])) {
+            // Calculer montant_ht si non fourni
+            if (!isset($data['montant_ht']) && isset($data['nombre_jours'], $data['tarif_journalier'])) {
                 $data['montant_ht'] = $data['nombre_jours'] * $data['tarif_journalier'];
             }
 
             // Créer la note
             $note = NoteDebut::create($data);
 
-            Log::info('Note de début créée', ['note_id' => $note->id, 'numero' => $note->numero]);
+            // Calculer les totaux (TVA, CSS, TTC) via le modèle
+            $note->calculerTotaux();
+
+            Log::info('Note de débit créée', [
+                'note_id' => $note->id,
+                'numero' => $note->numero,
+                'type' => $typeNormalise,
+            ]);
 
             return $note->fresh(['client', 'transitaire', 'armateur']);
         });
     }
 
     /**
-     * Normaliser le type de note pour la génération du numéro
-     */
-    private function normaliserType(string $type): string
-    {
-        $mapping = [
-            'Detention' => 'detention',
-            'Ouverture Port' => 'ouverture_port',
-            'Reparation' => 'reparation',
-            'Relache' => 'relache',
-            'detention' => 'detention',
-            'ouverture_port' => 'ouverture_port',
-            'reparation' => 'reparation',
-            'relache' => 'relache',
-        ];
-
-        return $mapping[$type] ?? 'surestarie';
-    }
-
-    /**
-     * Mettre à jour une note de début
+     * Modifier une note de débit existante
      */
     public function modifier(NoteDebut $note, array $data): NoteDebut
     {
         return DB::transaction(function () use ($note, $data) {
-            // Recalculer le montant si les paramètres changent
-            if ((isset($data['nombre_jours']) || isset($data['tarif_journalier'])) && !isset($data['montant_ht'])) {
-                $nombreJours = $data['nombre_jours'] ?? $note->nombre_jours;
-                $tarifJournalier = $data['tarif_journalier'] ?? $note->tarif_journalier;
-                $data['montant_ht'] = $nombreJours * $tarifJournalier;
+            // Recalculer montant_ht si paramètres changent
+            $recalculer = false;
+            
+            if (isset($data['nombre_jours']) || isset($data['tarif_journalier'])) {
+                if (!isset($data['montant_ht'])) {
+                    $nombreJours = $data['nombre_jours'] ?? $note->nombre_jours;
+                    $tarifJournalier = $data['tarif_journalier'] ?? $note->tarif_journalier;
+                    $data['montant_ht'] = $nombreJours * $tarifJournalier;
+                }
+                $recalculer = true;
             }
 
             $note->update($data);
 
-            Log::info('Note de début modifiée', ['note_id' => $note->id]);
+            // Recalculer totaux si nécessaire
+            if ($recalculer || isset($data['montant_ht'])) {
+                $note->calculerTotaux();
+            }
+
+            Log::info('Note de débit modifiée', ['note_id' => $note->id]);
 
             return $note->fresh(['client', 'transitaire', 'armateur']);
         });
     }
 
     /**
-     * Valider une note de début
+     * Valider une note (passer de brouillon à validée)
      */
     public function valider(NoteDebut $note): NoteDebut
     {
@@ -92,19 +87,23 @@ class NoteDebutService
 
         $note->update(['statut' => 'validee']);
 
-        Log::info('Note de début validée', ['note_id' => $note->id]);
+        Log::info('Note de débit validée', ['note_id' => $note->id]);
 
         return $note;
     }
 
     /**
-     * Dupliquer une note de début
+     * Dupliquer une note existante
      */
     public function dupliquer(NoteDebut $note): NoteDebut
     {
-        $data = $note->toArray();
-        unset($data['id'], $data['numero'], $data['created_at'], $data['updated_at']);
-        $data['statut'] = 'brouillon';
+        $data = $note->only([
+            'type', 'client_id', 'ordre_id', 'transitaire_id', 'armateur_id',
+            'bl_numero', 'conteneur_numero', 'conteneur_type', 'conteneur_taille',
+            'navire', 'date_arrivee', 'date_debut', 'date_fin',
+            'date_debut_stockage', 'date_fin_stockage', 'jours_franchise',
+            'nombre_jours', 'tarif_journalier', 'description', 'notes',
+        ]);
 
         return $this->creer($data);
     }
@@ -114,78 +113,41 @@ class NoteDebutService
      */
     public function calculerNombreJours(\DateTime $dateDebut, \DateTime $dateFin): int
     {
-        $interval = $dateDebut->diff($dateFin);
-        return max(0, $interval->days);
+        return max(0, $dateDebut->diff($dateFin)->days);
     }
 
     /**
-     * Générer un numéro de note unique
-     */
-    public function genererNumero(string $type = 'surestarie'): string
-    {
-        $config = Configuration::first();
-        
-        $prefixes = [
-            'surestarie' => $config->prefixe_note_surestarie ?? 'NS',
-            'detention' => $config->prefixe_note_detention ?? 'ND',
-            'reparation' => $config->prefixe_note_reparation ?? 'NR',
-            'ouverture_port' => $config->prefixe_note_ouverture ?? 'NOP',
-            'relache' => $config->prefixe_note_relache ?? 'NRL',
-        ];
-
-        $prefixe = $prefixes[$type] ?? 'NOTE';
-        $annee = date('Y');
-        
-        // Normaliser le type pour la recherche en base
-        $typeNormalise = strtolower(str_replace(' ', '_', $type));
-        
-        $derniereNote = NoteDebut::whereRaw('LOWER(REPLACE(type, " ", "_")) = ?', [$typeNormalise])
-            ->whereYear('created_at', $annee)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $numero = $derniereNote ? intval(substr($derniereNote->numero, -4)) + 1 : 1;
-
-        return sprintf('%s-%s-%04d', $prefixe, $annee, $numero);
-    }
-
-    /**
-     * Obtenir les statistiques des notes
+     * Obtenir les statistiques des notes (optimisé)
      */
     public function getStatistiques(array $filters = []): array
     {
-        $query = NoteDebut::query();
+        // Construire la requête de base avec scopes
+        $query = NoteDebut::query()
+            ->forClient($filters['client_id'] ?? null)
+            ->ofType($filters['type'] ?? null)
+            ->dateRange($filters['date_debut'] ?? null, $filters['date_fin'] ?? null);
 
-        if (!empty($filters['client_id'])) {
-            $query->where('client_id', $filters['client_id']);
-        }
+        // Statistiques globales en une seule requête
+        $stats = $query->selectRaw('
+            COUNT(*) as total,
+            COALESCE(SUM(montant_ht), 0) as montant_total,
+            COALESCE(SUM(montant_ttc), 0) as montant_ttc_total
+        ')->first();
 
-        if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
-        }
-
-        if (!empty($filters['date_debut'])) {
-            $query->where('date_debut', '>=', $filters['date_debut']);
-        }
-
-        if (!empty($filters['date_fin'])) {
-            $query->where('date_fin', '<=', $filters['date_fin']);
-        }
-
-        $total = $query->count();
-        $montantTotal = $query->sum('montant_ht');
-
-        $parType = NoteDebut::selectRaw('type, COUNT(*) as nombre, SUM(montant_ht) as montant')
+        // Stats par type (requête séparée pour éviter conflit avec filtres)
+        $parType = NoteDebut::selectRaw('type, COUNT(*) as nombre, COALESCE(SUM(montant_ht), 0) as montant')
             ->groupBy('type')
             ->get();
 
+        // Stats par statut
         $parStatut = NoteDebut::selectRaw('statut, COUNT(*) as nombre')
             ->groupBy('statut')
             ->get();
 
         return [
-            'total' => $total,
-            'montant_total' => $montantTotal,
+            'total' => $stats->total ?? 0,
+            'montant_total' => round($stats->montant_total ?? 0, 2),
+            'montant_ttc_total' => round($stats->montant_ttc_total ?? 0, 2),
             'par_type' => $parType,
             'par_statut' => $parStatut,
         ];
