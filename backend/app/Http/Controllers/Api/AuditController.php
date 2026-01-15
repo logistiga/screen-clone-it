@@ -22,7 +22,11 @@ class AuditController extends Controller
                       ->orWhere('details', 'like', "%{$search}%")
                       ->orWhere('document_id', $search)
                       ->orWhere('document_numero', 'like', "%{$search}%")
-                      ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                      ->orWhereHas('user', function ($userQuery) use ($search) {
+                          // Dans notre DB, le champ affiché est "nom" (pas "name")
+                          $userQuery->where('nom', 'like', "%{$search}%")
+                                    ->orWhere('email', 'like', "%{$search}%");
+                      });
                 });
             }
 
