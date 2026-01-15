@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, Wallet } from "lucide-react";
+import { CreditCard, Wallet, Percent } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 
 interface OrdreFinancialCardProps {
@@ -11,6 +11,9 @@ interface OrdreFinancialCardProps {
   montantTTC: number;
   montantPaye: number;
   resteAPayer: number;
+  remiseType?: string | null;
+  remiseValeur?: number;
+  remiseMontant?: number;
 }
 
 export function OrdreFinancialCard({
@@ -20,7 +23,14 @@ export function OrdreFinancialCard({
   montantTTC,
   montantPaye,
   resteAPayer,
+  remiseType,
+  remiseValeur = 0,
+  remiseMontant = 0,
 }: OrdreFinancialCardProps) {
+  const hasRemise = remiseMontant > 0 && remiseType && remiseType !== 'none';
+  // Calculer le montant HT brut (avant remise)
+  const montantHTBrut = hasRemise ? montantHT + remiseMontant : montantHT;
+  
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -35,10 +45,30 @@ export function OrdreFinancialCard({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Montant HT</span>
-            <span className="font-medium">{formatMontant(montantHT)}</span>
-          </div>
+          {hasRemise ? (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Montant HT brut</span>
+                <span className="font-medium">{formatMontant(montantHTBrut)}</span>
+              </div>
+              <div className="flex justify-between items-center text-destructive">
+                <span className="flex items-center gap-1">
+                  <Percent className="h-4 w-4" />
+                  Remise {remiseType === 'pourcentage' && remiseValeur ? `(${remiseValeur}%)` : ''}
+                </span>
+                <span className="font-medium">- {formatMontant(remiseMontant)}</span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-2">
+                <span className="text-muted-foreground">Sous-total HT</span>
+                <span className="font-medium">{formatMontant(montantHT)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Montant HT</span>
+              <span className="font-medium">{formatMontant(montantHT)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">TVA</span>
             <span>{formatMontant(montantTVA)}</span>

@@ -49,6 +49,11 @@ class OrdreTravailResource extends JsonResource
             'taux_tva' => $this->taux_tva,
             'taux_css' => $this->taux_css,
             
+            // Remise
+            'remise_type' => $this->remise_type,
+            'remise_valeur' => (float) ($this->remise_valeur ?? 0),
+            'remise_montant' => round((float) ($this->remise_montant ?? 0), 2),
+            
             // Envoi
             'date_envoi' => $this->date_envoi?->toISOString(),
             

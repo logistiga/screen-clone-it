@@ -46,6 +46,8 @@ class Facture extends Model
         'css' => 'decimal:2',
         'montant_ttc' => 'decimal:2',
         'montant_paye' => 'decimal:2',
+        'remise_valeur' => 'decimal:2',
+        'remise_montant' => 'decimal:2',
     ];
 
     protected static function boot()

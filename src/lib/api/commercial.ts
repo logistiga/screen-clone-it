@@ -84,6 +84,9 @@ export interface OrdreTravail {
   montant_paye?: number;
   taux_tva?: number;
   taux_css?: number;
+  remise_type?: string | null;
+  remise_valeur?: number;
+  remise_montant?: number;
   statut: string;
   notes?: string;
   created_at?: string;
@@ -121,6 +124,9 @@ export interface Facture {
   reste_a_payer?: number;
   taux_tva?: number;
   taux_css?: number;
+  remise_type?: string | null;
+  remise_valeur?: number;
+  remise_montant?: number;
   statut: string;
   notes?: string;
   created_at?: string;

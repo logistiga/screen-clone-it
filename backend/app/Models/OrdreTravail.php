@@ -37,6 +37,7 @@ class OrdreTravail extends Model
         'taux_css',
         'remise_type',
         'remise_valeur',
+        'remise_montant',
     ];
 
     protected $casts = [
@@ -50,6 +51,7 @@ class OrdreTravail extends Model
         'taux_tva' => 'decimal:2',
         'taux_css' => 'decimal:2',
         'remise_valeur' => 'decimal:2',
+        'remise_montant' => 'decimal:2',
     ];
 
     // Relations

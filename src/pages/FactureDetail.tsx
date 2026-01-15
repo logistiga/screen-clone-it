@@ -26,6 +26,7 @@ import {
   Receipt,
   Loader2,
   Download,
+  Percent,
 } from "lucide-react";
 import { useFactureById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -207,10 +208,30 @@ export default function FactureDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Montant HT</span>
-                    <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
-                  </div>
+                  {facture.remise_montant > 0 && facture.remise_type && facture.remise_type !== 'none' ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Montant HT brut</span>
+                        <span className="font-medium">{formatMontant((facture.montant_ht || 0) + (facture.remise_montant || 0))}</span>
+                      </div>
+                      <div className="flex justify-between text-destructive">
+                        <span className="flex items-center gap-1">
+                          <Percent className="h-4 w-4" />
+                          Remise {facture.remise_type === 'pourcentage' && facture.remise_valeur ? `(${facture.remise_valeur}%)` : ''}
+                        </span>
+                        <span className="font-medium">- {formatMontant(facture.remise_montant)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-muted-foreground">Sous-total HT</span>
+                        <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Montant HT</span>
+                      <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TVA</span>
                     <span>{formatMontant(facture.montant_tva)}</span>
