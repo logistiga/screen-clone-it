@@ -49,6 +49,9 @@ class OrdreTravailResource extends JsonResource
             'taux_tva' => $this->taux_tva,
             'taux_css' => $this->taux_css,
             
+            // Envoi
+            'date_envoi' => $this->date_envoi?->toISOString(),
+            
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

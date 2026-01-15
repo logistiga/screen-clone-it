@@ -86,10 +86,11 @@ class NotificationService
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
-            // Mettre à jour le statut de la facture
-            $facture->update([
+            // Mettre à jour le statut et la date d'envoi
+            $facture->forceFill([
                 'statut' => 'envoye',
-            ]);
+                'date_envoi' => now(),
+            ])->save();
 
             Log::info("Facture {$facture->numero} envoyée à {$email}");
             return true;
@@ -152,9 +153,11 @@ class NotificationService
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
-            $devis->update([
+            // Mettre à jour le statut et la date d'envoi
+            $devis->forceFill([
                 'statut' => 'envoye',
-            ]);
+                'date_envoi' => now(),
+            ])->save();
 
             Log::info("Devis {$devis->numero} envoyé à {$email}");
             return true;
