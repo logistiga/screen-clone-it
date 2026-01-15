@@ -32,6 +32,8 @@ class NotificationController extends Controller
         ]);
 
         try {
+            $facture->loadMissing('client');
+
             $success = $this->notificationService->envoyerFacture(
                 $facture,
                 $request->email,
@@ -47,17 +49,22 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de la facture',
+                'error' => config('app.debug') ? 'NotificationService::envoyerFacture a retourné false' : null,
             ], 500);
         } catch (\Throwable $e) {
             Log::error("Controller: Erreur envoi facture {$facture->numero}", [
+                'facture_id' => $facture->id,
+                'email_override' => $request->email ?? null,
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
-                'message' => 'Erreur lors de l\'envoi de la facture: ' . $e->getMessage(),
+                'message' => 'Erreur lors de l\'envoi de la facture',
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -73,6 +80,8 @@ class NotificationController extends Controller
         ]);
 
         try {
+            $devis->loadMissing('client');
+
             $success = $this->notificationService->envoyerDevis(
                 $devis,
                 $request->email,
@@ -88,17 +97,22 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi du devis',
+                'error' => config('app.debug') ? 'NotificationService::envoyerDevis a retourné false' : null,
             ], 500);
         } catch (\Throwable $e) {
             Log::error("Controller: Erreur envoi devis {$devis->numero}", [
+                'devis_id' => $devis->id,
+                'email_override' => $request->email ?? null,
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
-                'message' => 'Erreur lors de l\'envoi du devis: ' . $e->getMessage(),
+                'message' => 'Erreur lors de l\'envoi du devis',
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
