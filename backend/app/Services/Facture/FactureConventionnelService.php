@@ -3,8 +3,7 @@
 namespace App\Services\Facture;
 
 use App\Models\Facture;
-use App\Models\Configuration;
-use Illuminate\Support\Facades\Log;
+use App\Traits\CalculeTotauxTrait;
 
 /**
  * Service spécialisé pour les factures de type Conventionnel (Lots).
@@ -12,6 +11,8 @@ use Illuminate\Support\Facades\Log;
  */
 class FactureConventionnelService
 {
+    use CalculeTotauxTrait;
+
     /**
      * Valider les données spécifiques aux lots
      */
@@ -62,42 +63,15 @@ class FactureConventionnelService
      */
     public function calculerTotaux(Facture $facture): void
     {
-        // Recharger les lots
-        $facture->load('lots');
+        // Charger les lots seulement si pas déjà chargés
+        if (!$facture->relationLoaded('lots')) {
+            $facture->load('lots');
+        }
         
-        $montantHT = $this->calculerTotalHT($facture);
+        $montantHTBrut = $this->calculerTotalHT($facture);
         
-        // Appliquer la remise si présente
-        $remiseMontant = (float) ($facture->remise_montant ?? 0);
-        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
-        
-        // Récupérer les taux depuis la configuration taxes
-        $taxesConfig = Configuration::getOrCreate('taxes');
-        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
-        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
-        $tvaActif = $taxesConfig->data['tva_actif'] ?? true;
-        $cssActif = $taxesConfig->data['css_actif'] ?? true;
-        
-        // Calculer les taxes sur le montant après remise
-        $montantTVA = $tvaActif ? $montantHTApresRemise * ($tauxTVA / 100) : 0;
-        $montantCSS = $cssActif ? $montantHTApresRemise * ($tauxCSS / 100) : 0;
-        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
-        
-        // Utiliser les bons noms de colonnes (tva, css)
-        $facture->update([
-            'montant_ht' => round($montantHT, 2),
-            'tva' => round($montantTVA, 2),
-            'css' => round($montantCSS, 2),
-            'montant_ttc' => round($montantTTC, 2),
-        ]);
-        
-        Log::info('Totaux conventionnel facture calculés', [
-            'facture_id' => $facture->id,
-            'nb_lots' => $facture->lots->count(),
-            'montant_ht' => $montantHT,
-            'remise_montant' => $remiseMontant,
-            'montant_ttc' => $montantTTC,
-        ]);
+        // Utiliser le trait pour appliquer les totaux avec remise et taxes
+        $this->appliquerTotaux($facture, $montantHTBrut, 'conventionnel facture');
     }
 
     /**
