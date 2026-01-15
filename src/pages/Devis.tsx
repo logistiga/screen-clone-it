@@ -364,7 +364,7 @@ L'équipe Lojistiga`;
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                            {d.client?.nom?.substring(0, 2).toUpperCase() || '??'}
+                            {d.client?.nom?.substring(0, 2)?.toUpperCase() || '??'}
                           </div>
                           <span className="truncate max-w-[150px]">{d.client?.nom}</span>
                         </div>
