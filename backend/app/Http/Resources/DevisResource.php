@@ -71,6 +71,9 @@ class DevisResource extends JsonResource
             'remise_valeur' => (float) ($this->remise_valeur ?? 0),
             'remise_montant' => round((float) ($this->remise_montant ?? 0), 2),
 
+            // Envoi
+            'date_envoi' => $this->date_envoi?->toISOString(),
+
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

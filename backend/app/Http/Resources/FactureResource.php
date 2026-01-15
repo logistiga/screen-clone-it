@@ -72,6 +72,9 @@ class FactureResource extends JsonResource
             'prime_transitaire' => round($primeTransitaire, 2),
             'prime_representant' => round($primeRepresentant, 2),
             
+            // Envoi
+            'date_envoi' => $this->date_envoi?->toISOString(),
+            
             'notes' => $this->notes,
             'token_verification' => $this->token_verification,
             'created_at' => $this->created_at?->toISOString(),

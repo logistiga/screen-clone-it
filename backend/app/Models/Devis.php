@@ -47,6 +47,7 @@ class Devis extends Model
     protected $casts = [
         'date_creation' => 'date',
         'date_validite' => 'date',
+        'date_envoi' => 'datetime',
         'montant_ht' => 'decimal:2',
         'tva' => 'decimal:2',
         'css' => 'decimal:2',
