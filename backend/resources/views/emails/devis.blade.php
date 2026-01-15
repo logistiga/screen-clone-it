@@ -27,7 +27,7 @@
             </tr>
             <tr>
                 <td>Date du devis</td>
-                <td>{{ $devis->date_devis->format('d/m/Y') }}</td>
+                <td>{{ $devis->date_devis ? $devis->date_devis->format('d/m/Y') : 'Non spécifiée' }}</td>
             </tr>
             <tr>
                 <td>Validité</td>
