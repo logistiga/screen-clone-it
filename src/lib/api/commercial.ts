@@ -449,8 +449,13 @@ export const facturesApi = {
 // Armateurs API
 export const armateursApi = {
   getAll: async () => {
-    const response = await api.get<{ data: Armateur[] }>('/armateurs');
-    return response.data.data;
+    const response = await api.get('/armateurs');
+    const payload: any = response.data;
+    const data = payload?.data;
+    // Supporte: {data: T[]} OU pagination: {data: {data: T[]}}
+    if (Array.isArray(data)) return data as Armateur[];
+    if (Array.isArray(data?.data)) return data.data as Armateur[];
+    return [] as Armateur[];
   },
   
   getById: async (id: string) => {
@@ -476,8 +481,13 @@ export const armateursApi = {
 // Transitaires API
 export const transitairesApi = {
   getAll: async () => {
-    const response = await api.get<{ data: Transitaire[] }>('/transitaires');
-    return response.data.data;
+    const response = await api.get('/transitaires');
+    const payload: any = response.data;
+    const data = payload?.data;
+    // Supporte: {data: T[]} OU pagination: {data: {data: T[]}}
+    if (Array.isArray(data)) return data as Transitaire[];
+    if (Array.isArray(data?.data)) return data.data as Transitaire[];
+    return [] as Transitaire[];
   },
   
   getById: async (id: string) => {
@@ -503,8 +513,13 @@ export const transitairesApi = {
 // Representants API
 export const representantsApi = {
   getAll: async () => {
-    const response = await api.get<{ data: Representant[] }>('/representants');
-    return response.data.data;
+    const response = await api.get('/representants');
+    const payload: any = response.data;
+    const data = payload?.data;
+    // Supporte: {data: T[]} OU pagination: {data: {data: T[]}}
+    if (Array.isArray(data)) return data as Representant[];
+    if (Array.isArray(data?.data)) return data.data as Representant[];
+    return [] as Representant[];
   },
   
   getById: async (id: string) => {
