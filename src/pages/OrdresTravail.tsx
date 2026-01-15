@@ -96,7 +96,7 @@ export default function OrdresTravailPage() {
     numero: string;
   } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{ id: number; numero: string } | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number; clientId?: number } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -473,7 +473,12 @@ export default function OrdresTravailPage() {
                               size="icon" 
                               title="Paiement" 
                               className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
-                              onClick={() => setPaiementModal({ id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer })}
+                              onClick={() => setPaiementModal({ 
+                                id: ordre.id, 
+                                numero: ordre.numero, 
+                                montantRestant: resteAPayer,
+                                clientId: ordre.client_id ? Number(ordre.client_id) : undefined
+                              })}
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
@@ -570,6 +575,8 @@ export default function OrdresTravailPage() {
           documentId={paiementModal.id}
           documentNumero={paiementModal.numero}
           montantRestant={paiementModal.montantRestant}
+          clientId={paiementModal.clientId}
+          onSuccess={() => refetch()}
         />
       )}
 
