@@ -48,6 +48,12 @@ class User extends Authenticatable
         return $query->where('actif', true);
     }
 
+    // Accessors
+    public function getNameAttribute()
+    {
+        return $this->nom;
+    }
+
     // Méthodes
     public function updateDerniereConnexion()
     {

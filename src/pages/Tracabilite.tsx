@@ -660,10 +660,10 @@ export default function TracabilitePage() {
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                                      {audit.user?.name?.charAt(0).toUpperCase() || "S"}
+                                      {(audit.user?.name || audit.user?.nom)?.charAt(0).toUpperCase() || "S"}
                                     </div>
                                     <span className="truncate max-w-[100px]">
-                                      {audit.user?.name || "Système"}
+                                      {audit.user?.name || audit.user?.nom || "Système"}
                                     </span>
                                   </div>
                                 </TableCell>

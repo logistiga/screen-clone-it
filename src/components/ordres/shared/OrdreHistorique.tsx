@@ -151,11 +151,11 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
       ).map(entry => ({
         id: String(entry.id),
         action: entry.action || "Action",
-        utilisateur: entry.user?.name || "Système",
+        utilisateur: entry.user?.name || entry.user?.nom || "Système",
         date: entry.created_at,
         details: entry.details || `${entry.action} effectuée`,
         ...getActionConfig(entry.action),
-      })) 
+      }))
     : [];
 
   // Si aucune donnée d'audit ou erreur, afficher au moins la création
