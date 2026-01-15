@@ -35,7 +35,7 @@ class StoreDevisRequest extends FormRequest
             'notes' => 'nullable|string|max:2000',
             
             // Remise
-            'remise_type' => 'nullable|string|in:pourcentage,montant',
+            'remise_type' => 'nullable|string|in:pourcentage,montant,none',
             'remise_valeur' => 'nullable|numeric|min:0',
             'remise_montant' => 'nullable|numeric|min:0',
             

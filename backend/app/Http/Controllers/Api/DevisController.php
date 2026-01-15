@@ -153,6 +153,12 @@ class DevisController extends Controller
             ]);
 
             DB::transaction(function () use ($devis, $data) {
+                // Extraire les relations avant update
+                $conteneurs = $data['conteneurs'] ?? null;
+                $lots = $data['lots'] ?? null;
+                $lignes = $data['lignes'] ?? null;
+                unset($data['conteneurs'], $data['lots'], $data['lignes']);
+
                 // Normaliser
                 if (isset($data['bl_numero'])) {
                     $data['numero_bl'] = $data['bl_numero'];
@@ -164,20 +170,20 @@ class DevisController extends Controller
                 $devis->update($data);
 
                 // Mettre à jour les éléments si fournis
-                if (isset($data['conteneurs']) && $devis->categorie === 'conteneurs') {
+                if ($conteneurs !== null && $devis->categorie === 'conteneurs') {
                     $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
                     $devis->conteneurs()->delete();
-                    $this->creerConteneurs($devis, $data['conteneurs']);
+                    $this->creerConteneurs($devis, $conteneurs);
                 }
 
-                if (isset($data['lots']) && $devis->categorie === 'conventionnel') {
+                if ($lots !== null && $devis->categorie === 'conventionnel') {
                     $devis->lots()->delete();
-                    $this->creerLots($devis, $data['lots']);
+                    $this->creerLots($devis, $lots);
                 }
 
-                if (isset($data['lignes']) && $devis->categorie === 'operations_independantes') {
+                if ($lignes !== null && $devis->categorie === 'operations_independantes') {
                     $devis->lignes()->delete();
-                    $this->creerLignes($devis, $data['lignes']);
+                    $this->creerLignes($devis, $lignes);
                 }
 
                 $devis->calculerTotaux();
