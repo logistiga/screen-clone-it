@@ -96,6 +96,19 @@ export default function ModifierOrdrePage() {
   }, [ordreData, isInitialized]);
 
   // Préparer les données initiales pour les formulaires enfants
+  // Extraire les primes depuis le tableau primes
+  const getPrimeTransitaire = (): number => {
+    if (!ordreData?.primes || !Array.isArray(ordreData.primes)) return 0;
+    const primeTransitaire = ordreData.primes.find((p: any) => p.transitaire_id && !p.representant_id);
+    return primeTransitaire ? parseFloat(String(primeTransitaire.montant)) || 0 : 0;
+  };
+
+  const getPrimeRepresentant = (): number => {
+    if (!ordreData?.primes || !Array.isArray(ordreData.primes)) return 0;
+    const primeRepresentant = ordreData.primes.find((p: any) => p.representant_id && !p.transitaire_id);
+    return primeRepresentant ? parseFloat(String(primeRepresentant.montant)) || 0 : 0;
+  };
+
   const getConteneursInitialData = () => {
     if (!ordreData || !Array.isArray(ordreData.conteneurs) || ordreData.conteneurs.length === 0) return undefined;
     return {
@@ -104,8 +117,8 @@ export default function ModifierOrdrePage() {
       armateurId: String(ordreData.armateur_id || ""),
       transitaireId: String(ordreData.transitaire_id || ""),
       representantId: String(ordreData.representant_id || ""),
-      primeTransitaire: 0,
-      primeRepresentant: 0,
+      primeTransitaire: getPrimeTransitaire(),
+      primeRepresentant: getPrimeRepresentant(),
       conteneurs: ordreData.conteneurs.map((c: any) => ({
         id: String(c.id),
         numero: c.numero || "",
