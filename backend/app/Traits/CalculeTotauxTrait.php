@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\Configuration;
+use App\Models\Devis;
 use App\Models\OrdreTravail;
 use App\Models\Facture;
 use Illuminate\Support\Facades\Cache;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Trait partagé pour le calcul des totaux (HT, TVA, CSS, TTC) avec remise.
- * Utilisé par les services OrdreTravail et Facture.
+ * Utilisé par les services Devis, OrdreTravail et Facture.
  */
 trait CalculeTotauxTrait
 {
@@ -81,9 +82,9 @@ trait CalculeTotauxTrait
     }
 
     /**
-     * Appliquer le calcul complet des totaux sur un document (Ordre ou Facture).
+     * Appliquer le calcul complet des totaux sur un document (Devis, Ordre ou Facture).
      * 
-     * @param OrdreTravail|Facture $document Le document à mettre à jour
+     * @param Devis|OrdreTravail|Facture $document Le document à mettre à jour
      * @param float $montantHTBrut Le montant HT brut avant remise
      * @param string $context Contexte pour les logs (ex: 'conteneurs', 'lots')
      */

@@ -3,8 +3,7 @@
 namespace App\Services\Devis;
 
 use App\Models\Devis;
-use App\Models\Configuration;
-use Illuminate\Support\Facades\Log;
+use App\Traits\CalculeTotauxTrait;
 
 /**
  * Service spécialisé pour les devis de type Conteneurs.
@@ -12,6 +11,8 @@ use Illuminate\Support\Facades\Log;
  */
 class DevisConteneursService
 {
+    use CalculeTotauxTrait;
+
     /**
      * Valider les données spécifiques aux conteneurs
      */
@@ -81,38 +82,15 @@ class DevisConteneursService
      */
     public function calculerTotaux(Devis $devis): void
     {
-        // Recharger les conteneurs et opérations
-        $devis->load('conteneurs.operations');
+        // Charger les conteneurs et opérations seulement si pas déjà chargés
+        if (!$devis->relationLoaded('conteneurs')) {
+            $devis->load('conteneurs.operations');
+        }
         
-        $montantHT = $this->calculerTotalHT($devis);
+        $montantHTBrut = $this->calculerTotalHT($devis);
         
-        // Appliquer la remise si présente
-        $remiseMontant = (float) ($devis->remise_montant ?? 0);
-        $montantHTApresRemise = max(0, $montantHT - $remiseMontant);
-        
-        // Récupérer les taux depuis la configuration taxes
-        $taxesConfig = Configuration::getOrCreate('taxes');
-        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
-        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
-        
-        // Calculer les taxes sur le montant après remise
-        $montantTVA = $montantHTApresRemise * ($tauxTVA / 100);
-        $montantCSS = $montantHTApresRemise * ($tauxCSS / 100);
-        $montantTTC = $montantHTApresRemise + $montantTVA + $montantCSS;
-        
-        $devis->update([
-            'montant_ht' => $montantHT,
-            'tva' => $montantTVA,
-            'css' => $montantCSS,
-            'montant_ttc' => $montantTTC,
-        ]);
-        
-        Log::info('Totaux conteneurs calculés', [
-            'devis_id' => $devis->id,
-            'montant_ht' => $montantHT,
-            'remise_montant' => $remiseMontant,
-            'montant_ttc' => $montantTTC,
-        ]);
+        // Utiliser le trait pour appliquer les totaux avec remise et taxes
+        $this->appliquerTotaux($devis, $montantHTBrut, 'conteneurs devis');
     }
 
     /**
