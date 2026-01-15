@@ -91,8 +91,9 @@ export default function OrdreConteneursForm({
       if (initialData.armateurId) setArmateurId(initialData.armateurId);
       if (initialData.transitaireId) setTransitaireId(initialData.transitaireId);
       if (initialData.representantId) setRepresentantId(initialData.representantId);
-      if (initialData.primeTransitaire) setPrimeTransitaire(initialData.primeTransitaire);
-      if (initialData.primeRepresentant) setPrimeRepresentant(initialData.primeRepresentant);
+      // Utiliser !== undefined pour permettre la valeur 0
+      if (initialData.primeTransitaire !== undefined) setPrimeTransitaire(initialData.primeTransitaire);
+      if (initialData.primeRepresentant !== undefined) setPrimeRepresentant(initialData.primeRepresentant);
       if (initialData.conteneurs && initialData.conteneurs.length > 0) {
         setConteneurs(initialData.conteneurs);
       }
