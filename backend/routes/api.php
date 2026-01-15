@@ -109,6 +109,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:devis.supprimer');
         Route::post('{devis}/convert-ordre', [DevisController::class, 'convertToOrdre'])
             ->middleware('permission:ordres.creer');
+        Route::post('{devis}/convert-facture', [DevisController::class, 'convertToFacture'])
+            ->middleware('permission:factures.creer');
         Route::post('{devis}/duplicate', [DevisController::class, 'duplicate'])
             ->middleware('permission:devis.creer');
     });

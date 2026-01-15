@@ -327,6 +327,11 @@ export const devisApi = {
     return response.data;
   },
   
+  convertToFacture: async (id: string) => {
+    const response = await api.post<{ data: Facture; message: string }>(`/devis/${id}/convert-facture`);
+    return response.data;
+  },
+  
   duplicate: async (id: string) => {
     const response = await api.post(`/devis/${id}/duplicate`);
     return unwrapResponse<Devis>(response);
