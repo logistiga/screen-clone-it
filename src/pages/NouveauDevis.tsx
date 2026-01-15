@@ -53,9 +53,9 @@ export default function NouveauDevisPage() {
   const createDevisMutation = useCreateDevis();
 
   const clients = clientsData?.data || [];
-  const armateurs = armateursData || [];
-  const transitaires = transitairesData || [];
-  const representants = representantsData || [];
+  const armateurs = Array.isArray(armateursData) ? armateursData : [];
+  const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
+  const representants = Array.isArray(representantsData) ? representantsData : [];
   
   const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
   const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
