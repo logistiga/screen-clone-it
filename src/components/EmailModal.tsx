@@ -22,6 +22,12 @@ interface EmailModalProps {
   documentNumero: string;
   clientEmail?: string;
   clientNom?: string;
+  montantHT?: number;
+  montantTTC?: number;
+  remiseMontant?: number;
+  remiseType?: string;
+  tva?: number;
+  css?: number;
 }
 
 export function EmailModal({
@@ -31,6 +37,12 @@ export function EmailModal({
   documentNumero,
   clientEmail,
   clientNom,
+  montantHT,
+  montantTTC,
+  remiseMontant,
+  remiseType,
+  tva,
+  css,
 }: EmailModalProps) {
   const { toast } = useToast();
   const [emailOption, setEmailOption] = useState<"client" | "autre">(
@@ -38,9 +50,34 @@ export function EmailModal({
   );
   const [customEmail, setCustomEmail] = useState("");
   const [objet, setObjet] = useState(`Votre ${documentType} ${documentNumero}`);
-  const [message, setMessage] = useState(
-    `Bonjour,\n\nVeuillez trouver ci-joint votre ${documentType} ${documentNumero}.\n\nCordialement,\nL'équipe Lojistiga`
-  );
+
+  const formatMontant = (montant?: number) => {
+    if (montant === undefined || montant === null) return "-";
+    return new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
+  };
+
+  // Générer le message avec détails financiers
+  const getDefaultMessage = () => {
+    let msg = `Bonjour${clientNom ? ` ${clientNom}` : ''},\n\nVeuillez trouver ci-joint votre ${getDocumentLabel().toLowerCase()} ${documentNumero}.\n\n`;
+    
+    if (montantHT || montantTTC) {
+      msg += `📄 Détails :\n`;
+      if (montantHT) msg += `• Montant HT : ${formatMontant(montantHT)}\n`;
+      if (remiseMontant && remiseMontant > 0) {
+        const typeLabel = remiseType === 'pourcentage' ? '(%)' : '(fixe)';
+        msg += `• Remise ${typeLabel} : -${formatMontant(remiseMontant)}\n`;
+      }
+      if (tva) msg += `• TVA : ${formatMontant(tva)}\n`;
+      if (css && css > 0) msg += `• CSS : ${formatMontant(css)}\n`;
+      if (montantTTC) msg += `• Total TTC : ${formatMontant(montantTTC)}\n`;
+      msg += `\n`;
+    }
+    
+    msg += `Cordialement,\nL'équipe Lojistiga`;
+    return msg;
+  };
+
+  const [message, setMessage] = useState(getDefaultMessage());
   const [isSending, setIsSending] = useState(false);
 
   const getDocumentLabel = () => {

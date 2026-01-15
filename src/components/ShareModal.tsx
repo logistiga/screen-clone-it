@@ -26,7 +26,12 @@ interface ShareModalProps {
   clientEmail?: string;
   clientNom?: string;
   clientTelephone?: string;
+  montantHT?: number;
   montantTTC?: number;
+  remiseMontant?: number;
+  remiseType?: string;
+  tva?: number;
+  css?: number;
 }
 
 export function ShareModal({
@@ -38,7 +43,12 @@ export function ShareModal({
   clientEmail,
   clientNom,
   clientTelephone,
+  montantHT,
   montantTTC,
+  remiseMontant,
+  remiseType,
+  tva,
+  css,
 }: ShareModalProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"email" | "whatsapp">("email");
@@ -70,16 +80,30 @@ export function ShareModal({
   }
 
   const formatMontant = (montant?: number) => {
-    if (!montant) return "";
+    if (montant === undefined || montant === null) return "";
     return new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
   };
 
-  // Generate WhatsApp message
+  // Générer le détail des remises
+  const getRemiseDetail = () => {
+    if (!remiseMontant || remiseMontant <= 0) return "";
+    const typeLabel = remiseType === 'pourcentage' ? '(%)' : '(fixe)';
+    return `• Remise ${typeLabel} : -${formatMontant(remiseMontant)}`;
+  };
+
+  // Generate WhatsApp message with detailed amounts
   const whatsappMessage = `Bonjour${clientNom ? ` ${clientNom}` : ''},
 
 Veuillez trouver ci-dessous votre ${getDocumentLabel(documentType).toLowerCase()} n° *${documentNumero}*${montantTTC ? ` d'un montant de *${formatMontant(montantTTC)}*` : ''}.
 
-📄 *Lien du document :*
+📄 *Détails :*
+• Montant HT : ${formatMontant(montantHT) || '-'}${remiseMontant && remiseMontant > 0 ? `
+• Remise : -${formatMontant(remiseMontant)}` : ''}
+• TVA : ${formatMontant(tva) || '-'}${css && css > 0 ? `
+• CSS : ${formatMontant(css)}` : ''}
+• *Total TTC : ${formatMontant(montantTTC)}*
+
+📎 *Lien du document :*
 ${pdfUrl}
 
 Pour toute question, n'hésitez pas à nous contacter.
