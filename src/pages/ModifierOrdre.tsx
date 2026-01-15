@@ -97,7 +97,7 @@ export default function ModifierOrdrePage() {
 
   // Préparer les données initiales pour les formulaires enfants
   const getConteneursInitialData = () => {
-    if (!ordreData || !ordreData.conteneurs) return undefined;
+    if (!ordreData || !Array.isArray(ordreData.conteneurs) || ordreData.conteneurs.length === 0) return undefined;
     return {
       typeOperation: (ordreData.type_operation as any) || "",
       numeroBL: ordreData.numero_bl || "",
@@ -112,21 +112,21 @@ export default function ModifierOrdrePage() {
         taille: c.taille === "20" ? "20'" : c.taille === "40" ? "40'" : (c.taille || "20'"),
         description: c.description || "",
         prixUnitaire: parseFloat(String(c.prix_unitaire)) || 0,
-        operations: (c.operations || []).map((op: any) => ({
+        operations: Array.isArray(c.operations) ? c.operations.map((op: any) => ({
           id: String(op.id),
           type: op.type || op.type_operation || "arrivee",
           description: op.description || "",
           quantite: op.quantite || 1,
           prixUnitaire: parseFloat(String(op.prix_unitaire)) || 0,
           prixTotal: (op.quantite || 1) * (parseFloat(String(op.prix_unitaire)) || 0),
-        })),
+        })) : [],
       })),
       montantHT: parseFloat(String(ordreData.montant_ht)) || 0,
     };
   };
 
   const getConventionnelInitialData = () => {
-    if (!ordreData || !ordreData.lots) return undefined;
+    if (!ordreData || !Array.isArray(ordreData.lots) || ordreData.lots.length === 0) return undefined;
     return {
       numeroBL: ordreData.numero_bl || "",
       lieuChargement: (ordreData as any).lieu_chargement || "",
@@ -144,13 +144,13 @@ export default function ModifierOrdrePage() {
   };
 
   const independantInitialData = useMemo(() => {
-    if (!ordreData || !ordreData.lignes || ordreData.lignes.length === 0) {
+    if (!ordreData || !Array.isArray(ordreData.lignes) || ordreData.lignes.length === 0) {
       return undefined;
     }
     
     let typeFromOrder = (ordreData as any).type_operation_indep || "";
     
-    if (!typeFromOrder && ordreData.lignes && ordreData.lignes.length > 0) {
+    if (!typeFromOrder && ordreData.lignes.length > 0) {
       const firstLigne = ordreData.lignes[0];
       if (firstLigne.type_operation) {
         typeFromOrder = firstLigne.type_operation;
@@ -663,9 +663,9 @@ export default function ModifierOrdrePage() {
                 numeroBL={conteneursData?.numeroBL || conventionnelData?.numeroBL || ordreData?.numero_bl}
                 typeOperation={conteneursData?.typeOperation || ordreData?.type_operation}
                 typeOperationIndep={independantData?.typeOperationIndep || (ordreData as any)?.type_operation_indep}
-                conteneurs={conteneursData?.conteneurs || ordreData?.conteneurs?.map((c: any) => ({ numero: c.numero, taille: c.taille }))}
-                lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || ordreData?.lots?.map((l: any) => ({ description: l.designation, quantite: l.quantite }))}
-                prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || ordreData?.lignes?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
+                conteneurs={conteneursData?.conteneurs || (Array.isArray(ordreData?.conteneurs) ? ordreData.conteneurs.map((c: any) => ({ numero: c.numero, taille: c.taille })) : undefined)}
+                lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || (Array.isArray(ordreData?.lots) ? ordreData.lots.map((l: any) => ({ description: l.designation, quantite: l.quantite })) : undefined)}
+                prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || (Array.isArray(ordreData?.lignes) ? ordreData.lignes.map((l: any) => ({ description: l.description, quantite: l.quantite })) : undefined)}
                 notes={notes}
               />
             </div>
