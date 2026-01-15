@@ -138,6 +138,9 @@ export default function OrdreDetailPage() {
                   montantTTC={ordre.montant_ttc || 0}
                   montantPaye={ordre.montant_paye || 0}
                   resteAPayer={resteAPayer}
+                  remiseType={ordre.remise_type}
+                  remiseValeur={ordre.remise_valeur}
+                  remiseMontant={ordre.remise_montant}
                 />
               </div>
 
