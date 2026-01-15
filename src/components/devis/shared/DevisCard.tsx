@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Eye, Edit, FileText, MessageCircle, Mail, ArrowRight, Trash2, Ban, Check,
+  Eye, Edit, FileText, MessageCircle, Mail, ArrowRight, Trash2, Ban, Check, FileCheck,
   Container, Package, Wrench, Clock, User, Building2
 } from "lucide-react";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface DevisCardProps {
   devis: any;
-  onAction: (type: 'annuler' | 'supprimer' | 'convertir' | 'valider', id: string, numero: string) => void;
+  onAction: (type: 'annuler' | 'supprimer' | 'convertir' | 'facturer' | 'valider', id: string, numero: string) => void;
   onWhatsApp: (devis: any) => void;
   onEmail: (numero: string, email: string, nom: string) => void;
 }
@@ -209,14 +209,26 @@ export function DevisCard({ devis, onAction, onWhatsApp, onEmail }: DevisCardPro
               </Button>
             )}
             {devis.statut === 'accepte' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0 text-primary"
-                onClick={() => onAction('convertir', devis.id, devis.numero)}
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 text-primary"
+                  title="Convertir en ordre"
+                  onClick={() => onAction('convertir', devis.id, devis.numero)}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                  title="Facturer directement"
+                  onClick={() => onAction('facturer', devis.id, devis.numero)}
+                >
+                  <FileCheck className="h-4 w-4" />
+                </Button>
+              </>
             )}
             {devis.statut !== 'refuse' && devis.statut !== 'expire' && devis.statut !== 'accepte' && (
               <Button 

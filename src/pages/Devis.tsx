@@ -28,7 +28,7 @@ import {
   TrendingUp, Clock, CheckCircle
 } from "lucide-react";
 import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
-import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useUpdateDevis } from "@/hooks/use-commercial";
+import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useConvertDevisToFacture, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { getOperationsIndepLabels, TypeOperationIndep } from "@/types/documents";
@@ -84,12 +84,13 @@ export default function DevisPage() {
   });
   
   const deleteDevisMutation = useDeleteDevis();
-  const convertMutation = useConvertDevisToOrdre();
+  const convertToOrdreMutation = useConvertDevisToOrdre();
+  const convertToFactureMutation = useConvertDevisToFacture();
   const updateDevisMutation = useUpdateDevis();
   
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'annuler' | 'supprimer' | 'convertir' | 'valider' | null;
+    type: 'annuler' | 'supprimer' | 'convertir' | 'facturer' | 'valider' | null;
     id: string;
     numero: string;
   } | null>(null);
@@ -107,13 +108,22 @@ export default function DevisPage() {
       } else if (confirmAction.type === 'supprimer') {
         await deleteDevisMutation.mutateAsync(confirmAction.id);
       } else if (confirmAction.type === 'convertir') {
-        const result = await convertMutation.mutateAsync(confirmAction.id);
+        const result = await convertToOrdreMutation.mutateAsync(confirmAction.id);
         // Rediriger vers l'ordre créé en mode édition
         const ordreId = result?.data?.id;
         if (ordreId) {
           navigate(`/ordres/${ordreId}/modifier`);
         } else {
           navigate("/ordres");
+        }
+      } else if (confirmAction.type === 'facturer') {
+        const result = await convertToFactureMutation.mutateAsync(confirmAction.id);
+        // Rediriger vers la facture créée
+        const factureId = result?.data?.id;
+        if (factureId) {
+          navigate(`/factures/${factureId}`);
+        } else {
+          navigate("/factures");
         }
       }
     } catch {
@@ -123,7 +133,7 @@ export default function DevisPage() {
     }
   };
 
-  const handleCardAction = (type: 'annuler' | 'supprimer' | 'convertir' | 'valider', id: string, numero: string) => {
+  const handleCardAction = (type: 'annuler' | 'supprimer' | 'convertir' | 'facturer' | 'valider', id: string, numero: string) => {
     setConfirmAction({ type, id, numero });
   };
 
@@ -396,10 +406,16 @@ L'équipe Lojistiga`;
                             </Button>
                           )}
                           {d.statut === 'accepte' && (
-                            <Button variant="ghost" size="icon" title="Convertir" className="h-8 w-8 text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
-                              onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
+                            <>
+                              <Button variant="ghost" size="icon" title="Convertir en ordre" className="h-8 w-8 text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
+                                onClick={() => setConfirmAction({ type: 'convertir', id: d.id, numero: d.numero })}>
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" title="Facturer directement" className="h-8 w-8 text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10"
+                                onClick={() => setConfirmAction({ type: 'facturer', id: d.id, numero: d.numero })}>
+                                <FileCheck className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
                           {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
                             <Button variant="ghost" size="icon" title="Annuler" className="h-8 w-8 text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
@@ -466,6 +482,7 @@ L'équipe Lojistiga`;
               {confirmAction?.type === 'valider' && `Êtes-vous sûr de vouloir valider le devis ${confirmAction?.numero} ?`}
               {confirmAction?.type === 'supprimer' && `Êtes-vous sûr de vouloir supprimer le devis ${confirmAction?.numero} ? Cette action est irréversible.`}
               {confirmAction?.type === 'convertir' && `Voulez-vous convertir le devis ${confirmAction?.numero} en ordre de travail ?`}
+              {confirmAction?.type === 'facturer' && `Voulez-vous convertir le devis ${confirmAction?.numero} directement en facture ?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -477,7 +494,8 @@ L'équipe Lojistiga`;
               {confirmAction?.type === 'annuler' && 'Annuler le devis'}
               {confirmAction?.type === 'valider' && 'Valider'}
               {confirmAction?.type === 'supprimer' && 'Supprimer'}
-              {confirmAction?.type === 'convertir' && 'Convertir'}
+              {confirmAction?.type === 'convertir' && 'Convertir en ordre'}
+              {confirmAction?.type === 'facturer' && 'Convertir en facture'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

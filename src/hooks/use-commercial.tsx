@@ -212,6 +212,24 @@ export function useConvertDevisToOrdre() {
   });
 }
 
+export function useConvertDevisToFacture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: devisApi.convertToFacture,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['devis'] });
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      const factureId = result?.data?.id;
+      toast.success('Devis converti en facture', {
+        description: factureId ? 'Vous allez être redirigé vers la facture créée' : undefined,
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la conversion en facture');
+    },
+  });
+}
+
 // Ordres hooks
 export function useOrdres(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
   return useQuery({

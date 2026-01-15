@@ -7,10 +7,13 @@ use App\Http\Requests\StoreDevisRequest;
 use App\Http\Requests\UpdateDevisRequest;
 use App\Http\Resources\DevisResource;
 use App\Http\Resources\OrdreTravailResource;
+use App\Http\Resources\FactureResource;
 use App\Models\Devis;
 use App\Models\OrdreTravail;
+use App\Models\Facture;
 use App\Models\Audit;
 use App\Services\OrdreTravail\OrdreServiceFactory;
+use App\Services\Facture\FactureServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -350,6 +353,109 @@ class DevisController extends Controller
             Log::error('Erreur conversion devis->ordre', ['devis_id' => $devis->id, 'message' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Erreur lors de la conversion',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Convertir un devis directement en facture (sans passer par l'ordre)
+     */
+    public function convertToFacture(Devis $devis): JsonResponse
+    {
+        if (strtolower($devis->statut) === 'facture') {
+            return response()->json(['message' => 'Ce devis a déjà été facturé'], 422);
+        }
+
+        try {
+            $facture = DB::transaction(function () use ($devis) {
+                $devis->load(['lignes', 'conteneurs.operations', 'lots']);
+
+                $factureFactory = app(FactureServiceFactory::class);
+
+                $factureData = [
+                    'client_id' => $devis->client_id,
+                    'devis_id' => $devis->id,
+                    'date_creation' => now()->toDateString(),
+                    'armateur_id' => $devis->armateur_id,
+                    'transitaire_id' => $devis->transitaire_id,
+                    'representant_id' => $devis->representant_id,
+                    'categorie' => $devis->categorie,
+                    'type_operation' => $devis->type_operation,
+                    'type_operation_indep' => $devis->type_operation_indep,
+                    'numero_bl' => $devis->numero_bl,
+                    'navire' => $devis->navire,
+                    'notes' => $devis->notes,
+                    'statut' => 'emise',
+                    'remise_type' => $devis->remise_type,
+                    'remise_valeur' => $devis->remise_valeur,
+                ];
+
+                // Ajouter les éléments selon la catégorie
+                if ($devis->categorie === 'conteneurs') {
+                    $factureData['conteneurs'] = $devis->conteneurs->map(function ($c) {
+                        return [
+                            'numero' => $c->numero,
+                            'taille' => $c->taille,
+                            'description' => $c->description,
+                            'prix_unitaire' => $c->prix_unitaire,
+                            'operations' => $c->operations->map(function ($op) {
+                                return [
+                                    'type' => $op->type,
+                                    'description' => $op->description,
+                                    'quantite' => $op->quantite,
+                                    'prix_unitaire' => $op->prix_unitaire,
+                                    'prix_total' => $op->prix_total,
+                                ];
+                            })->toArray(),
+                        ];
+                    })->toArray();
+                } elseif ($devis->categorie === 'conventionnel') {
+                    $factureData['lots'] = $devis->lots->map(function ($l) {
+                        return [
+                            'numero_lot' => $l->numero_lot,
+                            'description' => $l->description,
+                            'quantite' => $l->quantite,
+                            'poids' => $l->poids,
+                            'volume' => $l->volume,
+                            'prix_unitaire' => $l->prix_unitaire,
+                            'prix_total' => $l->prix_total,
+                        ];
+                    })->toArray();
+                } elseif ($devis->categorie === 'operations_independantes') {
+                    $factureData['lignes'] = $devis->lignes->map(function ($l) {
+                        return [
+                            'description' => $l->description,
+                            'quantite' => $l->quantite,
+                            'prix_unitaire' => $l->prix_unitaire,
+                            'montant_ht' => $l->montant_ht,
+                            'lieu_depart' => $l->lieu_depart,
+                            'lieu_arrivee' => $l->lieu_arrivee,
+                            'date_debut' => $l->date_debut,
+                            'date_fin' => $l->date_fin,
+                        ];
+                    })->toArray();
+                }
+
+                $facture = $factureFactory->creer($factureData);
+
+                // Marquer le devis comme facturé
+                $devis->update(['statut' => 'facture']);
+
+                return $facture;
+            });
+
+            Audit::log('convert', 'devis', "Devis converti en facture: {$devis->numero} -> {$facture->numero}", $devis->id);
+
+            return response()->json([
+                'message' => 'Devis converti en facture',
+                'facture' => new FactureResource($facture->fresh(['client', 'lignes', 'conteneurs.operations', 'lots']))
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Erreur conversion devis->facture', ['devis_id' => $devis->id, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'Erreur lors de la conversion en facture',
                 'error' => $e->getMessage(),
             ], 500);
         }
