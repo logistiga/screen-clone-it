@@ -258,9 +258,17 @@ export default function TracabilitePage() {
 
   const formatDateShort = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), "dd/MM HH:mm", { locale: fr });
+      return format(new Date(dateStr), "dd/MM/yyyy", { locale: fr });
     } catch {
       return dateStr;
+    }
+  };
+
+  const formatTimeShort = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), "HH:mm", { locale: fr });
+    } catch {
+      return "";
     }
   };
 
@@ -639,15 +647,20 @@ export default function TracabilitePage() {
                                 className="group hover:bg-muted/30 transition-colors"
                               >
                                 <TableCell className="font-mono text-xs">
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="h-3 w-3 text-muted-foreground" />
-                                    {formatDateShort(audit.created_at)}
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3 text-muted-foreground" />
+                                      {formatDateShort(audit.created_at)}
+                                    </div>
+                                    <span className="text-muted-foreground pl-4">
+                                      {formatTimeShort(audit.created_at)}
+                                    </span>
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                                      {audit.user?.name?.charAt(0).toUpperCase() || "?"}
+                                      {audit.user?.name?.charAt(0).toUpperCase() || "S"}
                                     </div>
                                     <span className="truncate max-w-[100px]">
                                       {audit.user?.name || "Système"}
