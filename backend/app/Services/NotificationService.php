@@ -333,11 +333,21 @@ class NotificationService
                 continue; // Maximum 3 rappels
             }
 
-            if ($this->envoyerRappelFacture($facture, $numeroRappel)) {
+            try {
+                $ok = $this->envoyerRappelFacture($facture, $numeroRappel);
+            } catch (\Throwable $e) {
+                $ok = false;
+                Log::error("Rappel auto échoué pour facture {$facture->numero}", [
+                    'facture_id' => $facture->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
+            if ($ok) {
                 $resultats['envoyes']++;
                 $resultats['details'][] = [
                     'facture' => $facture->numero,
-                    'client' => $facture->client->raison_sociale ?? $facture->client->nom_complet,
+                    'client' => $facture->client->raison_sociale ?? $facture->client->nom_complet ?? 'N/A',
                     'rappel' => $numeroRappel,
                     'statut' => 'envoyé',
                 ];
@@ -345,7 +355,7 @@ class NotificationService
                 $resultats['echecs']++;
                 $resultats['details'][] = [
                     'facture' => $facture->numero,
-                    'client' => $facture->client->raison_sociale ?? $facture->client->nom_complet,
+                    'client' => $facture->client->raison_sociale ?? $facture->client->nom_complet ?? 'N/A',
                     'rappel' => $numeroRappel,
                     'statut' => 'échec',
                 ];
@@ -381,7 +391,7 @@ class NotificationService
 
             Log::info("Alerte échéance crédit {$credit->reference} envoyée");
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Erreur envoi alerte crédit: " . $e->getMessage());
             return false;
         }
@@ -414,7 +424,7 @@ class NotificationService
 
             Log::info("Récapitulatif quotidien envoyé");
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Erreur envoi récapitulatif: " . $e->getMessage());
             return false;
         }
@@ -442,7 +452,7 @@ class NotificationService
 
             Log::info("Email de bienvenue envoyé à {$email}");
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Erreur envoi email bienvenue: " . $e->getMessage());
             return false;
         }
@@ -477,7 +487,7 @@ class NotificationService
 
             Log::info("Email personnalisé envoyé à {$destinataire}");
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Erreur envoi email personnalisé: " . $e->getMessage());
             return false;
         }
