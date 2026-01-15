@@ -89,7 +89,7 @@ export default function DevisDetailPage() {
           <p className="text-muted-foreground mb-4">
             Le devis demandé n'existe pas ou a été supprimé.
           </p>
-          <Button onClick={() => navigate(-1)}>Retour</Button>
+          <Button onClick={() => window.history.length <= 2 ? navigate('/devis') : navigate(-1)}>Retour</Button>
         </div>
       </MainLayout>
     );

@@ -64,7 +64,13 @@ export function DevisHeader({ devis, onConvert, isConverting, onWhatsApp, onEmai
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => navigate(-1)} 
+            onClick={() => {
+              if (window.history.length <= 2) {
+                navigate('/devis');
+              } else {
+                navigate(-1);
+              }
+            }} 
             className="shrink-0 bg-background/50 backdrop-blur-sm hover:bg-background/80"
           >
             <ArrowLeft className="h-5 w-5" />

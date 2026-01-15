@@ -37,7 +37,7 @@ export default function RecuPrimePDF() {
     <div className="min-h-screen bg-white">
       {/* Actions - hidden when printing */}
       <div className="print:hidden sticky top-0 z-10 bg-background border-b p-4 flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2">
+        <Button variant="ghost" onClick={() => window.history.length <= 2 ? navigate('/primes') : navigate(-1)} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Retour
         </Button>

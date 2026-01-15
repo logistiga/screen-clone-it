@@ -62,7 +62,7 @@ export default function FactureDetailPage() {
           <p className="text-muted-foreground mb-4">
             La facture demandée n'existe pas ou a été supprimée.
           </p>
-          <Button onClick={() => navigate(-1)} className="transition-all duration-200 hover:scale-105">Retour</Button>
+          <Button onClick={() => window.history.length <= 2 ? navigate('/factures') : navigate(-1)} className="transition-all duration-200 hover:scale-105">Retour</Button>
         </div>
       </MainLayout>
     );
@@ -128,7 +128,7 @@ export default function FactureDetailPage() {
         {/* Header avec actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="transition-all duration-200 hover:scale-110">
+            <Button variant="ghost" size="icon" onClick={() => window.history.length <= 2 ? navigate('/factures') : navigate(-1)} className="transition-all duration-200 hover:scale-110">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>

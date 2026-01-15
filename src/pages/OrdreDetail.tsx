@@ -72,7 +72,7 @@ export default function OrdreDetailPage() {
             L'ordre demandé n'existe pas ou a été supprimé.
           </p>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button onClick={() => navigate(-1)} className="gap-2">
+            <Button onClick={() => window.history.length <= 2 ? navigate('/ordres') : navigate(-1)} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Retour
             </Button>
