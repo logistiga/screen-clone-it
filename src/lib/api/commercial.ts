@@ -451,10 +451,12 @@ export const armateursApi = {
   getAll: async () => {
     const response = await api.get('/armateurs');
     const payload: any = response.data;
+    // Support multiples formats de réponse API
+    if (Array.isArray(payload)) return payload as Armateur[];
     const data = payload?.data;
-    // Supporte: {data: T[]} OU pagination: {data: {data: T[]}}
     if (Array.isArray(data)) return data as Armateur[];
     if (Array.isArray(data?.data)) return data.data as Armateur[];
+    console.warn('[armateursApi.getAll] Format inattendu:', payload);
     return [] as Armateur[];
   },
   
@@ -483,10 +485,12 @@ export const transitairesApi = {
   getAll: async () => {
     const response = await api.get('/transitaires');
     const payload: any = response.data;
+    // Support multiples formats de réponse API
+    if (Array.isArray(payload)) return payload as Transitaire[];
     const data = payload?.data;
-    // Supporte: {data: T[]} OU pagination: {data: {data: T[]}}
     if (Array.isArray(data)) return data as Transitaire[];
     if (Array.isArray(data?.data)) return data.data as Transitaire[];
+    console.warn('[transitairesApi.getAll] Format inattendu:', payload);
     return [] as Transitaire[];
   },
   
@@ -515,10 +519,12 @@ export const representantsApi = {
   getAll: async () => {
     const response = await api.get('/representants');
     const payload: any = response.data;
+    // Support multiples formats de réponse API
+    if (Array.isArray(payload)) return payload as Representant[];
     const data = payload?.data;
-    // Supporte: {data: T[]} OU pagination: {data: {data: T[]}}
     if (Array.isArray(data)) return data as Representant[];
     if (Array.isArray(data?.data)) return data.data as Representant[];
+    console.warn('[representantsApi.getAll] Format inattendu:', payload);
     return [] as Representant[];
   },
   
