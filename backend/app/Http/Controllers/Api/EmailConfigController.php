@@ -98,43 +98,98 @@ class EmailConfigController extends Controller
         ]);
 
         try {
+            // Configurer le mailer SMTP depuis la base de données
+            $this->configureMailer();
+            
             $sujet = 'Test de configuration email - LOJISTIGA';
             $contenu = "Ceci est un email de test pour vérifier la configuration SMTP.\n\nSi vous recevez cet email, votre configuration est correcte.";
 
-            if ($validated['template_id']) {
+            if (isset($validated['template_id']) && $validated['template_id']) {
                 $template = \App\Models\EmailTemplate::find($validated['template_id']);
-                $testData = [
-                    'nom_client' => 'Client Test',
-                    'numero_devis' => 'DEV-TEST-001',
-                    'numero_facture' => 'FAC-TEST-001',
-                    'numero_ordre' => 'OT-TEST-001',
-                    'montant_ttc' => '1 500 000 FCFA',
-                    'date_validite' => date('d/m/Y', strtotime('+30 days')),
-                    'nom_entreprise' => 'LOJISTIGA',
-                    'signature' => $this->getSetting('mail.signature', "L'équipe LOJISTIGA"),
-                ];
-                $rendered = $template->render($testData);
-                $sujet = $rendered['objet'];
-                $contenu = $rendered['contenu'];
+                if ($template) {
+                    $testData = [
+                        'nom_client' => 'Client Test',
+                        'numero_devis' => 'DEV-TEST-001',
+                        'numero_facture' => 'FAC-TEST-001',
+                        'numero_ordre' => 'OT-TEST-001',
+                        'montant_ttc' => '1 500 000 FCFA',
+                        'date_validite' => date('d/m/Y', strtotime('+30 days')),
+                        'nom_entreprise' => 'LOJISTIGA',
+                        'signature' => $this->getSetting('mail.signature', "L'équipe LOJISTIGA"),
+                    ];
+                    $rendered = $template->render($testData);
+                    $sujet = $rendered['objet'];
+                    $contenu = $rendered['contenu'];
+                }
             }
 
-            Mail::raw($contenu, function ($mail) use ($validated, $sujet) {
+            $fromEmail = $this->getSetting('mail.from_address', config('mail.from.address'));
+            $fromName = $this->getSetting('mail.from_name', config('mail.from.name'));
+
+            Mail::raw($contenu, function ($mail) use ($validated, $sujet, $fromEmail, $fromName) {
                 $mail->to($validated['email'])
                     ->subject($sujet)
-                    ->from(
-                        $this->getSetting('mail.from_address', config('mail.from.address')),
-                        $this->getSetting('mail.from_name', config('mail.from.name'))
-                    );
+                    ->from($fromEmail, $fromName);
             });
 
             return response()->json([
-                'message' => 'Email de test envoyé avec succès',
+                'message' => 'Email de test envoyé avec succès à ' . $validated['email'],
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur envoi email test', [
+                'email' => $validated['email'],
+                'error' => $e->getMessage(),
+            ]);
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de l\'email de test',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+    
+    /**
+     * Configurer le mailer SMTP depuis les paramètres de la base de données
+     */
+    private function configureMailer(): void
+    {
+        $smtpHost = Setting::where('key', 'mail.smtp_host')->first()?->value;
+        $smtpPort = Setting::where('key', 'mail.smtp_port')->first()?->value;
+        $smtpUser = Setting::where('key', 'mail.smtp_user')->first()?->value;
+        
+        // Le mot de passe est chiffré, il faut le déchiffrer
+        $smtpPasswordSetting = Setting::where('key', 'mail.smtp_password')->first();
+        $smtpPassword = null;
+        if ($smtpPasswordSetting) {
+            try {
+                $smtpPassword = $smtpPasswordSetting->type === 'encrypted' 
+                    ? decrypt($smtpPasswordSetting->value) 
+                    : $smtpPasswordSetting->value;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Impossible de déchiffrer le mot de passe SMTP');
+            }
+        }
+        
+        $ssl = $this->getSetting('mail.ssl', true);
+
+        if ($smtpHost && $smtpPort && $smtpUser && $smtpPassword) {
+            Config::set('mail.mailers.smtp.host', $smtpHost);
+            Config::set('mail.mailers.smtp.port', (int) $smtpPort);
+            Config::set('mail.mailers.smtp.username', $smtpUser);
+            Config::set('mail.mailers.smtp.password', $smtpPassword);
+            Config::set('mail.mailers.smtp.encryption', $ssl ? 'tls' : null);
+            
+            \Illuminate\Support\Facades\Log::debug('Mailer SMTP configuré pour test', [
+                'host' => $smtpHost,
+                'port' => $smtpPort,
+                'user' => $smtpUser,
+            ]);
+        } else {
+            \Illuminate\Support\Facades\Log::warning('Configuration SMTP incomplète pour test', [
+                'host' => $smtpHost ? 'OK' : 'manquant',
+                'port' => $smtpPort ? 'OK' : 'manquant',
+                'user' => $smtpUser ? 'OK' : 'manquant',
+                'password' => $smtpPassword ? 'OK' : 'manquant',
+            ]);
         }
     }
 
