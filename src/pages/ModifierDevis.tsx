@@ -419,6 +419,8 @@ export default function ModifierDevisPage() {
                   <RemiseInput 
                     montantHT={montantHT} 
                     onChange={setRemiseData}
+                    initialType={remiseData.type}
+                    initialValeur={remiseData.valeur}
                   />
                 )}
 
