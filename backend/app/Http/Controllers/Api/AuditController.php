@@ -11,37 +11,59 @@ class AuditController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Audit::with('user');
+        try {
+            $query = Audit::with('user');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('action', 'like', "%{$search}%")
-                  ->orWhere('table_name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
-            });
+            if ($request->has('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('action', 'like', "%{$search}%")
+                      ->orWhere('table_name', 'like', "%{$search}%")
+                      ->orWhere('details', 'like', "%{$search}%")
+                      ->orWhere('document_id', $search)
+                      ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                });
+            }
+
+            if ($request->has('action')) {
+                $query->where('action', $request->get('action'));
+            }
+
+            // Support pour 'module' et 'table_name'
+            if ($request->has('module')) {
+                $query->where('table_name', $request->get('module'));
+            } elseif ($request->has('table_name')) {
+                $query->where('table_name', $request->get('table_name'));
+            }
+
+            if ($request->has('user_id')) {
+                $query->where('user_id', $request->get('user_id'));
+            }
+
+            if ($request->has('document_id')) {
+                $query->where('document_id', $request->get('document_id'));
+            }
+
+            if ($request->has('date_debut') && $request->has('date_fin')) {
+                $query->whereBetween('created_at', [$request->get('date_debut'), $request->get('date_fin')]);
+            }
+
+            $audits = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 20));
+
+            return response()->json($audits);
+        } catch (\Exception $e) {
+            \Log::error('Erreur audit index', [
+                'message' => $e->getMessage(),
+                'params' => $request->all(),
+            ]);
+            return response()->json([
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $request->get('per_page', 20),
+                'total' => 0,
+            ]);
         }
-
-        if ($request->has('action')) {
-            $query->where('action', $request->get('action'));
-        }
-
-        if ($request->has('table_name')) {
-            $query->where('table_name', $request->get('table_name'));
-        }
-
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->get('user_id'));
-        }
-
-        if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('created_at', [$request->get('date_debut'), $request->get('date_fin')]);
-        }
-
-        $audits = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 20));
-
-        return response()->json($audits);
     }
 
     public function show(Audit $audit): JsonResponse

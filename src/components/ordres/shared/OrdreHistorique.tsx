@@ -131,7 +131,7 @@ const getActionConfig = (action: string): ActionConfig => {
 
 export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
   // Récupérer l'historique depuis l'API d'audit
-  const { data: auditData, isLoading } = useQuery({
+  const { data: auditData, isLoading, isError } = useQuery({
     queryKey: ["audit-logs", "ordres_travail", ordre.id],
     queryFn: () => auditService.getAll({
       module: "ordres_travail",
@@ -139,22 +139,26 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
       per_page: 50,
     }),
     enabled: !!ordre.id,
+    retry: 1,
+    staleTime: 60000, // 1 minute
   });
 
   // Construire l'historique à partir des données d'audit
-  const tracabilite = auditData?.data?.filter(entry => 
-    entry.document_id === Number(ordre.id) || 
-    entry.details?.includes(String(ordre.id))
-  ).map(entry => ({
-    id: String(entry.id),
-    action: entry.action || "Action",
-    utilisateur: entry.user?.name || "Système",
-    date: entry.created_at,
-    details: entry.details || `${entry.action} effectuée`,
-    ...getActionConfig(entry.action),
-  })) || [];
+  const tracabilite = (!isError && Array.isArray(auditData?.data)) 
+    ? auditData.data.filter(entry => 
+        entry.document_id === Number(ordre.id) || 
+        entry.details?.includes(String(ordre.id))
+      ).map(entry => ({
+        id: String(entry.id),
+        action: entry.action || "Action",
+        utilisateur: entry.user?.name || "Système",
+        date: entry.created_at,
+        details: entry.details || `${entry.action} effectuée`,
+        ...getActionConfig(entry.action),
+      })) 
+    : [];
 
-  // Si aucune donnée d'audit, afficher au moins la création
+  // Si aucune donnée d'audit ou erreur, afficher au moins la création
   const displayHistory = tracabilite.length > 0 ? tracabilite : [
     {
       id: "1",
