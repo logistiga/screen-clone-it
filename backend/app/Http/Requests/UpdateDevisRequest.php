@@ -36,6 +36,11 @@ class UpdateDevisRequest extends FormRequest
             'notes' => 'nullable|string|max:2000',
             'statut' => 'sometimes|in:brouillon,envoye,accepte,refuse,expire,converti,Brouillon,Envoyé,Accepté,Refusé,Expiré,Converti',
             
+            // Remise
+            'remise_type' => 'nullable|string|in:pourcentage,montant,none',
+            'remise_valeur' => 'nullable|numeric|min:0',
+            'remise_montant' => 'nullable|numeric|min:0',
+            
             // Lignes (opérations indépendantes)
             'lignes' => 'nullable|array',
             'lignes.*.type_operation' => 'nullable|string|max:100',
