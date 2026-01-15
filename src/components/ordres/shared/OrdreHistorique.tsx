@@ -1,6 +1,29 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, User, FileText, Edit, Trash2, CreditCard, RefreshCw, Loader2 } from "lucide-react";
+import { 
+  Clock, 
+  User, 
+  FileText, 
+  Edit, 
+  Trash2, 
+  CreditCard, 
+  RefreshCw, 
+  Loader2,
+  Receipt,
+  Send,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Download,
+  Printer,
+  Mail,
+  Copy,
+  AlertTriangle,
+  Ban,
+  Undo,
+  ArrowRightLeft,
+  type LucideIcon
+} from "lucide-react";
 import { formatDate } from "@/data/mockData";
 import { useQuery } from "@tanstack/react-query";
 import { auditService } from "@/services/auditService";
@@ -13,23 +36,96 @@ interface OrdreHistoriqueProps {
   };
 }
 
-const getActionIcon = (action: string) => {
+interface ActionConfig {
+  icon: LucideIcon;
+  color: string;
+  label?: string;
+}
+
+const ACTION_CONFIGS: Record<string, ActionConfig> = {
+  // Création
+  'create': { icon: FileText, color: "text-blue-600", label: "Création" },
+  'créé': { icon: FileText, color: "text-blue-600", label: "Création" },
+  'création': { icon: FileText, color: "text-blue-600", label: "Création" },
+  
+  // Modification
+  'update': { icon: Edit, color: "text-amber-600", label: "Modification" },
+  'modif': { icon: Edit, color: "text-amber-600", label: "Modification" },
+  'mise à jour': { icon: Edit, color: "text-amber-600", label: "Mise à jour" },
+  'edit': { icon: Edit, color: "text-amber-600", label: "Modification" },
+  
+  // Suppression
+  'delete': { icon: Trash2, color: "text-red-600", label: "Suppression" },
+  'supprim': { icon: Trash2, color: "text-red-600", label: "Suppression" },
+  
+  // Paiement
+  'paie': { icon: CreditCard, color: "text-green-600", label: "Paiement" },
+  'payment': { icon: CreditCard, color: "text-green-600", label: "Paiement" },
+  'paiement': { icon: CreditCard, color: "text-green-600", label: "Paiement" },
+  'encaissement': { icon: CreditCard, color: "text-green-600", label: "Encaissement" },
+  'règlement': { icon: CreditCard, color: "text-green-600", label: "Règlement" },
+  
+  // Conversion / Facturation
+  'convert': { icon: ArrowRightLeft, color: "text-purple-600", label: "Conversion" },
+  'factur': { icon: Receipt, color: "text-purple-600", label: "Facturation" },
+  'invoice': { icon: Receipt, color: "text-purple-600", label: "Facturation" },
+  
+  // Validation
+  'valid': { icon: CheckCircle, color: "text-green-600", label: "Validation" },
+  'approv': { icon: CheckCircle, color: "text-green-600", label: "Approbation" },
+  'confirm': { icon: CheckCircle, color: "text-green-600", label: "Confirmation" },
+  
+  // Annulation / Rejet
+  'annul': { icon: XCircle, color: "text-red-600", label: "Annulation" },
+  'cancel': { icon: XCircle, color: "text-red-600", label: "Annulation" },
+  'rejet': { icon: Ban, color: "text-red-600", label: "Rejet" },
+  'reject': { icon: Ban, color: "text-red-600", label: "Rejet" },
+  'refus': { icon: Ban, color: "text-red-600", label: "Refus" },
+  
+  // Envoi
+  'envoi': { icon: Send, color: "text-indigo-600", label: "Envoi" },
+  'send': { icon: Send, color: "text-indigo-600", label: "Envoi" },
+  'email': { icon: Mail, color: "text-indigo-600", label: "Email envoyé" },
+  'mail': { icon: Mail, color: "text-indigo-600", label: "Email envoyé" },
+  
+  // Consultation
+  'view': { icon: Eye, color: "text-gray-600", label: "Consultation" },
+  'consult': { icon: Eye, color: "text-gray-600", label: "Consultation" },
+  'vue': { icon: Eye, color: "text-gray-600", label: "Consultation" },
+  
+  // Export / Impression
+  'export': { icon: Download, color: "text-teal-600", label: "Export" },
+  'download': { icon: Download, color: "text-teal-600", label: "Téléchargement" },
+  'télécharg': { icon: Download, color: "text-teal-600", label: "Téléchargement" },
+  'print': { icon: Printer, color: "text-gray-600", label: "Impression" },
+  'imprim': { icon: Printer, color: "text-gray-600", label: "Impression" },
+  'pdf': { icon: Download, color: "text-teal-600", label: "Génération PDF" },
+  
+  // Duplication
+  'dupli': { icon: Copy, color: "text-cyan-600", label: "Duplication" },
+  'copy': { icon: Copy, color: "text-cyan-600", label: "Copie" },
+  'clone': { icon: Copy, color: "text-cyan-600", label: "Duplication" },
+  
+  // Restauration
+  'restor': { icon: Undo, color: "text-emerald-600", label: "Restauration" },
+  'restore': { icon: Undo, color: "text-emerald-600", label: "Restauration" },
+  
+  // Alerte / Avertissement
+  'alert': { icon: AlertTriangle, color: "text-orange-600", label: "Alerte" },
+  'warn': { icon: AlertTriangle, color: "text-orange-600", label: "Avertissement" },
+};
+
+const getActionConfig = (action: string): ActionConfig => {
   const actionLower = action.toLowerCase();
-  if (actionLower.includes('créé') || actionLower.includes('create') || actionLower.includes('création')) {
-    return { icon: FileText, color: "text-blue-600" };
+  
+  // Chercher une correspondance dans les configurations
+  for (const [key, config] of Object.entries(ACTION_CONFIGS)) {
+    if (actionLower.includes(key)) {
+      return config;
+    }
   }
-  if (actionLower.includes('modif') || actionLower.includes('update') || actionLower.includes('mise à jour')) {
-    return { icon: Edit, color: "text-amber-600" };
-  }
-  if (actionLower.includes('supprim') || actionLower.includes('delete')) {
-    return { icon: Trash2, color: "text-red-600" };
-  }
-  if (actionLower.includes('paie') || actionLower.includes('payment')) {
-    return { icon: CreditCard, color: "text-green-600" };
-  }
-  if (actionLower.includes('convert') || actionLower.includes('factur')) {
-    return { icon: RefreshCw, color: "text-purple-600" };
-  }
+  
+  // Configuration par défaut
   return { icon: Clock, color: "text-muted-foreground" };
 };
 
@@ -55,7 +151,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
     utilisateur: entry.user?.name || "Système",
     date: entry.created_at,
     details: entry.details || `${entry.action} effectuée`,
-    ...getActionIcon(entry.action),
+    ...getActionConfig(entry.action),
   })) || [];
 
   // Si aucune donnée d'audit, afficher au moins la création
