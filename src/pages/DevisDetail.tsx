@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { EmailModal } from "@/components/EmailModal";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -520,13 +520,33 @@ L'équipe Lojistiga`;
       </div>
 
       {/* Email Modal */}
-      <EmailModal
+      <EmailModalWithTemplate
         open={showEmailModal}
         onOpenChange={setShowEmailModal}
         documentType="devis"
-        documentNumero={devisData.numero}
-        clientEmail={devisData.client?.email}
-        clientNom={devisData.client?.nom}
+        documentData={{
+          id: devisData.id,
+          numero: devisData.numero,
+          clientNom: devisData.client?.nom,
+          clientEmail: devisData.client?.email,
+          transitaireNom: devisData.transitaire?.nom,
+          transitaireEmail: devisData.transitaire?.email,
+          armateurNom: devisData.armateur?.nom,
+          armateurEmail: devisData.armateur?.email,
+          representantNom: devisData.representant?.nom,
+          representantEmail: devisData.representant?.email,
+          contacts: devisData.client?.contacts || [],
+          montantHT: devisData.montant_ht,
+          montantTTC: devisData.montant_ttc,
+          remiseMontant: devisData.remise_montant,
+          remiseType: devisData.remise_type,
+          tva: devisData.montant_tva,
+          css: devisData.montant_css,
+          dateCreation: devisData.date_creation,
+          dateValidite: devisData.date_validite,
+          statut: devisData.statut,
+          categorie: devisData.type_document,
+        }}
       />
     </MainLayout>
   );

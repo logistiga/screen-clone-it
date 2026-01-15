@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock } from "lucide-react";
-import { EmailModal } from "@/components/EmailModal";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
@@ -79,12 +79,7 @@ export default function FacturesPage() {
   
   // États modales consolidés
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; numero: string } | null>(null);
-  const [emailModal, setEmailModal] = useState<{
-    open: boolean;
-    documentNumero: string;
-    clientEmail: string;
-    clientNom: string;
-  } | null>(null);
+  const [emailModal, setEmailModal] = useState<any | null>(null);
   const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number; clientId?: number } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{
     id: string;
@@ -351,12 +346,7 @@ export default function FacturesPage() {
                             size="icon" 
                             title="Email"
                             className="text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
-                            onClick={() => setEmailModal({
-                              open: true,
-                              documentNumero: facture.numero,
-                              clientEmail: facture.client?.email || "",
-                              clientNom: facture.client?.nom || ""
-                            })}
+                            onClick={() => setEmailModal(facture)}
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
@@ -435,13 +425,34 @@ export default function FacturesPage() {
       </AlertDialog>
 
       {emailModal && (
-        <EmailModal
-          open={emailModal.open}
+        <EmailModalWithTemplate
+          open={!!emailModal}
           onOpenChange={() => setEmailModal(null)}
           documentType="facture"
-          documentNumero={emailModal.documentNumero}
-          clientEmail={emailModal.clientEmail}
-          clientNom={emailModal.clientNom}
+          documentData={{
+            id: emailModal.id,
+            numero: emailModal.numero,
+            clientNom: emailModal.client?.nom,
+            clientEmail: emailModal.client?.email,
+            transitaireNom: emailModal.transitaire?.nom,
+            transitaireEmail: emailModal.transitaire?.email,
+            armateurNom: emailModal.armateur?.nom,
+            armateurEmail: emailModal.armateur?.email,
+            representantNom: emailModal.representant?.nom,
+            representantEmail: emailModal.representant?.email,
+            contacts: emailModal.client?.contacts || [],
+            montantHT: emailModal.montant_ht,
+            montantTTC: emailModal.montant_ttc,
+            remiseMontant: emailModal.remise_montant,
+            remiseType: emailModal.remise_type,
+            tva: emailModal.montant_tva,
+            css: emailModal.montant_css,
+            resteAPayer: emailModal.reste_a_payer,
+            dateCreation: emailModal.date_facture,
+            dateEcheance: emailModal.date_echeance,
+            statut: emailModal.statut,
+            categorie: emailModal.categorie,
+          }}
         />
       )}
 
