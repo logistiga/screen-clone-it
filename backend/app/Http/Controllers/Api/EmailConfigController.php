@@ -61,7 +61,7 @@ class EmailConfigController extends Controller
             $this->setSetting('mail.smtp_user', $validated['smtp_user']);
         }
         if (isset($validated['smtp_password']) && $validated['smtp_password'] !== '********') {
-            $this->setSetting('mail.smtp_password', encrypt($validated['smtp_password']));
+            $this->setSetting('mail.smtp_password', encrypt($validated['smtp_password']), 'encrypted');
         }
         if (isset($validated['expediteur_nom'])) {
             $this->setSetting('mail.from_name', $validated['expediteur_nom']);
@@ -150,11 +150,8 @@ class EmailConfigController extends Controller
     /**
      * Définir un paramètre
      */
-    private function setSetting(string $key, $value): void
+    private function setSetting(string $key, $value, string $type = 'string'): void
     {
-        Setting::updateOrCreate(
-            ['key' => $key],
-            ['value' => $value]
-        );
+        Setting::set($key, $value, 'mail', $type);
     }
 }

@@ -30,6 +30,17 @@ class NotificationService
         $fromEmail = Setting::get('mail.from_address', 'contact@logistiga.com');
         $signature = Setting::get('mail.signature', '');
 
+        // Log diagnostic des paramètres SMTP (sans le mot de passe)
+        Log::debug('Configuration SMTP chargée', [
+            'host' => $smtpHost,
+            'port' => $smtpPort,
+            'user' => $smtpUser,
+            'password_set' => !empty($smtpPassword),
+            'ssl' => $ssl,
+            'from_email' => $fromEmail,
+            'from_name' => $fromName,
+        ]);
+
         // Configurer dynamiquement le mailer si les paramètres sont définis
         if ($smtpHost && $smtpPort && $smtpUser && $smtpPassword) {
             Config::set('mail.mailers.smtp.host', $smtpHost);
@@ -39,6 +50,17 @@ class NotificationService
             Config::set('mail.mailers.smtp.encryption', $ssl ? 'tls' : null);
             Config::set('mail.from.address', $fromEmail);
             Config::set('mail.from.name', $fromName);
+            
+            Log::info('Mailer SMTP configuré dynamiquement depuis la base de données');
+        } else {
+            Log::warning('Configuration SMTP incomplète, utilisation des valeurs par défaut', [
+                'missing' => array_filter([
+                    'host' => empty($smtpHost) ? 'manquant' : null,
+                    'port' => empty($smtpPort) ? 'manquant' : null,
+                    'user' => empty($smtpUser) ? 'manquant' : null,
+                    'password' => empty($smtpPassword) ? 'manquant' : null,
+                ]),
+            ]);
         }
 
         return [
@@ -86,13 +108,23 @@ class NotificationService
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
+            // Vérifier les échecs silencieux
+            $failures = Mail::failures();
+            if (!empty($failures)) {
+                Log::warning("Échecs d'envoi email détectés pour facture {$facture->numero}", [
+                    'failures' => $failures,
+                    'destinataire' => $email,
+                ]);
+                return false;
+            }
+
             // Mettre à jour le statut et la date d'envoi
             $facture->forceFill([
                 'statut' => 'envoye',
                 'date_envoi' => now(),
             ])->save();
 
-            Log::info("Facture {$facture->numero} envoyée à {$email}");
+            Log::info("Facture {$facture->numero} envoyée avec succès à {$email}");
             return true;
         } catch (\Throwable $e) {
             // Ne pas logger ici, le controller s'en charge
@@ -153,13 +185,23 @@ class NotificationService
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
+            // Vérifier les échecs silencieux
+            $failures = Mail::failures();
+            if (!empty($failures)) {
+                Log::warning("Échecs d'envoi email détectés pour devis {$devis->numero}", [
+                    'failures' => $failures,
+                    'destinataire' => $email,
+                ]);
+                return false;
+            }
+
             // Mettre à jour le statut et la date d'envoi
             $devis->forceFill([
                 'statut' => 'envoye',
                 'date_envoi' => now(),
             ])->save();
 
-            Log::info("Devis {$devis->numero} envoyé à {$email}");
+            Log::info("Devis {$devis->numero} envoyé avec succès à {$email}");
             return true;
         } catch (\Throwable $e) {
             // Ne pas logger ici, le controller s'en charge
