@@ -64,16 +64,18 @@ export function useUnreadCount() {
   });
 }
 
-// Hook pour les alertes système
+// Hook pour les alertes système - chargé une seule fois à la connexion
 export function useAlerts() {
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'alerts'],
     queryFn: notificationsService.getAlerts,
-    staleTime: ALERTS_POLLING_INTERVAL,
-    gcTime: ALERTS_POLLING_INTERVAL * 2,
-    refetchInterval: ALERTS_POLLING_INTERVAL,
-    refetchOnWindowFocus: false,
+    staleTime: Infinity, // Ne jamais considérer comme périmé
+    gcTime: Infinity, // Garder en cache indéfiniment
+    refetchInterval: false, // Pas de polling automatique
+    refetchOnWindowFocus: false, // Pas de refresh au focus
     refetchIntervalInBackground: false,
+    refetchOnMount: false, // Ne pas refetch si déjà en cache
+    refetchOnReconnect: false, // Pas de refetch à la reconnexion réseau
     retry: 1,
   });
 }
