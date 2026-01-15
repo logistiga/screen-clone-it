@@ -21,37 +21,26 @@ class NoteDebutController extends Controller
         $this->noteService = $noteService;
     }
 
+    /**
+     * Liste des notes avec filtres via scopes
+     */
     public function index(Request $request): JsonResponse
     {
-        $query = NoteDebut::with(['client', 'transitaire', 'armateur']);
-
-        if ($request->has('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('numero', 'like', "%{$search}%")
-                  ->orWhere('bl_numero', 'like', "%{$search}%")
-                  ->orWhere('conteneur_numero', 'like', "%{$search}%")
-                  ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
-            });
-        }
-
-        if ($request->has('type')) {
-            $query->where('type', $request->get('type'));
-        }
-
-        if ($request->has('client_id')) {
-            $query->where('client_id', $request->get('client_id'));
-        }
-
-        if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date', [$request->get('date_debut'), $request->get('date_fin')]);
-        }
-
-        $notes = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
+        $notes = NoteDebut::query()
+            ->withRelations()
+            ->search($request->get('search'))
+            ->ofType($request->get('type'))
+            ->forClient($request->get('client_id'))
+            ->dateRange($request->get('date_debut'), $request->get('date_fin'))
+            ->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 15));
 
         return response()->json(NoteDebutResource::collection($notes)->response()->getData(true));
     }
 
+    /**
+     * Créer une nouvelle note
+     */
     public function store(StoreNoteDebutRequest $request): JsonResponse
     {
         try {
@@ -66,12 +55,22 @@ class NoteDebutController extends Controller
         }
     }
 
+    /**
+     * Afficher une note
+     */
     public function show(NoteDebut $noteDebut): JsonResponse
     {
-        $noteDebut->load(['client', 'transitaire', 'armateur']);
+        // Charger relations seulement si pas déjà chargées
+        if (!$noteDebut->relationLoaded('client')) {
+            $noteDebut->load(['client', 'transitaire', 'armateur']);
+        }
+
         return response()->json(new NoteDebutResource($noteDebut));
     }
 
+    /**
+     * Modifier une note
+     */
     public function update(UpdateNoteDebutRequest $request, NoteDebut $noteDebut): JsonResponse
     {
         try {
@@ -86,6 +85,9 @@ class NoteDebutController extends Controller
         }
     }
 
+    /**
+     * Supprimer une note
+     */
     public function destroy(NoteDebut $noteDebut): JsonResponse
     {
         Audit::log('delete', 'note', "Note supprimée: {$noteDebut->numero}", $noteDebut->id);
@@ -95,6 +97,9 @@ class NoteDebutController extends Controller
         return response()->json(['message' => 'Note supprimée avec succès']);
     }
 
+    /**
+     * Dupliquer une note existante
+     */
     public function duplicate(NoteDebut $noteDebut): JsonResponse
     {
         try {
@@ -109,14 +114,14 @@ class NoteDebutController extends Controller
         }
     }
 
+    /**
+     * Statistiques des notes
+     */
     public function stats(Request $request): JsonResponse
     {
-        $stats = $this->noteService->getStatistiques([
-            'client_id' => $request->get('client_id'),
-            'type' => $request->get('type'),
-            'date_debut' => $request->get('date_debut'),
-            'date_fin' => $request->get('date_fin'),
-        ]);
+        $stats = $this->noteService->getStatistiques($request->only([
+            'client_id', 'type', 'date_debut', 'date_fin'
+        ]));
 
         return response()->json($stats);
     }
