@@ -108,15 +108,6 @@ class NotificationService
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
-            // Vérifier les échecs silencieux
-            $failures = Mail::failures();
-            if (!empty($failures)) {
-                Log::warning("Échecs d'envoi email détectés pour facture {$facture->numero}", [
-                    'failures' => $failures,
-                    'destinataire' => $email,
-                ]);
-                return false;
-            }
 
             // Mettre à jour le statut et la date d'envoi
             $facture->forceFill([
@@ -185,15 +176,6 @@ class NotificationService
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
             });
 
-            // Vérifier les échecs silencieux
-            $failures = Mail::failures();
-            if (!empty($failures)) {
-                Log::warning("Échecs d'envoi email détectés pour devis {$devis->numero}", [
-                    'failures' => $failures,
-                    'destinataire' => $email,
-                ]);
-                return false;
-            }
 
             // Mettre à jour le statut et la date d'envoi
             $devis->forceFill([
