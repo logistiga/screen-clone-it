@@ -62,10 +62,10 @@ export default function NouvelOrdrePage() {
   const { data: configData } = useConfiguration();
   const createOrdreMutation = useCreateOrdre();
   
-  const clients = clientsData?.data || [];
-  const armateurs = armateursData || [];
-  const transitaires = transitairesData || [];
-  const representants = representantsData || [];
+  const clients = Array.isArray(clientsData?.data) ? clientsData.data : (Array.isArray(clientsData) ? clientsData : []);
+  const armateurs = Array.isArray(armateursData) ? armateursData : [];
+  const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
+  const representants = Array.isArray(representantsData) ? representantsData : [];
   
   // Taux depuis configuration
   const TAUX_TVA = configData?.tva_taux ? parseFloat(configData.tva_taux) / 100 : 0.18;
