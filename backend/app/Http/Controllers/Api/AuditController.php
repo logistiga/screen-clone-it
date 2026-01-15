@@ -18,9 +18,10 @@ class AuditController extends Controller
                 $search = $request->get('search');
                 $query->where(function ($q) use ($search) {
                     $q->where('action', 'like', "%{$search}%")
-                      ->orWhere('table_name', 'like', "%{$search}%")
+                      ->orWhere('module', 'like', "%{$search}%")
                       ->orWhere('details', 'like', "%{$search}%")
                       ->orWhere('document_id', $search)
+                      ->orWhere('document_numero', 'like', "%{$search}%")
                       ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             }
@@ -29,11 +30,11 @@ class AuditController extends Controller
                 $query->where('action', $request->get('action'));
             }
 
-            // Support pour 'module' et 'table_name'
+            // Support pour 'module' et 'table_name' (legacy)
             if ($request->has('module')) {
-                $query->where('table_name', $request->get('module'));
+                $query->where('module', $request->get('module'));
             } elseif ($request->has('table_name')) {
-                $query->where('table_name', $request->get('table_name'));
+                $query->where('module', $request->get('table_name'));
             }
 
             if ($request->has('user_id')) {
@@ -80,8 +81,8 @@ class AuditController extends Controller
 
     public function tables(): JsonResponse
     {
-        $tables = Audit::distinct('table_name')->pluck('table_name');
-        return response()->json($tables);
+        $modules = Audit::distinct('module')->whereNotNull('module')->pluck('module');
+        return response()->json($modules);
     }
 
     public function stats(Request $request): JsonResponse
@@ -96,8 +97,8 @@ class AuditController extends Controller
                 ->groupBy('action')
                 ->get(),
             'par_table' => Audit::whereBetween('created_at', [$dateDebut, $dateFin])
-                ->selectRaw('table_name, COUNT(*) as total')
-                ->groupBy('table_name')
+                ->selectRaw('module, COUNT(*) as total')
+                ->groupBy('module')
                 ->get(),
             'par_utilisateur' => Audit::whereBetween('created_at', [$dateDebut, $dateFin])
                 ->with('user:id,name')

@@ -1,16 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Clock, FileText, Edit, Mail, Check, ArrowRight, 
-  Ban, Send, Eye
+  Ban, Send, Eye, User, Loader2
 } from "lucide-react";
-import { formatDate } from "@/data/mockData";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
+import { auditService } from "@/services/auditService";
 
 interface TimelineEvent {
   id: string;
   type: 'creation' | 'modification' | 'envoi' | 'validation' | 'refus' | 'conversion' | 'consultation';
   date: string;
+  time: string;
   description?: string;
+  user?: string;
 }
 
 interface DevisTimelineProps {
@@ -62,62 +67,137 @@ const eventConfig: Record<string, { icon: React.ReactNode; color: string; bgColo
   },
 };
 
+// Mapper l'action d'audit vers le type d'événement
+const mapActionToEventType = (action: string): TimelineEvent['type'] => {
+  const actionLower = action.toLowerCase();
+  if (actionLower.includes('create') || actionLower.includes('créé')) return 'creation';
+  if (actionLower.includes('update') || actionLower.includes('modif') || actionLower.includes('edit')) return 'modification';
+  if (actionLower.includes('envoi') || actionLower.includes('send') || actionLower.includes('email')) return 'envoi';
+  if (actionLower.includes('valid') || actionLower.includes('accept') || actionLower.includes('approv')) return 'validation';
+  if (actionLower.includes('refus') || actionLower.includes('reject')) return 'refus';
+  if (actionLower.includes('convert') || actionLower.includes('ordre')) return 'conversion';
+  if (actionLower.includes('view') || actionLower.includes('consult')) return 'consultation';
+  return 'modification';
+};
+
+// Formater la date
+const formatDate = (dateStr: string): string => {
+  try {
+    return format(new Date(dateStr), "dd/MM/yyyy", { locale: fr });
+  } catch {
+    return dateStr;
+  }
+};
+
+// Formater l'heure
+const formatTime = (dateStr: string): string => {
+  try {
+    return format(new Date(dateStr), "HH:mm", { locale: fr });
+  } catch {
+    return "";
+  }
+};
+
 export function DevisTimeline({ devis }: DevisTimelineProps) {
-  // Construire la timeline à partir des données du devis
-  const events: TimelineEvent[] = [
-    {
+  // Récupérer l'historique depuis l'API d'audit
+  const { data: auditData, isLoading, isError } = useQuery({
+    queryKey: ["audit-logs", "devis", devis.id],
+    queryFn: () => auditService.getAll({
+      module: "devis",
+      search: devis.id ? String(devis.id) : undefined,
+      per_page: 50,
+    }),
+    enabled: !!devis.id,
+    retry: 1,
+    staleTime: 60000,
+  });
+
+  // Construire la timeline à partir des données d'audit
+  const events: TimelineEvent[] = (!isError && Array.isArray(auditData?.data))
+    ? auditData.data
+        .filter(entry => 
+          entry.document_id === Number(devis.id) || 
+          entry.document_numero === devis.numero ||
+          entry.details?.includes(String(devis.id)) ||
+          entry.details?.includes(devis.numero)
+        )
+        .map(entry => ({
+          id: String(entry.id),
+          type: mapActionToEventType(entry.action),
+          date: entry.created_at,
+          time: formatTime(entry.created_at),
+          description: entry.details || `${entry.action} effectuée`,
+          user: entry.user?.name,
+        }))
+    : [];
+
+  // Si aucune donnée d'audit, construire une timeline par défaut
+  if (events.length === 0) {
+    events.push({
       id: '1',
       type: 'creation',
       date: devis.created_at,
+      time: formatTime(devis.created_at),
       description: `Devis ${devis.numero} créé`,
-    },
-  ];
-
-  // Ajouter la modification si différente de la création
-  if (devis.updated_at !== devis.created_at) {
-    events.push({
-      id: '2',
-      type: 'modification',
-      date: devis.updated_at,
-      description: 'Dernière modification',
+      user: undefined,
     });
-  }
 
-  // Ajouter le statut actuel
-  if (devis.statut === 'envoye') {
-    events.push({
-      id: '3',
-      type: 'envoi',
-      date: devis.updated_at,
-      description: 'Devis envoyé au client',
-    });
-  }
+    // Ajouter la modification si différente de la création
+    if (devis.updated_at !== devis.created_at) {
+      events.push({
+        id: '2',
+        type: 'modification',
+        date: devis.updated_at,
+        time: formatTime(devis.updated_at),
+        description: 'Dernière modification',
+        user: undefined,
+      });
+    }
 
-  if (devis.statut === 'accepte') {
-    events.push({
-      id: '4',
-      type: 'validation',
-      date: devis.updated_at,
-      description: 'Devis accepté par le client',
-    });
-  }
+    // Ajouter le statut actuel
+    if (devis.statut === 'envoye') {
+      events.push({
+        id: '3',
+        type: 'envoi',
+        date: devis.updated_at,
+        time: formatTime(devis.updated_at),
+        description: 'Devis envoyé au client',
+        user: undefined,
+      });
+    }
 
-  if (devis.statut === 'refuse') {
-    events.push({
-      id: '5',
-      type: 'refus',
-      date: devis.updated_at,
-      description: 'Devis refusé',
-    });
-  }
+    if (devis.statut === 'accepte') {
+      events.push({
+        id: '4',
+        type: 'validation',
+        date: devis.updated_at,
+        time: formatTime(devis.updated_at),
+        description: 'Devis accepté par le client',
+        user: undefined,
+      });
+    }
 
-  if (devis.statut === 'converti') {
-    events.push({
-      id: '6',
-      type: 'conversion',
-      date: devis.updated_at,
-      description: 'Converti en ordre de travail',
-    });
+    if (devis.statut === 'refuse') {
+      events.push({
+        id: '5',
+        type: 'refus',
+        date: devis.updated_at,
+        time: formatTime(devis.updated_at),
+        description: 'Devis refusé',
+        user: undefined,
+      });
+    }
+
+    if (devis.statut === 'converti') {
+      events.push({
+        id: '6',
+        type: 'conversion',
+        date: devis.updated_at,
+        time: formatTime(devis.updated_at),
+        description: 'Converti en ordre de travail',
+        user: undefined,
+      });
+    }
   }
 
   // Trier par date décroissante
@@ -132,51 +212,73 @@ export function DevisTimeline({ devis }: DevisTimelineProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="relative">
-          {/* Timeline line */}
-          <div className="absolute left-[17px] top-0 bottom-0 w-0.5 bg-border" />
-
-          <div className="space-y-4">
-            {events.map((event, index) => {
-              const config = eventConfig[event.type];
-              return (
-                <div 
-                  key={event.id} 
-                  className={cn(
-                    "relative flex items-start gap-4 pl-10",
-                    "animate-fade-in"
-                  )}
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  {/* Icon */}
-                  <div className={cn(
-                    "absolute left-0 p-2 rounded-full border-2 border-background",
-                    config.bgColor
-                  )}>
-                    <div className={config.color}>
-                      {config.icon}
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 pb-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium">{config.label}</p>
-                      <time className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDate(event.date)}
-                      </time>
-                    </div>
-                    {event.description && (
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {event.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Chargement...</span>
           </div>
-        </div>
+        ) : (
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-[17px] top-0 bottom-0 w-0.5 bg-border" />
+
+            <div className="space-y-4">
+              {events.map((event, index) => {
+                const config = eventConfig[event.type];
+                return (
+                  <div 
+                    key={event.id} 
+                    className={cn(
+                      "relative flex items-start gap-4 pl-10",
+                      "animate-fade-in"
+                    )}
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    {/* Icon */}
+                    <div className={cn(
+                      "absolute left-0 p-2 rounded-full border-2 border-background",
+                      config.bgColor
+                    )}>
+                      <div className={config.color}>
+                        {config.icon}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 pb-4">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <p className="font-medium">{config.label}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatDate(event.date)}</span>
+                          {event.time && (
+                            <>
+                              <span>•</span>
+                              <span className="font-mono">{event.time}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Utilisateur */}
+                      {event.user && (
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                          <User className="h-3 w-3" />
+                          <span>{event.user}</span>
+                        </div>
+                      )}
+                      
+                      {event.description && (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
