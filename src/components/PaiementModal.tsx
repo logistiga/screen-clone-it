@@ -181,8 +181,11 @@ export function PaiementModal({
     }
   };
 
-  const activeBanques = (banques || []).filter(b => b.actif);
+  const activeBanques = (banques || []).filter(b => Boolean(b.actif));
   const isLoading = createPaiement.isPending || useAvoirMutation.isPending;
+  
+  // Debug: Afficher les banques chargées
+  console.log('Banques chargées:', banques, 'Banques actives:', activeBanques);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -363,10 +366,12 @@ export function PaiementModal({
                   </SelectTrigger>
                   <SelectContent>
                     {isLoadingBanques ? (
-                      <SelectItem value="" disabled>Chargement...</SelectItem>
+                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                    ) : activeBanques.length === 0 ? (
+                      <SelectItem value="empty" disabled>Aucune banque disponible</SelectItem>
                     ) : (
                       activeBanques.map((banque) => (
-                        <SelectItem key={banque.id} value={banque.id}>
+                        <SelectItem key={String(banque.id)} value={String(banque.id)}>
                           {banque.nom}
                         </SelectItem>
                       ))
