@@ -94,19 +94,44 @@ class NotificationService
     public function envoyerDevis(Devis $devis, ?string $emailDestinataire = null, ?string $message = null): bool
     {
         $mailConfig = $this->configureMailer();
+        
+        // Charger le client si pas déjà chargé
+        $devis->loadMissing('client');
         $client = $devis->client;
-        $email = $emailDestinataire ?? $client->email;
+        
+        // Déterminer l'email destinataire
+        $email = $emailDestinataire;
+        if (!$email && $client) {
+            $email = $client->email;
+        }
 
         if (!$email) {
-            Log::warning("Impossible d'envoyer le devis {$devis->numero}: pas d'email");
+            Log::warning("Impossible d'envoyer le devis {$devis->numero}: pas d'email", [
+                'devis_id' => $devis->id,
+                'client_id' => $devis->client_id,
+                'client_exists' => (bool) $client,
+            ]);
             return false;
         }
 
         try {
+            // Log pour debug
+            Log::info('Envoi devis email - payload', [
+                'devis_id' => $devis->id,
+                'devis_numero' => $devis->numero,
+                'client_exists' => (bool) $client,
+                'email_destinataire' => $email,
+                'date_creation' => $devis->date_creation,
+                'date_validite' => $devis->date_validite,
+                'tva' => $devis->tva,
+                'montant_ht' => $devis->montant_ht,
+                'montant_ttc' => $devis->montant_ttc,
+            ]);
+
             Mail::send('emails.devis', [
                 'devis' => $devis,
                 'client' => $client,
-                'message_personnalise' => $message,
+                'message_personnalise' => $message ?? '',
                 'signature' => $mailConfig['signature'],
             ], function ($mail) use ($email, $devis, $mailConfig) {
                 $mail->to($email)
@@ -121,9 +146,14 @@ class NotificationService
 
             Log::info("Devis {$devis->numero} envoyé à {$email}");
             return true;
-        } catch (\Exception $e) {
-            Log::error("Erreur envoi devis {$devis->numero}: " . $e->getMessage());
-            return false;
+        } catch (\Throwable $e) {
+            Log::error("Erreur envoi devis {$devis->numero}: " . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e; // Re-throw pour que le controller puisse aussi logger/répondre
         }
     }
 

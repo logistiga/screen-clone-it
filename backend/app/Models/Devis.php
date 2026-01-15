@@ -319,6 +319,11 @@ class Devis extends Model
      */
     protected function calculerRemise(float $montantHTBrut): float
     {
+        // Pas de remise si type null/none ou valeur <= 0
+        if (empty($this->remise_type) || $this->remise_type === 'none') {
+            return 0;
+        }
+
         if (empty($this->remise_valeur) || $this->remise_valeur <= 0) {
             return 0;
         }
