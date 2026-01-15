@@ -37,7 +37,7 @@ class UpdateFactureRequest extends FormRequest
             'representant_id' => 'nullable|exists:representants,id',
             
             // Remise
-            'remise_type' => 'nullable|string|in:pourcentage,montant',
+            'remise_type' => 'nullable|string|in:pourcentage,montant,none',
             'remise_valeur' => 'nullable|numeric|min:0',
             'remise_montant' => 'nullable|numeric|min:0',
             
