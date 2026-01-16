@@ -1,18 +1,22 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Controllers\CsrfCookieController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 |
-| Ce backend est principalement une API. Ce fichier doit exister car il est
-| référencé dans bootstrap/app.php.
+| Ce backend est principalement une API, mais Sanctum utilise une route web
+| pour poser le cookie XSRF-TOKEN.
 |
 */
 
-// (Optionnel) health simple côté web
+// Sanctum CSRF cookie (SPA)
+Route::get('sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
+
+// Health simple côté web
 Route::get('/', function () {
     return response()->json(['status' => 'ok']);
 });
