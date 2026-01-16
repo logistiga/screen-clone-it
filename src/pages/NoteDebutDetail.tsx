@@ -153,7 +153,7 @@ export default function NoteDebutDetail() {
   };
 
   const handleDownloadPDF = () => {
-    toast.info(`Le PDF de la note ${note?.numero} est en cours de génération...`);
+    navigate(`/notes-debut/${id}/pdf`);
   };
 
   const handlePaiementSuccess = () => {
