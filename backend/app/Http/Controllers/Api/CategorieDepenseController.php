@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCategorieDepenseRequest;
+use App\Http\Requests\UpdateCategorieDepenseRequest;
 use App\Http\Resources\CategorieDepenseResource;
 use App\Http\Resources\MouvementCaisseResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\CategorieDepense;
 use App\Models\MouvementCaisse;
 use App\Models\Audit;
@@ -13,19 +16,36 @@ use Illuminate\Http\JsonResponse;
 
 class CategorieDepenseController extends Controller
 {
+    use SecureQueryParameters;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = ['id', 'nom', 'type', 'actif', 'created_at'];
+
+    /**
+     * Filtres autorisés avec leurs types
+     */
+    protected array $allowedFilters = [
+        'type' => ['type' => 'enum', 'values' => ['Entrée', 'Sortie']],
+        'actif' => ['type' => 'boolean'],
+    ];
+
     public function index(Request $request): JsonResponse
     {
         $query = CategorieDepense::query();
 
-        if ($request->filled('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        if ($request->filled('type')) {
+        // Filtres validés
+        if ($request->filled('type') && in_array($request->get('type'), ['Entrée', 'Sortie'])) {
             $query->where('type', $request->get('type'));
         }
 
@@ -33,10 +53,14 @@ class CategorieDepenseController extends Controller
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $categories = $query->orderBy('nom')->get();
+        // Tri sécurisé
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
+        $query->orderBy($sort['column'], $sort['direction']);
+
+        $categories = $query->get();
 
         // Ajouter les stats si demandé
-        if ($request->has('with_stats')) {
+        if ($request->boolean('with_stats')) {
             $categories->each(function ($cat) {
                 $cat->total_depenses = $cat->mouvements()->where('type', 'Sortie')->sum('montant');
                 $cat->nombre_mouvements = $cat->mouvements()->count();
@@ -46,17 +70,9 @@ class CategorieDepenseController extends Controller
         return response()->json(['data' => CategorieDepenseResource::collection($categories)]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCategorieDepenseRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:100|unique:categories_depenses,nom',
-            'description' => 'nullable|string|max:255',
-            'type' => 'required|in:Entrée,Sortie',
-            'couleur' => 'nullable|string|max:20',
-            'actif' => 'boolean',
-        ]);
-
-        $categorie = CategorieDepense::create($validated);
+        $categorie = CategorieDepense::create($request->validated());
 
         Audit::log('create', 'categorie_depense', "Catégorie créée: {$categorie->nom}", $categorie->id);
 
@@ -68,17 +84,9 @@ class CategorieDepenseController extends Controller
         return response()->json(new CategorieDepenseResource($categoriesDepense));
     }
 
-    public function update(Request $request, CategorieDepense $categoriesDepense): JsonResponse
+    public function update(UpdateCategorieDepenseRequest $request, CategorieDepense $categoriesDepense): JsonResponse
     {
-        $validated = $request->validate([
-            'nom' => 'sometimes|required|string|max:100|unique:categories_depenses,nom,' . $categoriesDepense->id,
-            'description' => 'nullable|string|max:255',
-            'type' => 'sometimes|required|in:Entrée,Sortie',
-            'couleur' => 'nullable|string|max:20',
-            'actif' => 'boolean',
-        ]);
-
-        $categoriesDepense->update($validated);
+        $categoriesDepense->update($request->validated());
 
         Audit::log('update', 'categorie_depense', "Catégorie modifiée: {$categoriesDepense->nom}", $categoriesDepense->id);
 
