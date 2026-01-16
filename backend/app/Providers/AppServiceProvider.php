@@ -98,12 +98,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Rate limiter général API
+        // =============================================
+        // RATE LIMITERS - Configuration centralisée
+        // =============================================
+
+        // 1. Rate limiter général API (60 req/min par user ou IP)
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
-        // Rate limiter strict pour login (5 tentatives par minute)
+        // 2. Login - STRICT (5/min par email+IP) - Protection brute force
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)
                 ->by($request->input('email') . '|' . $request->ip())
@@ -117,7 +121,7 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // Rate limiter pour reset password (3 tentatives par minute)
+        // 3. Reset password - TRÈS STRICT (3/min par email+IP)
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(3)
                 ->by($request->input('email') . '|' . $request->ip())
@@ -131,13 +135,78 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // Rate limiter pour les routes sensibles (10 par minute)
+        // 4. Exports - MODÉRÉ (20/min par user) - Prévenir abus téléchargement
+        RateLimiter::for('exports', function (Request $request) {
+            return Limit::perMinute(20)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Trop d\'exports demandés. Veuillez patienter avant de réessayer.',
+                        'error' => 'too_many_exports',
+                        'retry_after' => (int) ($headers['Retry-After'] ?? 60),
+                    ], 429, $headers);
+                });
+        });
+
+        // 5. Dashboard/Stats - MODÉRÉ (30/min par user) - Requêtes potentiellement lourdes
+        RateLimiter::for('dashboard', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Trop de requêtes dashboard. Veuillez patienter.',
+                        'error' => 'too_many_requests',
+                        'retry_after' => (int) ($headers['Retry-After'] ?? 60),
+                    ], 429, $headers);
+                });
+        });
+
+        // 6. Reporting - STRICT (15/min par user) - Requêtes très lourdes en base
+        RateLimiter::for('reporting', function (Request $request) {
+            return Limit::perMinute(15)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Trop de requêtes de reporting. Ces calculs sont intensifs, veuillez patienter.',
+                        'error' => 'too_many_requests',
+                        'retry_after' => (int) ($headers['Retry-After'] ?? 60),
+                    ], 429, $headers);
+                });
+        });
+
+        // 7. Stats globales - MODÉRÉ (20/min par user)
+        RateLimiter::for('stats', function (Request $request) {
+            return Limit::perMinute(20)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Trop de requêtes statistiques. Veuillez patienter.',
+                        'error' => 'too_many_requests',
+                        'retry_after' => (int) ($headers['Retry-After'] ?? 60),
+                    ], 429, $headers);
+                });
+        });
+
+        // 8. Routes sensibles génériques (10/min par user)
         RateLimiter::for('sensitive', function (Request $request) {
             return Limit::perMinute(10)
                 ->by($request->user()?->id ?: $request->ip())
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Trop de requêtes. Veuillez patienter.',
+                        'error' => 'too_many_requests',
+                        'retry_after' => (int) ($headers['Retry-After'] ?? 60),
+                    ], 429, $headers);
+                });
+        });
+
+        // 9. Création/Modification (30/min) - Empêcher spam de création
+        RateLimiter::for('mutations', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Trop de modifications. Veuillez patienter.',
                         'error' => 'too_many_requests',
                         'retry_after' => (int) ($headers['Retry-After'] ?? 60),
                     ], 429, $headers);

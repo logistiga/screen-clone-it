@@ -64,7 +64,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // DASHBOARD (accessible à tous les utilisateurs connectés)
     // ============================================
-    Route::prefix('dashboard')->group(function () {
+    Route::prefix('dashboard')->middleware('throttle:dashboard')->group(function () {
         Route::get('/', [DashboardController::class, 'index']);
         Route::get('graphiques', [DashboardController::class, 'graphiques']);
         Route::get('alertes', [DashboardController::class, 'alertes']);
@@ -512,7 +512,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // REPORTING
     // ============================================
-    Route::prefix('reporting')->middleware('permission:reporting.voir')->group(function () {
+    Route::prefix('reporting')->middleware(['permission:reporting.voir', 'throttle:reporting'])->group(function () {
         Route::get('/', [ReportingController::class, 'dashboard']);
         Route::get('chiffre-affaires', [ReportingController::class, 'chiffreAffaires']);
         Route::get('creances', [ReportingController::class, 'creances']);
@@ -526,7 +526,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // EXPORTS
     // ============================================
-    Route::prefix('exports')->middleware('permission:reporting.voir')->group(function () {
+    Route::prefix('exports')->middleware(['permission:reporting.voir', 'throttle:exports'])->group(function () {
         Route::get('factures', [ExportController::class, 'factures']);
         Route::get('devis', [ExportController::class, 'devis']);
         Route::get('ordres-travail', [ExportController::class, 'ordres']);
