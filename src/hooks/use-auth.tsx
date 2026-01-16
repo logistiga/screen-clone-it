@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import api from '@/lib/api';
 
 interface User {
@@ -21,41 +21,177 @@ interface AuthContextType {
   updateUser: (user: User) => void;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
-  refreshSession: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Configuration du refresh automatique
+const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const ACTIVITY_CHECK_INTERVAL_MS = 60 * 1000; // 1 minute
+const INACTIVITY_THRESHOLD_MS = 60 * 60 * 1000; // 1 heure sans activité = pas de refresh
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Refs pour le tracking d'activité et les timers
+  const lastActivityRef = useRef<number>(Date.now());
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isRefreshingRef = useRef<boolean>(false);
 
-  // Vérifier la session au chargement (le cookie HttpOnly est envoyé automatiquement)
-  useEffect(() => {
-    checkAuthStatus();
+  // Mettre à jour le timestamp de dernière activité
+  const updateLastActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
   }, []);
 
-  const checkAuthStatus = async () => {
+  // Vérifier si l'utilisateur est actif récemment
+  const isUserActive = useCallback(() => {
+    return Date.now() - lastActivityRef.current < INACTIVITY_THRESHOLD_MS;
+  }, []);
+
+  // Rafraîchir la session
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    // Éviter les appels simultanés
+    if (isRefreshingRef.current) {
+      return false;
+    }
+
+    // Ne pas rafraîchir si l'utilisateur est inactif
+    if (!isUserActive()) {
+      console.log('[Auth] Utilisateur inactif, skip du refresh');
+      return false;
+    }
+
+    isRefreshingRef.current = true;
+
     try {
-      // Le cookie HttpOnly est envoyé automatiquement avec withCredentials: true
+      await api.post('/auth/refresh');
+      console.log('[Auth] Token rafraîchi avec succès');
+      
+      // Optionnel: recharger les données utilisateur
       const response = await api.get('/auth/user');
       setUser(response.data);
+      
+      return true;
+    } catch (error) {
+      console.error('[Auth] Erreur lors du rafraîchissement:', error);
+      // En cas d'erreur 401, la session a expiré
+      if ((error as any)?.response?.status === 401) {
+        setUser(null);
+      }
+      return false;
+    } finally {
+      isRefreshingRef.current = false;
+    }
+  }, [isUserActive]);
+
+  // Démarrer le timer de refresh automatique
+  const startRefreshTimer = useCallback(() => {
+    // Nettoyer l'ancien timer
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+    }
+
+    // Créer un nouveau timer
+    refreshTimerRef.current = setInterval(async () => {
+      if (user && isUserActive()) {
+        await refreshSession();
+      }
+    }, TOKEN_REFRESH_INTERVAL_MS);
+  }, [user, isUserActive, refreshSession]);
+
+  // Arrêter le timer de refresh
+  const stopRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, []);
+
+  // Tracking des événements utilisateur pour détecter l'activité
+  useEffect(() => {
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    
+    const handleActivity = () => {
+      updateLastActivity();
+    };
+
+    // Ajouter les listeners
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    // Cleanup
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [updateLastActivity]);
+
+  // Gérer le timer de refresh basé sur l'état d'authentification
+  useEffect(() => {
+    if (user) {
+      startRefreshTimer();
+    } else {
+      stopRefreshTimer();
+    }
+
+    return () => {
+      stopRefreshTimer();
+    };
+  }, [user, startRefreshTimer, stopRefreshTimer]);
+
+  // Refresh quand l'onglet redevient visible après une période d'inactivité
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Si l'onglet redevient visible, vérifier la session
+        const timeSinceLastActivity = Date.now() - lastActivityRef.current;
+        
+        // Si plus de 5 minutes d'inactivité, rafraîchir
+        if (timeSinceLastActivity > 5 * 60 * 1000) {
+          console.log('[Auth] Onglet redevenu visible, vérification de la session');
+          await refreshSession();
+        }
+        
+        updateLastActivity();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, refreshSession, updateLastActivity]);
+
+  // Vérifier la session au chargement
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const response = await api.get('/auth/user');
+      setUser(response.data);
+      updateLastActivity();
     } catch {
-      // Non authentifié ou cookie expiré
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [updateLastActivity]);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { user: userData } = response.data;
       
-      // Le token est maintenant dans un cookie HttpOnly (géré par le backend)
-      // On stocke seulement les données utilisateur en mémoire
       setUser(userData);
+      updateLastActivity();
 
       return { success: true };
     } catch (error: any) {
@@ -82,23 +218,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    stopRefreshTimer();
+    
     try {
       await api.post('/auth/logout');
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
-      // Le backend supprime le cookie, on nettoie juste l'état local
-      setUser(null);
-    }
-  };
-
-  const refreshSession = async () => {
-    try {
-      await api.post('/auth/refresh');
-      // Recharger les données utilisateur
-      await checkAuthStatus();
-    } catch (error) {
-      console.error('Erreur lors du rafraîchissement de session:', error);
       setUser(null);
     }
   };
