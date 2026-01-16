@@ -10,10 +10,21 @@ use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Durée du cookie en minutes (7 jours)
+     */
+    private const TOKEN_EXPIRATION_MINUTES = 60 * 24 * 7;
+
+    /**
+     * Nom du cookie pour le token
+     */
+    private const TOKEN_COOKIE_NAME = 'auth_token';
+
     public function login(LoginRequest $request): JsonResponse
     {
         $user = User::where('email', $request->email)->first();
@@ -34,18 +45,41 @@ class AuthController extends Controller
 
         Audit::log('login', 'auth', 'Connexion réussie');
 
+        // Créer le token
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        // Créer le cookie HttpOnly sécurisé
+        $cookie = Cookie::make(
+            self::TOKEN_COOKIE_NAME,
+            $token,
+            self::TOKEN_EXPIRATION_MINUTES,
+            '/',                          // path
+            null,                         // domain (null = current domain)
+            true,                         // secure (HTTPS only)
+            true,                         // httpOnly (inaccessible via JavaScript)
+            false,                        // raw
+            'Strict'                      // sameSite (protection CSRF)
+        );
+
         return response()->json([
             'user' => $user->load('roles', 'permissions'),
-            'token' => $user->createToken('auth-token')->plainTextToken,
-        ]);
+            'message' => 'Connexion réussie',
+        ])->withCookie($cookie);
     }
 
     public function logout(Request $request): JsonResponse
     {
         Audit::log('logout', 'auth', 'Déconnexion');
-        $request->user()->currentAccessToken()->delete();
+        
+        // Supprimer le token actuel si l'utilisateur est authentifié
+        if ($request->user()) {
+            $request->user()->currentAccessToken()->delete();
+        }
 
-        return response()->json(['message' => 'Déconnexion réussie']);
+        // Supprimer le cookie
+        $cookie = Cookie::forget(self::TOKEN_COOKIE_NAME);
+
+        return response()->json(['message' => 'Déconnexion réussie'])->withCookie($cookie);
     }
 
     public function user(Request $request): JsonResponse
@@ -84,5 +118,40 @@ class AuthController extends Controller
         Audit::log('update', 'password', 'Mot de passe modifié');
 
         return response()->json(['message' => 'Mot de passe modifié avec succès']);
+    }
+
+    /**
+     * Rafraîchir le token (prolonger la session)
+     */
+    public function refreshToken(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['message' => 'Non authentifié'], 401);
+        }
+
+        // Supprimer l'ancien token
+        $user->currentAccessToken()->delete();
+
+        // Créer un nouveau token
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        // Créer le nouveau cookie
+        $cookie = Cookie::make(
+            self::TOKEN_COOKIE_NAME,
+            $token,
+            self::TOKEN_EXPIRATION_MINUTES,
+            '/',
+            null,
+            true,
+            true,
+            false,
+            'Strict'
+        );
+
+        return response()->json([
+            'message' => 'Token rafraîchi',
+        ])->withCookie($cookie);
     }
 }

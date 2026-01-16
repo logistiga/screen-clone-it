@@ -8,21 +8,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+  // IMPORTANT: Permettre l'envoi des cookies HttpOnly avec chaque requête
+  withCredentials: true,
 });
-
-// Intercepteur pour ajouter le token d'authentification
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // Intercepteur pour gérer les erreurs d'authentification
 api.interceptors.response.use(
@@ -64,9 +52,11 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Ne pas supprimer le localStorage car le token n'y est plus stocké
+      // Rediriger seulement si on n'est pas déjà sur la page de login
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
