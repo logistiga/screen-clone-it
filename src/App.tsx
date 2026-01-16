@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { PWAInstallPrompt, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
 import LoginPage from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/Dashboard";
@@ -74,6 +75,9 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <PWAInstallPrompt />
+          <PWAUpdatePrompt />
+          <OfflineIndicator />
           <BrowserRouter>
             <Routes>
               {/* Route publique */}
