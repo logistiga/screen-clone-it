@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\Client;
 use App\Models\Contact;
 use App\Models\Audit;
@@ -16,6 +17,22 @@ use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
+    use SecureQueryParameters;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'nom', 'email', 'telephone', 'type', 'created_at', 'updated_at'
+    ];
+
+    /**
+     * Filtres autorisés
+     */
+    protected array $allowedFilters = [
+        'type' => ['type' => 'enum', 'values' => ['Particulier', 'Société']],
+    ];
+
     public function index(Request $request): JsonResponse
     {
         // Optimisé: withCount/withSum au lieu de charger toutes les relations
@@ -26,8 +43,9 @@ class ClientController extends Controller
             ->withSum('paiements as paiements_sum_montant', 'montant')
             ->selectRaw('clients.*, (SELECT COALESCE(SUM(solde_avoir), 0) FROM annulations WHERE client_id = clients.id AND avoir_genere = 1 AND solde_avoir > 0) as solde_avoirs');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
@@ -35,11 +53,19 @@ class ClientController extends Controller
             });
         }
 
-        if ($request->has('type')) {
+        // Filtre type validé
+        if ($request->filled('type') && in_array($request->get('type'), ['Particulier', 'Société'])) {
             $query->where('type', $request->get('type'));
         }
 
-        $clients = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
+        // Tri sécurisé
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns);
+        
+        // Pagination sécurisée
+        $pagination = $this->validatePaginationParameters($request);
+        
+        $clients = $query->orderBy($sort['column'], $sort['direction'])
+            ->paginate($pagination['per_page']);
 
         return response()->json(ClientResource::collection($clients)->response()->getData(true));
     }

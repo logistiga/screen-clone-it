@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransitaireRequest;
 use App\Http\Requests\UpdateTransitaireRequest;
 use App\Http\Resources\TransitaireResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\Transitaire;
 use App\Models\Audit;
 use Illuminate\Http\Request;
@@ -13,6 +14,15 @@ use Illuminate\Http\JsonResponse;
 
 class TransitaireController extends Controller
 {
+    use SecureQueryParameters;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'nom', 'email', 'telephone', 'actif', 'created_at', 'updated_at'
+    ];
+
     public function index(Request $request): JsonResponse
     {
         // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
@@ -32,8 +42,9 @@ class TransitaireController extends Controller
                     ->where('statut', 'Payée');
             }, 'primes_payees');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
@@ -45,7 +56,12 @@ class TransitaireController extends Controller
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $transitaires = $query->orderBy('nom')->paginate($request->get('per_page', 15));
+        // Tri et pagination sécurisés
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
+        $pagination = $this->validatePaginationParameters($request);
+
+        $transitaires = $query->orderBy($sort['column'], $sort['direction'])
+            ->paginate($pagination['per_page']);
 
         return response()->json(TransitaireResource::collection($transitaires)->response()->getData(true));
     }

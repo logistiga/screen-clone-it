@@ -7,6 +7,7 @@ use App\Http\Requests\StoreFactureRequest;
 use App\Http\Requests\UpdateFactureRequest;
 use App\Http\Requests\AnnulerFactureRequest;
 use App\Http\Resources\FactureResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\Facture;
 use App\Models\Annulation;
 use App\Models\Audit;
@@ -17,7 +18,25 @@ use Illuminate\Support\Facades\DB;
 
 class FactureController extends Controller
 {
+    use SecureQueryParameters;
+
     protected FactureServiceFactory $factureFactory;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'numero', 'date_creation', 'date_echeance', 'montant_ht', 'montant_ttc', 
+        'statut', 'categorie', 'created_at', 'updated_at'
+    ];
+
+    /**
+     * Statuts autorisés pour le filtre
+     */
+    protected array $allowedStatuts = [
+        'brouillon', 'envoyee', 'payee', 'partiellement_payee', 'annulee',
+        'Brouillon', 'Envoyée', 'Payée', 'Partiellement payée', 'Annulée'
+    ];
 
     public function __construct(FactureServiceFactory $factureFactory)
     {
@@ -28,8 +47,9 @@ class FactureController extends Controller
     {
         $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements']);
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
                   ->orWhere('numero_bl', 'like', "%{$search}%")
@@ -37,27 +57,37 @@ class FactureController extends Controller
             });
         }
 
-        if ($request->has('statut')) {
+        // Filtres validés
+        if ($request->filled('statut') && in_array($request->get('statut'), $this->allowedStatuts)) {
             $query->where('statut', $request->get('statut'));
         }
 
-        if ($request->has('categorie')) {
+        if ($request->filled('categorie') && in_array($request->get('categorie'), ['Conteneur', 'Lot', 'Independant'])) {
             $query->where('categorie', $request->get('categorie'));
         }
 
-        if ($request->has('client_id')) {
-            $query->where('client_id', $request->get('client_id'));
+        // Client ID validé
+        $clientId = $this->validateId($request->get('client_id'));
+        if ($clientId) {
+            $query->where('client_id', $clientId);
         }
 
-        if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date_creation', [$request->get('date_debut'), $request->get('date_fin')]);
+        // Dates validées
+        $dateRange = $this->validateDateRange($request);
+        if ($dateRange['start'] && $dateRange['end']) {
+            $query->whereBetween('date_creation', [$dateRange['start'], $dateRange['end']]);
         }
 
-        if ($request->has('impayees')) {
+        if ($request->boolean('impayees')) {
             $query->whereIn('statut', ['Envoyée', 'Partiellement payée']);
         }
 
-        $factures = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
+        // Tri et pagination sécurisés
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns);
+        $pagination = $this->validatePaginationParameters($request);
+
+        $factures = $query->orderBy($sort['column'], $sort['direction'])
+            ->paginate($pagination['per_page']);
 
         return response()->json(FactureResource::collection($factures)->response()->getData(true));
     }

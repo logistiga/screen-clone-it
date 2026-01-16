@@ -3,36 +3,58 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\User;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    use SecureQueryParameters;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'nom', 'email', 'actif', 'created_at', 'updated_at'
+    ];
+
     public function index(Request $request): JsonResponse
     {
         $query = User::with('roles');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        if ($request->has('role')) {
-            $query->role($request->get('role'));
+        // Filtre par rôle validé
+        if ($request->filled('role')) {
+            $roleName = $this->sanitizeString($request->get('role'));
+            if ($roleName) {
+                $query->role($roleName);
+            }
         }
 
         if ($request->has('actif')) {
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $users = $query->orderBy('nom')->paginate($request->get('per_page', 15));
+        // Tri et pagination sécurisés
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
+        $pagination = $this->validatePaginationParameters($request);
+
+        $users = $query->orderBy($sort['column'], $sort['direction'])
+            ->paginate($pagination['per_page']);
 
         return response()->json($users);
     }
