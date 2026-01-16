@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { 
   clientsApi, 
   devisApi, 
@@ -48,8 +49,12 @@ const queryKeyMap: Record<string, string[]> = {
 
 export function usePrefetch() {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
 
   const prefetchRoute = useCallback(async (url: string) => {
+    // Ne pas précharger tant que l'utilisateur n'est pas authentifié
+    if (!isAuthenticated) return;
+
     // Vérifier les routes dynamiques (ex: /clients/123)
     const clientDetailMatch = url.match(/^\/clients\/(\d+)$/);
     if (clientDetailMatch) {
@@ -104,10 +109,12 @@ export function usePrefetch() {
       // Ignorer les erreurs de préchargement silencieusement
       console.debug('Prefetch error for', url, error);
     }
-  }, [queryClient]);
+  }, [queryClient, isAuthenticated]);
 
   // Précharger un client spécifique
   const prefetchClient = useCallback(async (clientId: string | number) => {
+    if (!isAuthenticated) return;
+
     const queryKey = ['clients', String(clientId)];
     
     const existingData = queryClient.getQueryData(queryKey);
@@ -127,7 +134,7 @@ export function usePrefetch() {
     } catch (error) {
       console.debug('Prefetch error for client', clientId, error);
     }
-  }, [queryClient]);
+  }, [queryClient, isAuthenticated]);
 
   return { prefetchRoute, prefetchClient };
 }

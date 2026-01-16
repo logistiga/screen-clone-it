@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService, DashboardStats, DashboardGraphiques, DashboardAlerte, DashboardActivite } from '@/services/dashboardService';
+import { useAuth } from '@/hooks/use-auth';
 
 export const DASHBOARD_KEY = ['dashboard'];
 
@@ -29,9 +30,12 @@ const defaultAlertes: DashboardAlerte[] = [];
 const defaultActivite: DashboardActivite[] = [];
 
 export function useDashboardStats(dateDebut?: string, dateFin?: string) {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [...DASHBOARD_KEY, 'stats', dateDebut, dateFin],
     queryFn: () => dashboardService.getStats(dateDebut, dateFin),
+    enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
     refetchInterval: false, // Disable auto-refetch to avoid API spam
@@ -42,9 +46,12 @@ export function useDashboardStats(dateDebut?: string, dateFin?: string) {
 }
 
 export function useDashboardGraphiques(annee?: number) {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [...DASHBOARD_KEY, 'graphiques', annee],
     queryFn: () => dashboardService.getGraphiques(annee),
+    enabled: isAuthenticated,
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchInterval: false,
@@ -55,9 +62,12 @@ export function useDashboardGraphiques(annee?: number) {
 }
 
 export function useDashboardAlertes() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [...DASHBOARD_KEY, 'alertes'],
     queryFn: () => dashboardService.getAlertes(),
+    enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchInterval: false,
@@ -68,9 +78,12 @@ export function useDashboardAlertes() {
 }
 
 export function useDashboardActivite() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [...DASHBOARD_KEY, 'activite'],
     queryFn: () => dashboardService.getActiviteRecente(),
+    enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchInterval: false,
@@ -81,9 +94,12 @@ export function useDashboardActivite() {
 }
 
 export function useDashboard(annee?: number) {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [...DASHBOARD_KEY, 'all', annee],
     queryFn: () => dashboardService.getAll(annee),
+    enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchInterval: false,
