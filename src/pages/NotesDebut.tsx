@@ -457,20 +457,19 @@ export default function NotesDebut() {
                               >
                                 <Mail className="h-4 w-4" />
                               </Button>
-                              {remaining > 0 && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8" 
-                                  title="Paiement" 
-                                  onClick={() => { 
-                                    setSelectedNote(note); 
-                                    setShowPaiementModal(true); 
-                                  }}
-                                >
-                                  <CreditCard className="h-4 w-4" />
-                                </Button>
-                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className={`h-8 w-8 ${remaining > 0 ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : ''}`}
+                                title={remaining > 0 ? "Enregistrer un paiement" : "Entièrement payé"}
+                                disabled={remaining <= 0}
+                                onClick={() => { 
+                                  setSelectedNote(note); 
+                                  setShowPaiementModal(true); 
+                                }}
+                              >
+                                <CreditCard className="h-4 w-4" />
+                              </Button>
                               {paid === 0 && advance === 0 && (
                                 <Button 
                                   variant="ghost" 
