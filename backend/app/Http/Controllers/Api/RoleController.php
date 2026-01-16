@@ -271,6 +271,91 @@ class RoleController extends Controller
     }
 
     /**
+     * Assigner des utilisateurs à un rôle
+     */
+    public function assignUsers(Request $request, Role $role): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id',
+        ]);
+
+        $assignedCount = 0;
+        foreach ($validated['user_ids'] as $userId) {
+            $user = User::find($userId);
+            if ($user && !$user->hasRole($role->name)) {
+                // Retirer les autres rôles et assigner le nouveau
+                $user->syncRoles([$role->name]);
+                $assignedCount++;
+            }
+        }
+
+        return response()->json([
+            'message' => "{$assignedCount} utilisateur(s) assigné(s) au rôle {$role->name}",
+            'assigned_count' => $assignedCount,
+        ]);
+    }
+
+    /**
+     * Désassigner un utilisateur d'un rôle
+     */
+    public function unassignUser(Request $request, Role $role, User $user): JsonResponse
+    {
+        if (!$user->hasRole($role->name)) {
+            return response()->json([
+                'message' => "L'utilisateur n'a pas ce rôle",
+            ], 400);
+        }
+
+        // Retirer le rôle de l'utilisateur
+        $user->removeRole($role->name);
+
+        return response()->json([
+            'message' => "L'utilisateur {$user->nom} a été retiré du rôle {$role->name}",
+        ]);
+    }
+
+    /**
+     * Liste des utilisateurs disponibles pour assignation à un rôle
+     */
+    public function availableUsers(Request $request, Role $role): JsonResponse
+    {
+        $search = $request->get('search');
+        
+        // Récupérer les utilisateurs qui n'ont PAS ce rôle
+        $query = User::whereDoesntHave('roles', function ($q) use ($role) {
+            $q->where('name', $role->name);
+        })->where('actif', true);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nom', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->select('id', 'nom', 'email', 'actif')
+            ->orderBy('nom')
+            ->limit(50)
+            ->get()
+            ->map(function ($user) {
+                $currentRole = $user->roles->first();
+                return [
+                    'id' => $user->id,
+                    'name' => $user->nom,
+                    'email' => $user->email,
+                    'actif' => $user->actif,
+                    'current_role' => $currentRole ? $currentRole->name : null,
+                ];
+            });
+
+        return response()->json([
+            'data' => $users,
+            'total' => $users->count(),
+        ]);
+    }
+
+    /**
      * Liste de toutes les permissions disponibles
      */
     public function permissions(): JsonResponse
