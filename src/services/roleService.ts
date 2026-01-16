@@ -132,6 +132,26 @@ export const roleService = {
     const response = await api.post(`/roles/${id}/duplicate`);
     return response.data;
   },
+
+  // Utilisateurs disponibles pour assignation
+  async getAvailableUsers(roleId: number, search?: string): Promise<{ data: { id: number; name: string; email: string; actif: boolean; current_role: string | null }[]; total: number }> {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const response = await api.get(`/roles/${roleId}/available-users?${params.toString()}`);
+    return response.data;
+  },
+
+  // Assigner des utilisateurs à un rôle
+  async assignUsers(roleId: number, userIds: number[]): Promise<{ message: string; assigned_count: number }> {
+    const response = await api.post(`/roles/${roleId}/assign-users`, { user_ids: userIds });
+    return response.data;
+  },
+
+  // Désassigner un utilisateur d'un rôle
+  async unassignUser(roleId: number, userId: number): Promise<{ message: string }> {
+    const response = await api.delete(`/roles/${roleId}/users/${userId}`);
+    return response.data;
+  },
 };
 
 export default roleService;

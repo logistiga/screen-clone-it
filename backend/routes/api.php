@@ -445,6 +445,13 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:utilisateurs.supprimer');
         Route::post('{role}/duplicate', [RoleController::class, 'duplicate'])
             ->middleware('permission:utilisateurs.creer');
+        
+        // Gestion des utilisateurs du rôle
+        Route::get('{role}/available-users', [RoleController::class, 'availableUsers']);
+        Route::post('{role}/assign-users', [RoleController::class, 'assignUsers'])
+            ->middleware('permission:utilisateurs.modifier');
+        Route::delete('{role}/users/{user}', [RoleController::class, 'unassignUser'])
+            ->middleware('permission:utilisateurs.modifier');
     });
 
     // ============================================

@@ -142,3 +142,68 @@ export function useDuplicateRole() {
     },
   });
 }
+
+// Utilisateurs disponibles pour un rôle
+export function useAvailableUsers(roleId: number | null, search?: string) {
+  return useQuery({
+    queryKey: ['available-users', roleId, search],
+    queryFn: () => roleService.getAvailableUsers(roleId!, search),
+    enabled: !!roleId,
+  });
+}
+
+// Assigner des utilisateurs à un rôle
+export function useAssignUsers() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ roleId, userIds }: { roleId: number; userIds: number[] }) =>
+      roleService.assignUsers(roleId, userIds),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [ROLES_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ROLES_STATS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ROLE_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['available-users'] });
+      toast({
+        title: 'Succès',
+        description: response.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.message || 'Erreur lors de l\'assignation',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+// Désassigner un utilisateur d'un rôle
+export function useUnassignUser() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ roleId, userId }: { roleId: number; userId: number }) =>
+      roleService.unassignUser(roleId, userId),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [ROLES_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ROLES_STATS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ROLE_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['available-users'] });
+      toast({
+        title: 'Succès',
+        description: response.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.message || 'Erreur lors du retrait',
+        variant: 'destructive',
+      });
+    },
+  });
+}

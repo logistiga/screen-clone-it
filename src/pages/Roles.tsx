@@ -39,7 +39,10 @@ import {
   useUpdateRole, 
   useDeleteRole, 
   useDuplicateRole,
-  useRole
+  useRole,
+  useAvailableUsers,
+  useAssignUsers,
+  useUnassignUser
 } from "@/hooks/use-roles";
 import { Role, PermissionModule, RoleFormData, RoleFilters } from "@/services/roleService";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
@@ -86,6 +89,11 @@ export default function RolesPage() {
   const [expandedRoles, setExpandedRoles] = useState<number[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   
+  // Pour la modal utilisateurs
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [selectedUsersToAdd, setSelectedUsersToAdd] = useState<number[]>([]);
+  const [showAddUsers, setShowAddUsers] = useState(false);
+  
   // Pagination & filtres
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -119,12 +127,18 @@ export default function RolesPage() {
   const { data: rolesData, isLoading: isLoadingRoles, refetch: refetchRoles, isFetching } = useRoles(filters);
   const { data: statsData, isLoading: isLoadingStats } = useRolesStats();
   const { data: permissionsData, isLoading: isLoadingPermissions } = usePermissions();
-  const { data: roleDetail, isLoading: isLoadingRoleDetail } = useRole(showUsersModal && selectedRole ? selectedRole.id : null);
+  const { data: roleDetail, isLoading: isLoadingRoleDetail, refetch: refetchRoleDetail } = useRole(showUsersModal && selectedRole ? selectedRole.id : null);
+  const { data: availableUsersData, isLoading: isLoadingAvailableUsers } = useAvailableUsers(
+    showAddUsers && selectedRole ? selectedRole.id : null,
+    userSearchTerm || undefined
+  );
   
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
   const duplicateRole = useDuplicateRole();
+  const assignUsers = useAssignUsers();
+  const unassignUser = useUnassignUser();
 
   const roles = rolesData?.data || [];
   const totalRoles = rolesData?.total || 0;
@@ -189,6 +203,32 @@ export default function RolesPage() {
   const handleShowUsers = (role: Role) => {
     setSelectedRole(role);
     setShowUsersModal(true);
+    setShowAddUsers(false);
+    setSelectedUsersToAdd([]);
+    setUserSearchTerm("");
+  };
+
+  const handleUnassignUser = async (userId: number) => {
+    if (!selectedRole) return;
+    await unassignUser.mutateAsync({ roleId: selectedRole.id, userId });
+    refetchRoleDetail();
+  };
+
+  const handleAssignUsers = async () => {
+    if (!selectedRole || selectedUsersToAdd.length === 0) return;
+    await assignUsers.mutateAsync({ roleId: selectedRole.id, userIds: selectedUsersToAdd });
+    setSelectedUsersToAdd([]);
+    setShowAddUsers(false);
+    setUserSearchTerm("");
+    refetchRoleDetail();
+  };
+
+  const toggleUserSelection = (userId: number) => {
+    setSelectedUsersToAdd(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   const toggleRoleExpanded = (roleId: number) => {
@@ -1113,65 +1153,223 @@ export default function RolesPage() {
         </Dialog>
 
         {/* Modal Utilisateurs du rôle */}
-        <Dialog open={showUsersModal} onOpenChange={setShowUsersModal}>
-          <DialogContent className="max-w-lg">
+        <Dialog open={showUsersModal} onOpenChange={(open) => {
+          setShowUsersModal(open);
+          if (!open) {
+            setShowAddUsers(false);
+            setSelectedUsersToAdd([]);
+            setUserSearchTerm("");
+          }
+        }}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Utilisateurs du rôle "{selectedRole?.name}"
+                Gestion des utilisateurs - Rôle "{selectedRole?.name}"
               </DialogTitle>
               <DialogDescription>
-                {selectedRole?.users_count || 0} utilisateur(s) assigné(s) à ce rôle
+                {roleDetail?.users?.length || 0} utilisateur(s) assigné(s) à ce rôle
               </DialogDescription>
             </DialogHeader>
             
-            <div className="py-4">
-              {isLoadingRoleDetail ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-1 flex-1">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-48" />
-                      </div>
+            <div className="flex-1 overflow-hidden">
+              {/* Tabs: Liste / Ajouter */}
+              <div className="flex gap-2 mb-4">
+                <Button 
+                  variant={!showAddUsers ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setShowAddUsers(false)}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Utilisateurs actuels
+                </Button>
+                <Button 
+                  variant={showAddUsers ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setShowAddUsers(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter des utilisateurs
+                </Button>
+              </div>
+
+              {!showAddUsers ? (
+                // Liste des utilisateurs actuels
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                  {isLoadingRoleDetail ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="flex items-center gap-3">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div className="space-y-1 flex-1">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-48" />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : roleDetail?.users && roleDetail.users.length > 0 ? (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {roleDetail.users.map(user => (
-                    <div 
-                      key={user.id} 
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-semibold text-primary">
-                          {user.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{user.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                      </div>
-                      <Badge variant={user.actif ? "default" : "secondary"}>
-                        {user.actif ? "Actif" : "Inactif"}
-                      </Badge>
+                  ) : roleDetail?.users && roleDetail.users.length > 0 ? (
+                    <>
+                      {roleDetail.users.map(user => (
+                        <div 
+                          key={user.id} 
+                          className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group"
+                        >
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-sm font-semibold text-primary">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{user.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                          <Badge variant={user.actif ? "default" : "secondary"} className="flex-shrink-0">
+                            {user.actif ? "Actif" : "Inactif"}
+                          </Badge>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleUnassignUser(user.id)}
+                            disabled={unassignUser.isPending}
+                          >
+                            {unassignUser.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                      <p className="text-muted-foreground mb-4">Aucun utilisateur n'a ce rôle</p>
+                      <Button size="sm" onClick={() => setShowAddUsers(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter des utilisateurs
+                      </Button>
                     </div>
-                  ))}
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-muted-foreground">Aucun utilisateur n'a ce rôle</p>
+                // Interface d'ajout d'utilisateurs
+                <div className="space-y-4">
+                  {/* Recherche */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher un utilisateur..."
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+
+                  {/* Sélection en cours */}
+                  {selectedUsersToAdd.length > 0 && (
+                    <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">
+                        {selectedUsersToAdd.length} utilisateur(s) sélectionné(s)
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="ml-auto"
+                        onClick={() => setSelectedUsersToAdd([])}
+                      >
+                        Tout désélectionner
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Liste des utilisateurs disponibles */}
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    {isLoadingAvailableUsers ? (
+                      <div className="space-y-2">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="flex items-center gap-3 p-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div className="space-y-1 flex-1">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-48" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : availableUsersData?.data && availableUsersData.data.length > 0 ? (
+                      <>
+                        {availableUsersData.data.map(user => {
+                          const isSelected = selectedUsersToAdd.includes(user.id);
+                          return (
+                            <div 
+                              key={user.id} 
+                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                isSelected 
+                                  ? 'bg-primary/10 border-primary' 
+                                  : 'bg-card hover:bg-muted/50'
+                              }`}
+                              onClick={() => toggleUserSelection(user.id)}
+                            >
+                              <Checkbox 
+                                checked={isSelected}
+                                onCheckedChange={() => toggleUserSelection(user.id)}
+                              />
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs font-semibold">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{user.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              </div>
+                              {user.current_role && (
+                                <Badge variant="outline" className="text-xs flex-shrink-0">
+                                  {user.current_role}
+                                </Badge>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          {userSearchTerm 
+                            ? "Aucun utilisateur trouvé" 
+                            : "Tous les utilisateurs ont déjà un rôle assigné"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowUsersModal(false)}>
-                Fermer
-              </Button>
+            <DialogFooter className="gap-2 pt-4 border-t">
+              {showAddUsers ? (
+                <>
+                  <Button variant="outline" onClick={() => setShowAddUsers(false)}>
+                    Retour
+                  </Button>
+                  <Button 
+                    onClick={handleAssignUsers}
+                    disabled={selectedUsersToAdd.length === 0 || assignUsers.isPending}
+                  >
+                    {assignUsers.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Assigner {selectedUsersToAdd.length > 0 && `(${selectedUsersToAdd.length})`}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={() => setShowUsersModal(false)}>
+                  Fermer
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
