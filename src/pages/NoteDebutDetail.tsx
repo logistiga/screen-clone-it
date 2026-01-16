@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Edit,
@@ -16,6 +15,8 @@ import {
   FileText,
   User,
   Receipt,
+  PackageOpen,
+  Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,70 +41,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailNoteModal } from "@/components/notes/EmailNoteModal";
+import { useNoteDebut, useDeleteNoteDebut } from "@/hooks/use-notes-debut";
+import { usePaiements } from "@/hooks/use-commercial";
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
-interface NoteDebut {
-  id: string;
-  number: string;
-  client: string;
-  clientId: string;
-  clientEmail: string;
-  type: "ouverture_port" | "detention" | "reparation";
-  ordresTravail: string[];
-  blNumber: string;
-  containerNumber: string;
-  dateDebut: string;
-  dateFin: string;
-  nombreJours: number;
-  tarifJournalier: number;
-  montantTotal: number;
-  paid: number;
-  advance: number;
-  status: "pending" | "invoiced" | "paid" | "cancelled" | "partial";
-  description: string;
-  paiements: {
-    id: string;
-    date: string;
-    montant: number;
-    methode: string;
-    reference?: string;
-  }[];
-}
-
-const mockNote: NoteDebut = {
-  id: "1",
-  number: "ND-2024-001",
-  client: "MAERSK LINE",
-  clientId: "1",
-  clientEmail: "contact@maersk.com",
-  type: "ouverture_port",
-  ordresTravail: ["OT-2024-001"],
-  blNumber: "BL-2024-001",
-  containerNumber: "MSKU1234567",
-  dateDebut: "2024-01-15",
-  dateFin: "2024-01-20",
-  nombreJours: 6,
-  tarifJournalier: 25000,
-  montantTotal: 150000,
-  paid: 0,
-  advance: 50000,
-  status: "pending",
-  description: "Ouverture port standard pour conteneur 20 pieds",
-  paiements: [
-    {
-      id: "p1",
-      date: "2024-01-15",
-      montant: 50000,
-      methode: "Avance espèces",
-      reference: "AV-001",
-    },
-  ],
-};
-
-const typeConfig = {
+const typeConfig: Record<string, { label: string; icon: typeof Anchor; color: string }> = {
   ouverture_port: {
+    label: "Ouverture de port",
+    icon: Anchor,
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  "Ouverture Port": {
     label: "Ouverture de port",
     icon: Anchor,
     color: "bg-blue-100 text-blue-700 border-blue-200",
@@ -113,66 +66,141 @@ const typeConfig = {
     icon: Container,
     color: "bg-amber-100 text-amber-700 border-amber-200",
   },
+  Detention: {
+    label: "Détention",
+    icon: Container,
+    color: "bg-amber-100 text-amber-700 border-amber-200",
+  },
   reparation: {
     label: "Réparation conteneur",
     icon: Wrench,
     color: "bg-green-100 text-green-700 border-green-200",
   },
+  Reparation: {
+    label: "Réparation conteneur",
+    icon: Wrench,
+    color: "bg-green-100 text-green-700 border-green-200",
+  },
+  relache: {
+    label: "Relâche",
+    icon: PackageOpen,
+    color: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  Relache: {
+    label: "Relâche",
+    icon: PackageOpen,
+    color: "bg-purple-100 text-purple-700 border-purple-200",
+  },
 };
 
-const statusConfig = {
-  pending: { label: "En attente", class: "bg-warning/20 text-warning" },
-  invoiced: { label: "Facturée", class: "bg-primary/20 text-primary" },
-  paid: { label: "Payée", class: "bg-success/20 text-success" },
-  cancelled: { label: "Annulée", class: "bg-muted text-muted-foreground" },
-  partial: { label: "Partielle", class: "bg-cyan-500/20 text-cyan-600" },
+const statusConfig: Record<string, { label: string; class: string }> = {
+  brouillon: { label: "Brouillon", class: "bg-muted text-muted-foreground" },
+  en_attente: { label: "En attente", class: "bg-warning/20 text-warning" },
+  facturee: { label: "Facturée", class: "bg-primary/20 text-primary" },
+  payee: { label: "Payée", class: "bg-success/20 text-success" },
+  annulee: { label: "Annulée", class: "bg-muted text-muted-foreground" },
+  partielle: { label: "Partielle", class: "bg-cyan-500/20 text-cyan-600" },
+};
+
+const defaultTypeInfo = {
+  label: "Note",
+  icon: FileText,
+  color: "bg-gray-100 text-gray-700 border-gray-200",
 };
 
 export default function NoteDebutDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [note, setNote] = useState<NoteDebut>(mockNote);
+  const queryClient = useQueryClient();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPaiementModal, setShowPaiementModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
-  const typeInfo = typeConfig[note.type];
-  const TypeIcon = typeInfo.icon;
-  const status = statusConfig[note.status];
-  const remaining = note.montantTotal - note.paid - note.advance;
+  // Fetch note data from API
+  const { data: note, isLoading, error } = useNoteDebut(id);
+  
+  // Fetch payments for this note
+  const { data: paiementsData } = usePaiements({ note_debut_id: id } as any);
+  const paiements = paiementsData?.data || [];
 
-  const formatCurrency = (value: number) => {
+  const deleteMutation = useDeleteNoteDebut();
+
+  const formatCurrency = (value: number | undefined) => {
+    if (value === undefined || value === null) return "0";
     return new Intl.NumberFormat("fr-GA", {
       style: "decimal",
       minimumFractionDigits: 0,
     }).format(value);
   };
 
-  const handleDelete = () => {
-    toast({
-      title: "Note supprimée",
-      description: `La note ${note.number} a été supprimée.`,
-    });
-    navigate("/notes-debut");
+  const formatDate = (dateStr: string | undefined) => {
+    if (!dateStr) return "-";
+    try {
+      return format(new Date(dateStr), "dd/MM/yyyy", { locale: fr });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    try {
+      await deleteMutation.mutateAsync(id);
+      navigate("/notes-debut");
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
   const handleDownloadPDF = () => {
-    toast({
-      title: "Téléchargement PDF",
-      description: `Le PDF de la note ${note.number} est en cours de génération...`,
-    });
+    toast.info(`Le PDF de la note ${note?.numero} est en cours de génération...`);
   };
 
   const handlePaiementSuccess = () => {
-    // Refresh note data after payment
-    setNote((prev) => ({
-      ...prev,
-      status: "partial",
-    }));
+    // Refresh data after payment
+    queryClient.invalidateQueries({ queryKey: ['notes-debut', id] });
+    queryClient.invalidateQueries({ queryKey: ['paiements'] });
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !note) {
+    return (
+      <MainLayout title="Erreur">
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <p className="text-destructive">Note non trouvée</p>
+          <Button onClick={() => navigate("/notes-debut")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour aux notes
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  const typeInfo = typeConfig[note.type] || defaultTypeInfo;
+  const TypeIcon = typeInfo.icon;
+  const status = statusConfig[note.statut || 'en_attente'] || statusConfig.en_attente;
+  
+  const montantTotal = note.montant_total || note.montant_ttc || 0;
+  const montantPaye = note.montant_paye || 0;
+  const montantAvance = note.montant_avance || 0;
+  const remaining = montantTotal - montantPaye - montantAvance;
+
+  const clientName = note.client?.nom || (note.client as any)?.raison_sociale || '-';
+  const clientEmail = note.client?.email || '';
+  const clientId = note.client_id;
+
   return (
-    <MainLayout title={`Note ${note.number}`}>
+    <MainLayout title={`Note ${note.numero}`}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -182,10 +210,10 @@ export default function NoteDebutDetail() {
             </Button>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-semibold tracking-tight">{note.number}</h1>
+                <h1 className="text-3xl font-semibold tracking-tight">{note.numero}</h1>
                 <Badge className={status.class}>{status.label}</Badge>
               </div>
-              <p className="text-muted-foreground mt-1">{note.client}</p>
+              <p className="text-muted-foreground mt-1">{clientName}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -207,7 +235,7 @@ export default function NoteDebutDetail() {
                 Paiement
               </Button>
             )}
-            {note.paid === 0 && note.advance === 0 && (
+            {montantPaye === 0 && montantAvance === 0 && (
               <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Supprimer
@@ -238,67 +266,73 @@ export default function NoteDebutDetail() {
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <User className="h-4 w-4" /> Client
                   </p>
-                  <p className="font-medium">{note.client}</p>
+                  <p className="font-medium">{clientName}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">N° Conteneur</p>
-                  <p className="font-mono font-medium">{note.containerNumber}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">N° BL</p>
-                  <p className="font-medium">{note.blNumber}</p>
-                </div>
+                {note.conteneur_numero && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">N° Conteneur</p>
+                    <p className="font-mono font-medium">{note.conteneur_numero}</p>
+                  </div>
+                )}
+                {note.bl_numero && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">N° BL</p>
+                    <p className="font-medium">{note.bl_numero}</p>
+                  </div>
+                )}
               </div>
 
               <Separator />
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-4 w-4" /> Date début
-                  </p>
-                  <p className="font-medium">{note.dateDebut}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-4 w-4" /> Date fin
-                  </p>
-                  <p className="font-medium">{note.dateFin}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-4 w-4" /> Nombre de jours
-                  </p>
-                  <p className="font-bold text-xl">{note.nombreJours}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Tarif journalier</p>
-                  <p className="font-medium">{formatCurrency(note.tarifJournalier)} FCFA</p>
-                </div>
+                {(note.date_debut || note.date_debut_stockage) && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-4 w-4" /> Date début
+                    </p>
+                    <p className="font-medium">{formatDate(note.date_debut || note.date_debut_stockage)}</p>
+                  </div>
+                )}
+                {(note.date_fin || note.date_fin_stockage) && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-4 w-4" /> Date fin
+                    </p>
+                    <p className="font-medium">{formatDate(note.date_fin || note.date_fin_stockage)}</p>
+                  </div>
+                )}
+                {(note.nombre_jours || note.jours_stockage) && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-4 w-4" /> Nombre de jours
+                    </p>
+                    <p className="font-bold text-xl">{note.nombre_jours || note.jours_stockage}</p>
+                  </div>
+                )}
+                {note.tarif_journalier && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Tarif journalier</p>
+                    <p className="font-medium">{formatCurrency(note.tarif_journalier)} FCFA</p>
+                  </div>
+                )}
               </div>
 
-              {note.description && (
+              {(note.description || note.observations || note.notes) && (
                 <>
                   <Separator />
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Description</p>
-                    <p>{note.description}</p>
+                    <p>{note.description || note.observations || note.notes}</p>
                   </div>
                 </>
               )}
 
-              {note.ordresTravail.length > 0 && (
+              {note.navire && (
                 <>
                   <Separator />
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Ordres de travail liés</p>
-                    <div className="flex flex-wrap gap-2">
-                      {note.ordresTravail.map((ot) => (
-                        <Badge key={ot} variant="outline" className="cursor-pointer hover:bg-muted">
-                          {ot}
-                        </Badge>
-                      ))}
-                    </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Navire</p>
+                    <p className="font-medium">{note.navire}</p>
                   </div>
                 </>
               )}
@@ -317,22 +351,22 @@ export default function NoteDebutDetail() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Montant total</span>
-                  <span className="font-bold text-xl">{formatCurrency(note.montantTotal)} FCFA</span>
+                  <span className="font-bold text-xl">{formatCurrency(montantTotal)} FCFA</span>
                 </div>
                 <Separator />
-                {note.advance > 0 && (
+                {montantAvance > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Avance</span>
                     <span className="text-cyan-600 font-medium">
-                      -{formatCurrency(note.advance)} FCFA
+                      -{formatCurrency(montantAvance)} FCFA
                     </span>
                   </div>
                 )}
-                {note.paid > 0 && (
+                {montantPaye > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Payé</span>
                     <span className="text-success font-medium">
-                      -{formatCurrency(note.paid)} FCFA
+                      -{formatCurrency(montantPaye)} FCFA
                     </span>
                   </div>
                 )}
@@ -356,7 +390,7 @@ export default function NoteDebutDetail() {
         </div>
 
         {/* Historique des paiements */}
-        {note.paiements.length > 0 && (
+        {paiements.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Historique des paiements</CardTitle>
@@ -372,12 +406,12 @@ export default function NoteDebutDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {note.paiements.map((paiement) => (
+                  {paiements.map((paiement: any) => (
                     <TableRow key={paiement.id}>
-                      <TableCell>{paiement.date}</TableCell>
-                      <TableCell>{paiement.methode}</TableCell>
+                      <TableCell>{formatDate(paiement.date || paiement.date_paiement)}</TableCell>
+                      <TableCell>{paiement.mode_paiement}</TableCell>
                       <TableCell className="font-mono text-sm">
-                        {paiement.reference || "-"}
+                        {paiement.reference || paiement.numero_cheque || "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium text-success">
                         {formatCurrency(paiement.montant)} FCFA
@@ -397,18 +431,18 @@ export default function NoteDebutDetail() {
         onOpenChange={setShowPaiementModal}
         documentType="note_debut"
         documentId={note.id}
-        documentNumero={note.number}
+        documentNumero={note.numero}
         montantRestant={remaining}
-        clientId={parseInt(note.clientId) || undefined}
+        clientId={clientId ? parseInt(clientId) : undefined}
         onSuccess={handlePaiementSuccess}
       />
 
       <EmailNoteModal
         open={showEmailModal}
         onOpenChange={setShowEmailModal}
-        noteNumero={note.number}
-        clientEmail={note.clientEmail}
-        clientNom={note.client}
+        noteNumero={note.numero}
+        clientEmail={clientEmail}
+        clientNom={clientName}
         noteType={typeInfo.label}
       />
 
@@ -417,7 +451,7 @@ export default function NoteDebutDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette note ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. La note {note.number} sera définitivement supprimée.
+              Cette action est irréversible. La note {note.numero} sera définitivement supprimée.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
