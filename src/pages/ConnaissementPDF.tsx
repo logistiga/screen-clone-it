@@ -6,7 +6,7 @@ import { ArrowLeft, Printer, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { ordresTravail, clients, formatMontant, formatDate } from "@/data/mockData";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
-import logoLojistiga from "@/assets/lojistiga-logo.png";
+import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 export default function ConnaissementPDFPage() {
   const { id } = useParams<{ id: string }>();
@@ -98,7 +98,7 @@ export default function ConnaissementPDFPage() {
           {/* En-tête avec logo */}
           <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
             <div className="flex items-center gap-3">
-              <img src={logoLojistiga} alt="LOGISTIGA" className="h-14 w-auto" />
+              <img src={logoLogistiga} alt="LOGISTIGA" className="h-14 w-auto" />
               <div>
                 <p className="text-xs text-primary font-semibold">TRANSPORT-STOCKAGE</p>
                 <p className="text-xs text-primary font-semibold">-MANUTENTION</p>

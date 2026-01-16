@@ -1,4 +1,4 @@
-import logoLojistiga from "@/assets/lojistiga-logo.png";
+import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 interface DocumentHeaderProps {
   title: string;
@@ -25,7 +25,7 @@ export function DocumentHeader({
     <div className="text-center mb-4">
       {/* Logo centré */}
       <div className="flex justify-center mb-3">
-        <img src={logoLojistiga} alt="LOGISTIGA" className="h-16 w-auto" />
+        <img src={logoLogistiga} alt="LOGISTIGA" className="h-16 w-auto" />
       </div>
       
       {/* Titre du document */}

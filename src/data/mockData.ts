@@ -1,4 +1,4 @@
-// Données de démonstration pour Lojistiga
+// Données de démonstration pour LOGISTIGA
 
 export interface Client {
   id: string;

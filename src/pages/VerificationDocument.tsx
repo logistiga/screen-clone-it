@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, FileText, ArrowLeft, User, Calendar, CreditCard, Package } from "lucide-react";
-import logoLojistiga from "@/assets/lojistiga-logo.png";
+import logoLogistiga from "@/assets/lojistiga-logo.png";
 import { formatMontant, formatDate } from "@/data/mockData";
 
 interface DocumentData {
@@ -83,7 +83,7 @@ export default function VerificationDocumentPage() {
       <Card className="w-full max-w-md p-6 shadow-xl">
         {/* Header */}
         <div className="text-center mb-6">
-          <img src={logoLojistiga} alt="LOGISTIGA" className="h-12 w-auto mx-auto mb-4" />
+          <img src={logoLogistiga} alt="LOGISTIGA" className="h-12 w-auto mx-auto mb-4" />
           <h1 className="text-xl font-bold text-primary">Vérification de Document</h1>
           <p className="text-sm text-muted-foreground">Système de validation QR Code</p>
         </div>

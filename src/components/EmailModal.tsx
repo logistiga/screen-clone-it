@@ -169,7 +169,7 @@ export function EmailModal({
       msg += `\n`;
     }
     
-    msg += `Cordialement,\nL'équipe Lojistiga`;
+    msg += `Cordialement,\nL'équipe Logistiga`;
     return msg;
   };
 

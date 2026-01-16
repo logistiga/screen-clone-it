@@ -159,7 +159,7 @@ ${pdfUrl}
 Pour toute question, n'hésitez pas à nous contacter.
 
 Cordialement,
-L'équipe Lojistiga`;
+L'équipe Logistiga`;
 
             openWhatsAppShare(message);
           }}
