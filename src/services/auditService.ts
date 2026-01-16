@@ -1,6 +1,7 @@
 import axios from "axios";
+import { getApiUrl } from "@/lib/runtime-config";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://facturation.logistiga.com/backend/api";
+const API_URL = getApiUrl();
 
 // Types
 export interface AuditUser {
