@@ -15,7 +15,8 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // IMPORTANT: si l'app Laravel est servie sous /backend, il faut aussi couvrir ces routes.
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'backend/api/*', 'backend/sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
@@ -48,8 +49,17 @@ return [
     // For pattern-based matching (e.g., Lovable preview URLs)
     // Example: CORS_ALLOWED_ORIGINS_PATTERNS="^https:\\/\\/.*\\.lovableproject\\.com$"
     'allowed_origins_patterns' => (function () {
+        // Patterns par défaut (utile quand les URLs preview changent)
+        $defaultPatterns = [
+            '^https:\\/\\/.*\\.lovableproject\\.com$',
+            '^https:\\/\\/id-preview--.*\\.lovable\\.app$',
+            '^https:\\/\\/.*\\.lovable\\.app$',
+        ];
+
         $raw = (string) env('CORS_ALLOWED_ORIGINS_PATTERNS', '');
-        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+        $envPatterns = array_values(array_filter(array_map('trim', explode(',', $raw))));
+
+        return array_values(array_unique(array_merge($defaultPatterns, $envPatterns)));
     })(),
 
     'allowed_headers' => ['*'],
