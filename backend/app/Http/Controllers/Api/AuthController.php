@@ -116,8 +116,18 @@ class AuthController extends Controller
             $request->user()->currentAccessToken()->delete();
         }
 
-        // Supprimer le cookie
-        $cookie = Cookie::forget(self::TOKEN_COOKIE_NAME);
+        // Supprimer le cookie (mêmes attributs que lors de la création)
+        $cookie = Cookie::make(
+            self::TOKEN_COOKIE_NAME,
+            '',
+            -1,
+            '/',
+            null,
+            true,  // secure
+            true,  // httpOnly
+            false, // raw
+            'None' // sameSite (cross-site XHR)
+        );
 
         return response()->json(['message' => 'Déconnexion réussie'])->withCookie($cookie);
     }
@@ -278,7 +288,7 @@ class AuthController extends Controller
             true,  // secure
             true,  // httpOnly
             false, // raw
-            'Strict' // sameSite
+            'None' // sameSite (cross-site XHR)
         );
     }
 }
