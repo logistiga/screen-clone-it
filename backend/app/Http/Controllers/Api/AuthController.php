@@ -8,6 +8,7 @@ use App\Http\Requests\UpdatePasswordRequest;
 use App\Models\User;
 use App\Models\Audit;
 use App\Services\SessionManager;
+use App\Services\AccountLockoutService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -27,17 +28,50 @@ class AuthController extends Controller
     private const TOKEN_COOKIE_NAME = 'auth_token';
 
     public function __construct(
-        private SessionManager $sessionManager
+        private SessionManager $sessionManager,
+        private AccountLockoutService $lockoutService
     ) {}
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->first();
+        $email = strtolower($request->email);
+
+        // Vérifier si le compte est verrouillé
+        $lockoutInfo = $this->lockoutService->getLockoutInfo($email);
+        if ($lockoutInfo) {
+            Audit::log('login_blocked', 'security', 'Tentative de connexion sur compte verrouillé', null, [
+                'email' => $email,
+                'ip_address' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'message' => "Compte temporairement verrouillé. Réessayez dans {$lockoutInfo['remaining_formatted']}.",
+                'error' => 'account_locked',
+                'lockout' => $lockoutInfo,
+            ], 423); // 423 Locked
+        }
+
+        $user = User::where('email', $email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            // Enregistrer l'échec
+            $attemptResult = $this->lockoutService->recordFailedAttempt($email, $request);
+
+            if ($attemptResult['locked']) {
+                return response()->json([
+                    'message' => "Compte verrouillé après trop de tentatives. Réessayez dans {$attemptResult['remaining_formatted']}.",
+                    'error' => 'account_locked',
+                    'lockout' => [
+                        'locked' => true,
+                        'remaining_seconds' => $attemptResult['remaining_seconds'],
+                        'remaining_formatted' => $attemptResult['remaining_formatted'],
+                    ],
+                ], 423);
+            }
+
             throw ValidationException::withMessages([
-                'email' => ['Les identifiants sont incorrects.'],
-            ]);
+                'email' => ["Les identifiants sont incorrects. {$attemptResult['remaining_attempts']} tentative(s) restante(s)."],
+            ])->status(422);
         }
 
         if (!$user->actif) {
@@ -45,6 +79,9 @@ class AuthController extends Controller
                 'email' => ['Ce compte a été désactivé.'],
             ]);
         }
+
+        // Connexion réussie - réinitialiser les tentatives
+        $this->lockoutService->recordSuccessfulLogin($email, $request);
 
         $user->updateDerniereConnexion();
 
@@ -152,6 +189,79 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Token rafraîchi',
         ])->withCookie($cookie);
+    }
+
+    /**
+     * Demander un email de déblocage
+     */
+    public function requestUnlock(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $email = strtolower($request->email);
+        $token = $this->lockoutService->requestUnlockToken($email);
+
+        // Toujours retourner le même message pour éviter l'énumération
+        if ($token) {
+            // TODO: Envoyer l'email avec le lien de déblocage
+            // L'URL serait: /unlock-account?email={email}&token={token}
+            Audit::log('unlock_requested', 'security', 'Demande de déblocage de compte', null, [
+                'email' => $email,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Si ce compte est verrouillé, un email de déblocage a été envoyé.',
+        ]);
+    }
+
+    /**
+     * Débloquer un compte avec un token
+     */
+    public function unlockAccount(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+        ]);
+
+        $success = $this->lockoutService->unlockWithToken(
+            strtolower($request->email),
+            $request->token
+        );
+
+        if (!$success) {
+            return response()->json([
+                'message' => 'Lien de déblocage invalide ou expiré.',
+                'error' => 'invalid_token',
+            ], 400);
+        }
+
+        return response()->json([
+            'message' => 'Compte débloqué avec succès. Vous pouvez maintenant vous connecter.',
+        ]);
+    }
+
+    /**
+     * Obtenir le statut de verrouillage (public)
+     */
+    public function lockoutStatus(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $lockoutInfo = $this->lockoutService->getLockoutInfo(strtolower($request->email));
+
+        if (!$lockoutInfo) {
+            return response()->json([
+                'locked' => false,
+            ]);
+        }
+
+        return response()->json($lockoutInfo);
     }
 
     /**

@@ -47,6 +47,13 @@ Route::prefix('auth')->group(function () {
         ->middleware('throttle:password-reset');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])
         ->middleware('throttle:password-reset');
+    
+    // Account lockout self-service
+    Route::post('lockout-status', [AuthController::class, 'lockoutStatus']);
+    Route::post('request-unlock', [AuthController::class, 'requestUnlock'])
+        ->middleware('throttle:password-reset');
+    Route::post('unlock-account', [AuthController::class, 'unlockAccount'])
+        ->middleware('throttle:password-reset');
 });
 
 // Routes protégées par authentification
@@ -463,6 +470,17 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('{role}/available-users', [RoleController::class, 'availableUsers']);
         Route::post('{role}/assign-users', [RoleController::class, 'assignUsers']);
         Route::delete('{role}/users/{user}', [RoleController::class, 'unassignUser']);
+    });
+
+    // ============================================
+    // ACCOUNT LOCKOUTS (Admin - Sécurité)
+    // ============================================
+    Route::prefix('lockouts')->middleware(['role:administrateur'])->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'index']);
+        Route::get('stats', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'stats']);
+        Route::post('attempts', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'attempts']);
+        Route::post('unlock', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'unlock']);
+        Route::post('cleanup', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'cleanup']);
     });
 
     // ============================================
