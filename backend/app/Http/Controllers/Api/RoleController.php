@@ -23,7 +23,11 @@ class RoleController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $roles = $query->get()->map(function ($role) {
+        // Pagination
+        $perPage = $request->get('per_page', 10);
+        $page = $request->get('page', 1);
+
+        $allRoles = $query->get()->map(function ($role) {
             $usersCount = User::role($role->name)->count();
             return [
                 'id' => $role->id,
@@ -39,9 +43,32 @@ class RoleController extends Controller
             ];
         });
 
+        // Filtres avancés
+        if ($request->has('has_users')) {
+            $hasUsers = filter_var($request->get('has_users'), FILTER_VALIDATE_BOOLEAN);
+            $allRoles = $allRoles->filter(fn($r) => $hasUsers ? $r['users_count'] > 0 : $r['users_count'] === 0);
+        }
+
+        if ($request->has('is_system')) {
+            $isSystem = filter_var($request->get('is_system'), FILTER_VALIDATE_BOOLEAN);
+            $allRoles = $allRoles->filter(fn($r) => $r['is_system'] === $isSystem);
+        }
+
+        // Tri
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
+        
+        $allRoles = $allRoles->sortBy($sortBy, SORT_REGULAR, $sortOrder === 'desc')->values();
+
+        $total = $allRoles->count();
+        $roles = $allRoles->slice(($page - 1) * $perPage, $perPage)->values();
+
         return response()->json([
             'data' => $roles,
-            'total' => $roles->count(),
+            'total' => $total,
+            'current_page' => (int) $page,
+            'per_page' => (int) $perPage,
+            'last_page' => ceil($total / $perPage),
         ]);
     }
 
