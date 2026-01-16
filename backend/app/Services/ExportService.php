@@ -360,6 +360,77 @@ class ExportService
     }
 
     /**
+     * Export des mouvements de caisse espèces uniquement en CSV
+     */
+    public function exportCaisseEspecesCSV(array $filters = []): string
+    {
+        $query = MouvementCaisse::with(['client', 'paiement'])
+            ->where('source', 'caisse'); // Espèces uniquement
+
+        if (!empty($filters['date_debut'])) {
+            $query->where('date', '>=', $filters['date_debut']);
+        }
+        if (!empty($filters['date_fin'])) {
+            $query->where('date', '<=', $filters['date_fin']);
+        }
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        $mouvements = $query->orderBy('date', 'asc')->get();
+
+        $headers = [
+            'Date',
+            'Heure',
+            'Type',
+            'Catégorie',
+            'Description',
+            'Client/Bénéficiaire',
+            'N° Document',
+            'Entrée',
+            'Sortie',
+            'Solde',
+        ];
+
+        $solde = 0;
+        $rows = $mouvements->map(function ($mouvement) use (&$solde) {
+            $entree = $mouvement->type === 'entree' ? $mouvement->montant : 0;
+            $sortie = $mouvement->type === 'sortie' ? $mouvement->montant : 0;
+            $solde += ($entree - $sortie);
+            
+            $clientNom = $mouvement->client 
+                ? ($mouvement->client->raison_sociale ?? $mouvement->client->nom_complet ?? '-')
+                : ($mouvement->beneficiaire ?? '-');
+            
+            return [
+                $mouvement->date ? $mouvement->date->format('d/m/Y') : '-',
+                $mouvement->created_at ? $mouvement->created_at->format('H:i') : '-',
+                $mouvement->type === 'entree' ? 'Entrée' : 'Sortie',
+                $mouvement->categorie ?? 'Paiement',
+                $mouvement->description ?? '-',
+                $clientNom,
+                $mouvement->paiement->facture->numero ?? ($mouvement->paiement->ordre->numero ?? '-'),
+                $entree > 0 ? number_format($entree, 0, ',', ' ') : '',
+                $sortie > 0 ? number_format($sortie, 0, ',', ' ') : '',
+                number_format($solde, 0, ',', ' '),
+            ];
+        });
+
+        // Ajouter une ligne de totaux
+        $totalEntrees = $mouvements->where('type', 'entree')->sum('montant');
+        $totalSorties = $mouvements->where('type', 'sortie')->sum('montant');
+        
+        $rows->push([
+            '', '', '', '', '', '', 'TOTAUX:',
+            number_format($totalEntrees, 0, ',', ' '),
+            number_format($totalSorties, 0, ',', ' '),
+            number_format($totalEntrees - $totalSorties, 0, ',', ' '),
+        ]);
+
+        return $this->generateCSV($headers, $rows);
+    }
+
+    /**
      * Export des clients en CSV
      */
     public function exportClientsCSV(array $filters = []): string
