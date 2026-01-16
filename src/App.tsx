@@ -68,7 +68,7 @@ import NotificationsPage from "./pages/Notifications";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <ThemeProvider defaultTheme="light" storageKey="lojistiga-theme">
+  <ThemeProvider defaultTheme="light" storageKey="logistiga-theme">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>

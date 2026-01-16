@@ -58,7 +58,7 @@ export function ShareModal({
   const [customEmail, setCustomEmail] = useState("");
   const [objet, setObjet] = useState(`Votre ${getDocumentLabel(documentType)} ${documentNumero}`);
   const [message, setMessage] = useState(
-    `Bonjour,\n\nVeuillez trouver ci-joint votre ${getDocumentLabel(documentType).toLowerCase()} ${documentNumero}.\n\nCordialement,\nL'équipe Lojistiga`
+    `Bonjour,\n\nVeuillez trouver ci-joint votre ${getDocumentLabel(documentType).toLowerCase()} ${documentNumero}.\n\nCordialement,\nL'équipe Logistiga`
   );
   const [isSending, setIsSending] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -109,7 +109,7 @@ ${pdfUrl}
 Pour toute question, n'hésitez pas à nous contacter.
 
 Cordialement,
-L'équipe Lojistiga`;
+L'équipe Logistiga`;
 
   const handleSendEmail = async () => {
     const email = emailOption === "client" ? clientEmail : customEmail;

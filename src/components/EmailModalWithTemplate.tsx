@@ -221,7 +221,7 @@ export function EmailModalWithTemplate({
       categorie: documentData.categorie || '',
       
       // Signature par défaut
-      signature: "L'équipe LOJISTIGA",
+      signature: "L'équipe LOGISTIGA",
       
       // Message personnalisé (vide par défaut)
       message_personnalise: '',
@@ -316,7 +316,7 @@ export function EmailModalWithTemplate({
       msg += `\n`;
     }
     
-    msg += `Cordialement,\nL'équipe LOJISTIGA`;
+    msg += `Cordialement,\nL'équipe LOGISTIGA`;
     return msg;
   };
 

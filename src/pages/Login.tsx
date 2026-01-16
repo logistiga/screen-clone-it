@@ -59,7 +59,7 @@ export default function LoginPage() {
     if (result.success) {
       toast({
         title: "Connexion réussie",
-        description: "Bienvenue sur LOJISTIGA"
+        description: "Bienvenue sur LOGISTIGA"
       });
       navigate("/", {
         replace: true
@@ -92,7 +92,7 @@ export default function LoginPage() {
         
         {/* Animation GIF - Route */}
         <div className="flex items-center justify-center w-full h-full relative z-10">
-          <motion.img src={loginAnimation} alt="LOJISTIGA Animation" className="max-w-full max-h-full object-contain" initial={{
+          <motion.img src={loginAnimation} alt="LOGISTIGA Animation" className="max-w-full max-h-full object-contain" initial={{
           scale: 0.95,
           opacity: 0
         }} animate={{
@@ -177,7 +177,7 @@ export default function LoginPage() {
                 Adresse email
               </Label>
               <div className="relative">
-                <Input id="email" type="email" placeholder="exemple@lojistiga.com" value={email} onChange={e => setEmail(e.target.value)} className="h-12 pl-4 pr-4 bg-white/10 backdrop-blur-sm border-white/30 text-white placeholder:text-white/50 focus:border-white focus:bg-white/20 rounded-lg transition-all" autoComplete="email" disabled={isLoading} />
+                <Input id="email" type="email" placeholder="exemple@logistiga.com" value={email} onChange={e => setEmail(e.target.value)} className="h-12 pl-4 pr-4 bg-white/10 backdrop-blur-sm border-white/30 text-white placeholder:text-white/50 focus:border-white focus:bg-white/20 rounded-lg transition-all" autoComplete="email" disabled={isLoading} />
               </div>
             </div>
 
@@ -226,7 +226,7 @@ export default function LoginPage() {
         }} className="pt-6 text-center">
             <div className="w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent mb-4" />
             <p className="text-xs text-white/60">
-              © {new Date().getFullYear()} LOJISTIGA - Tous droits réservés
+              © {new Date().getFullYear()} LOGISTIGA - Tous droits réservés
             </p>
           </motion.div>
         </div>
