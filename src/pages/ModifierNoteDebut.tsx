@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { ArrowLeft, Save, Anchor, Container, Wrench } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Save, Anchor, Container, Wrench, PackageOpen, Loader2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,38 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useNoteDebut, useUpdateNoteDebut } from "@/hooks/use-notes-debut";
+import { useClients } from "@/hooks/use-commercial";
 
-interface NoteDebut {
-  id: string;
-  number: string;
-  client: string;
-  clientId: string;
-  type: "ouverture_port" | "detention" | "reparation";
-  blNumber: string;
-  containerNumber: string;
-  dateDebut: string;
-  dateFin: string;
-  tarifJournalier: number;
-  description: string;
-}
-
-const mockNote: NoteDebut = {
-  id: "1",
-  number: "ND-2024-001",
-  client: "MAERSK LINE",
-  clientId: "1",
-  type: "ouverture_port",
-  blNumber: "BL-2024-001",
-  containerNumber: "MSKU1234567",
-  dateDebut: "2024-01-15",
-  dateFin: "2024-01-20",
-  tarifJournalier: 25000,
-  description: "Ouverture port standard pour conteneur 20 pieds",
-};
-
-const typeConfig = {
+const typeConfig: Record<string, { label: string; icon: typeof Anchor }> = {
   ouverture_port: {
+    label: "Ouverture de port",
+    icon: Anchor,
+  },
+  "Ouverture Port": {
     label: "Ouverture de port",
     icon: Anchor,
   },
@@ -53,34 +31,80 @@ const typeConfig = {
     label: "Détention",
     icon: Container,
   },
+  Detention: {
+    label: "Détention",
+    icon: Container,
+  },
   reparation: {
     label: "Réparation conteneur",
     icon: Wrench,
   },
+  Reparation: {
+    label: "Réparation conteneur",
+    icon: Wrench,
+  },
+  relache: {
+    label: "Relâche",
+    icon: PackageOpen,
+  },
+  Relache: {
+    label: "Relâche",
+    icon: PackageOpen,
+  },
 };
 
-const mockClients = [
-  { id: "1", name: "MAERSK LINE" },
-  { id: "2", name: "CMA CGM" },
-  { id: "3", name: "MSC" },
-  { id: "4", name: "HAPAG-LLOYD" },
-];
+// Normalize type to backend format
+const normalizeType = (type: string): string => {
+  const mapping: Record<string, string> = {
+    'ouverture_port': 'Ouverture Port',
+    'detention': 'Detention',
+    'reparation': 'Reparation',
+    'relache': 'Relache',
+  };
+  return mapping[type] || type;
+};
 
 export default function ModifierNoteDebut() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch note data
+  const { data: note, isLoading, error } = useNoteDebut(id);
+  
+  // Fetch clients
+  const { data: clientsResponse } = useClients({ per_page: 1000 });
+  const clients = clientsResponse?.data || [];
+
+  const updateMutation = useUpdateNoteDebut();
 
   const [formData, setFormData] = useState({
-    clientId: mockNote.clientId,
-    type: mockNote.type,
-    blNumber: mockNote.blNumber,
-    containerNumber: mockNote.containerNumber,
-    dateDebut: mockNote.dateDebut,
-    dateFin: mockNote.dateFin,
-    tarifJournalier: mockNote.tarifJournalier.toString(),
-    description: mockNote.description,
+    clientId: "",
+    type: "",
+    blNumber: "",
+    containerNumber: "",
+    dateDebut: "",
+    dateFin: "",
+    tarifJournalier: "",
+    description: "",
+    navire: "",
   });
+
+  // Populate form when note data is loaded
+  useEffect(() => {
+    if (note) {
+      setFormData({
+        clientId: note.client_id || "",
+        type: note.type || "",
+        blNumber: note.bl_numero || "",
+        containerNumber: note.conteneur_numero || "",
+        dateDebut: note.date_debut || note.date_debut_stockage || "",
+        dateFin: note.date_fin || note.date_fin_stockage || "",
+        tarifJournalier: String(note.tarif_journalier || ""),
+        description: note.description || note.observations || note.notes || "",
+        navire: note.navire || "",
+      });
+    }
+  }, [note]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -92,7 +116,7 @@ export default function ModifierNoteDebut() {
       const end = new Date(formData.dateFin);
       const diffTime = Math.abs(end.getTime() - start.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      return diffDays;
+      return diffDays > 0 ? diffDays : 0;
     }
     return 0;
   };
@@ -112,22 +136,74 @@ export default function ModifierNoteDebut() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    if (!id) return;
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (!formData.clientId) {
+      toast.error("Veuillez sélectionner un client");
+      return;
+    }
 
-    toast({
-      title: "Note modifiée",
-      description: `La note ${mockNote.number} a été mise à jour avec succès.`,
-    });
+    if (!formData.dateDebut || !formData.dateFin) {
+      toast.error("Veuillez remplir les dates de début et de fin");
+      return;
+    }
 
-    setIsLoading(false);
-    navigate(`/notes-debut/${id}`);
+    const jours = calculateDays();
+    const montantHt = calculateTotal();
+
+    try {
+      await updateMutation.mutateAsync({
+        id,
+        data: {
+          client_id: formData.clientId,
+          type: normalizeType(formData.type),
+          bl_numero: formData.blNumber || undefined,
+          conteneur_numero: formData.containerNumber || undefined,
+          date_debut: formData.dateDebut,
+          date_fin: formData.dateFin,
+          nombre_jours: jours,
+          tarif_journalier: parseFloat(formData.tarifJournalier) || 0,
+          montant_ht: montantHt,
+          description: formData.description || undefined,
+          navire: formData.navire || undefined,
+        },
+      });
+
+      navigate(`/notes-debut/${id}`);
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout title="Chargement...">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !note) {
+    return (
+      <MainLayout title="Erreur">
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <p className="text-destructive">Note non trouvée</p>
+          <Button onClick={() => navigate("/notes-debut")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour aux notes
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  const typeInfo = typeConfig[formData.type] || typeConfig[note.type] || { label: "Note", icon: Anchor };
+
   return (
-    <MainLayout title={`Modifier ${mockNote.number}`}>
+    <MainLayout title={`Modifier ${note.numero}`}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -141,15 +217,19 @@ export default function ModifierNoteDebut() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-semibold">Modifier {mockNote.number}</h1>
+              <h1 className="text-2xl font-semibold">Modifier {note.numero}</h1>
               <p className="text-muted-foreground">
                 Modifiez les informations de la note de début
               </p>
             </div>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            <Save className="h-4 w-4 mr-2" />
-            {isLoading ? "Enregistrement..." : "Enregistrer"}
+          <Button type="submit" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {updateMutation.isPending ? "Enregistrement..." : "Enregistrer"}
           </Button>
         </div>
 
@@ -162,7 +242,7 @@ export default function ModifierNoteDebut() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="client">Client</Label>
+                  <Label htmlFor="client">Client *</Label>
                   <Select
                     value={formData.clientId}
                     onValueChange={(v) => handleChange("clientId", v)}
@@ -171,9 +251,9 @@ export default function ModifierNoteDebut() {
                       <SelectValue placeholder="Sélectionner un client" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockClients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
+                      {clients.map((client: any) => (
+                        <SelectItem key={client.id} value={String(client.id)}>
+                          {client.nom}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -190,14 +270,16 @@ export default function ModifierNoteDebut() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(typeConfig).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex items-center gap-2">
-                            <config.icon className="h-4 w-4" />
-                            {config.label}
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {Object.entries(typeConfig)
+                        .filter(([key]) => !key.includes(' ')) // Filter out duplicates
+                        .map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex items-center gap-2">
+                              <config.icon className="h-4 w-4" />
+                              {config.label}
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -217,8 +299,18 @@ export default function ModifierNoteDebut() {
                   <Input
                     id="containerNumber"
                     value={formData.containerNumber}
-                    onChange={(e) => handleChange("containerNumber", e.target.value)}
+                    onChange={(e) => handleChange("containerNumber", e.target.value.toUpperCase())}
                     placeholder="MSKU1234567"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="navire">Navire</Label>
+                  <Input
+                    id="navire"
+                    value={formData.navire}
+                    onChange={(e) => handleChange("navire", e.target.value)}
+                    placeholder="Nom du navire"
                   />
                 </div>
               </div>
@@ -243,7 +335,7 @@ export default function ModifierNoteDebut() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="dateDebut">Date de début</Label>
+                <Label htmlFor="dateDebut">Date de début *</Label>
                 <Input
                   id="dateDebut"
                   type="date"
@@ -253,7 +345,7 @@ export default function ModifierNoteDebut() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dateFin">Date de fin</Label>
+                <Label htmlFor="dateFin">Date de fin *</Label>
                 <Input
                   id="dateFin"
                   type="date"
