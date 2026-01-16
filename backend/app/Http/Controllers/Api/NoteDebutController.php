@@ -11,6 +11,9 @@ use App\Models\Audit;
 use App\Services\NoteDebutService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class NoteDebutController extends Controller
 {
@@ -124,5 +127,125 @@ class NoteDebutController extends Controller
         ]));
 
         return response()->json($stats);
+    }
+
+    /**
+     * Envoyer la note par email avec PDF en pièce jointe
+     */
+    public function sendEmail(Request $request, NoteDebut $noteDebut): JsonResponse
+    {
+        $request->validate([
+            'destinataire' => 'required|email',
+            'sujet' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        try {
+            // Charger les relations nécessaires
+            $noteDebut->load(['client', 'transitaire', 'armateur']);
+            $client = $noteDebut->client;
+
+            if (!$client) {
+                return response()->json(['message' => 'Client non trouvé pour cette note'], 400);
+            }
+
+            // Ajouter type_label pour le template
+            $typeLabels = [
+                'ouverture_port' => 'Ouverture de port',
+                'Ouverture Port' => 'Ouverture de port',
+                'detention' => 'Détention',
+                'Detention' => 'Détention',
+                'reparation' => 'Réparation conteneur',
+                'Reparation' => 'Réparation conteneur',
+                'relache' => 'Relâche',
+                'Relache' => 'Relâche',
+            ];
+            $noteDebut->type_label = $typeLabels[$noteDebut->type] ?? $noteDebut->type;
+
+            // Générer le PDF
+            $pdf = Pdf::loadView('pdf.note-debut', [
+                'note' => $noteDebut,
+                'client' => $client,
+            ]);
+
+            $pdfContent = $pdf->output();
+            $pdfFilename = "Note_{$noteDebut->numero}.pdf";
+
+            // Envoyer l'email avec pièce jointe
+            Mail::send('emails.note-debut', [
+                'note' => $noteDebut,
+                'client' => $client,
+                'message_personnalise' => $request->message,
+            ], function ($mail) use ($request, $noteDebut, $pdfContent, $pdfFilename) {
+                $mail->to($request->destinataire)
+                    ->subject($request->sujet)
+                    ->from(config('mail.from.address'), config('mail.from.name'))
+                    ->attachData($pdfContent, $pdfFilename, [
+                        'mime' => 'application/pdf',
+                    ]);
+            });
+
+            // Log l'envoi
+            Audit::log('email', 'note', "Email envoyé pour note {$noteDebut->numero} à {$request->destinataire}", $noteDebut->id);
+
+            Log::info("Email envoyé pour note de début", [
+                'note_id' => $noteDebut->id,
+                'numero' => $noteDebut->numero,
+                'destinataire' => $request->destinataire,
+            ]);
+
+            return response()->json([
+                'message' => 'Email envoyé avec succès',
+                'destinataire' => $request->destinataire,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Erreur envoi email note de début", [
+                'note_id' => $noteDebut->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de l\'envoi de l\'email',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Générer et télécharger le PDF
+     */
+    public function downloadPdf(NoteDebut $noteDebut)
+    {
+        try {
+            $noteDebut->load(['client', 'transitaire', 'armateur']);
+            $client = $noteDebut->client;
+
+            // Ajouter type_label
+            $typeLabels = [
+                'ouverture_port' => 'Ouverture de port',
+                'Ouverture Port' => 'Ouverture de port',
+                'detention' => 'Détention',
+                'Detention' => 'Détention',
+                'reparation' => 'Réparation conteneur',
+                'Reparation' => 'Réparation conteneur',
+                'relache' => 'Relâche',
+                'Relache' => 'Relâche',
+            ];
+            $noteDebut->type_label = $typeLabels[$noteDebut->type] ?? $noteDebut->type;
+
+            $pdf = Pdf::loadView('pdf.note-debut', [
+                'note' => $noteDebut,
+                'client' => $client,
+            ]);
+
+            return $pdf->download("Note_{$noteDebut->numero}.pdf");
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la génération du PDF',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
