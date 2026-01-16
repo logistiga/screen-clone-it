@@ -307,16 +307,11 @@ export default function NouvelOrdrePage() {
     };
 
     try {
-      const result = await createOrdreMutation.mutateAsync(data);
+      await createOrdreMutation.mutateAsync(data);
       clear(); // Clear draft on success
       toast.success("Ordre de travail créé avec succès");
-      // Rediriger vers l'ordre créé en mode édition
-      const ordreId = result?.id;
-      if (ordreId) {
-        navigate(`/ordres/${ordreId}/modifier`);
-      } else {
-        navigate("/ordres");
-      }
+      // Retourner à la liste des ordres
+      navigate("/ordres");
     } catch (error: any) {
       const response = error?.response?.data;
       const apiMessage = response?.message;
