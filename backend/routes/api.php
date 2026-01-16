@@ -536,6 +536,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('annulations', [ExportController::class, 'annulations']);
         Route::get('activite-globale', [ExportController::class, 'activiteGlobale']);
         Route::get('tableau-de-bord', [ExportController::class, 'tableauDeBord']);
+        Route::get('roles', [ExportController::class, 'roles'])
+            ->middleware('permission:utilisateurs.voir');
     });
 
     // ============================================
