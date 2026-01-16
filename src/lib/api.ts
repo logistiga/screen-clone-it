@@ -1,12 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Configuration de l'API - Production: https://facturation.logistiga.com/backend/api
+const API_URL = import.meta.env.VITE_API_URL || 'https://facturation.logistiga.com/backend/api';
 const IS_PRODUCTION = import.meta.env.PROD;
 
 // Extraire l'URL de base (sans /api) pour le cookie CSRF
 const getBaseUrl = (): string => {
   const url = API_URL.replace(/\/api\/?$/, '');
-  return url || 'http://localhost:8000';
+  return url || 'https://facturation.logistiga.com/backend';
 };
 
 const api = axios.create({
