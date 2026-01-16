@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
-import api from '@/lib/api';
+import api, { initializeCsrf, resetCsrf } from '@/lib/api';
 
 interface User {
   id: number;
@@ -171,6 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Vérifier la session au chargement
   const checkAuthStatus = useCallback(async () => {
     try {
+      // Initialiser le token CSRF avant toute requête
+      await initializeCsrf();
+      
       const response = await api.get('/auth/user');
       setUser(response.data);
       updateLastActivity();
@@ -225,6 +228,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
+      // Réinitialiser le CSRF pour la prochaine session
+      resetCsrf();
       setUser(null);
     }
   };
