@@ -80,7 +80,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('/', [ClientController::class, 'index'])
             ->middleware('permission:clients.voir');
         Route::get('stats', [ClientController::class, 'globalStats'])
-            ->middleware('permission:clients.voir');
+            ->middleware(['permission:clients.voir', 'throttle:stats']);
         Route::post('/', [ClientController::class, 'store'])
             ->middleware('permission:clients.creer');
         Route::get('{client}', [ClientController::class, 'show'])
@@ -90,7 +90,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::delete('{client}', [ClientController::class, 'destroy'])
             ->middleware('permission:clients.supprimer');
         Route::get('{client}/stats', [ClientController::class, 'stats'])
-            ->middleware('permission:clients.voir');
+            ->middleware(['permission:clients.voir', 'throttle:stats']);
     });
 
     // ============================================
@@ -122,7 +122,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('/', [OrdreTravailController::class, 'index'])
             ->middleware('permission:ordres.voir');
         Route::get('stats', [OrdreTravailController::class, 'stats'])
-            ->middleware('permission:ordres.voir');
+            ->middleware(['permission:ordres.voir', 'throttle:stats']);
         Route::post('/', [OrdreTravailController::class, 'store'])
             ->middleware('permission:ordres.creer');
         Route::get('{ordreTravail}', [OrdreTravailController::class, 'show'])
@@ -166,7 +166,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('/', [PaiementController::class, 'store'])
             ->middleware('permission:paiements.creer');
         Route::get('stats', [PaiementController::class, 'stats'])
-            ->middleware('permission:paiements.voir');
+            ->middleware(['permission:paiements.voir', 'throttle:stats']);
         Route::get('{paiement}', [PaiementController::class, 'show'])
             ->middleware('permission:paiements.voir');
         Route::delete('{paiement}', [PaiementController::class, 'destroy'])
@@ -192,7 +192,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::delete('{banque}', [BanqueController::class, 'destroy'])
             ->middleware('permission:banques.supprimer');
         Route::get('{banque}/stats', [BanqueController::class, 'stats'])
-            ->middleware('permission:banques.voir');
+            ->middleware(['permission:banques.voir', 'throttle:stats']);
     });
 
     // ============================================
@@ -206,7 +206,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('solde', [CaisseController::class, 'solde'])
             ->middleware('permission:caisse.voir');
         Route::get('stats', [CaisseController::class, 'stats'])
-            ->middleware('permission:caisse.voir');
+            ->middleware(['permission:caisse.voir', 'throttle:stats']);
         Route::get('categories', [CaisseController::class, 'categories'])
             ->middleware('permission:caisse.voir');
         Route::get('{mouvement}', [CaisseController::class, 'show'])
@@ -350,7 +350,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('/', [NoteDebutController::class, 'index'])
             ->middleware('permission:notes.voir');
         Route::get('stats', [NoteDebutController::class, 'stats'])
-            ->middleware('permission:notes.voir');
+            ->middleware(['permission:notes.voir', 'throttle:stats']);
         Route::post('/', [NoteDebutController::class, 'store'])
             ->middleware('permission:notes.creer');
         Route::get('{noteDebut}', [NoteDebutController::class, 'show'])
@@ -374,7 +374,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('/', [AnnulationController::class, 'index'])
             ->middleware('permission:factures.voir');
         Route::get('stats', [AnnulationController::class, 'stats'])
-            ->middleware('permission:factures.voir');
+            ->middleware(['permission:factures.voir', 'throttle:stats']);
         Route::get('client/{clientId}', [AnnulationController::class, 'historiqueClient'])
             ->middleware('permission:clients.voir');
         
