@@ -410,18 +410,21 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // UTILISATEURS (Admin uniquement)
     // ============================================
-    Route::prefix('utilisateurs')->middleware(['audit', 'permission:utilisateurs.voir'])->group(function () {
-        Route::get('/', [UserController::class, 'index']);
+    Route::prefix('utilisateurs')->middleware(['audit', 'role:administrateur,directeur'])->group(function () {
+        Route::get('/', [UserController::class, 'index'])
+            ->middleware('permission:utilisateurs.voir');
         Route::post('/', [UserController::class, 'store'])
             ->middleware('permission:utilisateurs.creer');
-        Route::get('roles', [UserController::class, 'roles']);
-        Route::get('{user}', [UserController::class, 'show']);
+        Route::get('roles', [UserController::class, 'roles'])
+            ->middleware('permission:utilisateurs.voir');
+        Route::get('{user}', [UserController::class, 'show'])
+            ->middleware('permission:utilisateurs.voir');
         Route::put('{user}', [UserController::class, 'update'])
             ->middleware('permission:utilisateurs.modifier');
         Route::delete('{user}', [UserController::class, 'destroy'])
-            ->middleware('permission:utilisateurs.supprimer');
+            ->middleware(['permission:utilisateurs.supprimer', 'role:administrateur']);
         Route::patch('{user}/toggle-actif', [UserController::class, 'toggleActif'])
-            ->middleware('permission:utilisateurs.modifier');
+            ->middleware(['permission:utilisateurs.modifier', 'role:administrateur']);
     });
 
     // Profil utilisateur (accessible par tous)
@@ -432,51 +435,50 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ROLES & PERMISSIONS (Admin uniquement)
     // ============================================
-    Route::prefix('roles')->middleware(['audit', 'permission:utilisateurs.voir'])->group(function () {
+    Route::prefix('roles')->middleware(['audit', 'role:administrateur'])->group(function () {
         Route::get('/', [RoleController::class, 'index']);
-        Route::get('stats', [RoleController::class, 'stats']);
+        Route::get('stats', [RoleController::class, 'stats'])
+            ->middleware('throttle:stats');
         Route::get('permissions', [RoleController::class, 'permissions']);
-        Route::post('/', [RoleController::class, 'store'])
-            ->middleware('permission:utilisateurs.creer');
+        Route::post('/', [RoleController::class, 'store']);
         Route::get('{role}', [RoleController::class, 'show']);
-        Route::put('{role}', [RoleController::class, 'update'])
-            ->middleware('permission:utilisateurs.modifier');
-        Route::delete('{role}', [RoleController::class, 'destroy'])
-            ->middleware('permission:utilisateurs.supprimer');
-        Route::post('{role}/duplicate', [RoleController::class, 'duplicate'])
-            ->middleware('permission:utilisateurs.creer');
+        Route::put('{role}', [RoleController::class, 'update']);
+        Route::delete('{role}', [RoleController::class, 'destroy']);
+        Route::post('{role}/duplicate', [RoleController::class, 'duplicate']);
         
         // Gestion des utilisateurs du rôle
         Route::get('{role}/available-users', [RoleController::class, 'availableUsers']);
-        Route::post('{role}/assign-users', [RoleController::class, 'assignUsers'])
-            ->middleware('permission:utilisateurs.modifier');
-        Route::delete('{role}/users/{user}', [RoleController::class, 'unassignUser'])
-            ->middleware('permission:utilisateurs.modifier');
+        Route::post('{role}/assign-users', [RoleController::class, 'assignUsers']);
+        Route::delete('{role}/users/{user}', [RoleController::class, 'unassignUser']);
     });
 
     // ============================================
     // AUDIT & TRACABILITE
     // ============================================
-    Route::prefix('audit')->middleware('permission:audit.voir')->group(function () {
+    Route::prefix('audit')->middleware(['role:administrateur'])->group(function () {
         Route::get('/', [AuditController::class, 'index']);
         Route::get('actions', [AuditController::class, 'actions']);
         Route::get('tables', [AuditController::class, 'tables']);
-        Route::get('stats', [AuditController::class, 'stats']);
-        Route::get('export', [AuditController::class, 'export']);
+        Route::get('stats', [AuditController::class, 'stats'])
+            ->middleware('throttle:stats');
+        Route::get('export', [AuditController::class, 'export'])
+            ->middleware('throttle:exports');
         Route::get('{audit}', [AuditController::class, 'show']);
     });
 
     // ============================================
     // CONFIGURATION (Admin uniquement)
     // ============================================
-    Route::prefix('configuration')->middleware('permission:configuration.voir')->group(function () {
-        Route::get('/', [ConfigurationController::class, 'index']);
+    Route::prefix('configuration')->middleware(['role:administrateur,directeur'])->group(function () {
+        Route::get('/', [ConfigurationController::class, 'index'])
+            ->middleware('permission:configuration.voir');
         Route::put('/', [ConfigurationController::class, 'update'])
-            ->middleware('permission:configuration.modifier');
+            ->middleware(['permission:configuration.modifier', 'role:administrateur']);
         
-        Route::get('taxes', [ConfigurationController::class, 'taxes']);
+        Route::get('taxes', [ConfigurationController::class, 'taxes'])
+            ->middleware('permission:configuration.voir');
         Route::put('taxes', [ConfigurationController::class, 'updateTaxes'])
-            ->middleware('permission:configuration.modifier');
+            ->middleware(['permission:configuration.modifier', 'role:administrateur']);
         
         Route::get('numerotation', [ConfigurationController::class, 'numerotation']);
         Route::put('numerotation', [ConfigurationController::class, 'updateNumerotation'])

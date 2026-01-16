@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'audit' => \App\Http\Middleware\AuditLog::class,
             'security.headers' => \App\Http\Middleware\SecurityHeaders::class,
             'security.audit' => \App\Http\Middleware\SecurityAuditLog::class,
+            'prevent.idor' => \App\Http\Middleware\PreventIDOR::class,
         ]);
 
         // Middlewares globaux sur TOUTES les routes API
