@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Paiement;
 use App\Models\Facture;
 use App\Models\OrdreTravail;
+use App\Models\NoteDebut;
 use App\Models\MouvementCaisse;
 use App\Models\Banque;
 use App\Services\Facture\FactureServiceFactory;
@@ -43,6 +44,12 @@ class PaiementService
                 $this->ordreFactory->enregistrerPaiement($ordre, $paiement->montant);
             }
 
+            // Enregistrer le paiement sur la note de début
+            if ($paiement->note_debut_id) {
+                $note = NoteDebut::find($paiement->note_debut_id);
+                $this->enregistrerPaiementNote($note, $paiement->montant);
+            }
+
             // Créer le mouvement de caisse
             $this->creerMouvementCaisse($paiement);
 
@@ -56,10 +63,31 @@ class PaiementService
                 'montant' => $paiement->montant,
                 'facture_id' => $paiement->facture_id,
                 'ordre_id' => $paiement->ordre_id,
+                'note_debut_id' => $paiement->note_debut_id,
             ]);
 
-            return $paiement->fresh(['facture', 'ordre', 'client', 'banque']);
+            return $paiement->fresh(['facture', 'ordre', 'noteDebut', 'client', 'banque']);
         });
+    }
+
+    /**
+     * Enregistrer un paiement sur une note de début
+     */
+    protected function enregistrerPaiementNote(NoteDebut $note, float $montant): void
+    {
+        $nouveauMontantPaye = ($note->montant_paye ?? 0) + $montant;
+        $montantTotal = $note->montant_ttc ?? $note->montant_total ?? 0;
+        
+        // Déterminer le statut
+        $statut = 'partielle';
+        if ($nouveauMontantPaye >= $montantTotal) {
+            $statut = 'payee';
+        }
+
+        $note->update([
+            'montant_paye' => $nouveauMontantPaye,
+            'statut' => $statut,
+        ]);
     }
 
     /**
@@ -167,12 +195,38 @@ class PaiementService
                 ]);
             }
 
+            // Inverser le paiement sur la note de début
+            if ($paiement->note_debut_id) {
+                $note = $paiement->noteDebut;
+                $nouveauMontantPaye = max(0, ($note->montant_paye ?? 0) - $paiement->montant);
+                
+                $statut = 'en_attente';
+                if ($nouveauMontantPaye > 0) {
+                    $statut = 'partielle';
+                }
+
+                $note->update([
+                    'montant_paye' => $nouveauMontantPaye,
+                    'statut' => $statut,
+                ]);
+            }
+
+            // Déterminer le numéro du document pour la description
+            $documentNumero = 'inconnu';
+            if ($paiement->facture) {
+                $documentNumero = $paiement->facture->numero;
+            } elseif ($paiement->ordre) {
+                $documentNumero = $paiement->ordre->numero;
+            } elseif ($paiement->noteDebut) {
+                $documentNumero = $paiement->noteDebut->numero;
+            }
+
             // Créer un mouvement de caisse d'annulation
             MouvementCaisse::create([
                 'type' => 'sortie',
                 'montant' => $paiement->montant,
                 'date' => now(),
-                'description' => 'Annulation paiement ' . ($paiement->facture ? $paiement->facture->numero : $paiement->ordre->numero),
+                'description' => 'Annulation paiement ' . $documentNumero,
                 'source' => $paiement->banque_id ? 'banque' : 'caisse',
                 'banque_id' => $paiement->banque_id,
             ]);
@@ -199,6 +253,8 @@ class PaiementService
             $description .= $paiement->facture->numero;
         } elseif ($paiement->ordre) {
             $description .= $paiement->ordre->numero;
+        } elseif ($paiement->noteDebut) {
+            $description .= $paiement->noteDebut->numero;
         }
 
         return MouvementCaisse::create([

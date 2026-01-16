@@ -12,6 +12,7 @@ class Paiement extends Model
     protected $fillable = [
         'facture_id',
         'ordre_id',
+        'note_debut_id',
         'client_id',
         'montant',
         'date',
@@ -36,6 +37,11 @@ class Paiement extends Model
     public function ordre()
     {
         return $this->belongsTo(OrdreTravail::class, 'ordre_id');
+    }
+
+    public function noteDebut()
+    {
+        return $this->belongsTo(NoteDebut::class, 'note_debut_id');
     }
 
     public function client()

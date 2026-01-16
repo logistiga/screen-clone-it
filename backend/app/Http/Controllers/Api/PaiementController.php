@@ -9,6 +9,7 @@ use App\Http\Resources\PaiementResource;
 use App\Models\Paiement;
 use App\Models\Facture;
 use App\Models\OrdreTravail;
+use App\Models\NoteDebut;
 use App\Models\Audit;
 use App\Services\PaiementService;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class PaiementController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = Paiement::with(['facture.client', 'ordre.client', 'client', 'banque']);
+            $query = Paiement::with(['facture.client', 'ordre.client', 'noteDebut.client', 'client', 'banque']);
 
             if ($request->filled('search')) {
                 $search = $request->get('search');
@@ -39,14 +40,20 @@ class PaiementController extends Controller
                 });
             }
 
-            // Filtre par type (facture ou ordre)
+            // Filtre par type (facture, ordre ou note_debut)
             if ($request->filled('type')) {
                 $type = $request->get('type');
                 if ($type === 'facture') {
                     $query->whereNotNull('facture_id');
                 } elseif ($type === 'ordre') {
                     $query->whereNotNull('ordre_id')->whereNull('facture_id');
+                } elseif ($type === 'note_debut') {
+                    $query->whereNotNull('note_debut_id');
                 }
+            }
+
+            if ($request->filled('note_debut_id')) {
+                $query->where('note_debut_id', $request->get('note_debut_id'));
             }
 
             if ($request->filled('mode_paiement')) {
@@ -110,9 +117,17 @@ class PaiementController extends Controller
                 $resteAPayer = $ordre->montant_ttc - $montantPaye;
                 $clientId = $ordre->client_id;
                 $documentNumero = $ordre->numero;
+            } elseif ($request->note_debut_id) {
+                $note = NoteDebut::findOrFail($request->note_debut_id);
+                // Calculer les paiements existants pour la note
+                $montantPaye = Paiement::where('note_debut_id', $note->id)->sum('montant');
+                $montantTotal = $note->montant_ttc ?? $note->montant_total ?? 0;
+                $resteAPayer = $montantTotal - $montantPaye;
+                $clientId = $note->client_id;
+                $documentNumero = $note->numero;
             } else {
                 return response()->json([
-                    'message' => 'Vous devez spécifier une facture ou un ordre de travail'
+                    'message' => 'Vous devez spécifier une facture, un ordre de travail ou une note de début'
                 ], 422);
             }
 
@@ -126,6 +141,7 @@ class PaiementController extends Controller
             $paiement = $this->paiementService->creer([
                 'facture_id' => $request->facture_id,
                 'ordre_id' => $request->ordre_id,
+                'note_debut_id' => $request->note_debut_id,
                 'client_id' => $clientId,
                 'montant' => $request->montant,
                 'mode_paiement' => $request->mode_paiement,
