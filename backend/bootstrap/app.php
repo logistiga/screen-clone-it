@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'security.headers' => \App\Http\Middleware\SecurityHeaders::class,
             'security.audit' => \App\Http\Middleware\SecurityAuditLog::class,
             'prevent.idor' => \App\Http\Middleware\PreventIDOR::class,
+            'session.track' => \App\Http\Middleware\SessionActivityTracker::class,
         ]);
 
         // Middlewares globaux sur TOUTES les routes API
@@ -47,6 +48,9 @@ return Application::configure(basePath: dirname(__DIR__))
             
             // 7. Logging sécurité (auth, exports, opérations sensibles)
             \App\Http\Middleware\SecurityAuditLog::class,
+            
+            // 8. Tracking d'activité de session (idle timeout)
+            \App\Http\Middleware\SessionActivityTracker::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
