@@ -291,15 +291,19 @@ class ReportingService
             $client->taux_paiement = ($client->factures_sum_montant_ttc ?? 0) > 0 
                 ? round((($client->paiements_sum_montant ?? 0) / $client->factures_sum_montant_ttc) * 100, 2) 
                 : 100;
+            // Ajouter le nom du client pour le frontend
+            $client->nom = $client->raison_sociale ?? $client->nom_complet ?? 'Client #' . $client->id;
             return $client;
         })
+        // Filtrer uniquement les clients avec du CA
+        ->filter(fn($c) => ($c->factures_sum_montant_ttc ?? 0) > 0)
         ->sortByDesc('factures_sum_montant_ttc');
 
         return [
             'periode' => ['debut' => $dateDebut, 'fin' => $dateFin],
-            'top_clients' => $clients->take($limit)->values(),
+            'top_clients' => $clients->take($limit)->values()->toArray(),
             'totaux' => [
-                'nombre_clients_actifs' => $clients->filter(fn($c) => $c->factures_count > 0)->count(),
+                'nombre_clients_actifs' => $clients->count(),
                 'total_facture' => $clients->sum('factures_sum_montant_ttc'),
                 'total_paye' => $clients->sum('paiements_sum_montant'),
                 'total_solde' => $clients->sum('solde'),
