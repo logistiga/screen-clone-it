@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Http\Requests\UpdatePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Traits\SecureQueryParameters;
 use App\Models\User;
 use App\Models\Audit;
@@ -59,28 +61,18 @@ class UserController extends Controller
         return response()->json($users);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreUserRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|exists:roles,name',
-            'actif' => 'boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $validated = $request->validated();
 
         $user = User::create([
-            'nom' => $request->nom,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'actif' => $request->actif ?? true,
+            'nom' => $validated['nom'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'actif' => $validated['actif'] ?? true,
         ]);
 
-        $user->assignRole($request->role);
+        $user->assignRole($validated['role']);
 
         return response()->json($user->load('roles'), 201);
     }
@@ -91,30 +83,20 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'role' => 'sometimes|exists:roles,name',
-            'actif' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $data = array_intersect_key($validated, array_flip(['nom', 'email', 'actif']));
 
-        $data = $request->only(['nom', 'email', 'actif']);
-
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
+        if (!empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
         }
 
         $user->update($data);
 
-        if ($request->has('role')) {
-            $user->syncRoles([$request->role]);
+        if (isset($validated['role'])) {
+            $user->syncRoles([$validated['role']]);
         }
 
         return response()->json($user->load('roles'));
@@ -163,27 +145,19 @@ class UserController extends Controller
         return response()->json($roles);
     }
 
-    public function updatePassword(Request $request): JsonResponse
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
+        $validated = $request->validated();
         $user = auth()->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (!Hash::check($validated['current_password'], $user->password)) {
             return response()->json([
                 'message' => 'Le mot de passe actuel est incorrect'
             ], 422);
         }
 
         $user->update([
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($validated['password'])
         ]);
 
         return response()->json(['message' => 'Mot de passe mis à jour avec succès']);
@@ -195,20 +169,12 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function updateProfile(Request $request): JsonResponse
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
+        $validated = $request->validated();
         $user = auth()->user();
 
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $user->update($request->only(['nom', 'email']));
+        $user->update($validated);
 
         return response()->json($user);
     }
