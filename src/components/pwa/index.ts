@@ -1,3 +1,3 @@
-export { PWAInstallPrompt } from "./PWAInstallPrompt";
+export { PWAInstallPrompt, triggerPWAInstallAfterLogin } from "./PWAInstallPrompt";
 export { PWAUpdatePrompt } from "./PWAUpdatePrompt";
 export { OfflineIndicator } from "./OfflineIndicator";
