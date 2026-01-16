@@ -13,8 +13,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt, ClipboardList } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt, ClipboardList, Download } from "lucide-react";
 import { SortieCaisseModal } from "@/components/SortieCaisseModal";
+import { ExportCaisseModal } from "@/components/caisse/ExportCaisseModal";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
 import { TablePagination } from "@/components/TablePagination";
@@ -76,6 +77,7 @@ export default function CaissePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortieModalOpen, setSortieModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Fetch mouvements from API
   const { data: mouvementsData, isLoading, refetch } = useQuery({
@@ -160,10 +162,16 @@ export default function CaissePage() {
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Caisse</h1>
             <p className="text-muted-foreground mt-1">Gérez les mouvements de caisse (espèces)</p>
           </div>
-          <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10" onClick={() => setSortieModalOpen(true)}>
-            <ArrowUpCircle className="h-4 w-4" />
-            Nouvelle sortie
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setExportModalOpen(true)}>
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+            <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10" onClick={() => setSortieModalOpen(true)}>
+              <ArrowUpCircle className="h-4 w-4" />
+              Nouvelle sortie
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -316,6 +324,7 @@ export default function CaissePage() {
       </div>
 
       <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" onSuccess={handleSortieSuccess} />
+      <ExportCaisseModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
     </MainLayout>
   );
 }

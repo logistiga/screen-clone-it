@@ -73,6 +73,18 @@ class ExportController extends Controller
         return $this->streamCSV($csv, 'caisse');
     }
 
+    /**
+     * Export caisse espèces uniquement (pour la caisse journalière)
+     */
+    public function caisseEspeces(Request $request): StreamedResponse
+    {
+        $filters = $request->only(['date_debut', 'date_fin', 'type']);
+        $filters['source'] = 'caisse'; // Forcer source = caisse (espèces uniquement)
+        $csv = $this->exportService->exportCaisseEspecesCSV($filters);
+        
+        return $this->streamCSV($csv, 'caisse-especes');
+    }
+
     public function clients(Request $request): StreamedResponse
     {
         $filters = $request->only(['type', 'actif']);

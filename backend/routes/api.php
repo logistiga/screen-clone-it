@@ -525,6 +525,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('ordres-travail', [ExportController::class, 'ordres']);
         Route::get('paiements', [ExportController::class, 'paiements']);
         Route::get('caisse', [ExportController::class, 'caisse']);
+        Route::get('caisse-especes', [ExportController::class, 'caisseEspeces']);
         Route::get('clients', [ExportController::class, 'clients']);
         Route::get('primes', [ExportController::class, 'primes']);
         Route::get('chiffre-affaires', [ExportController::class, 'chiffreAffaires']);
