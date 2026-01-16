@@ -19,8 +19,8 @@ return new class extends Migration
 
         Schema::create($tableNames['permissions'] ?? 'permissions', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('name');
-            $table->string('guard_name');
+            $table->string('name', 125);
+            $table->string('guard_name', 125);
             $table->timestamps();
 
             $table->unique(['name', 'guard_name']);
@@ -28,8 +28,8 @@ return new class extends Migration
 
         Schema::create($tableNames['roles'] ?? 'roles', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('name');
-            $table->string('guard_name');
+            $table->string('name', 125);
+            $table->string('guard_name', 125);
             $table->timestamps();
 
             $table->unique(['name', 'guard_name']);
@@ -38,7 +38,7 @@ return new class extends Migration
         Schema::create($tableNames['model_has_permissions'] ?? 'model_has_permissions', function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission) {
             $table->unsignedBigInteger($pivotPermission);
 
-            $table->string('model_type');
+            $table->string('model_type', 125);
             $table->unsignedBigInteger($columnNames['model_morph_key'] ?? 'model_id');
             $table->index([$columnNames['model_morph_key'] ?? 'model_id', 'model_type'], 'model_has_permissions_model_id_model_type_index');
 
@@ -54,7 +54,7 @@ return new class extends Migration
         Schema::create($tableNames['model_has_roles'] ?? 'model_has_roles', function (Blueprint $table) use ($tableNames, $columnNames, $pivotRole) {
             $table->unsignedBigInteger($pivotRole);
 
-            $table->string('model_type');
+            $table->string('model_type', 125);
             $table->unsignedBigInteger($columnNames['model_morph_key'] ?? 'model_id');
             $table->index([$columnNames['model_morph_key'] ?? 'model_id', 'model_type'], 'model_has_roles_model_id_model_type_index');
 
