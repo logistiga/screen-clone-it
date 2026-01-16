@@ -25,8 +25,14 @@ return [
     'allowed_origins' => (function () {
         // Origines par défaut toujours autorisées
         $defaultOrigins = [
+            // Production
             'https://facturation.logistiga.com',
             'http://facturation.logistiga.com',
+
+            // Lovable (preview + published)
+            'https://id-preview--60f20667-59d2-4f14-ba17-f1acde63f098.lovable.app',
+            'https://60f20667-59d2-4f14-ba17-f1acde63f098.lovableproject.com',
+            'https://screen-clone-it.lovable.app',
         ];
         
         $raw = (string) env('CORS_ALLOWED_ORIGINS', '');
