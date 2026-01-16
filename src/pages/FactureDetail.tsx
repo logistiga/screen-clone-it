@@ -33,7 +33,7 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailModal } from "@/components/EmailModal";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
-import { HistoriqueTimeline } from "@/components/shared/HistoriqueTimeline";
+import { FactureHistorique } from "@/components/factures/shared";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -412,13 +412,7 @@ export default function FactureDetailPage() {
           </TabsContent>
 
           <TabsContent value="tracabilite" className="mt-6">
-            <HistoriqueTimeline
-              documentId={facture.id}
-              documentNumero={facture.numero}
-              module="factures"
-              createdAt={facture.created_at || facture.date_facture}
-              title="Historique des actions"
-            />
+            <FactureHistorique facture={facture} />
           </TabsContent>
         </Tabs>
       </div>
