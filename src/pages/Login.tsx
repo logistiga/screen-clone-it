@@ -81,7 +81,7 @@ export default function LoginPage() {
       duration: 0.6,
       ease: [0.25, 0.46, 0.45, 0.94]
     }} className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{
-      backgroundColor: "#f5f5f5"
+      backgroundColor: "#ffffff"
     }}>
         {/* Forme courbe rouge */}
         <div className="absolute right-0 top-0 h-full w-32" style={{
