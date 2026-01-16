@@ -496,8 +496,8 @@ return new class extends Migration
         Schema::create('audits', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('action');
-            $table->string('module');
+            $table->string('action', 100);
+            $table->string('module', 100);
             $table->string('document_type')->nullable();
             $table->unsignedBigInteger('document_id')->nullable();
             $table->string('document_numero')->nullable();
