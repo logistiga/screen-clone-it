@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Download, ArrowUpCircle, ArrowDownCircle, Building2, Wallet, PieChart, FileText, X } from "lucide-react";
+import { CalendarIcon, Download, ArrowUpCircle, ArrowDownCircle, Building2, Wallet, PieChart, FileText, X, FileSpreadsheet } from "lucide-react";
+import { ExportCaisseGlobaleModal } from "@/components/caisse/ExportCaisseGlobaleModal";
 import { useToast } from "@/hooks/use-toast";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { format } from "date-fns";
@@ -55,6 +56,7 @@ export default function CaisseGlobalePage() {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Charger tous les mouvements (caisse et banque)
   const { data: mouvementsData, isLoading: mouvementsLoading } = useMouvementsCaisse({
@@ -98,8 +100,8 @@ export default function CaisseGlobalePage() {
   const totalSortiesCaisse = sortiesCaisse.reduce((sum: number, m: any) => sum + (m.montant || 0), 0);
   const totalSortiesBanque = sortiesBanque.reduce((sum: number, m: any) => sum + (m.montant || 0), 0);
 
-  const handleExport = (exportFormat: 'pdf' | 'excel') => {
-    toast({ title: `Export ${exportFormat.toUpperCase()}`, description: `Export des données comptables en cours...` });
+  const handleOpenExportModal = () => {
+    setExportModalOpen(true);
   };
 
   const hasActiveFilters = dateRange.from || sourceFilter !== "all";
@@ -156,13 +158,9 @@ export default function CaisseGlobalePage() {
             <p className="text-muted-foreground mt-1">Vue d'ensemble de votre trésorerie</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => handleExport('pdf')}>
-              <FileText className="h-4 w-4" />
-              Export PDF
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={() => handleExport('excel')}>
-              <Download className="h-4 w-4" />
-              Export Excel
+            <Button variant="outline" className="gap-2" onClick={handleOpenExportModal}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Exporter
             </Button>
           </div>
         </motion.div>
@@ -409,6 +407,8 @@ export default function CaisseGlobalePage() {
           </motion.div>
         )}
       </motion.div>
+      
+      <ExportCaisseGlobaleModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
     </MainLayout>
   );
 }
