@@ -136,14 +136,9 @@ class RoleController extends Controller
     /**
      * Créer un nouveau rôle
      */
-    public function store(Request $request): JsonResponse
+    public function store(\App\Http\Requests\StoreRoleRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name',
-            'description' => 'nullable|string|max:500',
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,name',
-        ]);
+        $validated = $request->validated();
 
         $role = Role::create([
             'name' => $validated['name'],
@@ -170,21 +165,9 @@ class RoleController extends Controller
     /**
      * Mettre à jour un rôle
      */
-    public function update(Request $request, Role $role): JsonResponse
+    public function update(\App\Http\Requests\UpdateRoleRequest $request, Role $role): JsonResponse
     {
-        // Empêcher la modification des rôles système
-        if (in_array($role->name, ['administrateur', 'directeur'])) {
-            return response()->json([
-                'message' => 'Les rôles système ne peuvent pas être modifiés',
-            ], 403);
-        }
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255|unique:roles,name,' . $role->id,
-            'description' => 'nullable|string|max:500',
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,name',
-        ]);
+        $validated = $request->validated();
 
         if (isset($validated['name'])) {
             $role->update(['name' => $validated['name']]);
