@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService, UserFilters, CreateUserData, UpdateUserData } from '@/services/userService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 // Query keys
 const USERS_KEY = 'users';
@@ -11,44 +12,58 @@ const PROFILE_KEY = 'profile';
 
 // Liste des utilisateurs
 export function useUsers(filters?: UserFilters) {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [USERS_KEY, filters],
     queryFn: () => userService.getUsers(filters),
+    enabled: isAuthenticated,
   });
 }
 
 // Statistiques des utilisateurs
 export function useUserStats() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [USER_STATS_KEY],
     queryFn: () => userService.getStats(),
+    enabled: isAuthenticated,
     staleTime: 30000, // 30 secondes
   });
 }
 
 // Détail d'un utilisateur
 export function useUser(id: number | null) {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [USER_KEY, id],
     queryFn: () => userService.getUser(id!),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   });
 }
 
 // Liste des rôles
 export function useUserRoles() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [USER_ROLES_KEY],
     queryFn: () => userService.getRoles(),
+    enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
 // Profil utilisateur connecté
 export function useProfile() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [PROFILE_KEY],
     queryFn: () => userService.getProfile(),
+    enabled: isAuthenticated,
   });
 }
 
