@@ -142,6 +142,32 @@ class ExportController extends Controller
     }
 
     /**
+     * Export complet de la caisse globale (PDF ou Excel)
+     */
+    public function caisseGlobale(Request $request)
+    {
+        $filters = [
+            'date_debut' => $request->get('date_debut', now()->startOfMonth()->toDateString()),
+            'date_fin' => $request->get('date_fin', now()->toDateString()),
+            'type' => $request->get('type', 'all'),
+            'source' => $request->get('source', 'all'),
+            'banque_id' => $request->get('banque_id'),
+            'include_details' => $request->get('include_details', '1') === '1',
+            'include_summary' => $request->get('include_summary', '1') === '1',
+        ];
+        
+        $format = $request->get('format', 'pdf');
+        
+        if ($format === 'pdf') {
+            return $this->exportService->exportCaisseGlobalePDF($filters);
+        }
+        
+        // Excel/CSV export
+        $csv = $this->exportService->exportCaisseGlobaleCSV($filters);
+        return $this->streamCSV($csv, 'caisse-globale');
+    }
+
+    /**
      * Génère une réponse CSV streamée
      */
     protected function streamCSV(string $content, string $filename): StreamedResponse
