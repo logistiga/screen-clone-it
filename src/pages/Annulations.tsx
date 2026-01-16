@@ -13,13 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Ban, MoreHorizontal, FileText, RefreshCw, Download, Calculator, Clock, CheckCircle } from "lucide-react";
+import { Ban, FileText, RefreshCw, Download, Calculator, Clock, CheckCircle } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { useAnnulations, useAnnulationsStats, useGenererAvoir } from "@/hooks/use-annulations";
 import { TablePagination } from "@/components/TablePagination";
@@ -248,38 +242,42 @@ export default function AnnulationsPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
+                          <div className="flex items-center gap-1">
+                            {annulation.avoir_genere && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => navigate(`/annulations/${annulation.id}/avoir`)}
+                                title="Télécharger l'avoir PDF"
+                              >
+                                <Download className="h-4 w-4" />
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {annulation.avoir_genere && (
-                                <DropdownMenuItem
-                                  onClick={() => navigate(`/annulations/${annulation.id}/avoir`)}
-                                >
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Télécharger l'avoir PDF
-                                </DropdownMenuItem>
-                              )}
-                              {!annulation.avoir_genere && (
-                                <DropdownMenuItem
-                                  onClick={() => handleGenererAvoir(annulation)}
-                                  disabled={genererAvoir.isPending}
-                                >
-                                  <FileText className="mr-2 h-4 w-4" />
-                                  Générer un avoir
-                                </DropdownMenuItem>
-                              )}
-                              {!annulation.rembourse && (
-                                <DropdownMenuItem onClick={() => handleRembourser(annulation)}>
-                                  <RefreshCw className="mr-2 h-4 w-4" />
-                                  Rembourser le client
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            )}
+                            {!annulation.avoir_genere && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleGenererAvoir(annulation)}
+                                disabled={genererAvoir.isPending}
+                                title="Générer un avoir"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {!annulation.rembourse && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleRembourser(annulation)}
+                                title="Rembourser le client"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </motion.tr>
                     ))
