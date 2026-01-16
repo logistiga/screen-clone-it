@@ -58,14 +58,34 @@ export interface RoleFormData {
 
 export interface RoleFilters {
   search?: string;
+  page?: number;
+  per_page?: number;
+  has_users?: boolean;
+  is_system?: boolean;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  current_page: number;
+  per_page: number;
+  last_page: number;
 }
 
 // API Functions
 export const roleService = {
-  // Liste des rôles
-  async getRoles(filters?: RoleFilters): Promise<{ data: Role[]; total: number }> {
+  // Liste des rôles avec pagination
+  async getRoles(filters?: RoleFilters): Promise<PaginatedResponse<Role>> {
     const params = new URLSearchParams();
     if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.per_page) params.append('per_page', filters.per_page.toString());
+    if (filters?.has_users !== undefined) params.append('has_users', filters.has_users.toString());
+    if (filters?.is_system !== undefined) params.append('is_system', filters.is_system.toString());
+    if (filters?.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters?.sort_order) params.append('sort_order', filters.sort_order);
     
     const response = await api.get(`/roles?${params.toString()}`);
     return response.data;

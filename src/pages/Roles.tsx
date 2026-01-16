@@ -12,12 +12,23 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from "@/components/ui/pagination";
 import { 
   Plus, Pencil, Trash2, Shield, Copy, Users, Search, 
   ShieldCheck, Lock, Unlock, Eye, ChevronRight, RefreshCw,
-  BarChart3, Layers, AlertTriangle, CheckCircle2, XCircle, Loader2
+  BarChart3, Layers, AlertTriangle, CheckCircle2, XCircle, Loader2,
+  Download, FileSpreadsheet, FileText, MoreHorizontal, Filter,
+  ArrowUpDown, SortAsc, SortDesc
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -27,10 +38,13 @@ import {
   useCreateRole, 
   useUpdateRole, 
   useDeleteRole, 
-  useDuplicateRole 
+  useDuplicateRole,
+  useRole
 } from "@/hooks/use-roles";
-import { Role, PermissionModule, RoleFormData } from "@/services/roleService";
+import { Role, PermissionModule, RoleFormData, RoleFilters } from "@/services/roleService";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
+import api from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 // Couleurs pour les graphiques
 const CHART_COLORS = [
@@ -61,13 +75,24 @@ const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
 };
 
 export default function RolesPage() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("liste");
   const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [expandedRoles, setExpandedRoles] = useState<number[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  
+  // Pagination & filtres
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [filterHasUsers, setFilterHasUsers] = useState<boolean | undefined>(undefined);
+  const [filterIsSystem, setFilterIsSystem] = useState<boolean | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>("asc");
   
   const [formData, setFormData] = useState<{
     name: string;
@@ -79,10 +104,22 @@ export default function RolesPage() {
     permissions: []
   });
 
+  // Filtres combinés
+  const filters: RoleFilters = useMemo(() => ({
+    search: searchTerm || undefined,
+    page: currentPage,
+    per_page: perPage,
+    has_users: filterHasUsers,
+    is_system: filterIsSystem,
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  }), [searchTerm, currentPage, perPage, filterHasUsers, filterIsSystem, sortBy, sortOrder]);
+
   // React Query hooks
-  const { data: rolesData, isLoading: isLoadingRoles, refetch: refetchRoles, isFetching } = useRoles({ search: searchTerm || undefined });
+  const { data: rolesData, isLoading: isLoadingRoles, refetch: refetchRoles, isFetching } = useRoles(filters);
   const { data: statsData, isLoading: isLoadingStats } = useRolesStats();
   const { data: permissionsData, isLoading: isLoadingPermissions } = usePermissions();
+  const { data: roleDetail, isLoading: isLoadingRoleDetail } = useRole(showUsersModal && selectedRole ? selectedRole.id : null);
   
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
@@ -90,6 +127,8 @@ export default function RolesPage() {
   const duplicateRole = useDuplicateRole();
 
   const roles = rolesData?.data || [];
+  const totalRoles = rolesData?.total || 0;
+  const lastPage = rolesData?.last_page || 1;
   const permissionModules = permissionsData?.data || [];
   const totalPermissions = permissionsData?.total || 0;
 
@@ -104,6 +143,16 @@ export default function RolesPage() {
       permissionsByModule: statsData.permissions_by_module,
     };
   }, [statsData]);
+
+  // Reset la page quand les filtres changent
+  const resetFilters = () => {
+    setCurrentPage(1);
+    setFilterHasUsers(undefined);
+    setFilterIsSystem(undefined);
+    setSortBy("name");
+    setSortOrder("asc");
+    setSearchTerm("");
+  };
 
   // Fonctions de gestion
   const resetForm = () => {
@@ -137,12 +186,58 @@ export default function RolesPage() {
     setShowDeleteDialog(true);
   };
 
+  const handleShowUsers = (role: Role) => {
+    setSelectedRole(role);
+    setShowUsersModal(true);
+  };
+
   const toggleRoleExpanded = (roleId: number) => {
     setExpandedRoles(prev => 
       prev.includes(roleId) 
         ? prev.filter(id => id !== roleId)
         : [...prev, roleId]
     );
+  };
+
+  // Export functions
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('format', format);
+      if (searchTerm) params.append('search', searchTerm);
+      if (filterHasUsers !== undefined) params.append('has_users', filterHasUsers.toString());
+      if (filterIsSystem !== undefined) params.append('is_system', filterIsSystem.toString());
+
+      const response = await api.get(`/export/roles?${params.toString()}`, {
+        responseType: 'blob'
+      });
+
+      const contentType = response.headers['content-type'];
+      const extension = format === 'pdf' ? 'pdf' : 'xlsx';
+      const blob = new Blob([response.data], { type: contentType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `roles-permissions-${new Date().toISOString().split('T')[0]}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export réussi",
+        description: `Le fichier ${format.toUpperCase()} a été téléchargé.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible de générer l'export.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Gestion des permissions dans le formulaire
@@ -225,6 +320,17 @@ export default function RolesPage() {
     return role.permissions.filter(p => p.startsWith(`${moduleName}.`)).length;
   };
 
+  // Toggle sort
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+    setCurrentPage(1);
+  };
+
   // Données pour les graphiques
   const pieChartData = useMemo(() => {
     if (!stats?.rolesDistribution) return [];
@@ -242,6 +348,9 @@ export default function RolesPage() {
       count: m.count,
     }));
   }, [stats]);
+
+  // Check if any filter is active
+  const hasActiveFilters = filterHasUsers !== undefined || filterIsSystem !== undefined;
 
   return (
     <MainLayout title="Gestion des Rôles et Permissions">
@@ -330,36 +439,164 @@ export default function RolesPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="liste" className="gap-2">
-                <Shield className="h-4 w-4" />
-                Liste des rôles
-              </TabsTrigger>
-              <TabsTrigger value="statistiques" className="gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Statistiques
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <TabsList>
+                <TabsTrigger value="liste" className="gap-2">
+                  <Shield className="h-4 w-4" />
+                  Liste des rôles
+                </TabsTrigger>
+                <TabsTrigger value="statistiques" className="gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Statistiques
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un rôle..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher un rôle..."
+                    value={searchTerm}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    className="pl-9"
+                  />
+                </div>
+
+                {/* Filtre dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className={hasActiveFilters ? "border-primary" : ""}>
+                      <Filter className={`h-4 w-4 ${hasActiveFilters ? "text-primary" : ""}`} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="p-2">
+                      <Label className="text-xs text-muted-foreground">Utilisateurs</Label>
+                      <Select 
+                        value={filterHasUsers === undefined ? "all" : filterHasUsers ? "yes" : "no"}
+                        onValueChange={(v) => {
+                          setFilterHasUsers(v === "all" ? undefined : v === "yes");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tous</SelectItem>
+                          <SelectItem value="yes">Avec utilisateurs</SelectItem>
+                          <SelectItem value="no">Sans utilisateurs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="p-2">
+                      <Label className="text-xs text-muted-foreground">Type</Label>
+                      <Select 
+                        value={filterIsSystem === undefined ? "all" : filterIsSystem ? "system" : "custom"}
+                        onValueChange={(v) => {
+                          setFilterIsSystem(v === "all" ? undefined : v === "system");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tous</SelectItem>
+                          <SelectItem value="system">Système</SelectItem>
+                          <SelectItem value="custom">Personnalisés</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={resetFilters}>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Réinitialiser les filtres
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Tri */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <ArrowUpDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleSort('name')}>
+                      {sortBy === 'name' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4 mr-2" /> : <SortDesc className="h-4 w-4 mr-2" />)}
+                      Nom
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSort('users_count')}>
+                      {sortBy === 'users_count' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4 mr-2" /> : <SortDesc className="h-4 w-4 mr-2" />)}
+                      Utilisateurs
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSort('permissions_count')}>
+                      {sortBy === 'permissions_count' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4 mr-2" /> : <SortDesc className="h-4 w-4 mr-2" />)}
+                      Permissions
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="outline" size="icon" onClick={() => refetchRoles()} disabled={isFetching}>
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+                </Button>
+
+                {/* Export */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" disabled={isExporting}>
+                      {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      <span className="hidden sm:inline ml-2">Exporter</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Exporter en PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('excel')}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Exporter en Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button onClick={handleOpenAdd} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Nouveau rôle</span>
+                </Button>
               </div>
-              <Button variant="outline" size="icon" onClick={() => refetchRoles()} disabled={isFetching}>
-                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button onClick={handleOpenAdd} className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Nouveau rôle</span>
-              </Button>
             </div>
+
+            {/* Info de résultats */}
+            {activeTab === "liste" && !isLoadingRoles && (
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  {totalRoles} rôle{totalRoles > 1 ? 's' : ''} trouvé{totalRoles > 1 ? 's' : ''}
+                  {hasActiveFilters && " (filtré)"}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span>Afficher:</span>
+                  <Select 
+                    value={perPage.toString()} 
+                    onValueChange={(v) => { setPerPage(parseInt(v)); setCurrentPage(1); }}
+                  >
+                    <SelectTrigger className="w-20 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tab: Liste des rôles */}
@@ -387,9 +624,14 @@ export default function RolesPage() {
                   <Shield className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                   <h3 className="text-lg font-medium mb-2">Aucun rôle trouvé</h3>
                   <p className="text-muted-foreground mb-4">
-                    {searchTerm ? "Aucun rôle ne correspond à votre recherche" : "Commencez par créer un rôle"}
+                    {searchTerm || hasActiveFilters ? "Aucun rôle ne correspond à vos critères" : "Commencez par créer un rôle"}
                   </p>
-                  {!searchTerm && (
+                  {(searchTerm || hasActiveFilters) ? (
+                    <Button variant="outline" onClick={resetFilters}>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Réinitialiser les filtres
+                    </Button>
+                  ) : (
                     <Button onClick={handleOpenAdd} className="gap-2">
                       <Plus className="h-4 w-4" />
                       Créer un rôle
@@ -398,152 +640,205 @@ export default function RolesPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                <AnimatePresence mode="popLayout">
-                  {roles.map((role, index) => (
-                    <motion.div
-                      key={role.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Card className={`transition-all hover:shadow-md ${expandedRoles.includes(role.id) ? 'ring-2 ring-primary/20' : ''}`}>
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div 
-                              className="flex items-center gap-4 cursor-pointer flex-1"
-                              onClick={() => toggleRoleExpanded(role.id)}
-                            >
-                              <div className={`p-3 rounded-xl ${role.is_system ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
-                                {role.is_system ? (
-                                  <ShieldCheck className="h-6 w-6" />
-                                ) : (
-                                  <Shield className="h-6 w-6 text-primary" />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <CardTitle className="text-lg capitalize">{role.name}</CardTitle>
-                                  {role.is_system && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      Système
-                                    </Badge>
+              <>
+                <div className="grid gap-4">
+                  <AnimatePresence mode="popLayout">
+                    {roles.map((role, index) => (
+                      <motion.div
+                        key={role.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <Card className={`transition-all hover:shadow-md ${expandedRoles.includes(role.id) ? 'ring-2 ring-primary/20' : ''}`}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div 
+                                className="flex items-center gap-4 cursor-pointer flex-1"
+                                onClick={() => toggleRoleExpanded(role.id)}
+                              >
+                                <div className={`p-3 rounded-xl ${role.is_system ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
+                                  {role.is_system ? (
+                                    <ShieldCheck className="h-6 w-6" />
+                                  ) : (
+                                    <Shield className="h-6 w-6 text-primary" />
                                   )}
                                 </div>
-                                <CardDescription className="mt-1">
-                                  {role.description}
-                                </CardDescription>
-                                <div className="flex items-center gap-4 mt-2">
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <Users className="h-3.5 w-3.5" />
-                                    <span>{role.users_count} utilisateur{role.users_count > 1 ? 's' : ''}</span>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <CardTitle className="text-lg capitalize">{role.name}</CardTitle>
+                                    {role.is_system && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        Système
+                                      </Badge>
+                                    )}
                                   </div>
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <Lock className="h-3.5 w-3.5" />
-                                    <span>{role.permissions_count} permission{role.permissions_count > 1 ? 's' : ''}</span>
+                                  <CardDescription className="mt-1">
+                                    {role.description}
+                                  </CardDescription>
+                                  <div className="flex items-center gap-4 mt-2">
+                                    <button 
+                                      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
+                                      onClick={(e) => { e.stopPropagation(); handleShowUsers(role); }}
+                                    >
+                                      <Users className="h-3.5 w-3.5" />
+                                      <span>{role.users_count} utilisateur{role.users_count > 1 ? 's' : ''}</span>
+                                    </button>
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <Lock className="h-3.5 w-3.5" />
+                                      <span>{role.permissions_count} permission{role.permissions_count > 1 ? 's' : ''}</span>
+                                    </div>
                                   </div>
                                 </div>
+                                <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${expandedRoles.includes(role.id) ? 'rotate-90' : ''}`} />
                               </div>
-                              <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${expandedRoles.includes(role.id) ? 'rotate-90' : ''}`} />
+                              
+                              {/* Actions dropdown */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="ml-2" onClick={(e) => e.stopPropagation()}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleShowUsers(role)}>
+                                    <Users className="h-4 w-4 mr-2" />
+                                    Voir les utilisateurs
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDuplicate(role)} disabled={duplicateRole.isPending}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Dupliquer
+                                  </DropdownMenuItem>
+                                  {!role.is_system && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleOpenEdit(role)}>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Modifier
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleOpenDelete(role)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Supprimer
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                            <div className="flex gap-2 ml-4">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => { e.stopPropagation(); handleDuplicate(role); }}
-                                disabled={duplicateRole.isPending}
-                                title="Dupliquer"
+
+                            {/* Barre de progression des permissions */}
+                            <div className="mt-4">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-muted-foreground">Niveau d'accès</span>
+                                <span className="font-medium">{getPermissionPercentage(role)}%</span>
+                              </div>
+                              <Progress value={getPermissionPercentage(role)} className="h-2" />
+                            </div>
+                          </CardHeader>
+
+                          {/* Contenu étendu */}
+                          <AnimatePresence>
+                            {expandedRoles.includes(role.id) && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
                               >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              {!role.is_system && (
-                                <>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(role); }}
-                                    title="Modifier"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={(e) => { e.stopPropagation(); handleOpenDelete(role); }}
-                                    title="Supprimer"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Barre de progression des permissions */}
-                          <div className="mt-4">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="text-muted-foreground">Niveau d'accès</span>
-                              <span className="font-medium">{getPermissionPercentage(role)}%</span>
-                            </div>
-                            <Progress value={getPermissionPercentage(role)} className="h-2" />
-                          </div>
-                        </CardHeader>
-
-                        {/* Contenu étendu */}
-                        <AnimatePresence>
-                          {expandedRoles.includes(role.id) && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <CardContent className="pt-0">
-                                <div className="border-t pt-4">
-                                  <h4 className="text-sm font-medium mb-3">Permissions par module</h4>
-                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                                    {permissionModules.map(module => {
-                                      const moduleCount = getModulePermissionCount(role, module.module);
-                                      const totalModulePerms = module.permissions.length;
-                                      const Icon = MODULE_ICONS[module.module] || Shield;
-                                      
-                                      return (
-                                        <div 
-                                          key={module.module}
-                                          className={`p-3 rounded-lg border ${moduleCount === totalModulePerms ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' : moduleCount > 0 ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800' : 'bg-muted/30'}`}
-                                        >
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <Icon className={`h-4 w-4 ${moduleCount === totalModulePerms ? 'text-green-600' : moduleCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}`} />
-                                            <span className="text-sm font-medium capitalize">{module.label}</span>
+                                <CardContent className="pt-0">
+                                  <div className="border-t pt-4">
+                                    <h4 className="text-sm font-medium mb-3">Permissions par module</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                      {permissionModules.map(module => {
+                                        const moduleCount = getModulePermissionCount(role, module.module);
+                                        const totalModulePerms = module.permissions.length;
+                                        const Icon = MODULE_ICONS[module.module] || Shield;
+                                        
+                                        return (
+                                          <div 
+                                            key={module.module}
+                                            className={`p-3 rounded-lg border ${moduleCount === totalModulePerms ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' : moduleCount > 0 ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800' : 'bg-muted/30'}`}
+                                          >
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <Icon className={`h-4 w-4 ${moduleCount === totalModulePerms ? 'text-green-600' : moduleCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}`} />
+                                              <span className="text-sm font-medium capitalize">{module.label}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              {moduleCount === totalModulePerms ? (
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                              ) : moduleCount > 0 ? (
+                                                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                                              ) : (
+                                                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                                              )}
+                                              <span className="text-xs text-muted-foreground">
+                                                {moduleCount}/{totalModulePerms}
+                                              </span>
+                                            </div>
                                           </div>
-                                          <div className="flex items-center gap-1">
-                                            {moduleCount === totalModulePerms ? (
-                                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                            ) : moduleCount > 0 ? (
-                                              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                                            ) : (
-                                              <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                                            )}
-                                            <span className="text-xs text-muted-foreground">
-                                              {moduleCount}/{totalModulePerms}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                </div>
-                              </CardContent>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+                                </CardContent>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {/* Pagination */}
+                {lastPage > 1 && (
+                  <div className="mt-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: lastPage }, (_, i) => i + 1)
+                          .filter(page => {
+                            if (lastPage <= 5) return true;
+                            if (page === 1 || page === lastPage) return true;
+                            if (Math.abs(page - currentPage) <= 1) return true;
+                            return false;
+                          })
+                          .map((page, idx, arr) => (
+                            <PaginationItem key={page}>
+                              {idx > 0 && arr[idx - 1] !== page - 1 && (
+                                <span className="px-2">...</span>
+                              )}
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => setCurrentPage(p => Math.min(lastPage, p + 1))}
+                            className={currentPage === lastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
@@ -635,6 +930,7 @@ export default function RolesPage() {
                           <th className="text-center py-3 px-4 font-medium">Permissions</th>
                           <th className="text-center py-3 px-4 font-medium">Niveau d'accès</th>
                           <th className="text-center py-3 px-4 font-medium">Type</th>
+                          <th className="text-center py-3 px-4 font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -662,6 +958,11 @@ export default function RolesPage() {
                               ) : (
                                 <Badge variant="outline">Personnalisé</Badge>
                               )}
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <Button variant="ghost" size="sm" onClick={() => handleShowUsers(role)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
                             </td>
                           </tr>
                         ))}
@@ -806,6 +1107,70 @@ export default function RolesPage() {
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
                 {isEditing ? 'Enregistrer' : 'Créer le rôle'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal Utilisateurs du rôle */}
+        <Dialog open={showUsersModal} onOpenChange={setShowUsersModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Utilisateurs du rôle "{selectedRole?.name}"
+              </DialogTitle>
+              <DialogDescription>
+                {selectedRole?.users_count || 0} utilisateur(s) assigné(s) à ce rôle
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              {isLoadingRoleDetail ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="space-y-1 flex-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : roleDetail?.users && roleDetail.users.length > 0 ? (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {roleDetail.users.map(user => (
+                    <div 
+                      key={user.id} 
+                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-sm font-semibold text-primary">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{user.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <Badge variant={user.actif ? "default" : "secondary"}>
+                        {user.actif ? "Actif" : "Inactif"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">Aucun utilisateur n'a ce rôle</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowUsersModal(false)}>
+                Fermer
               </Button>
             </DialogFooter>
           </DialogContent>
