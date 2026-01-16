@@ -3,6 +3,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { notificationsService } from '@/services/notificationsService';
 import type { Notification as AppNotification } from '@/services/notificationsService';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/use-auth';
 
 // Re-export le type pour les autres fichiers
 export type { AppNotification };
@@ -36,12 +37,14 @@ export function useNotifications(params?: {
   per_page?: number; 
   unread_only?: boolean 
 }) {
+  const { isAuthenticated } = useAuth();
   const isTabVisible = useTabVisibility();
   const pollingInterval = isTabVisible ? POLLING_INTERVAL_ACTIVE : POLLING_INTERVAL_BACKGROUND;
   
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, params],
     queryFn: () => notificationsService.getAll(params),
+    enabled: isAuthenticated,
     staleTime: 5000, // 5 secondes
     refetchInterval: pollingInterval,
     refetchIntervalInBackground: true,
@@ -51,12 +54,14 @@ export function useNotifications(params?: {
 
 // Hook pour récupérer le nombre de notifications non lues avec polling rapide
 export function useUnreadCount() {
+  const { isAuthenticated } = useAuth();
   const isTabVisible = useTabVisibility();
   const pollingInterval = isTabVisible ? POLLING_INTERVAL_ACTIVE : POLLING_INTERVAL_BACKGROUND;
   
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'unread-count'],
     queryFn: notificationsService.getUnreadCount,
+    enabled: isAuthenticated,
     staleTime: 5000,
     refetchInterval: pollingInterval,
     refetchIntervalInBackground: true,
@@ -66,9 +71,12 @@ export function useUnreadCount() {
 
 // Hook pour les alertes système - chargé une seule fois à la connexion
 export function useAlerts() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'alerts'],
     queryFn: notificationsService.getAlerts,
+    enabled: isAuthenticated,
     staleTime: Infinity, // Ne jamais considérer comme périmé
     gcTime: Infinity, // Garder en cache indéfiniment
     refetchInterval: false, // Pas de polling automatique
@@ -245,6 +253,7 @@ export function useNewNotificationDetector(onNewNotification?: (notification: Ap
 
 // Hook combiné pour le centre de notifications avec state local pour fallback
 export function useNotificationCenter() {
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [localNotifications, setLocalNotifications] = useState<AppNotification[]>([]);
   const [useLocal, setUseLocal] = useState(false);
@@ -257,6 +266,8 @@ export function useNotificationCenter() {
   
   // Si l'API échoue, utiliser les données locales avec des notifications de démo
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     if (error || (!isLoading && !data?.data?.length && localNotifications.length === 0)) {
       setUseLocal(true);
       // Générer des notifications de démo basées sur la date actuelle
@@ -291,12 +302,14 @@ export function useNotificationCenter() {
         },
       ]);
     }
-  }, [error, isLoading, data, localNotifications.length]);
+  }, [isAuthenticated, error, isLoading, data, localNotifications.length]);
   
-  const notifications = useLocal ? localNotifications : (data?.data ?? []);
-  const unreadCount = useLocal 
-    ? localNotifications.filter(n => !n.read).length 
-    : (data?.unread_count ?? 0);
+  const notifications = !isAuthenticated ? [] : (useLocal ? localNotifications : (data?.data ?? []));
+  const unreadCount = !isAuthenticated
+    ? 0
+    : (useLocal
+      ? localNotifications.filter(n => !n.read).length
+      : (data?.unread_count ?? 0));
   
   const markAsRead = useCallback((id: string) => {
     if (useLocal) {
@@ -339,11 +352,11 @@ export function useNotificationCenter() {
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
     }
   }, [useLocal, queryClient]);
-  
+
   return {
     notifications,
     unreadCount,
-    isLoading,
+    isLoading: isAuthenticated ? isLoading : false,
     markAsRead,
     markAllAsRead,
     deleteNotification,
