@@ -14,7 +14,6 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -22,54 +21,40 @@ interface AuthContextType {
   updateUser: (user: User) => void;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Vérifier la session au chargement (le cookie HttpOnly est envoyé automatiquement)
   useEffect(() => {
-    // Vérifier si l'utilisateur est déjà connecté
-    const storedToken = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('user');
+    checkAuthStatus();
+  }, []);
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      
-      // Vérifier que le token est encore valide
-      api.get('/auth/user')
-        .then((response) => {
-          setUser(response.data);
-          localStorage.setItem('user', JSON.stringify(response.data));
-        })
-        .catch(() => {
-          // Token invalide, déconnecter
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else {
+  const checkAuthStatus = async () => {
+    try {
+      // Le cookie HttpOnly est envoyé automatiquement avec withCredentials: true
+      const response = await api.get('/auth/user');
+      setUser(response.data);
+    } catch {
+      // Non authentifié ou cookie expiré
+      setUser(null);
+    } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { user: userData, token: authToken } = response.data;
-
-      localStorage.setItem('auth_token', authToken);
-      localStorage.setItem('user', JSON.stringify(userData));
+      const { user: userData } = response.data;
       
-      setToken(authToken);
+      // Le token est maintenant dans un cookie HttpOnly (géré par le backend)
+      // On stocke seulement les données utilisateur en mémoire
       setUser(userData);
 
       return { success: true };
@@ -102,16 +87,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      setToken(null);
+      // Le backend supprime le cookie, on nettoie juste l'état local
+      setUser(null);
+    }
+  };
+
+  const refreshSession = async () => {
+    try {
+      await api.post('/auth/refresh');
+      // Recharger les données utilisateur
+      await checkAuthStatus();
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement de session:', error);
       setUser(null);
     }
   };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const hasPermission = (permission: string): boolean => {
@@ -130,14 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
         login,
         logout,
         updateUser,
         hasPermission,
         hasRole,
+        refreshSession,
       }}
     >
       {children}

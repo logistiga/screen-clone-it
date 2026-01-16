@@ -33,16 +33,19 @@ return Application::configure(basePath: dirname(__DIR__))
             // 2. CORS - gestion des origines autorisées
             \Illuminate\Http\Middleware\HandleCors::class,
             
-            // 3. Sanctum - authentification stateful pour SPA
+            // 3. Extraction du token depuis le cookie HttpOnly
+            \App\Http\Middleware\AuthenticateFromCookie::class,
+            
+            // 4. Sanctum - authentification stateful pour SPA
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             
-            // 4. Rate Limiting global (60 req/min par défaut)
+            // 5. Rate Limiting global (60 req/min par défaut)
             'throttle:api',
             
-            // 5. Binding des paramètres de route
+            // 6. Binding des paramètres de route
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             
-            // 6. Logging sécurité (auth, exports, opérations sensibles)
+            // 7. Logging sécurité (auth, exports, opérations sensibles)
             \App\Http\Middleware\SecurityAuditLog::class,
         ]);
     })

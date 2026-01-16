@@ -57,6 +57,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('user', [AuthController::class, 'user']);
         Route::post('logout', [AuthController::class, 'logout']);
+        Route::post('refresh', [AuthController::class, 'refreshToken']);
         Route::put('profile', [AuthController::class, 'updateProfile']);
         Route::put('password', [AuthController::class, 'updatePassword']);
     });

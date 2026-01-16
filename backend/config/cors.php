@@ -47,6 +47,6 @@ return [
 
     'max_age' => 0,
 
-    // Bearer token => pas besoin de credentials. Mettez true seulement si vous utilisez des cookies cross-site.
-    'supports_credentials' => false,
+    // HttpOnly cookies pour l'authentification - DOIT être true
+    'supports_credentials' => true,
 ];
