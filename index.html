@@ -6,6 +6,7 @@
     <title>Logistiga - Gestion Commerciale</title>
     <meta name="description" content="Application de gestion commerciale avec support hors-ligne. Gérez vos clients, devis, factures et paiements." />
     <meta name="author" content="Logistiga" />
+    <meta name="robots" content="index, follow" />
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#E63946" />
@@ -13,12 +14,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Logistiga" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Logistiga" />
+    <meta name="msapplication-TileColor" content="#E63946" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="Logistiga - Gestion Commerciale" />
     <meta property="og:description" content="Application de gestion commerciale avec support hors-ligne" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:locale" content="fr_FR" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Logistiga" />
@@ -26,9 +31,19 @@
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/favicon.png" />
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
 
   <body>
+    <noscript>
+      <div style="padding: 2rem; text-align: center; font-family: sans-serif;">
+        <h1>JavaScript requis</h1>
+        <p>Cette application nécessite JavaScript pour fonctionner. Veuillez l'activer dans votre navigateur.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

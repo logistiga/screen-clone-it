@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const IS_PRODUCTION = import.meta.env.PROD;
 
 // Extraire l'URL de base (sans /api) pour le cookie CSRF
 const getBaseUrl = (): string => {
@@ -16,6 +17,8 @@ const api = axios.create({
   },
   // IMPORTANT: Permettre l'envoi des cookies HttpOnly avec chaque requête
   withCredentials: true,
+  // Timeout pour éviter les requêtes pendantes
+  timeout: 30000,
 });
 
 // ============================================
@@ -24,6 +27,15 @@ const api = axios.create({
 
 let csrfInitialized = false;
 let csrfPromise: Promise<void> | null = null;
+
+/**
+ * Logger conditionnel (désactivé en production)
+ */
+const log = {
+  info: (...args: unknown[]) => !IS_PRODUCTION && console.log(...args),
+  warn: (...args: unknown[]) => !IS_PRODUCTION && console.warn(...args),
+  error: (...args: unknown[]) => console.error(...args), // Toujours actif pour les erreurs critiques
+};
 
 /**
  * Récupère le cookie XSRF-TOKEN depuis Laravel Sanctum
@@ -42,11 +54,12 @@ const fetchCsrfToken = async (): Promise<void> => {
       const baseUrl = getBaseUrl();
       await axios.get(`${baseUrl}/sanctum/csrf-cookie`, {
         withCredentials: true,
+        timeout: 10000,
       });
       csrfInitialized = true;
-      console.log('[CSRF] Token initialisé');
+      log.info('[CSRF] Token initialisé');
     } catch (error) {
-      console.error('[CSRF] Erreur lors de la récupération du token:', error);
+      log.error('[CSRF] Erreur lors de la récupération du token:', error);
       // Ne pas bloquer l'application en cas d'erreur
     } finally {
       csrfPromise = null;
@@ -115,7 +128,7 @@ api.interceptors.response.use(
     // Si erreur 419 (CSRF token mismatch), réessayer avec un nouveau token
     if (error.response?.status === 419 && !originalRequest._retry) {
       originalRequest._retry = true;
-      console.warn('[CSRF] Token expiré, renouvellement...');
+      log.warn('[CSRF] Token expiré, renouvellement...');
       
       // Forcer le renouvellement du token CSRF
       csrfInitialized = false;
@@ -131,36 +144,38 @@ api.interceptors.response.use(
       return api(originalRequest);
     }
 
-    // Diagnostics ciblées
-    try {
-      const status = error?.response?.status;
-      const url: string | undefined = error?.config?.url;
-      const baseURL: string | undefined = error?.config?.baseURL;
-      const data = error?.response?.data;
+    // Diagnostics (uniquement en développement)
+    if (!IS_PRODUCTION) {
+      try {
+        const status = error?.response?.status;
+        const url: string | undefined = error?.config?.url;
+        const baseURL: string | undefined = error?.config?.baseURL;
+        const data = error?.response?.data;
 
-      if (typeof status === 'number' && status >= 500) {
-        console.error('[API] Erreur serveur', { status, baseURL, url, data });
-      } else if (!status) {
-        console.error('[API] Erreur réseau / CORS', {
-          baseURL,
-          url,
-          message: error?.message,
-        });
-      }
+        if (typeof status === 'number' && status >= 500) {
+          log.error('[API] Erreur serveur', { status, baseURL, url, data });
+        } else if (!status) {
+          log.error('[API] Erreur réseau / CORS', {
+            baseURL,
+            url,
+            message: error?.message,
+          });
+        }
 
-      if (
-        status === 404 &&
-        typeof url === 'string' &&
-        url.includes('/annulations/') &&
-        (url.includes('/rembourser') || url.includes('/generer-avoir') || url.includes('/utiliser-avoir'))
-      ) {
-        console.warn(
-          '[API] Route annulations introuvable (404). Le backend derrière VITE_API_URL n\'est probablement pas déployé/à jour.',
-          { baseURL, url }
-        );
+        if (
+          status === 404 &&
+          typeof url === 'string' &&
+          url.includes('/annulations/') &&
+          (url.includes('/rembourser') || url.includes('/generer-avoir') || url.includes('/utiliser-avoir'))
+        ) {
+          log.warn(
+            '[API] Route annulations introuvable (404). Le backend n\'est probablement pas déployé/à jour.',
+            { baseURL, url }
+          );
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
 
     // Gestion de l'erreur 401 (non authentifié)
