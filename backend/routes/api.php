@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 // Controllers
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\SessionController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DevisController;
 use App\Http\Controllers\Api\OrdreTravailController;
@@ -60,6 +61,17 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('refresh', [AuthController::class, 'refreshToken']);
         Route::put('profile', [AuthController::class, 'updateProfile']);
         Route::put('password', [AuthController::class, 'updatePassword']);
+    });
+
+    // ============================================
+    // SESSIONS (gestion des sessions actives)
+    // ============================================
+    Route::prefix('sessions')->group(function () {
+        Route::get('/', [SessionController::class, 'index']);
+        Route::get('current', [SessionController::class, 'current']);
+        Route::delete('{sessionId}', [SessionController::class, 'destroy']);
+        Route::post('revoke-others', [SessionController::class, 'revokeOthers']);
+        Route::post('revoke-all', [SessionController::class, 'revokeAll']);
     });
 
     // ============================================

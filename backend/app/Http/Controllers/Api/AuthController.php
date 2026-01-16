@@ -7,6 +7,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Models\User;
 use App\Models\Audit;
+use App\Services\SessionManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -24,6 +25,10 @@ class AuthController extends Controller
      * Nom du cookie pour le token
      */
     private const TOKEN_COOKIE_NAME = 'auth_token';
+
+    public function __construct(
+        private SessionManager $sessionManager
+    ) {}
 
     public function login(LoginRequest $request): JsonResponse
     {
@@ -45,25 +50,23 @@ class AuthController extends Controller
 
         Audit::log('login', 'auth', 'Connexion réussie');
 
-        // Créer le token
-        $token = $user->createToken('auth-token')->plainTextToken;
+        // Créer la session avec métadonnées
+        $sessionData = $this->sessionManager->createSession($user, $request);
+        $token = $sessionData['plainTextToken'];
 
         // Créer le cookie HttpOnly sécurisé
-        $cookie = Cookie::make(
-            self::TOKEN_COOKIE_NAME,
-            $token,
-            self::TOKEN_EXPIRATION_MINUTES,
-            '/',                          // path
-            null,                         // domain (null = current domain)
-            true,                         // secure (HTTPS only)
-            true,                         // httpOnly (inaccessible via JavaScript)
-            false,                        // raw
-            'Strict'                      // sameSite (protection CSRF)
-        );
+        $cookie = $this->createAuthCookie($token);
+
+        // Obtenir les stats de session pour informer l'utilisateur
+        $sessionStats = $this->sessionManager->getSessionStats($user);
 
         return response()->json([
             'user' => $user->load('roles', 'permissions'),
             'message' => 'Connexion réussie',
+            'session' => [
+                'active_sessions' => $sessionStats['total_sessions'],
+                'max_sessions' => $sessionStats['max_sessions'],
+            ],
         ])->withCookie($cookie);
     }
 
@@ -117,7 +120,12 @@ class AuthController extends Controller
 
         Audit::log('update', 'password', 'Mot de passe modifié');
 
-        return response()->json(['message' => 'Mot de passe modifié avec succès']);
+        // Optionnel: révoquer toutes les autres sessions après changement de mot de passe
+        $this->sessionManager->revokeOtherSessions($request->user());
+
+        return response()->json([
+            'message' => 'Mot de passe modifié avec succès. Les autres sessions ont été déconnectées.',
+        ]);
     }
 
     /**
@@ -134,24 +142,33 @@ class AuthController extends Controller
         // Supprimer l'ancien token
         $user->currentAccessToken()->delete();
 
-        // Créer un nouveau token
-        $token = $user->createToken('auth-token')->plainTextToken;
+        // Créer une nouvelle session avec les mêmes métadonnées
+        $sessionData = $this->sessionManager->createSession($user, $request, 'auth-token-refreshed');
+        $token = $sessionData['plainTextToken'];
 
         // Créer le nouveau cookie
-        $cookie = Cookie::make(
+        $cookie = $this->createAuthCookie($token);
+
+        return response()->json([
+            'message' => 'Token rafraîchi',
+        ])->withCookie($cookie);
+    }
+
+    /**
+     * Créer le cookie d'authentification
+     */
+    private function createAuthCookie(string $token): \Symfony\Component\HttpFoundation\Cookie
+    {
+        return Cookie::make(
             self::TOKEN_COOKIE_NAME,
             $token,
             self::TOKEN_EXPIRATION_MINUTES,
             '/',
             null,
-            true,
-            true,
-            false,
-            'Strict'
+            true,  // secure
+            true,  // httpOnly
+            false, // raw
+            'Strict' // sameSite
         );
-
-        return response()->json([
-            'message' => 'Token rafraîchi',
-        ])->withCookie($cookie);
     }
 }
