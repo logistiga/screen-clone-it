@@ -41,7 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { PaiementNoteModal } from "@/components/notes/PaiementNoteModal";
+import { PaiementModal } from "@/components/PaiementModal";
 import { EmailNoteModal } from "@/components/notes/EmailNoteModal";
 
 interface NoteDebut {
@@ -163,20 +163,11 @@ export default function NoteDebutDetail() {
     });
   };
 
-  const handlePaiementSuccess = (montant: number) => {
+  const handlePaiementSuccess = () => {
+    // Refresh note data after payment
     setNote((prev) => ({
       ...prev,
-      paid: prev.paid + montant,
-      status: prev.paid + montant + prev.advance >= prev.montantTotal ? "paid" : "partial",
-      paiements: [
-        ...prev.paiements,
-        {
-          id: `p${prev.paiements.length + 1}`,
-          date: new Date().toISOString().split("T")[0],
-          montant,
-          methode: "Paiement",
-        },
-      ],
+      status: "partial",
     }));
   };
 
@@ -401,11 +392,14 @@ export default function NoteDebutDetail() {
       </div>
 
       {/* Modals */}
-      <PaiementNoteModal
+      <PaiementModal
         open={showPaiementModal}
         onOpenChange={setShowPaiementModal}
-        noteNumero={note.number}
+        documentType="note_debut"
+        documentId={note.id}
+        documentNumero={note.number}
         montantRestant={remaining}
+        clientId={parseInt(note.clientId) || undefined}
         onSuccess={handlePaiementSuccess}
       />
 
