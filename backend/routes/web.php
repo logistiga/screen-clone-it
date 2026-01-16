@@ -15,6 +15,8 @@ use Laravel\Sanctum\Http\Controllers\CsrfCookieController;
 
 // Sanctum CSRF cookie (SPA)
 Route::get('sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
+// Si l'app est servie sous /backend (proxy/alias), accepter aussi ce chemin
+Route::get('backend/sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
 
 // Health simple côté web
 Route::get('/', function () {

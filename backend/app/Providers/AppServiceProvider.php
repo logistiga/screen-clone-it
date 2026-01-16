@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Sanctum\Sanctum;
 use App\Services\PaiementService;
 use App\Services\NoteDebutService;
 use App\Services\CaisseService;
@@ -100,9 +99,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force l'enregistrement des routes Sanctum, dont /sanctum/csrf-cookie
-        Sanctum::routes();
-
         // Fix pour MySQL < 5.7.7 / MariaDB avec utf8mb4
         Schema::defaultStringLength(191);
 
