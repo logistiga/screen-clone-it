@@ -440,6 +440,7 @@ export default function NoteDebutDetail() {
       <EmailNoteModal
         open={showEmailModal}
         onOpenChange={setShowEmailModal}
+        noteId={note.id}
         noteNumero={note.numero}
         clientEmail={clientEmail}
         clientNom={clientName}

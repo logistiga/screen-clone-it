@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Send, User, AtSign } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Mail, Send, User, AtSign, Paperclip } from "lucide-react";
+import { useSendNoteDebutEmail } from "@/hooks/use-notes-debut";
 
 interface EmailNoteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  noteId: string;
   noteNumero: string;
   clientEmail?: string;
   clientNom?: string;
@@ -27,56 +28,62 @@ interface EmailNoteModalProps {
 export function EmailNoteModal({
   open,
   onOpenChange,
+  noteId,
   noteNumero,
   clientEmail,
   clientNom,
   noteType,
 }: EmailNoteModalProps) {
-  const { toast } = useToast();
   const [emailOption, setEmailOption] = useState<"client" | "autre">(
     clientEmail ? "client" : "autre"
   );
   const [customEmail, setCustomEmail] = useState("");
-  const [objet, setObjet] = useState(`Note de début ${noteNumero} - ${noteType}`);
-  const [message, setMessage] = useState(
-    `Bonjour,\n\nVeuillez trouver ci-joint votre note de début ${noteNumero} (${noteType}).\n\nCordialement,\nL'équipe Lojistiga`
-  );
-  const [isSending, setIsSending] = useState(false);
+  const [objet, setObjet] = useState("");
+  const [message, setMessage] = useState("");
+
+  const sendEmailMutation = useSendNoteDebutEmail();
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setEmailOption(clientEmail ? "client" : "autre");
+      setCustomEmail("");
+      setObjet(`Note de début ${noteNumero} - ${noteType}`);
+      setMessage(
+        `Bonjour${clientNom ? ` ${clientNom}` : ''},\n\nVeuillez trouver ci-joint votre note de début ${noteNumero} (${noteType}).\n\nLe document PDF est joint à cet email.\n\nCordialement,\nL'équipe LOGISTIGA`
+      );
+    }
+  }, [open, noteNumero, noteType, clientEmail, clientNom]);
 
   const handleSend = async () => {
     const email = emailOption === "client" ? clientEmail : customEmail;
 
     if (!email) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez saisir une adresse email.",
-        variant: "destructive",
-      });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast({
-        title: "Erreur",
-        description: "L'adresse email n'est pas valide.",
-        variant: "destructive",
-      });
       return;
     }
 
-    setIsSending(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    toast({
-      title: "Email envoyé",
-      description: `La note ${noteNumero} a été envoyée à ${email}`,
-    });
-
-    setIsSending(false);
-    onOpenChange(false);
+    try {
+      await sendEmailMutation.mutateAsync({
+        id: noteId,
+        data: {
+          destinataire: email,
+          sujet: objet,
+          message: message,
+        },
+      });
+      onOpenChange(false);
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
+
+  const selectedEmail = emailOption === "client" ? clientEmail : customEmail;
+  const isValidEmail = selectedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selectedEmail);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,11 +94,19 @@ export function EmailNoteModal({
             Envoyer par email
           </DialogTitle>
           <DialogDescription>
-            Envoyer la note <strong>{noteNumero}</strong> par email
+            Envoyer la note <strong>{noteNumero}</strong> par email avec le PDF en pièce jointe
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Attachment indicator */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <Paperclip className="h-4 w-4 text-primary" />
+            <span className="text-sm">
+              <strong>Pièce jointe :</strong> {noteNumero}.pdf
+            </span>
+          </div>
+
           <div className="space-y-3">
             <Label>Destinataire</Label>
             <RadioGroup value={emailOption} onValueChange={(v) => setEmailOption(v as "client" | "autre")}>
@@ -153,11 +168,15 @@ export function EmailNoteModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sendEmailMutation.isPending}>
             Annuler
           </Button>
-          <Button onClick={handleSend} disabled={isSending} className="gap-2">
-            {isSending ? (
+          <Button 
+            onClick={handleSend} 
+            disabled={sendEmailMutation.isPending || !isValidEmail} 
+            className="gap-2"
+          >
+            {sendEmailMutation.isPending ? (
               <>
                 <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Envoi en cours...
