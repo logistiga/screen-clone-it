@@ -97,3 +97,16 @@ export function useNotesDebutStats(params?: { client_id?: string; type?: string;
     queryFn: () => notesDebutApi.getStats(params),
   });
 }
+
+export function useSendNoteDebutEmail() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { destinataire: string; sujet: string; message: string } }) => 
+      notesDebutApi.sendEmail(id, data),
+    onSuccess: () => {
+      toast.success('Email envoyé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi de l\'email');
+    },
+  });
+}

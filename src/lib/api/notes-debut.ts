@@ -132,4 +132,9 @@ export const notesDebutApi = {
     const response = await api.get('/notes-debut/stats', { params });
     return response.data;
   },
+
+  sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }): Promise<void> => {
+    const response = await api.post(`/notes-debut/${id}/send-email`, data);
+    return response.data;
+  },
 };

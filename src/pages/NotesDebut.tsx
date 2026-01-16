@@ -529,6 +529,7 @@ export default function NotesDebut() {
           <EmailNoteModal
             open={showEmailModal}
             onOpenChange={setShowEmailModal}
+            noteId={selectedNote.id}
             noteNumero={selectedNote.numero}
             clientEmail={selectedNote.client?.email || ''}
             clientNom={selectedNote.client?.nom || ''}
