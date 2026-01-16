@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock, Mail, LogIn, Eye, EyeOff, User } from "lucide-react";
 import logo from "@/assets/logistiga-logo-new.png";
-import loadingGif from "@/assets/loading-transition.gif";
+import roadGif from "@/assets/road-animation.gif";
 export default function LoginPage() {
   const navigate = useNavigate();
   const {
@@ -70,7 +70,7 @@ export default function LoginPage() {
     setIsLoading(false);
   };
   return <div className="min-h-screen flex">
-      {/* Section gauche - BLANCHE avec GIF */}
+      {/* Section gauche - Gris route avec GIF */}
       <motion.div initial={{
       x: -100,
       opacity: 0
@@ -80,7 +80,9 @@ export default function LoginPage() {
     }} transition={{
       duration: 0.6,
       ease: [0.25, 0.46, 0.45, 0.94]
-    }} className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-white">
+    }} className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{
+      backgroundColor: "#3d4654"
+    }}>
         {/* Forme courbe rouge */}
         <div className="absolute right-0 top-0 h-full w-32" style={{
         background: "#DC2626",
@@ -88,39 +90,25 @@ export default function LoginPage() {
         transform: "translateX(50%)"
       }} />
         
-        {/* Contenu avec GIF */}
-        <div className="flex flex-col items-center justify-center w-full p-12 relative z-10">
-          {/* Logo en haut */}
-          
-
-          {/* GIF animé au centre */}
-          <motion.div initial={{
-          scale: 0.8,
-          opacity: 0
-        }} animate={{
-          scale: 1,
-          opacity: 1
-        }} transition={{
-          delay: 0.3,
-          duration: 0.5
-        }} className="relative">
-            <motion.img src={loadingGif} alt="LOJISTIGA Animation" className="w-72 h-72 object-scale-down" animate={{
-            scale: [1, 1.02, 1]
-          }} transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }} />
-          </motion.div>
-
-          {/* Texte sous le GIF */}
-          
-
-          {/* Points décoratifs gris */}
-          <div className="absolute top-20 right-48 w-2 h-2 bg-slate-300 rounded-full" />
-          <div className="absolute top-40 left-20 w-3 h-3 bg-slate-200 rounded-full" />
-          <div className="absolute bottom-32 right-40 w-2 h-2 bg-slate-300 rounded-full" />
-          <div className="absolute bottom-48 left-32 w-1.5 h-1.5 bg-slate-400 rounded-full" />
+        {/* GIF en plein écran */}
+        <div className="flex items-center justify-center w-full h-full relative z-10">
+          <motion.img 
+            src={roadGif} 
+            alt="LOJISTIGA Animation" 
+            className="w-full h-full object-contain"
+            initial={{
+              scale: 0.9,
+              opacity: 0
+            }}
+            animate={{
+              scale: 1,
+              opacity: 1
+            }}
+            transition={{
+              delay: 0.3,
+              duration: 0.6
+            }}
+          />
         </div>
       </motion.div>
 
