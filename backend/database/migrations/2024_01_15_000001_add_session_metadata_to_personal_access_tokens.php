@@ -21,14 +21,14 @@ return new class extends Migration
             $table->timestamp('last_active_at')->nullable()->after('location');
             
             // Index pour les requêtes fréquentes
-            $table->index(['tokenable_type', 'tokenable_id', 'last_active_at']);
+            $table->index(['tokenable_type', 'tokenable_id', 'last_active_at'], 'pat_tokenable_last_active_idx');
         });
     }
 
     public function down(): void
     {
         Schema::table('personal_access_tokens', function (Blueprint $table) {
-            $table->dropIndex(['tokenable_type', 'tokenable_id', 'last_active_at']);
+            $table->dropIndex('pat_tokenable_last_active_idx');
             $table->dropColumn([
                 'ip_address',
                 'user_agent',
