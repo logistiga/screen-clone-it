@@ -41,7 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { PaiementNoteModal } from "@/components/notes/PaiementNoteModal";
+import { PaiementModal } from "@/components/PaiementModal";
 import { EmailNoteModal } from "@/components/notes/EmailNoteModal";
 import { useNotesDebut, useDeleteNoteDebut } from "@/hooks/use-notes-debut";
 import { NoteDebut } from "@/lib/api/notes-debut";
@@ -513,12 +513,18 @@ export default function NotesDebut() {
       {/* Modals */}
       {selectedNote && (
         <>
-          <PaiementNoteModal
+          <PaiementModal
             open={showPaiementModal}
             onOpenChange={setShowPaiementModal}
-            noteNumero={selectedNote.numero}
+            documentType="note_debut"
+            documentId={selectedNote.id}
+            documentNumero={selectedNote.numero}
             montantRestant={getNoteRemaining(selectedNote)}
-            onSuccess={handlePaiementSuccess}
+            clientId={selectedNote.client_id ? parseInt(selectedNote.client_id) : undefined}
+            onSuccess={() => {
+              refetch();
+              setSelectedNote(null);
+            }}
           />
           <EmailNoteModal
             open={showEmailModal}

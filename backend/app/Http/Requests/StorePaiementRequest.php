@@ -16,6 +16,7 @@ class StorePaiementRequest extends FormRequest
         return [
             'facture_id' => 'nullable|exists:factures,id',
             'ordre_id' => 'nullable|exists:ordres_travail,id',
+            'note_debut_id' => 'nullable|exists:notes_debut,id',
             'client_id' => 'nullable|exists:clients,id',
             'montant' => 'required|numeric|min:0.01|max:999999999.99',
             'mode_paiement' => 'required|in:Espèces,Chèque,Virement,Mobile Money',
@@ -30,8 +31,8 @@ class StorePaiementRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (!$this->facture_id && !$this->ordre_id) {
-                $validator->errors()->add('document', 'Vous devez spécifier une facture ou un ordre de travail.');
+            if (!$this->facture_id && !$this->ordre_id && !$this->note_debut_id) {
+                $validator->errors()->add('document', 'Vous devez spécifier une facture, un ordre de travail ou une note de début.');
             }
         });
     }
@@ -41,6 +42,7 @@ class StorePaiementRequest extends FormRequest
         return [
             'facture_id.exists' => 'La facture sélectionnée n\'existe pas.',
             'ordre_id.exists' => 'L\'ordre de travail sélectionné n\'existe pas.',
+            'note_debut_id.exists' => 'La note de début sélectionnée n\'existe pas.',
             'montant.required' => 'Le montant est obligatoire.',
             'montant.min' => 'Le montant doit être supérieur à 0.',
             'montant.max' => 'Le montant est trop élevé.',

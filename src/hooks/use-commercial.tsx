@@ -628,6 +628,7 @@ export function useCreatePaiement() {
       queryClient.invalidateQueries({ queryKey: ['paiements'] });
       queryClient.invalidateQueries({ queryKey: ['factures'] });
       queryClient.invalidateQueries({ queryKey: ['ordres'] });
+      queryClient.invalidateQueries({ queryKey: ['notes-debut'] });
       toast.success('Paiement enregistré avec succès');
     },
     onError: (error: any) => {

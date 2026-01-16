@@ -29,7 +29,7 @@ import { toast } from "sonner";
 interface PaiementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  documentType: "ordre" | "facture";
+  documentType: "ordre" | "facture" | "note_debut";
   documentId: string;
   documentNumero: string;
   montantRestant: number;
@@ -169,7 +169,11 @@ export function PaiementModal({
         banque_id: (modePaiement === "Chèque" || modePaiement === "Virement") && banqueId ? parseInt(banqueId) : undefined,
         reference: reference || undefined,
         notes: notes || undefined,
-        ...(documentType === "facture" ? { facture_id: docId } : { ordre_id: docId }),
+        ...(documentType === "facture" 
+          ? { facture_id: docId } 
+          : documentType === "ordre" 
+            ? { ordre_id: docId } 
+            : { note_debut_id: docId }),
       };
 
       createPaiement.mutate(paiementData, {
