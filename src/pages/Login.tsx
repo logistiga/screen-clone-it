@@ -91,7 +91,7 @@ export default function LoginPage() {
       }} />
         
         {/* Animation GIF - Route */}
-        <div className="flex items-center justify-center w-full h-full relative z-10 p-8">
+        <div className="flex items-center justify-center w-full h-full relative z-10">
           <motion.img 
             src={loginAnimation} 
             alt="LOJISTIGA Animation" 
