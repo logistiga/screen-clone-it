@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock, Mail, LogIn, Eye, EyeOff, User } from "lucide-react";
+import { triggerPWAInstallAfterLogin } from "@/components/pwa/PWAInstallPrompt";
 import logo from "@/assets/logistiga-logo-new.png";
 import loginAnimation from "@/assets/login-animation.gif";
 
@@ -62,6 +63,8 @@ const LoginPage = forwardRef<HTMLDivElement, object>(function LoginPage(_props, 
         title: "Connexion réussie",
         description: "Bienvenue sur LOGISTIGA",
       });
+      // Déclencher le prompt d'installation PWA après connexion
+      triggerPWAInstallAfterLogin();
       navigate("/", { replace: true });
     } else {
       setError(result.error || "Erreur de connexion");
