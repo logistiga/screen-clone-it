@@ -209,12 +209,12 @@ export default function RolesPage() {
       if (filterHasUsers !== undefined) params.append('has_users', filterHasUsers.toString());
       if (filterIsSystem !== undefined) params.append('is_system', filterIsSystem.toString());
 
-      const response = await api.get(`/export/roles?${params.toString()}`, {
+      const response = await api.get(`/exports/roles?${params.toString()}`, {
         responseType: 'blob'
       });
 
       const contentType = response.headers['content-type'];
-      const extension = format === 'pdf' ? 'pdf' : 'xlsx';
+      const extension = format === 'pdf' ? 'pdf' : 'csv';
       const blob = new Blob([response.data], { type: contentType });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
