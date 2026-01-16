@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePaiementRequest;
 use App\Http\Requests\StorePaiementGlobalRequest;
 use App\Http\Resources\PaiementResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\Paiement;
 use App\Models\Facture;
 use App\Models\OrdreTravail;
@@ -18,7 +19,24 @@ use Illuminate\Support\Facades\Log;
 
 class PaiementController extends Controller
 {
+    use SecureQueryParameters;
+
     protected PaiementService $paiementService;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'date', 'montant', 'mode_paiement', 'reference', 'created_at', 'updated_at'
+    ];
+
+    /**
+     * Modes de paiement autorisés
+     */
+    protected array $allowedModes = [
+        'especes', 'cheque', 'virement', 'carte', 'mobile_money',
+        'Espèces', 'Chèque', 'Virement', 'Carte bancaire', 'Mobile Money'
+    ];
 
     public function __construct(PaiementService $paiementService)
     {
@@ -30,8 +48,9 @@ class PaiementController extends Controller
         try {
             $query = Paiement::with(['facture.client', 'ordre.client', 'noteDebut.client', 'client', 'banque']);
 
-            if ($request->filled('search')) {
-                $search = $request->get('search');
+            // Recherche sécurisée
+            $search = $this->validateSearchParameter($request);
+            if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('reference', 'like', "%{$search}%")
                       ->orWhereHas('facture', fn($q) => $q->where('numero', 'like', "%{$search}%"))
@@ -40,8 +59,8 @@ class PaiementController extends Controller
                 });
             }
 
-            // Filtre par type (facture, ordre ou note_debut)
-            if ($request->filled('type')) {
+            // Filtre par type validé
+            if ($request->filled('type') && in_array($request->get('type'), ['facture', 'ordre', 'note_debut'])) {
                 $type = $request->get('type');
                 if ($type === 'facture') {
                     $query->whereNotNull('facture_id');
@@ -52,32 +71,44 @@ class PaiementController extends Controller
                 }
             }
 
-            if ($request->filled('note_debut_id')) {
-                $query->where('note_debut_id', $request->get('note_debut_id'));
+            // IDs validés
+            $noteDebutId = $this->validateId($request->get('note_debut_id'));
+            if ($noteDebutId) {
+                $query->where('note_debut_id', $noteDebutId);
             }
 
-            if ($request->filled('mode_paiement')) {
+            if ($request->filled('mode_paiement') && in_array($request->get('mode_paiement'), $this->allowedModes)) {
                 $query->where('mode_paiement', $request->get('mode_paiement'));
             }
 
-            if ($request->filled('client_id')) {
-                $query->where('client_id', $request->get('client_id'));
+            $clientId = $this->validateId($request->get('client_id'));
+            if ($clientId) {
+                $query->where('client_id', $clientId);
             }
 
-            if ($request->filled('facture_id')) {
-                $query->where('facture_id', $request->get('facture_id'));
+            $factureId = $this->validateId($request->get('facture_id'));
+            if ($factureId) {
+                $query->where('facture_id', $factureId);
             }
 
-            if ($request->filled('ordre_id')) {
-                $query->where('ordre_id', $request->get('ordre_id'));
+            $ordreId = $this->validateId($request->get('ordre_id'));
+            if ($ordreId) {
+                $query->where('ordre_id', $ordreId);
             }
 
-            if ($request->filled('banque_id')) {
-                $query->where('banque_id', $request->get('banque_id'));
+            $banqueId = $this->validateId($request->get('banque_id'));
+            if ($banqueId) {
+                $query->where('banque_id', $banqueId);
             }
 
-            if ($request->filled('date_debut')) {
-                $query->where('date', '>=', $request->get('date_debut'));
+            // Dates validées
+            $dateRange = $this->validateDateRange($request);
+            if ($dateRange['start']) {
+                $query->where('date', '>=', $dateRange['start']);
+            }
+            if ($dateRange['end']) {
+                $query->where('date', '<=', $dateRange['end']);
+            }
             }
 
             if ($request->filled('date_fin')) {

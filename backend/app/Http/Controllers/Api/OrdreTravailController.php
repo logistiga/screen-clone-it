@@ -7,6 +7,7 @@ use App\Http\Requests\StoreOrdreTravailRequest;
 use App\Http\Requests\UpdateOrdreTravailRequest;
 use App\Http\Resources\OrdreTravailResource;
 use App\Http\Resources\FactureResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\OrdreTravail;
 use App\Models\Audit;
 use App\Services\OrdreTravail\OrdreServiceFactory;
@@ -15,7 +16,25 @@ use Illuminate\Http\JsonResponse;
 
 class OrdreTravailController extends Controller
 {
+    use SecureQueryParameters;
+
     protected OrdreServiceFactory $ordreFactory;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'numero', 'date_creation', 'montant_ht', 'montant_ttc', 
+        'statut', 'categorie', 'created_at', 'updated_at'
+    ];
+
+    /**
+     * Statuts autorisés
+     */
+    protected array $allowedStatuts = [
+        'brouillon', 'en_cours', 'termine', 'facture', 'annule',
+        'Brouillon', 'En cours', 'Terminé', 'Facturé', 'Annulé'
+    ];
 
     public function __construct(OrdreServiceFactory $ordreFactory)
     {
@@ -24,12 +43,11 @@ class OrdreTravailController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        // Optimisation: ne charger que les relations essentielles pour la liste
-        // Les détails (lignes, conteneurs.operations, lots) sont chargés uniquement sur show()
         $query = OrdreTravail::with(['client:id,nom,email,telephone']);
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
                   ->orWhere('numero_bl', 'like', "%{$search}%")
@@ -37,23 +55,33 @@ class OrdreTravailController extends Controller
             });
         }
 
-        if ($request->has('statut')) {
+        // Filtres validés
+        if ($request->filled('statut') && in_array($request->get('statut'), $this->allowedStatuts)) {
             $query->where('statut', $request->get('statut'));
         }
 
-        if ($request->has('client_id')) {
-            $query->where('client_id', $request->get('client_id'));
+        // Client ID validé
+        $clientId = $this->validateId($request->get('client_id'));
+        if ($clientId) {
+            $query->where('client_id', $clientId);
         }
 
-        if ($request->has('categorie')) {
+        if ($request->filled('categorie') && in_array($request->get('categorie'), ['Conteneur', 'Lot', 'Independant'])) {
             $query->where('categorie', $request->get('categorie'));
         }
 
-        if ($request->has('date_debut') && $request->has('date_fin')) {
-            $query->whereBetween('date_creation', [$request->get('date_debut'), $request->get('date_fin')]);
+        // Dates validées
+        $dateRange = $this->validateDateRange($request);
+        if ($dateRange['start'] && $dateRange['end']) {
+            $query->whereBetween('date_creation', [$dateRange['start'], $dateRange['end']]);
         }
 
-        $ordres = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
+        // Tri et pagination sécurisés
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns);
+        $pagination = $this->validatePaginationParameters($request);
+
+        $ordres = $query->orderBy($sort['column'], $sort['direction'])
+            ->paginate($pagination['per_page']);
 
         return response()->json(OrdreTravailResource::collection($ordres)->response()->getData(true));
     }

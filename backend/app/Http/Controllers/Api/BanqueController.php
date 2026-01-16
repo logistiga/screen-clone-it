@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBanqueRequest;
 use App\Http\Requests\UpdateBanqueRequest;
 use App\Http\Resources\BanqueResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\Banque;
 use App\Models\Paiement;
 use App\Models\MouvementCaisse;
@@ -16,13 +17,23 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class BanqueController extends Controller
 {
+    use SecureQueryParameters;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'nom', 'code', 'solde', 'actif', 'created_at'
+    ];
+
     public function index(Request $request): JsonResponse
     {
         $query = Banque::withCount('paiements')
             ->withSum('paiements', 'montant');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%");
@@ -33,7 +44,10 @@ class BanqueController extends Controller
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $banques = $query->orderBy('nom')->get();
+        // Tri sécurisé
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
+
+        $banques = $query->orderBy($sort['column'], $sort['direction'])->get();
 
         return response()->json(BanqueResource::collection($banques));
     }

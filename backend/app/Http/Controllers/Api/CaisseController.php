@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMouvementCaisseRequest;
 use App\Http\Resources\MouvementCaisseResource;
+use App\Http\Traits\SecureQueryParameters;
 use App\Models\MouvementCaisse;
 use App\Models\Audit;
 use App\Services\CaisseService;
@@ -13,7 +14,22 @@ use Illuminate\Http\JsonResponse;
 
 class CaisseController extends Controller
 {
+    use SecureQueryParameters;
+
     protected CaisseService $caisseService;
+
+    /**
+     * Colonnes autorisées pour le tri
+     */
+    protected array $allowedSortColumns = [
+        'id', 'date', 'montant', 'type', 'source', 'categorie', 'created_at'
+    ];
+
+    /**
+     * Types et sources autorisés
+     */
+    protected array $allowedTypes = ['Entrée', 'Sortie'];
+    protected array $allowedSources = ['caisse', 'banque'];
 
     public function __construct(CaisseService $caisseService)
     {
@@ -22,27 +38,45 @@ class CaisseController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $mouvements = $this->caisseService->getMouvements([
-            'type' => $request->get('type'),
-            'source' => $request->get('source'),
-            'banque_id' => $request->get('banque_id'),
-            'date_debut' => $request->get('date_debut'),
-            'date_fin' => $request->get('date_fin'),
-        ]);
+        // Filtres validés
+        $filters = [
+            'type' => $request->filled('type') && in_array($request->get('type'), $this->allowedTypes) 
+                ? $request->get('type') : null,
+            'source' => $request->filled('source') && in_array($request->get('source'), $this->allowedSources)
+                ? $request->get('source') : null,
+            'banque_id' => $this->validateId($request->get('banque_id')),
+            'date_debut' => null,
+            'date_fin' => null,
+        ];
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Dates validées
+        $dateRange = $this->validateDateRange($request);
+        $filters['date_debut'] = $dateRange['start'];
+        $filters['date_fin'] = $dateRange['end'];
+
+        $mouvements = $this->caisseService->getMouvements($filters);
+
+        // Recherche sécurisée
+        $search = $this->validateSearchParameter($request);
+        if ($search) {
             $mouvements->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
                   ->orWhere('categorie', 'like', "%{$search}%");
             });
         }
 
-        if ($request->has('categorie')) {
-            $mouvements->where('categorie', $request->get('categorie'));
+        // Catégorie validée (string simple)
+        $categorie = $this->validateSearchParameter($request, 'categorie');
+        if ($categorie) {
+            $mouvements->where('categorie', $categorie);
         }
 
-        $mouvements = $mouvements->paginate($request->get('per_page', 20));
+        // Tri et pagination sécurisés
+        $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'date', 'desc');
+        $pagination = $this->validatePaginationParameters($request, 20);
+
+        $mouvements = $mouvements->orderBy($sort['column'], $sort['direction'])
+            ->paginate($pagination['per_page']);
 
         return response()->json(MouvementCaisseResource::collection($mouvements)->response()->getData(true));
     }
