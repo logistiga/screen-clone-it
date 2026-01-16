@@ -92,23 +92,16 @@ export default function LoginPage() {
         
         {/* Animation GIF - Route */}
         <div className="flex items-center justify-center w-full h-full relative z-10">
-          <motion.img 
-            src={loginAnimation} 
-            alt="LOJISTIGA Animation" 
-            className="max-w-full max-h-full object-contain"
-            initial={{
-              scale: 0.95,
-              opacity: 0
-            }}
-            animate={{
-              scale: 1,
-              opacity: 1
-            }}
-            transition={{
-              delay: 0.3,
-              duration: 0.6
-            }}
-          />
+          <motion.img src={loginAnimation} alt="LOJISTIGA Animation" className="max-w-full max-h-full object-contain" initial={{
+          scale: 0.95,
+          opacity: 0
+        }} animate={{
+          scale: 1,
+          opacity: 1
+        }} transition={{
+          delay: 0.3,
+          duration: 0.6
+        }} />
         </div>
       </motion.div>
 
@@ -153,9 +146,7 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold text-white mb-2">
               BIENVENUE
             </h1>
-            <p className="text-white/80">
-              Connectez-vous à votre espace LOJISTIGA
-            </p>
+            <p className="text-white/80">Connectez-vous à votre espace LOGISTIGA</p>
           </motion.div>
 
           {/* Formulaire */}
