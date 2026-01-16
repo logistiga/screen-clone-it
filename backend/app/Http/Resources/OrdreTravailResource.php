@@ -72,6 +72,7 @@ class OrdreTravailResource extends JsonResource
             'conteneurs' => ConteneurOrdreResource::collection($this->whenLoaded('conteneurs')),
             'lots' => LotOrdreResource::collection($this->whenLoaded('lots')),
             'primes' => PrimeResource::collection($this->whenLoaded('primes')),
+            'created_by' => new UserResource($this->whenLoaded('createdBy')),
         ];
     }
 }

@@ -37,6 +37,14 @@ interface OrdreHistoriqueProps {
     updated_at?: string;
     date?: string;
     statut?: string;
+    created_by?: {
+      id?: number;
+      name?: string;
+    };
+    user?: {
+      id?: number;
+      name?: string;
+    };
   };
 }
 
@@ -310,11 +318,11 @@ function ChangeDetails({ changes }: { changes: FieldChange[] }) {
 }
 
 export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
-  // Récupérer l'historique depuis l'API d'audit
+  // Récupérer l'historique depuis l'API d'audit (le backend utilise "ordre" comme module)
   const { data: auditData, isLoading, isError } = useQuery({
-    queryKey: ["audit-logs", "ordres_travail", ordre.id],
+    queryKey: ["audit-logs", "ordre", ordre.id],
     queryFn: () => auditService.getAll({
-      module: "ordres_travail",
+      module: "ordre",
       search: ordre.id ? String(ordre.id) : undefined,
       per_page: 50,
     }),
@@ -329,8 +337,8 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         .filter(entry => 
           entry.document_id === Number(ordre.id) || 
           entry.document_numero === ordre.numero ||
-          entry.details?.includes(String(ordre.id)) ||
-          entry.details?.includes(ordre.numero)
+          (entry.details && String(ordre.id) && entry.details.includes(String(ordre.id))) ||
+          (entry.details && ordre.numero && entry.details.includes(ordre.numero))
         )
         .map(entry => {
           const changes = extractChanges(entry.old_values, entry.new_values);
@@ -346,6 +354,9 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         })
     : [];
 
+  // Nom de l'utilisateur créateur (si disponible dans l'ordre)
+  const creatorName = ordre.created_by?.name || ordre.user?.name;
+
   // Si aucune donnée d'audit, construire une timeline par défaut
   if (events.length === 0) {
     const createdAt = ordre.created_at || ordre.date;
@@ -356,7 +367,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         date: createdAt,
         time: formatTime(createdAt),
         description: `Ordre ${ordre.numero || ''} créé`,
-        user: undefined,
+        user: creatorName,
       });
     }
 
@@ -368,7 +379,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         date: ordre.updated_at,
         time: formatTime(ordre.updated_at),
         description: 'Dernière modification',
-        user: undefined,
+        user: creatorName,
       });
     }
 
@@ -380,7 +391,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         date: ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString(),
         time: formatTime(ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString()),
         description: 'Ordre en cours de traitement',
-        user: undefined,
+        user: creatorName,
       });
     }
 
@@ -391,7 +402,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         date: ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString(),
         time: formatTime(ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString()),
         description: 'Ordre terminé',
-        user: undefined,
+        user: creatorName,
       });
     }
 
@@ -402,7 +413,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         date: ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString(),
         time: formatTime(ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString()),
         description: 'Converti en facture',
-        user: undefined,
+        user: creatorName,
       });
     }
 
@@ -413,7 +424,7 @@ export function OrdreHistorique({ ordre }: OrdreHistoriqueProps) {
         date: ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString(),
         time: formatTime(ordre.updated_at || ordre.created_at || ordre.date || new Date().toISOString()),
         description: 'Ordre annulé',
-        user: undefined,
+        user: creatorName,
       });
     }
   }
