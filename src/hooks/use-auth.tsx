@@ -195,13 +195,32 @@ export const AuthProvider = forwardRef<HTMLDivElement, AuthProviderProps>(
 
     const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
       try {
-        const response = await api.post('/auth/login', { email, password });
-        const { user: userData } = response.data;
-        
-        setUser(userData);
-        updateLastActivity();
+        // S'assurer que le CSRF est prêt (utile sur certains navigateurs / contextes)
+        await initializeCsrf();
 
-        return { success: true };
+        // 1) Tentative de login (le backend pose un cookie HttpOnly)
+        await api.post('/auth/login', { email, password });
+
+        // 2) Vérifier immédiatement que la session est bien utilisable côté API
+        // (sinon on évite le "yo-yo" login -> / -> 401 -> retour /login)
+        try {
+          const me = await api.get('/auth/user');
+          setUser(me.data);
+          updateLastActivity();
+          return { success: true };
+        } catch (verifyError: any) {
+          setUser(null);
+
+          if (verifyError?.response?.status === 401) {
+            return {
+              success: false,
+              error:
+                "Connexion OK mais la session n'est pas conservée (cookie bloqué/CORS). Autorisez les cookies tiers ou utilisez un domaine front+api du même site.",
+            };
+          }
+
+          throw verifyError;
+        }
       } catch (error: any) {
         const status = error.response?.status as number | undefined;
         const data = error.response?.data;

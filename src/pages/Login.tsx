@@ -1,4 +1,4 @@
-import { useState, forwardRef } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,9 +21,14 @@ const LoginPage = forwardRef<HTMLDivElement, object>(function LoginPage(_props, 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Rediriger si déjà connecté
+  // Rediriger si déjà connecté (sans side-effect pendant le render)
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   if (isAuthenticated) {
-    navigate("/", { replace: true });
     return null;
   }
 
