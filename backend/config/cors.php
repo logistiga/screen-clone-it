@@ -23,15 +23,20 @@ return [
     // In development, set CORS_ALLOWED_ORIGINS="*" if needed.
     // In production, always specify exact domains.
     'allowed_origins' => (function () {
+        // Origines par défaut toujours autorisées
+        $defaultOrigins = [
+            'https://facturation.logistiga.com',
+            'http://facturation.logistiga.com',
+        ];
+        
         $raw = (string) env('CORS_ALLOWED_ORIGINS', '');
         
-        // If empty, deny all cross-origin requests (secure default)
         if (empty(trim($raw))) {
-            return [];
+            return $defaultOrigins;
         }
         
-        $parts = array_values(array_filter(array_map('trim', explode(',', $raw))));
-        return $parts;
+        $envOrigins = array_values(array_filter(array_map('trim', explode(',', $raw))));
+        return array_unique(array_merge($defaultOrigins, $envOrigins));
     })(),
 
     // For pattern-based matching (e.g., Lovable preview URLs)
