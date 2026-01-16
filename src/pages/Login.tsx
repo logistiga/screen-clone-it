@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock, Mail, LogIn, Eye, EyeOff, User } from "lucide-react";
 import logo from "@/assets/logistiga-logo-new.png";
-import loginBackground from "@/assets/login-background.png";
+import loginAnimation from "@/assets/login-animation.gif";
 export default function LoginPage() {
   const navigate = useNavigate();
   const {
@@ -90,11 +90,11 @@ export default function LoginPage() {
         transform: "translateX(50%)"
       }} />
         
-        {/* Image de fond - Route */}
+        {/* Animation GIF - Route */}
         <div className="flex items-center justify-center w-full h-full relative z-10">
           <motion.img 
-            src={loginBackground} 
-            alt="LOJISTIGA - Route" 
+            src={loginAnimation} 
+            alt="LOJISTIGA Animation" 
             className="w-full h-full object-cover"
             initial={{
               scale: 0.95,
