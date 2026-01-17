@@ -38,6 +38,7 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "sonner";
 import { AnnulationOrdreModal } from "@/components/AnnulationOrdreModal";
+import { openWhatsAppShare } from "@/lib/whatsapp";
 import {
   DocumentStatCard,
   DocumentFilters,
@@ -119,6 +120,33 @@ export default function OrdresTravailPage() {
     } finally {
       setConfirmAction(null);
     }
+  };
+
+  const handleWhatsAppShare = (ordre: any) => {
+    const pdfUrl = `${window.location.origin}/ordres/${ordre.id}/pdf`;
+    const montant = new Intl.NumberFormat('fr-FR').format(ordre.montant_ttc || 0) + ' FCFA';
+    const typeOperation = ordre.type_independant || ordre.type_conteneur || 'Ordre de travail';
+    const message = `Bonjour${ordre.client?.raison_sociale ? ` ${ordre.client.raison_sociale}` : ''},
+
+Veuillez trouver ci-dessous votre ordre de travail n° *${ordre.numero}* d'un montant de *${montant}*.
+
+📋 *Détails de l'ordre :*
+• Client : ${ordre.client?.raison_sociale || ordre.client?.nom_complet || '-'}
+• Type : ${typeOperation}
+• Montant HT : ${new Intl.NumberFormat('fr-FR').format(ordre.montant_ht || 0)} FCFA
+• TVA : ${new Intl.NumberFormat('fr-FR').format(ordre.montant_tva || 0)} FCFA
+• *Total TTC : ${montant}*
+• Statut : ${getStatutLabel(ordre.statut)}
+
+📎 *Lien du document PDF :*
+${pdfUrl}
+
+Pour toute question, n'hésitez pas à nous contacter.
+
+Cordialement,
+L'équipe LOGISTIGA`;
+
+    openWhatsAppShare(message);
   };
 
   const ordresList = ordresData?.data || [];
@@ -496,6 +524,15 @@ export default function OrdresTravailPage() {
                             onClick={() => setEmailModal(ordre)}
                           >
                             <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="WhatsApp" 
+                            className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
+                            onClick={() => handleWhatsAppShare(ordre)}
+                          >
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
                           {ordre.statut !== 'annule' && ordre.statut !== 'facture' && (
                             <Button 
