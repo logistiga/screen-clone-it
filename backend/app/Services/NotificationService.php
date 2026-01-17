@@ -13,6 +13,7 @@ use App\Models\Setting;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class NotificationService
 {
@@ -77,8 +78,8 @@ class NotificationService
     {
         $mailConfig = $this->configureMailer();
         
-        // Charger le client si pas déjà chargé
-        $facture->loadMissing('client');
+        // Charger le client et les relations nécessaires
+        $facture->loadMissing(['client', 'lignes']);
         $client = $facture->client;
         
         // Déterminer l'email destinataire
@@ -97,17 +98,28 @@ class NotificationService
         }
 
         try {
+            // Générer le PDF de la facture
+            $pdf = Pdf::loadView('pdf.facture', [
+                'facture' => $facture,
+                'client' => $client,
+            ]);
+            $pdf->setPaper('A4', 'portrait');
+            $pdfContent = $pdf->output();
+            $pdfFilename = "Facture_{$facture->numero}.pdf";
+
             Mail::send('emails.facture', [
                 'facture' => $facture,
                 'client' => $client,
                 'message_personnalise' => $message ?? '',
                 'signature' => $mailConfig['signature'],
-            ], function ($mail) use ($email, $facture, $mailConfig) {
+            ], function ($mail) use ($email, $facture, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Facture N° {$facture->numero}")
-                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
+                    ->from($mailConfig['from_email'], $mailConfig['from_name'])
+                    ->attachData($pdfContent, $pdfFilename, [
+                        'mime' => 'application/pdf',
+                    ]);
             });
-
 
             // Mettre à jour le statut et la date d'envoi
             $facture->forceFill([
@@ -115,7 +127,7 @@ class NotificationService
                 'date_envoi' => now(),
             ])->save();
 
-            Log::info("Facture {$facture->numero} envoyée avec succès à {$email}");
+            Log::info("Facture {$facture->numero} envoyée avec succès à {$email} avec PDF en pièce jointe");
             return true;
         } catch (\Throwable $e) {
             // Ne pas logger ici, le controller s'en charge
@@ -124,14 +136,14 @@ class NotificationService
     }
 
     /**
-     * Envoyer un devis par email
+     * Envoyer un devis par email avec PDF en pièce jointe
      */
     public function envoyerDevis(Devis $devis, ?string $emailDestinataire = null, ?string $message = null): bool
     {
         $mailConfig = $this->configureMailer();
         
-        // Charger le client si pas déjà chargé
-        $devis->loadMissing('client');
+        // Charger le client et les relations nécessaires
+        $devis->loadMissing(['client', 'lignes', 'conteneurs.operations', 'lots']);
         $client = $devis->client;
         
         // Déterminer l'email destinataire
@@ -165,17 +177,28 @@ class NotificationService
                 ]);
             }
 
+            // Générer le PDF du devis
+            $pdf = Pdf::loadView('pdf.devis', [
+                'devis' => $devis,
+                'client' => $client,
+            ]);
+            $pdf->setPaper('A4', 'portrait');
+            $pdfContent = $pdf->output();
+            $pdfFilename = "Devis_{$devis->numero}.pdf";
+
             Mail::send('emails.devis', [
                 'devis' => $devis,
                 'client' => $client,
                 'message_personnalise' => $message ?? '',
                 'signature' => $mailConfig['signature'],
-            ], function ($mail) use ($email, $devis, $mailConfig) {
+            ], function ($mail) use ($email, $devis, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Devis N° {$devis->numero}")
-                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
+                    ->from($mailConfig['from_email'], $mailConfig['from_name'])
+                    ->attachData($pdfContent, $pdfFilename, [
+                        'mime' => 'application/pdf',
+                    ]);
             });
-
 
             // Mettre à jour le statut et la date d'envoi
             $devis->forceFill([
@@ -183,7 +206,7 @@ class NotificationService
                 'date_envoi' => now(),
             ])->save();
 
-            Log::info("Devis {$devis->numero} envoyé avec succès à {$email}");
+            Log::info("Devis {$devis->numero} envoyé avec succès à {$email} avec PDF en pièce jointe");
             return true;
         } catch (\Throwable $e) {
             // Ne pas logger ici, le controller s'en charge
