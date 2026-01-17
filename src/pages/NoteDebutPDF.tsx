@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { ArrowLeft, Download, Loader2, Anchor, Container, Wrench, PackageOpen } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Download, Loader2, Anchor, Container, Wrench, PackageOpen, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { useNoteDebut } from "@/hooks/use-notes-debut";
 import { DocumentHeader, DocumentFooter } from "@/components/documents/DocumentLayout";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -27,9 +28,11 @@ export default function NoteDebutPDF() {
   
   const { data: note, isLoading, error } = useNoteDebut(id);
   
-  const { contentRef, downloadPdf } = usePdfDownload({ 
+  const { contentRef, downloadPdf, generatePdfBlob } = usePdfDownload({ 
     filename: `Note_${note?.numero || 'unknown'}` 
   });
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Auto-download on load
   useEffect(() => {
@@ -104,10 +107,20 @@ export default function NoteDebutPDF() {
               <p className="text-sm text-muted-foreground">Note de début - {typeInfo.label}</p>
             </div>
           </div>
-          <Button onClick={downloadPdf} className="gap-2">
-            <Download className="h-4 w-4" />
-            Télécharger PDF
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={downloadPdf} className="gap-2">
+              <Download className="h-4 w-4" />
+              Télécharger PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEmailModal(true)} 
+              className="gap-2 transition-all duration-200 hover:scale-105"
+            >
+              <Mail className="h-4 w-4" />
+              Envoyer par email
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -287,6 +300,22 @@ export default function NoteDebutPDF() {
           <DocumentFooter />
         </Card>
       </div>
+
+      {/* Email Modal */}
+      <EmailModalWithTemplate
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        documentType="note_debut"
+        documentData={{
+          id: note.id,
+          numero: note.numero,
+          dateCreation: dateCreation,
+          montantTTC: montantTotal,
+          clientNom: clientName,
+          clientEmail: clientEmail,
+        }}
+        generatePdfBlob={generatePdfBlob}
+      />
 
       {/* Print Styles */}
       <style>{`
