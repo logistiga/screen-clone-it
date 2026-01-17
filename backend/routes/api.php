@@ -39,6 +39,11 @@ use App\Http\Controllers\Api\EmailConfigController;
 |--------------------------------------------------------------------------
 */
 
+// Ping endpoint pour vérifier la connectivité (public)
+Route::get('ping', function () {
+    return response()->json(['status' => 'ok', 'timestamp' => now()->toIso8601String()]);
+});
+
 // Routes publiques avec rate limiting anti brute-force
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])
