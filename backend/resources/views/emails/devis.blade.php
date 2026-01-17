@@ -8,14 +8,7 @@
 <!-- Header avec Logo -->
 <tr>
     <td style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 32px 40px; text-align: center;">
-        @if(config('app.logo_url'))
-        <img src="{{ config('app.logo_url') }}" alt="LOGISTIGA" width="160" style="max-width: 160px; height: auto; margin-bottom: 12px;" />
-        @else
-        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px;">LOGISTIGA</h1>
-        @endif
-        <p style="color: rgba(255,255,255,0.85); font-size: 13px; margin: 8px 0 0 0; letter-spacing: 0.5px;">
-            SOLUTIONS LOGISTIQUES PROFESSIONNELLES
-        </p>
+        @include('emails.partials.logo')
     </td>
 </tr>
 
@@ -40,22 +33,21 @@
             Bonjour {{ $client->raison_sociale ?? $client->nom_complet ?? 'Cher client' }},
         </p>
         
-        <!-- Message d'introduction -->
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0;">
-            Suite à votre demande, nous avons le plaisir de vous transmettre notre devis détaillé. Nous restons à votre disposition pour toute information complémentaire.
-        </p>
-        
-        <!-- Message personnalisé -->
+        <!-- Message unique (personnalisé OU par défaut) -->
         @if(!empty($message_personnalise))
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
             <tr>
                 <td style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 12px 12px 0;">
-                    <p style="color: #1e40af; margin: 0; font-size: 14px; line-height: 1.6;">
-                        💬 {{ $message_personnalise }}
+                    <p style="color: #1e40af; margin: 0; font-size: 15px; line-height: 1.6;">
+                        {{ $message_personnalise }}
                     </p>
                 </td>
             </tr>
         </table>
+        @else
+        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
+            Suite à votre demande, nous avons le plaisir de vous transmettre notre proposition commerciale. Nous restons à votre disposition pour toute information complémentaire.
+        </p>
         @endif
         
         <!-- Récapitulatif Document -->
@@ -121,20 +113,16 @@
         </table>
         @endif
         
-        <!-- Call to Action -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-            <tr>
-                <td align="center">
-                    <p style="color: #4a5568; font-size: 14px; margin: 0 0 16px 0;">
-                        Pour accepter ce devis, n'hésitez pas à nous contacter.
-                    </p>
-                </td>
-            </tr>
-        </table>
+        <!-- Bouton Télécharger PDF -->
+        @include('emails.partials.download-button', [
+            'type' => 'devis',
+            'label' => 'Télécharger le Devis PDF',
+            'download_url' => $download_url ?? route('devis.pdf', $devis->id)
+        ])
         
         <!-- Note -->
-        <p style="color: #718096; font-size: 13px; text-align: center; margin: 20px 0 0 0;">
-            Le document est également disponible en pièce jointe de cet email.
+        <p style="color: #718096; font-size: 13px; text-align: center; margin: 0;">
+            📎 Le document est également disponible en pièce jointe de cet email.
         </p>
     </td>
 </tr>

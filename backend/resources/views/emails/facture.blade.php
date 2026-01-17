@@ -1,17 +1,14 @@
 @extends('emails.layout')
 
 @section('content')
+@php
+  $client = $client ?? $facture->client ?? null;
+@endphp
+
 <!-- Header avec Logo -->
 <tr>
     <td style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 32px 40px; text-align: center;">
-        @if(config('app.logo_url'))
-        <img src="{{ config('app.logo_url') }}" alt="LOGISTIGA" width="160" style="max-width: 160px; height: auto; margin-bottom: 12px;" />
-        @else
-        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px;">LOGISTIGA</h1>
-        @endif
-        <p style="color: rgba(255,255,255,0.85); font-size: 13px; margin: 8px 0 0 0; letter-spacing: 0.5px;">
-            SOLUTIONS LOGISTIQUES PROFESSIONNELLES
-        </p>
+        @include('emails.partials.logo')
     </td>
 </tr>
 
@@ -36,22 +33,21 @@
             Bonjour {{ $client->raison_sociale ?? $client->nom_complet ?? 'Cher client' }},
         </p>
         
-        <!-- Message d'introduction -->
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0;">
-            Nous vous prions de trouver ci-joint votre facture pour les prestations réalisées. Nous vous remercions pour votre confiance.
-        </p>
-        
-        <!-- Message personnalisé -->
+        <!-- Message unique (personnalisé OU par défaut) -->
         @if(!empty($message_personnalise))
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
             <tr>
                 <td style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-left: 4px solid #10b981; padding: 16px 20px; border-radius: 0 12px 12px 0;">
-                    <p style="color: #047857; margin: 0; font-size: 14px; line-height: 1.6;">
-                        💬 {{ $message_personnalise }}
+                    <p style="color: #047857; margin: 0; font-size: 15px; line-height: 1.6;">
+                        {{ $message_personnalise }}
                     </p>
                 </td>
             </tr>
         </table>
+        @else
+        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
+            Veuillez trouver ci-joint votre facture pour les prestations réalisées. Nous vous remercions pour votre confiance.
+        </p>
         @endif
         
         <!-- Récapitulatif Document -->
@@ -104,9 +100,16 @@
             </tr>
         </table>
         
+        <!-- Bouton Télécharger PDF -->
+        @include('emails.partials.download-button', [
+            'type' => 'facture',
+            'label' => 'Télécharger la Facture PDF',
+            'download_url' => $download_url ?? route('factures.pdf', $facture->id)
+        ])
+        
         <!-- Note -->
-        <p style="color: #718096; font-size: 13px; text-align: center; margin: 20px 0 0 0;">
-            Le document est également disponible en pièce jointe de cet email.
+        <p style="color: #718096; font-size: 13px; text-align: center; margin: 0;">
+            📎 Le document est également disponible en pièce jointe de cet email.
         </p>
     </td>
 </tr>
