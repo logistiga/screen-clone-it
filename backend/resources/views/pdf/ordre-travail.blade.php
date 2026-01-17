@@ -280,8 +280,9 @@
 <body>
     @php
         $isAnnule = $ordre->statut === 'annule';
-        $montantPaye = $ordre->montant_paye ?? 0;
-        $resteAPayer = ($ordre->montant_ttc ?? 0) - $montantPaye;
+        $montantPaye = (float) ($ordre->montant_paye ?? 0);
+        $montantTtc = (float) ($ordre->montant_ttc ?? 0);
+        $resteAPayer = $montantTtc - $montantPaye;
         
         $typeLabels = [
             'import' => 'IMPORTATION',
@@ -326,10 +327,10 @@
         </div>
         <div class="info-box">
             <h3>Client</h3>
-            <div class="name">{{ $client->raison_sociale ?? $client->nom_complet ?? $client->nom ?? 'N/A' }}</div>
-            @if($client->adresse)<p>{{ $client->adresse }}</p>@endif
-            @if($client->telephone)<p>Tél: {{ $client->telephone }}</p>@endif
-            @if($client->email)<p>Email: {{ $client->email }}</p>@endif
+            <div class="name">{{ optional($client)->raison_sociale ?? optional($client)->nom_complet ?? optional($client)->nom ?? 'N/A' }}</div>
+            @if(optional($client)->adresse)<p>{{ $client->adresse }}</p>@endif
+            @if(optional($client)->telephone)<p>Tél: {{ $client->telephone }}</p>@endif
+            @if(optional($client)->email)<p>Email: {{ $client->email }}</p>@endif
         </div>
     </div>
 
@@ -368,7 +369,16 @@
             @if($ordre->date_execution)
             <tr>
                 <td class="label">Date d'exécution</td>
-                <td class="value">{{ \Carbon\Carbon::parse($ordre->date_execution)->format('d/m/Y') }}</td>
+                @php
+                    $dateExecution = '-';
+                    $rawExec = $ordre->date_execution;
+                    if ($rawExec instanceof \DateTimeInterface) {
+                        $dateExecution = \Carbon\Carbon::instance($rawExec)->format('d/m/Y');
+                    } elseif (is_string($rawExec) && strtotime($rawExec)) {
+                        $dateExecution = \Carbon\Carbon::parse($rawExec)->format('d/m/Y');
+                    }
+                @endphp
+                <td class="value">{{ $dateExecution }}</td>
             </tr>
             @endif
         </tbody>
@@ -440,8 +450,8 @@
                 <td>{{ $index + 1 }}</td>
                 <td>{{ $ligne['description'] }}</td>
                 <td>{{ $ligne['quantite'] }}</td>
-                <td>{{ number_format($ligne['prix_unitaire'], 0, ',', ' ') }} FCFA</td>
-                <td>{{ number_format($ligne['montant_ht'], 0, ',', ' ') }} FCFA</td>
+                <td>{{ number_format((float)($ligne['prix_unitaire'] ?? 0), 0, ',', ' ') }} FCFA</td>
+                <td>{{ number_format((float)($ligne['montant_ht'] ?? 0), 0, ',', ' ') }} FCFA</td>
             </tr>
             @endforeach
 
@@ -463,29 +473,29 @@
         <div class="totals-box">
             <div class="totals-row">
                 <span class="totals-label">Total HT</span>
-                <span class="totals-value">{{ number_format($ordre->montant_ht ?? 0, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-value">{{ number_format((float)($ordre->montant_ht ?? 0), 0, ',', ' ') }} FCFA</span>
             </div>
             <div class="totals-row">
                 <span class="totals-label">TVA (18%)</span>
-                <span class="totals-value">{{ number_format($ordre->tva ?? $ordre->montant_tva ?? 0, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-value">{{ number_format((float)($ordre->tva ?? $ordre->montant_tva ?? 0), 0, ',', ' ') }} FCFA</span>
             </div>
             <div class="totals-row">
                 <span class="totals-label">CSS (1%)</span>
-                <span class="totals-value">{{ number_format($ordre->css ?? $ordre->montant_css ?? 0, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-value">{{ number_format((float)($ordre->css ?? $ordre->montant_css ?? 0), 0, ',', ' ') }} FCFA</span>
             </div>
             <div class="totals-row total">
                 <span class="totals-label">Total TTC</span>
-                <span class="totals-value">{{ number_format($ordre->montant_ttc ?? 0, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-value">{{ number_format((float)($ordre->montant_ttc ?? 0), 0, ',', ' ') }} FCFA</span>
             </div>
             @if($montantPaye > 0)
             <div class="totals-row paye">
                 <span class="totals-label">Montant Payé</span>
-                <span class="totals-value">-{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-value">-{{ number_format((float)$montantPaye, 0, ',', ' ') }} FCFA</span>
             </div>
             @endif
             <div class="totals-row reste">
                 <span class="totals-label">Reste à Payer</span>
-                <span class="totals-value">{{ number_format($resteAPayer, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-value">{{ number_format((float)$resteAPayer, 0, ',', ' ') }} FCFA</span>
             </div>
         </div>
     </div>

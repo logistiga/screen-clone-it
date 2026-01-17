@@ -132,8 +132,8 @@
         
         <!-- Bouton Télécharger PDF -->
         @php
-          $baseUrl = rtrim(config('app.url'), '/');
-          $download_url = $download_url ?? "{$baseUrl}/ordres/{$ordre->id}/pdf";
+          $baseUrl = rtrim((string) config('app.url'), '/');
+          $download_url = $download_url ?? ($baseUrl !== '' ? "{$baseUrl}/ordres/{$ordre->id}/pdf" : '#');
         @endphp
         @include('emails.partials.download-button', [
             'type' => 'ordre',
