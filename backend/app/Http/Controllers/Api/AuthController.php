@@ -12,20 +12,11 @@ use App\Services\AccountLockoutService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Cookie;
+
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Durée du cookie en minutes (7 jours)
-     */
-    private const TOKEN_EXPIRATION_MINUTES = 60 * 24 * 7;
-
-    /**
-     * Nom du cookie pour le token
-     */
-    private const TOKEN_COOKIE_NAME = 'auth_token';
 
     public function __construct(
         private SessionManager $sessionManager,
@@ -91,20 +82,20 @@ class AuthController extends Controller
         $sessionData = $this->sessionManager->createSession($user, $request);
         $token = $sessionData['plainTextToken'];
 
-        // Créer le cookie HttpOnly sécurisé
-        $cookie = $this->createAuthCookie($token);
-
+        // Retourner le token au frontend (mode stateless / Bearer)
         // Obtenir les stats de session pour informer l'utilisateur
         $sessionStats = $this->sessionManager->getSessionStats($user);
 
         return response()->json([
             'user' => $user->load('roles', 'permissions'),
+            'token' => $token,
+            'token_type' => 'Bearer',
             'message' => 'Connexion réussie',
             'session' => [
                 'active_sessions' => $sessionStats['total_sessions'],
                 'max_sessions' => $sessionStats['max_sessions'],
             ],
-        ])->withCookie($cookie);
+        ]);
     }
 
     public function logout(Request $request): JsonResponse
@@ -116,20 +107,7 @@ class AuthController extends Controller
             $request->user()->currentAccessToken()->delete();
         }
 
-        // Supprimer le cookie (mêmes attributs que lors de la création)
-        $cookie = Cookie::make(
-            self::TOKEN_COOKIE_NAME,
-            '',
-            -1,
-            '/',
-            null,
-            true,  // secure
-            true,  // httpOnly
-            false, // raw
-            'None' // sameSite (cross-site XHR)
-        );
-
-        return response()->json(['message' => 'Déconnexion réussie'])->withCookie($cookie);
+        return response()->json(['message' => 'Déconnexion réussie']);
     }
 
     public function user(Request $request): JsonResponse
@@ -193,12 +171,11 @@ class AuthController extends Controller
         $sessionData = $this->sessionManager->createSession($user, $request, 'auth-token-refreshed');
         $token = $sessionData['plainTextToken'];
 
-        // Créer le nouveau cookie
-        $cookie = $this->createAuthCookie($token);
-
         return response()->json([
             'message' => 'Token rafraîchi',
-        ])->withCookie($cookie);
+            'token' => $token,
+            'token_type' => 'Bearer',
+        ]);
     }
 
     /**
@@ -274,21 +251,4 @@ class AuthController extends Controller
         return response()->json($lockoutInfo);
     }
 
-    /**
-     * Créer le cookie d'authentification
-     */
-    private function createAuthCookie(string $token): \Symfony\Component\HttpFoundation\Cookie
-    {
-        return Cookie::make(
-            self::TOKEN_COOKIE_NAME,
-            $token,
-            self::TOKEN_EXPIRATION_MINUTES,
-            '/',
-            null,
-            true,  // secure
-            true,  // httpOnly
-            false, // raw
-            'None' // sameSite (cross-site XHR)
-        );
-    }
 }

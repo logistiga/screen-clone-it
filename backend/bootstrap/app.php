@@ -34,11 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // 2. CORS - gestion des origines autorisées
             \Illuminate\Http\Middleware\HandleCors::class,
             
-            // 3. Extraction du token depuis le cookie HttpOnly
-            \App\Http\Middleware\AuthenticateFromCookie::class,
-            
-            // 4. Sanctum - authentification stateful pour SPA
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            // 3. Auth stateless via Bearer token (Sanctum personal access tokens)
+            // (pas de cookies, pas de CSRF côté API)
             
             // 5. Rate Limiting global (60 req/min par défaut)
             'throttle:api',
