@@ -124,7 +124,8 @@
         @include('emails.partials.download-button', [
             'type' => 'ordre',
             'label' => 'Télécharger l\'Ordre de Travail PDF',
-            'download_url' => $download_url ?? route('ordres.pdf', $ordre->id)
+            // IMPORTANT: éviter route('ordres.pdf') (route non définie) -> provoque une erreur 500
+            'download_url' => $download_url ?? url("/ordres/{$ordre->id}/pdf")
         ])
         
         <!-- Note -->
