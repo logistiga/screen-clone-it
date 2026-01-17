@@ -265,20 +265,32 @@ class NotificationService
             }
 
             // Utiliser le PDF frontend si fourni, sinon générer côté backend
+            $pdfContent = null;
+            $pdfFilename = null;
+
             if ($pdfBase64) {
-                $pdfContent = base64_decode($pdfBase64);
-                $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
-                Log::info("Ordre {$ordre->numero}: Utilisation du PDF frontend");
+                $decoded = base64_decode($pdfBase64, true);
+                if ($decoded !== false && $decoded !== '') {
+                    $pdfContent = $decoded;
+                    $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
+                    Log::info("Ordre {$ordre->numero}: Utilisation du PDF frontend");
+                } else {
+                    Log::warning("Ordre {$ordre->numero}: pdf_base64 invalide, envoi sans pièce jointe");
+                }
             } else {
-                // Fallback: Générer le PDF côté backend
-                $pdf = Pdf::loadView('pdf.ordre-travail', [
-                    'ordre' => $ordre,
-                    'client' => $client,
-                ]);
-                $pdf->setPaper('A4', 'portrait');
-                $pdfContent = $pdf->output();
-                $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
-                Log::info("Ordre {$ordre->numero}: Génération du PDF backend (fallback)");
+                // Fallback: Générer le PDF côté backend (si DomPDF est disponible)
+                if (!class_exists(Pdf::class)) {
+                    Log::warning("Ordre {$ordre->numero}: DomPDF indisponible (" . Pdf::class . "), envoi sans pièce jointe");
+                } else {
+                    $pdf = Pdf::loadView('pdf.ordre-travail', [
+                        'ordre' => $ordre,
+                        'client' => $client,
+                    ]);
+                    $pdf->setPaper('A4', 'portrait');
+                    $pdfContent = $pdf->output();
+                    $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
+                    Log::info("Ordre {$ordre->numero}: Génération du PDF backend (fallback)");
+                }
             }
 
             Mail::send('emails.ordre-travail', [
@@ -289,10 +301,13 @@ class NotificationService
             ], function ($mail) use ($email, $ordre, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Ordre de Travail N° {$ordre->numero}")
-                    ->from($mailConfig['from_email'], $mailConfig['from_name'])
-                    ->attachData($pdfContent, $pdfFilename, [
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
+
+                if (!empty($pdfContent) && !empty($pdfFilename)) {
+                    $mail->attachData($pdfContent, $pdfFilename, [
                         'mime' => 'application/pdf',
                     ]);
+                }
             });
 
             Log::info("Ordre de travail {$ordre->numero} envoyé avec succès à {$email} avec PDF en pièce jointe");
