@@ -304,7 +304,17 @@ export const notificationService = {
     return response.data;
   },
 
-  // Envoyer une confirmation de paiement
+  // Envoyer une note de début avec PDF frontend optionnel
+  async envoyerNoteDebut(noteId: number, email?: string, message?: string, pdfBase64?: string): Promise<{ message: string }> {
+    const response = await axios.post(`${API_URL}/notifications/note-debut/${noteId}/envoyer`, {
+      email,
+      message,
+      pdf_base64: pdfBase64,
+    }, {
+      headers: getAuthHeaders(),
+    });
+    return response.data;
+  },
   async envoyerConfirmationPaiement(paiementId: number, email?: string): Promise<{ message: string }> {
     const response = await axios.post(`${API_URL}/notifications/paiement/${paiementId}/confirmation`, {
       email,

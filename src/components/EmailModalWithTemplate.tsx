@@ -65,7 +65,7 @@ interface DocumentData {
 interface EmailModalWithTemplateProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  documentType: "devis" | "ordre" | "facture";
+  documentType: "devis" | "ordre" | "facture" | "note_debut";
   documentData: DocumentData;
   generatePdfBlob?: () => Promise<Blob | null>;
 }
@@ -75,6 +75,7 @@ const documentTypeToTemplateType: Record<string, string> = {
   devis: "devis",
   ordre: "ordre",
   facture: "facture",
+  note_debut: "note_debut",
 };
 
 // Helper pour convertir Blob en base64
@@ -400,6 +401,9 @@ export function EmailModalWithTemplate({
           break;
         case 'facture':
           await notificationService.envoyerFacture(documentId, email, templateContent.message, pdfBase64);
+          break;
+        case 'note_debut':
+          await notificationService.envoyerNoteDebut(documentId, email, templateContent.message, pdfBase64);
           break;
       }
 
