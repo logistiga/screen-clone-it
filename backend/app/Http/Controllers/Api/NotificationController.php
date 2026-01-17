@@ -29,6 +29,7 @@ class NotificationController extends Controller
         $request->validate([
             'email' => 'nullable|email',
             'message' => 'nullable|string|max:1000',
+            'pdf_base64' => 'nullable|string',
         ]);
 
         try {
@@ -37,7 +38,8 @@ class NotificationController extends Controller
             $success = $this->notificationService->envoyerFacture(
                 $facture,
                 $request->email,
-                $request->message
+                $request->message,
+                $request->pdf_base64
             );
 
             if ($success) {
@@ -77,6 +79,7 @@ class NotificationController extends Controller
         $request->validate([
             'email' => 'nullable|email',
             'message' => 'nullable|string|max:1000',
+            'pdf_base64' => 'nullable|string',
         ]);
 
         try {
@@ -85,7 +88,8 @@ class NotificationController extends Controller
             $success = $this->notificationService->envoyerDevis(
                 $devis,
                 $request->email,
-                $request->message
+                $request->message,
+                $request->pdf_base64
             );
 
             if ($success) {
@@ -125,12 +129,14 @@ class NotificationController extends Controller
         $request->validate([
             'email' => 'nullable|email',
             'message' => 'nullable|string|max:1000',
+            'pdf_base64' => 'nullable|string',
         ]);
 
         $success = $this->notificationService->envoyerOrdreTravail(
             $ordre,
             $request->email,
-            $request->message
+            $request->message,
+            $request->pdf_base64
         );
 
         if ($success) {

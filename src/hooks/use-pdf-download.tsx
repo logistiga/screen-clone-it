@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import html2pdf from 'html2pdf.js';
 
 interface UsePdfDownloadOptions {
   filename: string;
@@ -6,36 +7,49 @@ interface UsePdfDownloadOptions {
 }
 
 /**
- * Hook for PDF download using native browser print functionality.
- * This replaces html2pdf.js which had a critical security vulnerability (Path Traversal via jsPDF).
- * 
- * The browser's native print dialog provides a secure "Save as PDF" option
- * that avoids the security risks of client-side PDF generation libraries.
+ * Hook for PDF download using html2pdf.js.
+ * Generates PDF as Blob for both download and email attachment.
  */
-export function usePdfDownload({ filename }: UsePdfDownloadOptions) {
+export function usePdfDownload({ filename, margin = 10 }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const downloadPdf = useCallback(async () => {
-    if (!contentRef.current) return;
+  // Generate PDF as Blob
+  const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
+    if (!contentRef.current) return null;
 
-    // Store original title to restore after print
-    const originalTitle = document.title;
-    
-    // Set document title to filename for PDF save dialog
-    document.title = filename;
-    
     try {
-      // Trigger browser's native print dialog
-      // Users can select "Save as PDF" in the print destination
-      window.print();
-    } finally {
-      // Restore original title after a short delay
-      // (allows print dialog to capture the filename)
-      setTimeout(() => {
-        document.title = originalTitle;
-      }, 1000);
-    }
-  }, [filename]);
+      const blob = await html2pdf()
+        .set({
+          margin,
+          filename: `${filename}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        })
+        .from(contentRef.current)
+        .outputPdf('blob');
 
-  return { contentRef, downloadPdf };
+      return blob;
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      return null;
+    }
+  }, [filename, margin]);
+
+  // Download PDF
+  const downloadPdf = useCallback(async () => {
+    const blob = await generatePdfBlob();
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${filename}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  }, [generatePdfBlob, filename]);
+
+  return { contentRef, downloadPdf, generatePdfBlob };
 }

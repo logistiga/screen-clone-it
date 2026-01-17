@@ -67,6 +67,7 @@ interface EmailModalWithTemplateProps {
   onOpenChange: (open: boolean) => void;
   documentType: "devis" | "ordre" | "facture";
   documentData: DocumentData;
+  generatePdfBlob?: () => Promise<Blob | null>;
 }
 
 // Mapping type document -> type template
@@ -76,11 +77,25 @@ const documentTypeToTemplateType: Record<string, string> = {
   facture: "facture",
 };
 
+// Helper pour convertir Blob en base64
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
 export function EmailModalWithTemplate({
   open,
   onOpenChange,
   documentType,
   documentData,
+  generatePdfBlob,
 }: EmailModalWithTemplateProps) {
   const { toast } = useToast();
   const [selectedContact, setSelectedContact] = useState<string>("client");
@@ -363,19 +378,28 @@ export function EmailModalWithTemplate({
     setIsSending(true);
 
     try {
+      // Générer le PDF si la fonction est fournie
+      let pdfBase64: string | undefined;
+      if (generatePdfBlob) {
+        const blob = await generatePdfBlob();
+        if (blob) {
+          pdfBase64 = await blobToBase64(blob);
+        }
+      }
+
       // Appeler le bon service selon le type de document
       const documentId = typeof documentData.id === 'string' ? parseInt(documentData.id) : documentData.id;
       const templateContent = getTemplateContent();
       
       switch (documentType) {
         case 'devis':
-          await notificationService.envoyerDevis(documentId, email, templateContent.message);
+          await notificationService.envoyerDevis(documentId, email, templateContent.message, pdfBase64);
           break;
         case 'ordre':
-          await notificationService.envoyerOrdre(documentId, email, templateContent.message);
+          await notificationService.envoyerOrdre(documentId, email, templateContent.message, pdfBase64);
           break;
         case 'facture':
-          await notificationService.envoyerFacture(documentId, email, templateContent.message);
+          await notificationService.envoyerFacture(documentId, email, templateContent.message, pdfBase64);
           break;
       }
 

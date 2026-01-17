@@ -268,33 +268,36 @@ export const emailConfigService = {
 // ============================================
 
 export const notificationService = {
-  // Envoyer une facture
-  async envoyerFacture(factureId: number, email?: string, message?: string): Promise<{ message: string }> {
+  // Envoyer une facture avec PDF frontend optionnel
+  async envoyerFacture(factureId: number, email?: string, message?: string, pdfBase64?: string): Promise<{ message: string }> {
     const response = await axios.post(`${API_URL}/notifications/facture/${factureId}/envoyer`, {
       email,
       message,
+      pdf_base64: pdfBase64,
     }, {
       headers: getAuthHeaders(),
     });
     return response.data;
   },
 
-  // Envoyer un devis
-  async envoyerDevis(devisId: number, email?: string, message?: string): Promise<{ message: string }> {
+  // Envoyer un devis avec PDF frontend optionnel
+  async envoyerDevis(devisId: number, email?: string, message?: string, pdfBase64?: string): Promise<{ message: string }> {
     const response = await axios.post(`${API_URL}/notifications/devis/${devisId}/envoyer`, {
       email,
       message,
+      pdf_base64: pdfBase64,
     }, {
       headers: getAuthHeaders(),
     });
     return response.data;
   },
 
-  // Envoyer un ordre de travail
-  async envoyerOrdre(ordreId: number, email?: string, message?: string): Promise<{ message: string }> {
+  // Envoyer un ordre de travail avec PDF frontend optionnel
+  async envoyerOrdre(ordreId: number, email?: string, message?: string, pdfBase64?: string): Promise<{ message: string }> {
     const response = await axios.post(`${API_URL}/notifications/ordre/${ordreId}/envoyer`, {
       email,
       message,
+      pdf_base64: pdfBase64,
     }, {
       headers: getAuthHeaders(),
     });
