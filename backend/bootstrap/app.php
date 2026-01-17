@@ -26,6 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'session.track' => \App\Http\Middleware\SessionActivityTracker::class,
         ]);
 
+        // IMPORTANT: Auth API en Bearer token (stateless).
+        // Si le backend est servi sous un sous-dossier (/backend/public/...) ou derrière un proxy,
+        // certaines requêtes peuvent encore traverser le stack "web" et déclencher la validation CSRF.
+        // On exclut donc explicitement les chemins API de la validation CSRF.
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'backend/api/*',
+            'backend/public/api/*',
+        ]);
+
         // Middlewares globaux sur TOUTES les routes API
         $middleware->api([
             // 1. Security Headers - appliqué en premier
