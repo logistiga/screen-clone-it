@@ -26,8 +26,9 @@ import {
   Plus, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, 
   Download, CreditCard, ClipboardList, Container, Package, 
   Truck, Ship, ArrowUpFromLine, ArrowDownToLine, Clock, RotateCcw, 
-  Warehouse, Calendar, TrendingUp
+  Warehouse, Calendar, TrendingUp, Mail, MessageCircle
 } from "lucide-react";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalOrdresModal } from "@/components/PaiementGlobalOrdresModal";
 import { ExportModal } from "@/components/ExportModal";
@@ -99,6 +100,7 @@ export default function OrdresTravailPage() {
   const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number; clientId?: number } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [emailModal, setEmailModal] = useState<any>(null);
 
   // Handlers consolidés
   const handleAction = async () => {
@@ -486,6 +488,15 @@ export default function OrdresTravailPage() {
                           <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
                             <FileText className="h-4 w-4" />
                           </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Email" 
+                            className="text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
+                            onClick={() => setEmailModal(ordre)}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
                           {ordre.statut !== 'annule' && ordre.statut !== 'facture' && (
                             <Button 
                               variant="ghost" 
@@ -589,6 +600,24 @@ export default function OrdresTravailPage() {
         open={exportOpen}
         onOpenChange={setExportOpen}
       />
+
+      {emailModal && (
+        <EmailModalWithTemplate
+          open={!!emailModal}
+          onOpenChange={() => setEmailModal(null)}
+          documentType="ordre"
+          documentData={{
+            id: emailModal.id,
+            numero: emailModal.numero,
+            dateCreation: emailModal.date_creation,
+            montantTTC: emailModal.montant_ttc,
+            clientNom: emailModal.client?.raison_sociale || emailModal.client?.nom_complet,
+            clientEmail: emailModal.client?.email,
+            statut: emailModal.statut,
+            categorie: emailModal.type_independant || emailModal.type_conteneur,
+          }}
+        />
+      )}
     </MainLayout>
   );
 }
