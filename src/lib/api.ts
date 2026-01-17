@@ -1,21 +1,21 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getApiUrl, getBackendBaseUrl } from '@/lib/runtime-config';
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { getApiUrl, getBackendBaseUrl } from "@/lib/runtime-config";
 
-// Configuration de l'API - Production: https://facturation.logistiga.com/backend/api
+// Configuration de l'API - Production: https://facturation.logistiga.com/backend/public/api
 const API_URL = getApiUrl();
 const IS_PRODUCTION = import.meta.env.PROD;
 
 // Extraire l'URL de base (sans /api) pour le cookie CSRF
 const getBaseUrl = (): string => {
   const url = getBackendBaseUrl();
-  return url || 'https://facturation.logistiga.com/backend';
+  return url || "https://facturation.logistiga.com/backend/public";
 };
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
   },
   // IMPORTANT: Permettre l'envoi des cookies HttpOnly avec chaque requête
   withCredentials: true,
@@ -45,7 +45,7 @@ const log = {
  */
 const fetchCsrfToken = async (): Promise<void> => {
   if (csrfInitialized) return;
-  
+
   // Éviter les appels multiples simultanés
   if (csrfPromise) {
     return csrfPromise;
@@ -59,9 +59,9 @@ const fetchCsrfToken = async (): Promise<void> => {
         timeout: 10000,
       });
       csrfInitialized = true;
-      log.info('[CSRF] Token initialisé');
+      log.info("[CSRF] Token initialisé");
     } catch (error) {
-      log.error('[CSRF] Erreur lors de la récupération du token:', error);
+      log.error("[CSRF] Erreur lors de la récupération du token:", error);
       // Ne pas bloquer l'application en cas d'erreur
     } finally {
       csrfPromise = null;
@@ -103,19 +103,19 @@ api.interceptors.request.use(
     if (requiresCsrf(config.method)) {
       // S'assurer que le cookie CSRF est initialisé
       await fetchCsrfToken();
-      
+
       // Ajouter le token XSRF à l'en-tête
       const xsrfToken = getXsrfToken();
       if (xsrfToken) {
-        config.headers['X-XSRF-TOKEN'] = xsrfToken;
+        config.headers["X-XSRF-TOKEN"] = xsrfToken;
       }
     }
-    
+
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // ============================================
@@ -126,22 +126,22 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    
+
     // Si erreur 419 (CSRF token mismatch), réessayer avec un nouveau token
     if (error.response?.status === 419 && !originalRequest._retry) {
       originalRequest._retry = true;
-      log.warn('[CSRF] Token expiré, renouvellement...');
-      
+      log.warn("[CSRF] Token expiré, renouvellement...");
+
       // Forcer le renouvellement du token CSRF
       csrfInitialized = false;
       await fetchCsrfToken();
-      
+
       // Mettre à jour le header avec le nouveau token
       const newXsrfToken = getXsrfToken();
       if (newXsrfToken) {
-        originalRequest.headers['X-XSRF-TOKEN'] = newXsrfToken;
+        originalRequest.headers["X-XSRF-TOKEN"] = newXsrfToken;
       }
-      
+
       // Réessayer la requête
       return api(originalRequest);
     }
@@ -154,10 +154,10 @@ api.interceptors.response.use(
         const baseURL: string | undefined = error?.config?.baseURL;
         const data = error?.response?.data;
 
-        if (typeof status === 'number' && status >= 500) {
-          log.error('[API] Erreur serveur', { status, baseURL, url, data });
+        if (typeof status === "number" && status >= 500) {
+          log.error("[API] Erreur serveur", { status, baseURL, url, data });
         } else if (!status) {
-          log.error('[API] Erreur réseau / CORS', {
+          log.error("[API] Erreur réseau / CORS", {
             baseURL,
             url,
             message: error?.message,
@@ -166,14 +166,14 @@ api.interceptors.response.use(
 
         if (
           status === 404 &&
-          typeof url === 'string' &&
-          url.includes('/annulations/') &&
-          (url.includes('/rembourser') || url.includes('/generer-avoir') || url.includes('/utiliser-avoir'))
+          typeof url === "string" &&
+          url.includes("/annulations/") &&
+          (url.includes("/rembourser") || url.includes("/generer-avoir") || url.includes("/utiliser-avoir"))
         ) {
-          log.warn(
-            '[API] Route annulations introuvable (404). Le backend n\'est probablement pas déployé/à jour.',
-            { baseURL, url }
-          );
+          log.warn("[API] Route annulations introuvable (404). Le backend n'est probablement pas déployé/à jour.", {
+            baseURL,
+            url,
+          });
         }
       } catch {
         // ignore
@@ -183,13 +183,13 @@ api.interceptors.response.use(
     // Gestion de l'erreur 401 (non authentifié)
     if (error.response?.status === 401) {
       // Rediriger seulement si on n'est pas déjà sur la page de login
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
       }
     }
-    
+
     return Promise.reject(error);
-  }
+  },
 );
 
 // ============================================
