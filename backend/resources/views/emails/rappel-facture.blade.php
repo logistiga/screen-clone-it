@@ -1,17 +1,15 @@
 @extends('emails.layout')
 
 @section('content')
+@php
+  $client = $client ?? $facture->client ?? null;
+  $numero_rappel = $numero_rappel ?? 1;
+@endphp
+
 <!-- Header avec Logo -->
 <tr>
     <td style="background: linear-gradient(135deg, {{ $numero_rappel >= 3 ? '#dc2626' : ($numero_rappel >= 2 ? '#ea580c' : '#f59e0b') }} 0%, {{ $numero_rappel >= 3 ? '#f87171' : ($numero_rappel >= 2 ? '#fb923c' : '#fbbf24') }} 100%); padding: 32px 40px; text-align: center;">
-        @if(config('app.logo_url'))
-        <img src="{{ config('app.logo_url') }}" alt="LOGISTIGA" width="160" style="max-width: 160px; height: auto; margin-bottom: 12px;" />
-        @else
-        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px;">LOGISTIGA</h1>
-        @endif
-        <p style="color: rgba(255,255,255,0.85); font-size: 13px; margin: 8px 0 0 0; letter-spacing: 0.5px;">
-            SOLUTIONS LOGISTIQUES PROFESSIONNELLES
-        </p>
+        @include('emails.partials.logo')
     </td>
 </tr>
 
@@ -44,16 +42,16 @@
         
         <!-- Message selon le niveau de rappel -->
         @if($numero_rappel >= 3)
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0;">
+        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
             <strong style="color: #dc2626;">Ceci est notre dernier rappel.</strong> Malgré nos précédentes relances, nous n'avons toujours pas reçu le règlement de la facture ci-dessous. Nous vous prions de bien vouloir régulariser cette situation dans les plus brefs délais.
         </p>
         @elseif($numero_rappel >= 2)
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0;">
+        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
             Malgré notre précédent rappel, nous n'avons pas encore reçu le règlement de la facture ci-dessous. Nous vous saurions gré de bien vouloir procéder au paiement dans les meilleurs délais.
         </p>
         @else
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0;">
-            Nous nous permettons de vous rappeler que la facture ci-dessous reste en attente de règlement. Sauf erreur ou omission de notre part, nous vous remercions de bien vouloir procéder au paiement.
+        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
+            Sauf erreur ou omission de notre part, nous nous permettons de vous rappeler que la facture ci-dessous reste en attente de règlement.
         </p>
         @endif
         
@@ -127,8 +125,15 @@
         </table>
         @endif
         
+        <!-- Bouton Télécharger la Facture -->
+        @include('emails.partials.download-button', [
+            'type' => 'facture',
+            'label' => 'Télécharger la Facture PDF',
+            'download_url' => $download_url ?? route('factures.pdf', $facture->id)
+        ])
+        
         <!-- Message de contact -->
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.7; margin: 20px 0; text-align: center;">
+        <p style="color: #4a5568; font-size: 14px; line-height: 1.7; margin: 0; text-align: center;">
             En cas de difficulté de paiement, n'hésitez pas à nous contacter pour trouver une solution ensemble.
         </p>
     </td>

@@ -1,17 +1,14 @@
 @extends('emails.layout')
 
 @section('content')
+@php
+  $client = $client ?? $facture->client ?? null;
+@endphp
+
 <!-- Header avec Logo -->
 <tr>
     <td style="background: linear-gradient(135deg, #059669 0%, #34d399 100%); padding: 32px 40px; text-align: center;">
-        @if(config('app.logo_url'))
-        <img src="{{ config('app.logo_url') }}" alt="LOGISTIGA" width="160" style="max-width: 160px; height: auto; margin-bottom: 12px;" />
-        @else
-        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px;">LOGISTIGA</h1>
-        @endif
-        <p style="color: rgba(255,255,255,0.85); font-size: 13px; margin: 8px 0 0 0; letter-spacing: 0.5px;">
-            SOLUTIONS LOGISTIQUES PROFESSIONNELLES
-        </p>
+        @include('emails.partials.logo')
     </td>
 </tr>
 
@@ -36,9 +33,9 @@
             Bonjour {{ $client->raison_sociale ?? $client->nom_complet ?? 'Cher client' }},
         </p>
         
-        <!-- Message d'introduction -->
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0;">
-            Nous accusons bonne réception de votre paiement et vous en remercions. Votre confiance nous honore et nous nous engageons à continuer de vous offrir un service de qualité.
+        <!-- Message de remerciement -->
+        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
+            Nous accusons bonne réception de votre paiement et vous en remercions. Votre confiance nous honore.
         </p>
         
         <!-- Icône de succès -->
@@ -134,10 +131,12 @@
         </table>
         @endif
         
-        <!-- Message de remerciement -->
-        <p style="color: #4a5568; font-size: 15px; line-height: 1.7; margin: 20px 0; text-align: center;">
-            Nous vous remercions pour votre paiement et restons à votre disposition pour tout besoin futur.
-        </p>
+        <!-- Bouton Télécharger Reçu -->
+        @include('emails.partials.download-button', [
+            'type' => 'facture',
+            'label' => 'Télécharger le Reçu de Paiement',
+            'download_url' => $download_url ?? route('paiements.recu', $paiement->id)
+        ])
     </td>
 </tr>
 
