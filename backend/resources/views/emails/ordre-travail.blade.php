@@ -30,7 +30,7 @@
     <td style="padding: 32px 40px;">
         <!-- Salutation -->
         <p style="color: #1e3a5f; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">
-            Bonjour {{ $client->raison_sociale ?? $client->nom_complet ?? 'Cher client' }},
+            Bonjour {{ optional($client)->raison_sociale ?? optional($client)->nom_complet ?? 'Cher client' }},
         </p>
         
         <!-- Message unique (personnalisé OU par défaut) -->
