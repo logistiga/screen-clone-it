@@ -233,8 +233,8 @@ class NotificationService
     {
         $mailConfig = $this->configureMailer();
         
-        // Charger le client si pas déjà chargé
-        $ordre->loadMissing('client');
+        // Charger le client et les relations nécessaires
+        $ordre->loadMissing(['client', 'conteneurs.operations', 'lots']);
         $client = $ordre->client;
         
         // Déterminer l'email destinataire
@@ -253,13 +253,32 @@ class NotificationService
         }
 
         try {
-            // Utiliser le PDF frontend si fourni
-            $pdfContent = null;
-            $pdfFilename = null;
+            // Log pour debug uniquement
+            if (config('app.debug')) {
+                Log::info('Envoi ordre email - payload', [
+                    'ordre_id' => $ordre->id,
+                    'ordre_numero' => $ordre->numero,
+                    'client_exists' => (bool) $client,
+                    'email_destinataire' => $email,
+                    'pdf_from_frontend' => !empty($pdfBase64),
+                ]);
+            }
+
+            // Utiliser le PDF frontend si fourni, sinon générer côté backend
             if ($pdfBase64) {
                 $pdfContent = base64_decode($pdfBase64);
                 $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
                 Log::info("Ordre {$ordre->numero}: Utilisation du PDF frontend");
+            } else {
+                // Fallback: Générer le PDF côté backend
+                $pdf = Pdf::loadView('pdf.ordre-travail', [
+                    'ordre' => $ordre,
+                    'client' => $client,
+                ]);
+                $pdf->setPaper('A4', 'portrait');
+                $pdfContent = $pdf->output();
+                $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
+                Log::info("Ordre {$ordre->numero}: Génération du PDF backend (fallback)");
             }
 
             Mail::send('emails.ordre-travail', [
@@ -270,17 +289,13 @@ class NotificationService
             ], function ($mail) use ($email, $ordre, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Ordre de Travail N° {$ordre->numero}")
-                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
-                
-                // Attacher le PDF si fourni
-                if ($pdfContent && $pdfFilename) {
-                    $mail->attachData($pdfContent, $pdfFilename, [
+                    ->from($mailConfig['from_email'], $mailConfig['from_name'])
+                    ->attachData($pdfContent, $pdfFilename, [
                         'mime' => 'application/pdf',
                     ]);
-                }
             });
 
-            Log::info("Ordre de travail {$ordre->numero} envoyé à {$email}");
+            Log::info("Ordre de travail {$ordre->numero} envoyé avec succès à {$email} avec PDF en pièce jointe");
             return true;
         } catch (\Throwable $e) {
             // Ne pas logger ici, le controller s'en charge
