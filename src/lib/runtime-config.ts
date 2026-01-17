@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = "https://facturation.logistiga.com/backend/public/api";
+const DEFAULT_API_URL = "https://facturation.logistiga.com/backend/api";
 
 const isTryCloudflareUrl = (url: string): boolean => url.includes("trycloudflare.com");
 
