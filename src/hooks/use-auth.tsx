@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, forwardRef } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import api, { initializeCsrf, resetCsrf } from '@/lib/api';
 
 interface User {
@@ -35,8 +35,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider = forwardRef<HTMLDivElement, AuthProviderProps>(
-  function AuthProvider({ children }, ref) {
+export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
@@ -274,27 +273,24 @@ export const AuthProvider = forwardRef<HTMLDivElement, AuthProviderProps>(
       return user.roles?.some(r => r.name === role) || false;
     };
 
-    return (
-      <AuthContext.Provider
-        value={{
-          user,
-          isLoading,
-          isAuthenticated: !!user,
-          login,
-          logout,
-          updateUser,
-          hasPermission,
-          hasRole,
-          refreshSession,
-        }}
-      >
-        <div ref={ref} style={{ display: "contents" }}>
-          {children}
-        </div>
-      </AuthContext.Provider>
-    );
-  }
-);
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        logout,
+        updateUser,
+        hasPermission,
+        hasRole,
+        refreshSession,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
 
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
