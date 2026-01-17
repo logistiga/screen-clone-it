@@ -68,9 +68,9 @@ export function useNetworkStatus(): NetworkStatus & {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT);
 
-      // Vérifier la connectivité via une requête OPTIONS (préflight) sur l'API
-      // (évite un 404 si /ping n'existe pas tout en validant que le serveur répond)
-      await api.options('/auth/login', {
+      // Vérifier la connectivité via un endpoint léger du backend (évite les préflights CORS).
+      // NOTE: notre API expose GET|HEAD /api/ping.
+      await api.head('/ping', {
         signal: controller.signal,
         timeout: PING_TIMEOUT,
       });
