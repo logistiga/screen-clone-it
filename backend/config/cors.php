@@ -16,7 +16,7 @@ return [
     */
 
     // IMPORTANT: si l'app Laravel est servie sous /backend, il faut aussi couvrir ces routes.
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'backend/api/*', 'backend/sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'backend/api/*', 'backend/sanctum/csrf-cookie', 'backend/public/api/*', 'backend/public/sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
