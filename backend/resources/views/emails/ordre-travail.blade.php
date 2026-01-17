@@ -65,7 +65,7 @@
                             </td>
                             <td align="right" style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
                                 <span style="color: #718096; font-size: 13px;">Date de création</span><br>
-                                <span style="color: #1e3a5f; font-size: 16px; font-weight: 600;">{{ $ordre->date_ordre->format('d/m/Y') }}</span>
+                                <span style="color: #1e3a5f; font-size: 16px; font-weight: 600;">{{ optional($ordre->date_creation)->format('d/m/Y') ?? '-' }}</span>
                             </td>
                         </tr>
                         @if($ordre->conteneurs && $ordre->conteneurs->count() > 0)
