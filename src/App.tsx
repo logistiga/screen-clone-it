@@ -87,6 +87,7 @@ const TransitaireDetailPage = lazy(() => import("./pages/TransitaireDetail"));
 const RepresentantDetailPage = lazy(() => import("./pages/RepresentantDetail"));
 const ArmateurDetailPage = lazy(() => import("./pages/ArmateurDetail"));
 const RecuPrimePDFPage = lazy(() => import("./pages/RecuPrimePDF"));
+const GuidePage = lazy(() => import("./pages/Guide"));
 
 // Configuration optimisée de React Query pour production
 const queryClient = new QueryClient({
@@ -174,6 +175,7 @@ const App = () => (
                 <Route path="/partenaires/representants/:id" element={<ProtectedRoute><RepresentantDetailPage /></ProtectedRoute>} />
                 <Route path="/partenaires/armateurs/:id" element={<ProtectedRoute><ArmateurDetailPage /></ProtectedRoute>} />
                 <Route path="/partenaires/recu-prime/:id" element={<ProtectedRoute><RecuPrimePDFPage /></ProtectedRoute>} />
+                <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

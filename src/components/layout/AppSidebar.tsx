@@ -4,7 +4,7 @@ import {
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
   FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight,
-  Tag
+  Tag, BookOpen
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -85,6 +85,7 @@ const menuItems = {
       { title: "Banques", url: "/banques", icon: Building },
       { title: "Catégories dépenses", url: "/categories-depenses", icon: Tag },
       { title: "Numérotation", url: "/numerotation", icon: Hash },
+      { title: "Guide & Installation", url: "/guide", icon: BookOpen },
     ]
   }
 };
