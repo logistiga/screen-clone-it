@@ -3,152 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $subject ?? 'LOJISTIGA' }}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
-        }
-        .email-wrapper {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-        .email-header {
-            background: linear-gradient(135deg, #1a365d 0%, #2d4a7c 100%);
-            padding: 30px;
-            text-align: center;
-        }
-        .email-header img {
-            max-height: 50px;
-            margin-bottom: 10px;
-        }
-        .email-header h1 {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-        .email-body {
-            padding: 40px 30px;
-        }
-        .email-content {
-            margin-bottom: 30px;
-        }
-        .email-content p {
-            margin-bottom: 15px;
-            color: #555;
-        }
-        .highlight-box {
-            background-color: #f8fafc;
-            border-left: 4px solid #1a365d;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .highlight-box h3 {
-            color: #1a365d;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-        .highlight-box p {
-            margin: 5px 0;
-            color: #666;
-        }
-        .highlight-box .amount {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a365d;
-        }
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .info-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .info-table td:first-child {
-            font-weight: 600;
-            color: #666;
-            width: 40%;
-        }
-        .info-table td:last-child {
-            color: #333;
-        }
-        .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #1a365d 0%, #2d4a7c 100%);
-            color: #ffffff !important;
-            padding: 14px 30px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            margin: 20px 0;
-        }
-        .cta-button:hover {
-            background: linear-gradient(135deg, #2d4a7c 0%, #1a365d 100%);
-        }
-        .email-footer {
-            background-color: #f8fafc;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #eee;
-        }
-        .email-footer p {
-            color: #888;
-            font-size: 13px;
-            margin: 5px 0;
-        }
-        .email-footer .company-name {
-            font-weight: 600;
-            color: #1a365d;
-            font-size: 15px;
-        }
-        .signature {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        .signature p {
-            margin: 3px 0;
-            color: #666;
-            font-size: 14px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .badge-success { background-color: #d1fae5; color: #065f46; }
-        .badge-warning { background-color: #fef3c7; color: #92400e; }
-        .badge-danger { background-color: #fee2e2; color: #991b1b; }
-        .badge-info { background-color: #dbeafe; color: #1e40af; }
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{{ $subject ?? 'LOGISTIGA' }}</title>
+    <!--[if mso]>
+    <style type="text/css">
+        table { border-collapse: collapse; }
+        .button { padding: 14px 28px !important; }
     </style>
+    <![endif]-->
 </head>
-<body>
-    <div class="email-wrapper">
-        @yield('content')
-        
-        <div class="email-footer">
-            <p class="company-name">LOJISTIGA</p>
-            <p>Solutions logistiques et gestion de conteneurs</p>
-            <p>{{ config('mail.from.address') }}</p>
-            <p style="margin-top: 15px; font-size: 11px; color: #aaa;">
-                Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.
-            </p>
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #f4f7fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    
+    <!-- Container principal -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7fa;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                
+                <!-- Email Card -->
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); overflow: hidden; max-width: 600px;">
+                    
+                    @yield('content')
+                    
+                    <!-- Contact Section -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="color: #4a5568; font-size: 14px; line-height: 1.6;">
+                                        <strong style="color: #1e3a5f;">Des questions ?</strong><br>
+                                        <span style="color: #718096;">Notre équipe est à votre disposition</span>
+                                    </td>
+                                    <td align="right" style="color: #4a5568; font-size: 14px;">
+                                        <a href="tel:+24111701435" style="color: #1e3a5f; text-decoration: none; display: block; margin-bottom: 4px;">📞 +241 11 70 14 35</a>
+                                        <a href="mailto:info@logistiga.com" style="color: #1e3a5f; text-decoration: none;">✉️ info@logistiga.com</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 28px 40px; text-align: center;">
+                            <p style="color: rgba(255,255,255,0.95); font-size: 16px; font-weight: 600; margin: 0 0 4px 0; letter-spacing: 0.5px;">
+                                LOGISTIGA SAS
+                            </p>
+                            <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0 0 16px 0;">
+                                Owendo SETRAG – GABON
+                            </p>
+                            
+                            <!-- Coordonnées bancaires -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+                                <tr>
+                                    <td style="padding: 0 8px;">
+                                        <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">BGFI Bank: 40003 04140 41041658011 78</p>
+                                    </td>
+                                    <td style="padding: 0 8px;">
+                                        <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">UGB: 40002 00043 90000338691 84</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin: 16px 0 0 0;">
+                                © {{ date('Y') }} LOGISTIGA. Tous droits réservés.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+                
+                <!-- Disclaimer -->
+                <p style="color: #a0aec0; font-size: 11px; text-align: center; margin: 24px 0 0 0; max-width: 500px; line-height: 1.5;">
+                    Cet email et toute pièce jointe sont confidentiels et destinés exclusivement au destinataire. 
+                    Si vous n'êtes pas le destinataire prévu, merci de supprimer cet email.
+                </p>
+                
+            </td>
+        </tr>
+    </table>
+    
 </body>
 </html>
