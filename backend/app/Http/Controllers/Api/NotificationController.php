@@ -11,6 +11,7 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class NotificationController extends Controller
 {
@@ -154,7 +155,11 @@ class NotificationController extends Controller
                 'error' => config('app.debug') ? 'NotificationService::envoyerOrdreTravail a retourné false' : null,
             ], 500);
         } catch (\Throwable $e) {
+            $errorId = (string) Str::uuid();
+            $debug = (bool) (config('app.debug') || $request->boolean('debug'));
+
             Log::error("Controller: Erreur envoi ordre {$ordre->numero}", [
+                'error_id' => $errorId,
                 'ordre_id' => $ordre->id,
                 'email_override' => $request->email ?? null,
                 'exception' => get_class($e),
@@ -166,7 +171,9 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de l\'ordre de travail',
-                'error' => config('app.debug') ? $e->getMessage() : null,
+                'error_id' => $errorId,
+                'error' => $debug ? $e->getMessage() : null,
+                'exception' => $debug ? get_class($e) : null,
             ], 500);
         }
     }

@@ -415,13 +415,18 @@ export function EmailModalWithTemplate({
       onOpenChange(false);
     } catch (error: any) {
       console.error("Erreur envoi email:", error);
+      const apiMessage = error.response?.data?.message;
+      const apiError = error.response?.data?.error;
+      const apiErrorId = error.response?.data?.error_id;
+
       toast({
         title: "Erreur d'envoi",
-        description: error.response?.data?.message || "Une erreur est survenue lors de l'envoi de l'email.",
+        description:
+          [apiMessage, apiError, apiErrorId ? `ID: ${apiErrorId}` : null]
+            .filter(Boolean)
+            .join(" — ") || "Une erreur est survenue lors de l'envoi de l'email.",
         variant: "destructive",
       });
-    } finally {
-      setIsSending(false);
     }
   };
 
