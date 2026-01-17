@@ -214,13 +214,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Appel de login - le backend doit renvoyer un token
       const response = await api.post('/auth/login', { email, password });
 
-      // Récupérer et stocker le token
-      const token = response.data?.token || response.data?.access_token;
-      
+      // Récupérer et stocker le token (tolérant aux différences de payload selon le backend)
+      const token =
+        response.data?.token ??
+        response.data?.access_token ??
+        response.data?.plainTextToken ??
+        response.data?.plain_text_token ??
+        response.data?.data?.token ??
+        response.data?.data?.access_token;
+
       if (!token) {
+        if (import.meta.env.DEV) {
+          const keys = response.data && typeof response.data === 'object' ? Object.keys(response.data) : [];
+          console.warn('[Auth] Réponse /auth/login sans token', { keys, data: response.data });
+        }
+
         return {
           success: false,
-          error: "Le serveur n'a pas renvoyé de token. Vérifiez la configuration du backend.",
+          error:
+            "Le serveur n'a pas renvoyé de token. Vérifiez la réponse JSON de POST /api/auth/login (champ token/access_token).",
         };
       }
 
