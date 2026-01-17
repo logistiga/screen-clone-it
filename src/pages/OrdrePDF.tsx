@@ -1,8 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Download, Loader2, Mail } from "lucide-react";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { QRCodeSVG } from "qrcode.react";
 import { useOrdreById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate } from "@/data/mockData";
@@ -16,9 +17,11 @@ export default function OrdrePDFPage() {
   
   const { data: ordre, isLoading, error } = useOrdreById(id || "");
 
-  const { contentRef, downloadPdf } = usePdfDownload({ 
+  const { contentRef, downloadPdf, generatePdfBlob } = usePdfDownload({ 
     filename: `OT_${ordre?.numero || 'unknown'}` 
   });
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Téléchargement automatique au chargement
   useEffect(() => {
@@ -164,6 +167,10 @@ export default function OrdrePDFPage() {
             <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={downloadPdf}>
               <Download className="h-4 w-4" />
               Télécharger PDF
+            </Button>
+            <Button variant="outline" onClick={() => setShowEmailModal(true)} className="gap-2 transition-all duration-200 hover:scale-105">
+              <Mail className="h-4 w-4" />
+              Envoyer par email
             </Button>
           </div>
         </div>
@@ -340,6 +347,24 @@ export default function OrdrePDFPage() {
           <DocumentFooter />
         </Card>
       </div>
+
+      {/* Email Modal */}
+      <EmailModalWithTemplate
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        documentType="ordre"
+        documentData={{
+          id: ordre.id,
+          numero: ordre.numero,
+          dateCreation: ordre.date || ordre.created_at,
+          montantTTC: ordre.montant_ttc,
+          montantHT: ordre.montant_ht,
+          resteAPayer: resteAPayer,
+          clientNom: ordre.client?.nom,
+          clientEmail: ordre.client?.email,
+        }}
+        generatePdfBlob={generatePdfBlob}
+      />
 
       <style>{`
         @media print {

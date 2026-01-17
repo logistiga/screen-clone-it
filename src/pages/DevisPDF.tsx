@@ -1,8 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Download, Loader2, Mail } from "lucide-react";
+import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { QRCodeSVG } from "qrcode.react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
@@ -17,9 +18,11 @@ export default function DevisPDFPage() {
   // Utiliser les vraies données de l'API
   const { data: devisData, isLoading } = useDevisById(id || '');
 
-  const { contentRef, downloadPdf } = usePdfDownload({ 
+  const { contentRef, downloadPdf, generatePdfBlob } = usePdfDownload({ 
     filename: `Devis_${devisData?.numero || 'unknown'}` 
   });
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Téléchargement automatique au chargement (après le chargement des données)
   useEffect(() => {
@@ -148,6 +151,10 @@ export default function DevisPDFPage() {
             <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={downloadPdf}>
               <Download className="h-4 w-4" />
               Télécharger PDF
+            </Button>
+            <Button variant="outline" onClick={() => setShowEmailModal(true)} className="gap-2 transition-all duration-200 hover:scale-105">
+              <Mail className="h-4 w-4" />
+              Envoyer par email
             </Button>
           </div>
         </div>
@@ -288,6 +295,24 @@ export default function DevisPDFPage() {
           <DocumentFooter />
         </Card>
       </div>
+
+      {/* Email Modal */}
+      <EmailModalWithTemplate
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        documentType="devis"
+        documentData={{
+          id: devisData.id,
+          numero: devisData.numero,
+          dateCreation: devisData.date_creation || devisData.date,
+          dateValidite: devisData.date_validite,
+          montantTTC: devisData.montant_ttc,
+          montantHT: devisData.montant_ht,
+          clientNom: devisData.client?.nom,
+          clientEmail: devisData.client?.email,
+        }}
+        generatePdfBlob={generatePdfBlob}
+      />
 
       {/* Print styles */}
       <style>{`
