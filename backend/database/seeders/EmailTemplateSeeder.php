@@ -10,121 +10,162 @@ class EmailTemplateSeeder extends Seeder
 {
     public function run(): void
     {
-        // Templates par défaut
+        // Templates par défaut avec messages professionnels
         $templates = [
             [
                 'nom' => 'Envoi de devis',
                 'type' => 'devis',
-                'objet' => 'Votre devis {{numero_devis}} - {{nom_entreprise}}',
+                'objet' => '📄 Votre Devis N°{{numero_devis}} - LOGISTIGA',
                 'contenu' => "Bonjour {{nom_client}},
 
-Veuillez trouver ci-joint le devis n°{{numero_devis}} d'un montant de {{montant_ttc}} TTC.
+Suite à votre demande, nous avons le plaisir de vous transmettre notre devis détaillé N°{{numero_devis}} d'un montant de {{montant_ttc}} FCFA TTC.
 
-Ce devis est valable jusqu'au {{date_validite}}.
+Ce devis est valable jusqu'au {{date_validite}}. Nous restons à votre entière disposition pour toute information complémentaire ou pour discuter des modalités de mise en œuvre.
 
-N'hésitez pas à nous contacter pour toute question.
+Nous vous remercions pour votre confiance et espérons avoir le plaisir de collaborer avec vous.
 
 Cordialement,
-{{signature}}",
+{{signature}}
+L'équipe LOGISTIGA",
                 'variables' => ['nom_client', 'numero_devis', 'montant_ttc', 'date_validite', 'nom_entreprise', 'signature'],
                 'actif' => true,
             ],
             [
                 'nom' => 'Envoi d\'ordre de travail',
                 'type' => 'ordre',
-                'objet' => 'Ordre de travail {{numero_ordre}} - {{nom_entreprise}}',
+                'objet' => '📦 Ordre de Travail N°{{numero_ordre}} - LOGISTIGA',
                 'contenu' => "Bonjour {{nom_client}},
 
-Nous vous confirmons la prise en charge de votre ordre de travail n°{{numero_ordre}}.
+Nous avons le plaisir de vous confirmer la prise en charge de votre ordre de travail N°{{numero_ordre}}.
 
-Conteneur: {{numero_conteneur}}
-Type d'intervention: {{type_travail}}
-Date prévue: {{date_prevue}}
+📋 Détails de l'opération :
+• Conteneur : {{numero_conteneur}}
+• Type d'intervention : {{type_travail}}
+• Date prévue : {{date_prevue}}
 
-Nous vous tiendrons informé de l'avancement.
+Notre équipe s'engage à vous fournir un service de qualité dans les meilleurs délais. Nous vous tiendrons informé de l'avancement des travaux.
+
+N'hésitez pas à nous contacter pour toute question.
 
 Cordialement,
-{{signature}}",
+{{signature}}
+L'équipe LOGISTIGA",
                 'variables' => ['nom_client', 'numero_ordre', 'numero_conteneur', 'type_travail', 'date_prevue', 'nom_entreprise', 'signature'],
                 'actif' => true,
             ],
             [
                 'nom' => 'Envoi de facture',
                 'type' => 'facture',
-                'objet' => 'Facture {{numero_facture}} - {{nom_entreprise}}',
+                'objet' => '🧾 Facture N°{{numero_facture}} - LOGISTIGA',
                 'contenu' => "Bonjour {{nom_client}},
 
-Veuillez trouver ci-joint la facture n°{{numero_facture}} d'un montant de {{montant_ttc}} TTC.
+Nous vous prions de trouver ci-joint la facture N°{{numero_facture}} d'un montant de {{montant_ttc}} FCFA TTC pour les prestations réalisées.
 
-Date d'échéance: {{date_echeance}}
+📅 Date d'échéance : {{date_echeance}}
+💳 Mode de paiement : {{mode_paiement}}
 
-Mode de paiement: {{mode_paiement}}
+Nous vous remercions de procéder au règlement avant la date d'échéance indiquée. Pour toute question concernant cette facture, notre service comptabilité reste à votre disposition.
 
-Merci de votre confiance.
+Merci pour votre confiance.
 
 Cordialement,
-{{signature}}",
+{{signature}}
+L'équipe LOGISTIGA",
                 'variables' => ['nom_client', 'numero_facture', 'montant_ttc', 'date_echeance', 'mode_paiement', 'nom_entreprise', 'signature'],
                 'actif' => true,
             ],
             [
-                'nom' => 'Relance paiement',
+                'nom' => 'Relance paiement - Niveau 1',
                 'type' => 'relance',
-                'objet' => 'Rappel - Facture {{numero_facture}} en attente',
+                'objet' => '📬 Rappel - Facture N°{{numero_facture}} en attente',
                 'contenu' => "Bonjour {{nom_client}},
 
-Nous nous permettons de vous rappeler que la facture n°{{numero_facture}} d'un montant de {{montant_ttc}} TTC reste impayée.
+Sauf erreur ou omission de notre part, nous nous permettons de vous rappeler que la facture N°{{numero_facture}} d'un montant de {{montant_ttc}} FCFA TTC reste en attente de règlement.
 
-Date d'échéance dépassée: {{date_echeance}}
-Retard: {{jours_retard}} jours
+📅 Date d'échéance dépassée : {{date_echeance}}
+⏱️ Retard : {{jours_retard}} jours
 
-Merci de procéder au règlement dans les meilleurs délais.
+Nous vous saurions gré de bien vouloir procéder au règlement dans les meilleurs délais. Si vous avez déjà effectué le paiement, veuillez ignorer ce message.
+
+En cas de difficulté, n'hésitez pas à nous contacter pour trouver une solution ensemble.
 
 Cordialement,
-{{signature}}",
+{{signature}}
+Le Service Comptabilité - LOGISTIGA",
                 'variables' => ['nom_client', 'numero_facture', 'montant_ttc', 'date_echeance', 'jours_retard', 'nom_entreprise', 'signature'],
                 'actif' => true,
             ],
             [
                 'nom' => 'Confirmation de paiement',
                 'type' => 'confirmation',
-                'objet' => 'Confirmation de paiement - Facture {{numero_facture}}',
+                'objet' => '✅ Confirmation de Paiement - Facture N°{{numero_facture}}',
                 'contenu' => "Bonjour {{nom_client}},
 
-Nous accusons réception de votre paiement de {{montant_paye}} pour la facture n°{{numero_facture}}.
+Nous accusons bonne réception de votre paiement et vous en remercions sincèrement.
 
-Date de paiement: {{date_paiement}}
-Mode de paiement: {{mode_paiement}}
+💳 Détails du paiement :
+• Montant reçu : {{montant_paye}} FCFA
+• Date de paiement : {{date_paiement}}
+• Mode de paiement : {{mode_paiement}}
+• Facture concernée : N°{{numero_facture}}
 
-Merci de votre confiance.
+Votre confiance nous honore et nous nous engageons à continuer de vous offrir un service de qualité.
 
 Cordialement,
-{{signature}}",
+{{signature}}
+L'équipe LOGISTIGA",
                 'variables' => ['nom_client', 'numero_facture', 'montant_paye', 'date_paiement', 'mode_paiement', 'nom_entreprise', 'signature'],
                 'actif' => true,
             ],
             [
                 'nom' => 'Notification travaux terminés',
                 'type' => 'notification',
-                'objet' => 'Travaux terminés - Ordre {{numero_ordre}}',
+                'objet' => '✅ Travaux Terminés - Ordre N°{{numero_ordre}}',
                 'contenu' => "Bonjour {{nom_client}},
 
-Nous avons le plaisir de vous informer que les travaux concernant l'ordre n°{{numero_ordre}} sont terminés.
+Nous avons le plaisir de vous informer que les travaux concernant l'ordre N°{{numero_ordre}} sont maintenant terminés avec succès.
 
-Conteneur: {{numero_conteneur}}
-Date de fin: {{date_fin}}
+📦 Conteneur : {{numero_conteneur}}
+📅 Date de fin : {{date_fin}}
 
-Vous pouvez récupérer votre conteneur ou nous contacter pour organiser la livraison.
+Vous pouvez récupérer votre conteneur ou nous contacter pour organiser la livraison selon vos convenances.
+
+Nous vous remercions pour votre confiance.
 
 Cordialement,
-{{signature}}",
+{{signature}}
+L'équipe LOGISTIGA",
                 'variables' => ['nom_client', 'numero_ordre', 'numero_conteneur', 'date_fin', 'nom_entreprise', 'signature'],
+                'actif' => true,
+            ],
+            [
+                'nom' => 'Envoi de note de début',
+                'type' => 'note_debut',
+                'objet' => '📝 Note de Début N°{{numero_note}} - LOGISTIGA',
+                'contenu' => "Bonjour {{nom_client}},
+
+Nous vous prions de trouver ci-joint votre note de début N°{{numero_note}} concernant l'opération de {{type_operation}}.
+
+📋 Récapitulatif :
+• Conteneur : {{numero_conteneur}}
+• Période : {{periode}}
+• Montant total : {{montant_total}} FCFA
+
+Ce document récapitule les détails de l'opération et les montants associés. N'hésitez pas à nous contacter pour toute question.
+
+Cordialement,
+{{signature}}
+L'équipe LOGISTIGA",
+                'variables' => ['nom_client', 'numero_note', 'type_operation', 'numero_conteneur', 'periode', 'montant_total', 'signature'],
                 'actif' => true,
             ],
         ];
 
         foreach ($templates as $templateData) {
-            EmailTemplate::create($templateData);
+            EmailTemplate::updateOrCreate(
+                ['nom' => $templateData['nom']],
+                $templateData
+            );
         }
 
         // Automatisations par défaut
@@ -186,7 +227,10 @@ Cordialement,
         ];
 
         foreach ($automations as $automationData) {
-            EmailAutomation::create($automationData);
+            EmailAutomation::updateOrCreate(
+                ['nom' => $automationData['nom']],
+                $automationData
+            );
         }
     }
 }
