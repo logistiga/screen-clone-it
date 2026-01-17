@@ -99,20 +99,32 @@ class NotificationService
 
         try {
             // Utiliser le PDF frontend si fourni, sinon générer côté backend
+            $pdfContent = null;
+            $pdfFilename = null;
+
             if ($pdfBase64) {
-                $pdfContent = base64_decode($pdfBase64);
-                $pdfFilename = "Facture_{$facture->numero}.pdf";
-                Log::info("Facture {$facture->numero}: Utilisation du PDF frontend");
+                $decoded = base64_decode($pdfBase64, true);
+                if ($decoded !== false && $decoded !== '') {
+                    $pdfContent = $decoded;
+                    $pdfFilename = "Facture_{$facture->numero}.pdf";
+                    Log::info("Facture {$facture->numero}: Utilisation du PDF frontend");
+                } else {
+                    Log::warning("Facture {$facture->numero}: pdf_base64 invalide, envoi sans pièce jointe");
+                }
             } else {
-                // Fallback: Générer le PDF côté backend
-                $pdf = Pdf::loadView('pdf.facture', [
-                    'facture' => $facture,
-                    'client' => $client,
-                ]);
-                $pdf->setPaper('A4', 'portrait');
-                $pdfContent = $pdf->output();
-                $pdfFilename = "Facture_{$facture->numero}.pdf";
-                Log::info("Facture {$facture->numero}: Génération du PDF backend (fallback)");
+                // Fallback: Générer le PDF côté backend (si DomPDF est disponible)
+                if (!class_exists(Pdf::class)) {
+                    Log::warning("Facture {$facture->numero}: DomPDF indisponible, envoi sans pièce jointe");
+                } else {
+                    $pdf = Pdf::loadView('pdf.facture', [
+                        'facture' => $facture,
+                        'client' => $client,
+                    ]);
+                    $pdf->setPaper('A4', 'portrait');
+                    $pdfContent = $pdf->output();
+                    $pdfFilename = "Facture_{$facture->numero}.pdf";
+                    Log::info("Facture {$facture->numero}: Génération du PDF backend (fallback)");
+                }
             }
 
             Mail::send('emails.facture', [
@@ -123,10 +135,13 @@ class NotificationService
             ], function ($mail) use ($email, $facture, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Facture N° {$facture->numero}")
-                    ->from($mailConfig['from_email'], $mailConfig['from_name'])
-                    ->attachData($pdfContent, $pdfFilename, [
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
+
+                if (!empty($pdfContent) && !empty($pdfFilename)) {
+                    $mail->attachData($pdfContent, $pdfFilename, [
                         'mime' => 'application/pdf',
                     ]);
+                }
             });
 
             // Mettre à jour le statut et la date d'envoi
@@ -182,20 +197,32 @@ class NotificationService
             }
 
             // Utiliser le PDF frontend si fourni, sinon générer côté backend
+            $pdfContent = null;
+            $pdfFilename = null;
+
             if ($pdfBase64) {
-                $pdfContent = base64_decode($pdfBase64);
-                $pdfFilename = "Devis_{$devis->numero}.pdf";
-                Log::info("Devis {$devis->numero}: Utilisation du PDF frontend");
+                $decoded = base64_decode($pdfBase64, true);
+                if ($decoded !== false && $decoded !== '') {
+                    $pdfContent = $decoded;
+                    $pdfFilename = "Devis_{$devis->numero}.pdf";
+                    Log::info("Devis {$devis->numero}: Utilisation du PDF frontend");
+                } else {
+                    Log::warning("Devis {$devis->numero}: pdf_base64 invalide, envoi sans pièce jointe");
+                }
             } else {
-                // Fallback: Générer le PDF côté backend
-                $pdf = Pdf::loadView('pdf.devis', [
-                    'devis' => $devis,
-                    'client' => $client,
-                ]);
-                $pdf->setPaper('A4', 'portrait');
-                $pdfContent = $pdf->output();
-                $pdfFilename = "Devis_{$devis->numero}.pdf";
-                Log::info("Devis {$devis->numero}: Génération du PDF backend (fallback)");
+                // Fallback: Générer le PDF côté backend (si DomPDF est disponible)
+                if (!class_exists(Pdf::class)) {
+                    Log::warning("Devis {$devis->numero}: DomPDF indisponible, envoi sans pièce jointe");
+                } else {
+                    $pdf = Pdf::loadView('pdf.devis', [
+                        'devis' => $devis,
+                        'client' => $client,
+                    ]);
+                    $pdf->setPaper('A4', 'portrait');
+                    $pdfContent = $pdf->output();
+                    $pdfFilename = "Devis_{$devis->numero}.pdf";
+                    Log::info("Devis {$devis->numero}: Génération du PDF backend (fallback)");
+                }
             }
 
             Mail::send('emails.devis', [
@@ -206,10 +233,13 @@ class NotificationService
             ], function ($mail) use ($email, $devis, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Devis N° {$devis->numero}")
-                    ->from($mailConfig['from_email'], $mailConfig['from_name'])
-                    ->attachData($pdfContent, $pdfFilename, [
+                    ->from($mailConfig['from_email'], $mailConfig['from_name']);
+
+                if (!empty($pdfContent) && !empty($pdfFilename)) {
+                    $mail->attachData($pdfContent, $pdfFilename, [
                         'mime' => 'application/pdf',
                     ]);
+                }
             });
 
             // Mettre à jour le statut et la date d'envoi
