@@ -172,9 +172,9 @@ export default function ModifierDevisPage() {
       client_id: parseInt(clientId),
       date_validite: dateValidite,
       notes: notes || null,
-      remise_type: remiseData.type || null,
-      remise_valeur: remiseData.valeur || 0,
-      remise_montant: remiseData.montantCalcule || 0,
+      remise_type: remiseData.type === "none" ? null : remiseData.type,
+      remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
+      remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
     };
 
     if (categorie === "conteneurs" && conteneursData) {
