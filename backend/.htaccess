@@ -1,0 +1,8 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Rediriger toutes les requêtes vers public/
+    # Permet d'accéder à /backend/api/... au lieu de /backend/public/api/...
+    RewriteCond %{REQUEST_URI} !^/backend/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
