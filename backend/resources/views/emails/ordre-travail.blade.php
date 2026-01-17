@@ -67,13 +67,12 @@
                                 <span style="color: #718096; font-size: 13px;">Date de création</span><br>
                                 @php
                                   $dateCreationOrdre = '-';
-                                  if (!empty($ordre->date_creation) && (
-                                        $ordre->date_creation instanceof \DateTimeInterface
-                                        || (is_string($ordre->date_creation) && strtotime($ordre->date_creation))
-                                      )) {
-                                    $dateCreationOrdre = \Carbon\Carbon::parse($ordre->date_creation)->format('d/m/Y');
-                                  } elseif (!empty($ordre->created_at)) {
-                                    $dateCreationOrdre = \Carbon\Carbon::parse($ordre->created_at)->format('d/m/Y');
+                                  $raw = $ordre->date_creation ?? $ordre->created_at ?? null;
+
+                                  if ($raw instanceof \DateTimeInterface) {
+                                    $dateCreationOrdre = \Carbon\Carbon::instance($raw)->format('d/m/Y');
+                                  } elseif (is_string($raw) && strtotime($raw)) {
+                                    $dateCreationOrdre = \Carbon\Carbon::parse($raw)->format('d/m/Y');
                                   }
                                 @endphp
                                 <span style="color: #1e3a5f; font-size: 16px; font-weight: 600;">{{ $dateCreationOrdre }}</span>
@@ -132,11 +131,14 @@
         </table>
         
         <!-- Bouton Télécharger PDF -->
+        @php
+          $baseUrl = rtrim(config('app.url'), '/');
+          $download_url = $download_url ?? "{$baseUrl}/ordres/{$ordre->id}/pdf";
+        @endphp
         @include('emails.partials.download-button', [
             'type' => 'ordre',
             'label' => 'Télécharger l\'Ordre de Travail PDF',
-            // IMPORTANT: éviter route('ordres.pdf') (route non définie) -> provoque une erreur 500
-            'download_url' => $download_url ?? url("/ordres/{$ordre->id}/pdf")
+            'download_url' => $download_url
         ])
         
         <!-- Note -->
