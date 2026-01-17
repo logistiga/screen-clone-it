@@ -513,8 +513,11 @@ L'équipe LOGISTIGA`;
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" title="PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
+                          <Button variant="ghost" size="icon" title="Voir PDF" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
                             <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+                            <Download className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
@@ -648,10 +651,19 @@ L'équipe LOGISTIGA`;
             numero: emailModal.numero,
             dateCreation: emailModal.date_creation,
             montantTTC: emailModal.montant_ttc,
+            montantHT: emailModal.montant_ht,
+            resteAPayer: (emailModal.montant_ttc || 0) - (emailModal.montant_paye || 0),
             clientNom: emailModal.client?.raison_sociale || emailModal.client?.nom_complet,
             clientEmail: emailModal.client?.email,
+            transitaireNom: emailModal.transitaire?.nom,
+            transitaireEmail: emailModal.transitaire?.email,
+            armateurNom: emailModal.armateur?.nom,
+            armateurEmail: emailModal.armateur?.email,
+            representantNom: emailModal.representant?.nom,
+            representantEmail: emailModal.representant?.email,
+            contacts: emailModal.client?.contacts || [],
             statut: emailModal.statut,
-            categorie: emailModal.type_independant || emailModal.type_conteneur,
+            categorie: emailModal.categorie || emailModal.type_operation,
           }}
         />
       )}
