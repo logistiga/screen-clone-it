@@ -132,22 +132,43 @@ class NotificationController extends Controller
             'pdf_base64' => 'nullable|string',
         ]);
 
-        $success = $this->notificationService->envoyerOrdreTravail(
-            $ordre,
-            $request->email,
-            $request->message,
-            $request->pdf_base64
-        );
+        try {
+            $ordre->loadMissing(['client', 'conteneurs.operations', 'lots']);
 
-        if ($success) {
+            $success = $this->notificationService->envoyerOrdreTravail(
+                $ordre,
+                $request->email,
+                $request->message,
+                $request->pdf_base64
+            );
+
+            if ($success) {
+                return response()->json([
+                    'message' => 'Ordre de travail envoyé avec succès',
+                    'ordre' => $ordre->fresh(),
+                ]);
+            }
+
             return response()->json([
-                'message' => 'Ordre de travail envoyé avec succès',
+                'message' => 'Erreur lors de l\'envoi de l\'ordre de travail',
+                'error' => config('app.debug') ? 'NotificationService::envoyerOrdreTravail a retourné false' : null,
+            ], 500);
+        } catch (\Throwable $e) {
+            Log::error("Controller: Erreur envoi ordre {$ordre->numero}", [
+                'ordre_id' => $ordre->id,
+                'email_override' => $request->email ?? null,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
             ]);
-        }
 
-        return response()->json([
-            'message' => 'Erreur lors de l\'envoi de l\'ordre de travail',
-        ], 500);
+            return response()->json([
+                'message' => 'Erreur lors de l\'envoi de l\'ordre de travail',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     /**
