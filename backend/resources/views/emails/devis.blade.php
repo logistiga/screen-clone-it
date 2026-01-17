@@ -2,7 +2,14 @@
 
 @section('content')
 @php
+  use Illuminate\Support\Facades\Route;
+
   $client = $client ?? $devis->client ?? null;
+
+  // Évite une erreur 500 si la route backend n'existe pas en production.
+  // Le PDF est de toute façon joint à l'email.
+  $download_url = $download_url
+    ?? (Route::has('devis.pdf') ? route('devis.pdf', $devis->id) : null);
 @endphp
 
 <!-- Header avec Logo -->
@@ -30,7 +37,7 @@
     <td style="padding: 32px 40px;">
         <!-- Salutation -->
         <p style="color: #1e3a5f; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">
-            Bonjour {{ $client->raison_sociale ?? $client->nom_complet ?? 'Cher client' }},
+            Bonjour {{ optional($client)->raison_sociale ?? optional($client)->nom_complet ?? 'Cher client' }},
         </p>
         
         <!-- Message unique (personnalisé OU par défaut) -->
@@ -114,11 +121,13 @@
         @endif
         
         <!-- Bouton Télécharger PDF -->
+        @if(!empty($download_url))
         @include('emails.partials.download-button', [
             'type' => 'devis',
             'label' => 'Télécharger le Devis PDF',
-            'download_url' => $download_url ?? route('devis.pdf', $devis->id)
+            'download_url' => $download_url
         ])
+        @endif
         
         <!-- Note -->
         <p style="color: #718096; font-size: 13px; text-align: center; margin: 0;">
