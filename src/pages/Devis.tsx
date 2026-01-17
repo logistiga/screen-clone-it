@@ -27,7 +27,7 @@ import {
   FileCheck, Check, Container, Package, Wrench,
   TrendingUp, Clock, CheckCircle
 } from "lucide-react";
-import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
+import { EmailModalWithPdfGenerator } from "@/components/EmailModalWithPdfGenerator";
 import { useDevis, useDeleteDevis, useConvertDevisToOrdre, useConvertDevisToFacture, useUpdateDevis } from "@/hooks/use-commercial";
 import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { TablePagination } from "@/components/TablePagination";
@@ -502,7 +502,7 @@ L'équipe Logistiga`;
       </AlertDialog>
 
       {emailModal && (
-        <EmailModalWithTemplate
+        <EmailModalWithPdfGenerator
           open={!!emailModal}
           onOpenChange={() => setEmailModal(null)}
           documentType="devis"
@@ -529,6 +529,7 @@ L'équipe Logistiga`;
             statut: emailModal.statut,
             categorie: emailModal.type_document,
           }}
+          pdfContentUrl={`${import.meta.env.VITE_API_URL || 'https://facturation.logistiga.com/backend/public'}/api/devis/${emailModal.id}/pdf-html`}
         />
       )}
     </MainLayout>

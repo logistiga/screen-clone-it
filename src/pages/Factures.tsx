@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock } from "lucide-react";
-import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
+import { EmailModalWithPdfGenerator } from "@/components/EmailModalWithPdfGenerator";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
@@ -425,7 +425,7 @@ export default function FacturesPage() {
       </AlertDialog>
 
       {emailModal && (
-        <EmailModalWithTemplate
+        <EmailModalWithPdfGenerator
           open={!!emailModal}
           onOpenChange={() => setEmailModal(null)}
           documentType="facture"
@@ -453,6 +453,7 @@ export default function FacturesPage() {
             statut: emailModal.statut,
             categorie: emailModal.categorie,
           }}
+          pdfContentUrl={`${import.meta.env.VITE_API_URL || 'https://facturation.logistiga.com/backend/public'}/api/factures/${emailModal.id}/pdf-html`}
         />
       )}
 
