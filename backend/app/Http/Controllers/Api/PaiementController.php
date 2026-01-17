@@ -109,11 +109,6 @@ class PaiementController extends Controller
             if ($dateRange['end']) {
                 $query->where('date', '<=', $dateRange['end']);
             }
-            }
-
-            if ($request->filled('date_fin')) {
-                $query->where('date', '<=', $request->get('date_fin'));
-            }
 
             $paiements = $query->orderBy('date', 'desc')->paginate($request->get('per_page', 15));
 
