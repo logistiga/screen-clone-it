@@ -65,7 +65,18 @@
                             </td>
                             <td align="right" style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
                                 <span style="color: #718096; font-size: 13px;">Date de création</span><br>
-                                <span style="color: #1e3a5f; font-size: 16px; font-weight: 600;">{{ optional($ordre->date_creation)->format('d/m/Y') ?? '-' }}</span>
+                                @php
+                                  $dateCreationOrdre = '-';
+                                  if (!empty($ordre->date_creation) && (
+                                        $ordre->date_creation instanceof \DateTimeInterface
+                                        || (is_string($ordre->date_creation) && strtotime($ordre->date_creation))
+                                      )) {
+                                    $dateCreationOrdre = \Carbon\Carbon::parse($ordre->date_creation)->format('d/m/Y');
+                                  } elseif (!empty($ordre->created_at)) {
+                                    $dateCreationOrdre = \Carbon\Carbon::parse($ordre->created_at)->format('d/m/Y');
+                                  }
+                                @endphp
+                                <span style="color: #1e3a5f; font-size: 16px; font-weight: 600;">{{ $dateCreationOrdre }}</span>
                             </td>
                         </tr>
                         @if($ordre->conteneurs && $ordre->conteneurs->count() > 0)
@@ -95,13 +106,13 @@
                             </td>
                             <td align="right" style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
                                 <span style="color: #718096; font-size: 13px;">Montant HT</span><br>
-                                <span style="color: #374151; font-size: 15px; font-weight: 600;">{{ number_format($ordre->montant_ht, 0, ',', ' ') }} FCFA</span>
+                                <span style="color: #374151; font-size: 15px; font-weight: 600;">{{ number_format((float)($ordre->montant_ht ?? 0), 0, ',', ' ') }} FCFA</span>
                             </td>
                         </tr>
                         <tr>
                             <td colspan="2" align="center" style="padding: 20px 0 8px 0;">
                                 <span style="color: #718096; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Montant Total TTC</span><br>
-                                <span style="color: #7c3aed; font-size: 32px; font-weight: 700;">{{ number_format($ordre->montant_ttc, 0, ',', ' ') }} FCFA</span>
+                                <span style="color: #7c3aed; font-size: 32px; font-weight: 700;">{{ number_format((float)($ordre->montant_ttc ?? 0), 0, ',', ' ') }} FCFA</span>
                             </td>
                         </tr>
                     </table>
