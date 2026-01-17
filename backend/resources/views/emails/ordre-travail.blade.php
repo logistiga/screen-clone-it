@@ -133,13 +133,15 @@
         <!-- Bouton Télécharger PDF -->
         @php
           $baseUrl = rtrim((string) config('app.url'), '/');
-          $download_url = $download_url ?? ($baseUrl !== '' ? "{$baseUrl}/ordres/{$ordre->id}/pdf" : '#');
+          $download_url = $download_url ?? ($baseUrl !== '' ? "{$baseUrl}/ordres/{$ordre->id}/pdf" : null);
         @endphp
+        @if(!empty($download_url))
         @include('emails.partials.download-button', [
             'type' => 'ordre',
             'label' => 'Télécharger l\'Ordre de Travail PDF',
             'download_url' => $download_url
         ])
+        @endif
         
         <!-- Note -->
         <p style="color: #718096; font-size: 13px; text-align: center; margin: 0;">

@@ -300,6 +300,7 @@ export const notificationService = {
       pdf_base64: pdfBase64,
     }, {
       headers: getAuthHeaders(),
+      params: { debug: 1 },
     });
     return response.data;
   },
