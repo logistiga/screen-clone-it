@@ -74,7 +74,7 @@ class NotificationService
     /**
      * Envoyer une facture par email
      */
-    public function envoyerFacture(Facture $facture, ?string $emailDestinataire = null, ?string $message = null): bool
+    public function envoyerFacture(Facture $facture, ?string $emailDestinataire = null, ?string $message = null, ?string $pdfBase64 = null): bool
     {
         $mailConfig = $this->configureMailer();
         
@@ -98,14 +98,22 @@ class NotificationService
         }
 
         try {
-            // Générer le PDF de la facture
-            $pdf = Pdf::loadView('pdf.facture', [
-                'facture' => $facture,
-                'client' => $client,
-            ]);
-            $pdf->setPaper('A4', 'portrait');
-            $pdfContent = $pdf->output();
-            $pdfFilename = "Facture_{$facture->numero}.pdf";
+            // Utiliser le PDF frontend si fourni, sinon générer côté backend
+            if ($pdfBase64) {
+                $pdfContent = base64_decode($pdfBase64);
+                $pdfFilename = "Facture_{$facture->numero}.pdf";
+                Log::info("Facture {$facture->numero}: Utilisation du PDF frontend");
+            } else {
+                // Fallback: Générer le PDF côté backend
+                $pdf = Pdf::loadView('pdf.facture', [
+                    'facture' => $facture,
+                    'client' => $client,
+                ]);
+                $pdf->setPaper('A4', 'portrait');
+                $pdfContent = $pdf->output();
+                $pdfFilename = "Facture_{$facture->numero}.pdf";
+                Log::info("Facture {$facture->numero}: Génération du PDF backend (fallback)");
+            }
 
             Mail::send('emails.facture', [
                 'facture' => $facture,
@@ -138,7 +146,7 @@ class NotificationService
     /**
      * Envoyer un devis par email avec PDF en pièce jointe
      */
-    public function envoyerDevis(Devis $devis, ?string $emailDestinataire = null, ?string $message = null): bool
+    public function envoyerDevis(Devis $devis, ?string $emailDestinataire = null, ?string $message = null, ?string $pdfBase64 = null): bool
     {
         $mailConfig = $this->configureMailer();
         
@@ -169,22 +177,26 @@ class NotificationService
                     'devis_numero' => $devis->numero,
                     'client_exists' => (bool) $client,
                     'email_destinataire' => $email,
-                    'date_creation' => $devis->date_creation,
-                    'date_validite' => $devis->date_validite,
-                    'tva' => $devis->tva,
-                    'montant_ht' => $devis->montant_ht,
-                    'montant_ttc' => $devis->montant_ttc,
+                    'pdf_from_frontend' => !empty($pdfBase64),
                 ]);
             }
 
-            // Générer le PDF du devis
-            $pdf = Pdf::loadView('pdf.devis', [
-                'devis' => $devis,
-                'client' => $client,
-            ]);
-            $pdf->setPaper('A4', 'portrait');
-            $pdfContent = $pdf->output();
-            $pdfFilename = "Devis_{$devis->numero}.pdf";
+            // Utiliser le PDF frontend si fourni, sinon générer côté backend
+            if ($pdfBase64) {
+                $pdfContent = base64_decode($pdfBase64);
+                $pdfFilename = "Devis_{$devis->numero}.pdf";
+                Log::info("Devis {$devis->numero}: Utilisation du PDF frontend");
+            } else {
+                // Fallback: Générer le PDF côté backend
+                $pdf = Pdf::loadView('pdf.devis', [
+                    'devis' => $devis,
+                    'client' => $client,
+                ]);
+                $pdf->setPaper('A4', 'portrait');
+                $pdfContent = $pdf->output();
+                $pdfFilename = "Devis_{$devis->numero}.pdf";
+                Log::info("Devis {$devis->numero}: Génération du PDF backend (fallback)");
+            }
 
             Mail::send('emails.devis', [
                 'devis' => $devis,
@@ -217,7 +229,7 @@ class NotificationService
     /**
      * Envoyer un ordre de travail par email
      */
-    public function envoyerOrdreTravail(OrdreTravail $ordre, ?string $emailDestinataire = null, ?string $message = null): bool
+    public function envoyerOrdreTravail(OrdreTravail $ordre, ?string $emailDestinataire = null, ?string $message = null, ?string $pdfBase64 = null): bool
     {
         $mailConfig = $this->configureMailer();
         
@@ -241,15 +253,31 @@ class NotificationService
         }
 
         try {
+            // Utiliser le PDF frontend si fourni
+            $pdfContent = null;
+            $pdfFilename = null;
+            if ($pdfBase64) {
+                $pdfContent = base64_decode($pdfBase64);
+                $pdfFilename = "OrdreTravail_{$ordre->numero}.pdf";
+                Log::info("Ordre {$ordre->numero}: Utilisation du PDF frontend");
+            }
+
             Mail::send('emails.ordre-travail', [
                 'ordre' => $ordre,
                 'client' => $client,
                 'message_personnalise' => $message ?? '',
                 'signature' => $mailConfig['signature'],
-            ], function ($mail) use ($email, $ordre, $mailConfig) {
+            ], function ($mail) use ($email, $ordre, $mailConfig, $pdfContent, $pdfFilename) {
                 $mail->to($email)
                     ->subject("Ordre de Travail N° {$ordre->numero}")
                     ->from($mailConfig['from_email'], $mailConfig['from_name']);
+                
+                // Attacher le PDF si fourni
+                if ($pdfContent && $pdfFilename) {
+                    $mail->attachData($pdfContent, $pdfFilename, [
+                        'mime' => 'application/pdf',
+                    ]);
+                }
             });
 
             Log::info("Ordre de travail {$ordre->numero} envoyé à {$email}");

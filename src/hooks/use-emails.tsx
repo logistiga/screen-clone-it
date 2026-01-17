@@ -368,8 +368,8 @@ export function useEnvoyerFacture() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ factureId, email, message }: { factureId: number; email?: string; message?: string }) =>
-      notificationService.envoyerFacture(factureId, email, message),
+    mutationFn: ({ factureId, email, message, pdfBase64 }: { factureId: number; email?: string; message?: string; pdfBase64?: string }) =>
+      notificationService.envoyerFacture(factureId, email, message, pdfBase64),
     onSuccess: (response) => {
       toast({
         title: "Facture envoyée",
@@ -390,8 +390,8 @@ export function useEnvoyerDevis() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ devisId, email, message }: { devisId: number; email?: string; message?: string }) =>
-      notificationService.envoyerDevis(devisId, email, message),
+    mutationFn: ({ devisId, email, message, pdfBase64 }: { devisId: number; email?: string; message?: string; pdfBase64?: string }) =>
+      notificationService.envoyerDevis(devisId, email, message, pdfBase64),
     onSuccess: (response) => {
       toast({
         title: "Devis envoyé",
@@ -412,8 +412,8 @@ export function useEnvoyerOrdre() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ ordreId, email, message }: { ordreId: number; email?: string; message?: string }) =>
-      notificationService.envoyerOrdre(ordreId, email, message),
+    mutationFn: ({ ordreId, email, message, pdfBase64 }: { ordreId: number; email?: string; message?: string; pdfBase64?: string }) =>
+      notificationService.envoyerOrdre(ordreId, email, message, pdfBase64),
     onSuccess: (response) => {
       toast({
         title: "Ordre de travail envoyé",
