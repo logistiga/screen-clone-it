@@ -279,7 +279,12 @@ export function useUpdateOrdre() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => ordresApi.update(id, data),
     onSuccess: () => {
+      // Un OT peut impacter les primes (transitaire/représentant) et donc la vue /partenaires
       queryClient.invalidateQueries({ queryKey: ['ordres'] });
+      queryClient.invalidateQueries({ queryKey: ['primes'] });
+      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
+      queryClient.invalidateQueries({ queryKey: ['representants'] });
+
       toast.success('Ordre de travail modifié avec succès');
     },
     onError: (error: any) => {
