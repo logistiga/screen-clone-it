@@ -392,20 +392,34 @@ class RoleController extends Controller
     private function getModuleLabel(string $module): string
     {
         $labels = [
+            // Commercial
             'clients' => 'Clients',
             'devis' => 'Devis',
             'ordres' => 'Ordres de Travail',
             'factures' => 'Factures',
+            'partenaires' => 'Partenaires',
+            'transitaires' => 'Transitaires',
+            'transporteurs' => 'Transporteurs',
+            'fournisseurs' => 'Fournisseurs',
+            // Finance
             'paiements' => 'Paiements',
             'caisse' => 'Caisse',
             'banques' => 'Banques',
             'credits' => 'Crédits Bancaires',
-            'partenaires' => 'Partenaires',
             'notes' => 'Notes de Débit',
+            // Stock & Produits
+            'produits' => 'Produits',
+            'stocks' => 'Gestion des Stocks',
+            // Administration
             'utilisateurs' => 'Utilisateurs',
+            'roles' => 'Gestion des Rôles',
             'configuration' => 'Configuration',
+            // Rapports & Sécurité
             'reporting' => 'Reporting',
             'audit' => 'Traçabilité',
+            'securite' => 'Sécurité',
+            'dashboard' => 'Tableau de Bord',
+            'exports' => 'Exports',
         ];
 
         return $labels[$module] ?? ucfirst($module);
@@ -417,10 +431,28 @@ class RoleController extends Controller
     private function getPermissionLabel(string $action): string
     {
         $labels = [
+            // Actions standards
             'voir' => 'Voir',
             'creer' => 'Créer',
             'modifier' => 'Modifier',
             'supprimer' => 'Supprimer',
+            // Actions supplémentaires
+            'valider' => 'Valider',
+            'annuler' => 'Annuler',
+            'dupliquer' => 'Dupliquer',
+            'exporter' => 'Exporter',
+            'importer' => 'Importer',
+            'imprimer' => 'Imprimer',
+            'envoyer' => 'Envoyer par Email',
+            'assigner' => 'Assigner',
+            'assigner_role' => 'Assigner Rôle',
+            'activer' => 'Activer',
+            'desactiver' => 'Désactiver',
+            'fusionner' => 'Fusionner',
+            'cloture' => 'Clôturer',
+            'entree' => 'Entrée Stock',
+            'sortie' => 'Sortie Stock',
+            'inventaire' => 'Inventaire',
         ];
 
         return $labels[$action] ?? ucfirst($action);

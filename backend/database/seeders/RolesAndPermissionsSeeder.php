@@ -12,12 +12,52 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
+        // Modules complets de l'application
         $modules = [
-            'clients', 'devis', 'ordres', 'factures', 'paiements', 
-            'caisse', 'banques', 'credits', 'partenaires', 'notes',
-            'utilisateurs', 'configuration', 'reporting', 'audit'
+            // Commercial
+            'clients', 'devis', 'ordres', 'factures', 'partenaires',
+            'transitaires', 'transporteurs', 'fournisseurs',
+            // Finance
+            'paiements', 'caisse', 'banques', 'credits', 'notes',
+            // Stock & Produits
+            'produits', 'stocks',
+            // Administration
+            'utilisateurs', 'roles', 'configuration', 
+            // Rapports & Sécurité
+            'reporting', 'audit', 'securite', 'dashboard', 'exports'
         ];
+        
+        // Actions standards
         $actions = ['voir', 'creer', 'modifier', 'supprimer'];
+        
+        // Créer permissions standard
+        foreach ($modules as $module) {
+            foreach ($actions as $action) {
+                Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
+            }
+        }
+        
+        // Actions supplémentaires par module
+        $extraActions = [
+            'devis' => ['valider', 'annuler', 'dupliquer', 'exporter', 'imprimer'],
+            'ordres' => ['valider', 'annuler', 'assigner', 'exporter', 'imprimer'],
+            'factures' => ['valider', 'annuler', 'exporter', 'imprimer', 'envoyer'],
+            'paiements' => ['valider', 'annuler', 'exporter'],
+            'caisse' => ['valider', 'annuler', 'exporter', 'cloture'],
+            'clients' => ['exporter', 'importer', 'fusionner'],
+            'utilisateurs' => ['activer', 'desactiver', 'assigner_role'],
+            'roles' => ['assigner'],
+            'reporting' => ['exporter'],
+            'audit' => ['exporter'],
+            'dashboard' => ['exporter'],
+            'stocks' => ['entree', 'sortie', 'inventaire', 'exporter'],
+        ];
+        
+        foreach ($extraActions as $module => $actions) {
+            foreach ($actions as $action) {
+                Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
+            }
+        }
 
         foreach ($modules as $module) {
             foreach ($actions as $action) {
