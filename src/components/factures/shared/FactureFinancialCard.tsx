@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { CreditCard, Wallet, Percent, TrendingUp, CheckCircle2 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 
-interface OrdreFinancialCardProps {
+interface FactureFinancialCardProps {
   montantHT: number;
   montantTVA: number;
   montantCSS: number;
@@ -16,7 +16,7 @@ interface OrdreFinancialCardProps {
   remiseMontant?: number;
 }
 
-export function OrdreFinancialCard({
+export function FactureFinancialCard({
   montantHT,
   montantTVA,
   montantCSS,
@@ -26,7 +26,7 @@ export function OrdreFinancialCard({
   remiseType,
   remiseValeur = 0,
   remiseMontant = 0,
-}: OrdreFinancialCardProps) {
+}: FactureFinancialCardProps) {
   const hasRemise = remiseMontant > 0 && remiseType && remiseType !== 'none';
   const montantHTBrut = hasRemise ? montantHT + remiseMontant : montantHT;
   const paymentProgress = montantTTC > 0 ? (montantPaye / montantTTC) * 100 : 0;

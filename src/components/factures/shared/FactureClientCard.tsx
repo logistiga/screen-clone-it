@@ -14,11 +14,11 @@ interface Client {
   ville?: string;
 }
 
-interface OrdreClientCardProps {
+interface FactureClientCardProps {
   client: Client | null | undefined;
 }
 
-export function OrdreClientCard({ client }: OrdreClientCardProps) {
+export function FactureClientCard({ client }: FactureClientCardProps) {
   if (!client) return null;
 
   const clientName = client.raison_sociale || client.nom_complet || client.nom || 'Client';

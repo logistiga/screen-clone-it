@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   ArrowLeft,
   Edit,
@@ -14,6 +15,7 @@ import {
   MessageCircle,
   Ban,
   Trash2,
+  Calendar,
   User,
 } from "lucide-react";
 import { formatDate, getStatutLabel } from "@/data/mockData";
@@ -53,6 +55,14 @@ interface OrdreHeaderProps {
   onRefresh?: () => void;
 }
 
+const statutGradients: Record<string, string> = {
+  brouillon: "from-slate-500/20 via-slate-400/10 to-transparent",
+  en_cours: "from-blue-500/20 via-blue-400/10 to-transparent",
+  valide: "from-emerald-500/20 via-emerald-400/10 to-transparent",
+  facture: "from-green-500/20 via-green-400/10 to-transparent",
+  annule: "from-red-500/20 via-red-400/10 to-transparent",
+};
+
 export function OrdreHeader({
   ordre,
   id,
@@ -74,6 +84,10 @@ export function OrdreHeader({
 
   // Nom du créateur
   const creatorName = ordre.created_by?.name || ordre.user?.name;
+  
+  // Client info
+  const clientName = ordre.client?.raison_sociale || ordre.client?.nom_complet || ordre.client?.nom || 'Client';
+  const clientInitials = clientName.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
 
   const handleWhatsAppShare = () => {
     const pdfUrl = `${window.location.origin}/ordres/${ordre.id}/pdf`;
@@ -123,8 +137,8 @@ L'équipe LOGISTIGA`;
         const config = typeConteneurConfigs.import;
         const IconComponent = config.icon;
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5 font-medium`}>
-            <IconComponent className="h-3.5 w-3.5" />
+          <Badge className={`${config.className} flex items-center gap-1.5 font-medium text-xs`}>
+            <IconComponent className="h-3 w-3" />
             <span>Conteneurs / Import</span>
           </Badge>
         );
@@ -133,15 +147,15 @@ L'équipe LOGISTIGA`;
         const config = typeConteneurConfigs.export;
         const IconComponent = config.icon;
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5 font-medium`}>
-            <IconComponent className="h-3.5 w-3.5" />
+          <Badge className={`${config.className} flex items-center gap-1.5 font-medium text-xs`}>
+            <IconComponent className="h-3 w-3" />
             <span>Conteneurs / Export</span>
           </Badge>
         );
       }
       return (
-        <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 flex items-center gap-1.5 font-medium">
-          <Container className="h-3.5 w-3.5" />
+        <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 flex items-center gap-1.5 font-medium text-xs">
+          <Container className="h-3 w-3" />
           Conteneurs
         </Badge>
       );
@@ -156,15 +170,15 @@ L'équipe LOGISTIGA`;
       if (config) {
         const IconComponent = config.icon;
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5 font-medium`}>
-            <IconComponent className="h-3.5 w-3.5" />
+          <Badge className={`${config.className} flex items-center gap-1.5 font-medium text-xs`}>
+            <IconComponent className="h-3 w-3" />
             <span>Indépendant / {config.label}</span>
           </Badge>
         );
       }
       return (
-        <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 flex items-center gap-1.5 font-medium">
-          <Truck className="h-3.5 w-3.5" />
+        <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 flex items-center gap-1.5 font-medium text-xs">
+          <Truck className="h-3 w-3" />
           Indépendant
         </Badge>
       );
@@ -172,19 +186,21 @@ L'équipe LOGISTIGA`;
 
     if (categorie === 'conventionnel') {
       return (
-        <Badge className="bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 flex items-center gap-1.5 font-medium">
-          <Ship className="h-3.5 w-3.5" />
+        <Badge className="bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 flex items-center gap-1.5 font-medium text-xs">
+          <Ship className="h-3 w-3" />
           Conventionnel
         </Badge>
       );
     }
 
     return (
-      <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">
+      <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5 text-xs">
         {ordre.type_document || categorie || 'N/A'}
       </Badge>
     );
   };
+
+  const gradientClass = statutGradients[ordre.statut] || statutGradients.brouillon;
 
   return (
     <>
@@ -192,152 +208,182 @@ L'équipe LOGISTIGA`;
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card/50 backdrop-blur-sm p-4 rounded-lg border"
+        className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${gradientClass} backdrop-blur-sm`}
       >
-        <div className="flex items-center gap-4">
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => {
-                if (window.history.length <= 2) {
-                  navigate('/ordres');
-                } else {
-                  navigate(-1);
-                }
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </motion.div>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold">{ordre.numero}</h1>
-              <Badge
-                variant="outline"
-                className={`${statutConfig.className} flex items-center gap-1`}
+        {/* Background decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/5 to-transparent rounded-full -translate-y-32 translate-x-32" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-primary/5 to-transparent rounded-full translate-y-24 -translate-x-24" />
+        
+        <div className="relative p-6">
+          {/* Top row: Back button + Actions */}
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
+                onClick={() => {
+                  if (window.history.length <= 2) {
+                    navigate('/ordres');
+                  } else {
+                    navigate(-1);
+                  }
+                }}
               >
-                {statutConfig.icon && <statutConfig.icon className="h-3.5 w-3.5" />}
-                {statutConfig.label}
-              </Badge>
-              {getTypeBadge()}
-            </div>
-            <div className="flex items-center gap-4 mt-1 text-muted-foreground text-sm">
-              <span>Créé le {formatDate(ordre.date)}</span>
-              {creatorName && (
-                <span className="flex items-center gap-1">
-                  <User className="h-3.5 w-3.5" />
-                  {creatorName}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={downloadPdf}
-            >
-              <Download className="h-4 w-4" />
-              Télécharger PDF
-            </Button>
-          </motion.div>
-          
-          {/* Email */}
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              className="gap-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              onClick={() => setEmailModalOpen(true)}
-            >
-              <Mail className="h-4 w-4" />
-              Email
-            </Button>
-          </motion.div>
-          
-          {/* WhatsApp */}
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              className="gap-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-              onClick={handleWhatsAppShare}
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </Button>
-          </motion.div>
-
-          {/* Modifier - disponible même si facturé (la facture sera synchronisée) */}
-          {ordre.statut !== 'annule' && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => navigate(`/ordres/${id}/modifier`)}
-              >
-                <Edit className="h-4 w-4" />
-                Modifier
+                <ArrowLeft className="h-4 w-4" />
               </Button>
             </motion.div>
-          )}
 
-          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-            <>
-              {resteAPayer > 0 && (
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
+                onClick={downloadPdf}
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">PDF</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                onClick={() => setEmailModalOpen(true)}
+              >
+                <Mail className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Email</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                onClick={handleWhatsAppShare}
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Main content: Avatar + Info + Status */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+            {/* Client Avatar */}
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
+                <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-2xl font-bold">
+                  {clientInitials}
+                </AvatarFallback>
+              </Avatar>
+            </motion.div>
+
+            {/* Order Info */}
+            <div className="flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{ordre.numero}</h1>
+                <Badge
+                  variant="outline"
+                  className={`${statutConfig.className} flex items-center gap-1 font-semibold`}
+                >
+                  {statutConfig.icon && <statutConfig.icon className="h-3.5 w-3.5" />}
+                  {statutConfig.label}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {getTypeBadge()}
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Créé le {formatDate(ordre.date)}
+                </span>
+                {creatorName && (
+                  <span className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" />
+                    {creatorName}
+                  </span>
+                )}
+                <span className="font-medium text-foreground">
+                  {clientName}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom action buttons */}
+          <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-border/50">
+            {ordre.statut !== 'annule' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-lg"
+                onClick={() => navigate(`/ordres/${id}/modifier`)}
+              >
+                <Edit className="h-3.5 w-3.5" />
+                Modifier
+              </Button>
+            )}
+
+            {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
+              <>
+                {resteAPayer > 0 && (
                   <Button
                     variant="outline"
-                    className="gap-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                    size="sm"
+                    className="gap-1.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
                     onClick={onPaiementClick}
                   >
-                    <Wallet className="h-4 w-4" />
+                    <Wallet className="h-3.5 w-3.5" />
                     Paiement
                   </Button>
-                </motion.div>
-              )}
-              {/* Annuler */}
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                )}
+                
                 <Button
                   variant="outline"
-                  className="gap-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                  size="sm"
+                  className="gap-1.5 rounded-lg text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                   onClick={() => setAnnulationModalOpen(true)}
                 >
-                  <Ban className="h-4 w-4" />
+                  <Ban className="h-3.5 w-3.5" />
                   Annuler
                 </Button>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                
                 <Button
-                  className="gap-2 shadow-md"
+                  size="sm"
+                  className="gap-1.5 rounded-lg shadow-md bg-primary hover:bg-primary/90"
                   onClick={onConvertClick}
                   disabled={isConverting}
                 >
                   {isConverting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3.5 w-3.5" />
                   )}
                   Facturer
                 </Button>
-              </motion.div>
-            </>
-          )}
-          
-          {/* Supprimer (toujours visible sauf si facturé) */}
-          {ordre.statut !== 'facture' && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              </>
+            )}
+            
+            {ordre.statut !== 'facture' && (
               <Button
                 variant="outline"
-                className="gap-2 text-destructive hover:bg-red-50 dark:hover:bg-red-900/20"
+                size="sm"
+                className="gap-1.5 rounded-lg text-destructive hover:bg-red-50 dark:hover:bg-red-900/20 ml-auto"
                 onClick={() => setDeleteConfirmOpen(true)}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
                 Supprimer
               </Button>
-            </motion.div>
-          )}
+            )}
+          </div>
         </div>
       </motion.div>
 
