@@ -103,9 +103,9 @@ export function AppSidebar() {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const { prefetchRoute } = usePrefetch();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const isCollapsed = state === "collapsed";
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = hasRole('admin') || hasRole('administrateur') || hasRole('directeur');
   
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     commercial: true,
