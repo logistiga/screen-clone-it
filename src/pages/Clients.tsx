@@ -27,13 +27,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Eye, Edit, Trash2, Users, Loader2, Receipt, Banknote, TrendingUp, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useClients, useDeleteClient } from "@/hooks/use-commercial";
+import { useDeleteClient } from "@/hooks/use-commercial";
+import { useInfiniteClients, useInfiniteScroll } from "@/hooks/use-infinite-queries";
 import { usePrefetch } from "@/hooks/use-prefetch";
 import { formatMontant } from "@/data/mockData";
-import { TablePagination } from "@/components/TablePagination";
+import { InfiniteScrollLoader } from "@/components/InfiniteScrollLoader";
 import { ClientAvatar, ClientHealthBadge, ClientCard, ClientFilters } from "@/components/clients";
 import { Client } from "@/lib/api/commercial";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useDebounce } from "@/hooks/use-debounce";
 
 type SortField = "nom" | "solde" | "ville" | "created_at";
 type SortOrder = "asc" | "desc";
@@ -43,8 +45,6 @@ export default function ClientsPage() {
   const { prefetchClient } = usePrefetch();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; nom: string } | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   
   // Nouveaux états pour filtres et vue
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
@@ -53,17 +53,27 @@ export default function ClientsPage() {
   const [sortField, setSortField] = useState<SortField>("nom");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
-  // API hooks
-  const { data: clientsData, isLoading, error } = useClients({
-    search: searchTerm || undefined,
-    page: currentPage,
-    per_page: pageSize,
+  // Debounce search pour éviter trop de requêtes
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Infinite Query hook
+  const {
+    flatData: clients,
+    totalItems,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteClients({
+    search: debouncedSearch || undefined,
+    per_page: 20,
   });
 
-  const deleteClientMutation = useDeleteClient();
+  // Hook pour l'infinite scroll
+  const loadMoreRef = useInfiniteScroll(fetchNextPage, hasNextPage, isFetchingNextPage);
 
-  const clients = clientsData?.data || [];
-  const pagination = clientsData?.meta;
+  const deleteClientMutation = useDeleteClient();
 
   // Extraire les villes uniques pour le filtre
   const villes = useMemo(() => {
@@ -115,14 +125,14 @@ export default function ClientsPage() {
     return result;
   }, [clients, statusFilter, villeFilter, sortField, sortOrder]);
 
-  // Stats
+  // Stats basées sur toutes les données chargées
   const stats = useMemo(() => {
     const total = clients.length;
     const totalSolde = clients.reduce((sum: number, c: Client) => sum + Number(c.solde || 0), 0);
     const totalAvoirs = clients.reduce((sum: number, c: Client) => sum + Number(c.solde_avoirs || 0), 0);
     const withSolde = clients.filter((c: Client) => Number(c.solde) > 0).length;
-    return { total, totalSolde, totalAvoirs, withSolde };
-  }, [clients]);
+    return { total, totalSolde, totalAvoirs, withSolde, serverTotal: totalItems };
+  }, [clients, totalItems]);
 
   const hasActiveFilters = statusFilter !== "all" || villeFilter !== "all" || searchTerm !== "";
 
@@ -184,7 +194,14 @@ export default function ClientsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-          <p className="text-muted-foreground">Gérez votre portefeuille clients</p>
+          <p className="text-muted-foreground">
+            Gérez votre portefeuille clients
+            {totalItems > 0 && (
+              <span className="ml-2 text-sm">
+                ({clients.length} / {totalItems} chargés)
+              </span>
+            )}
+          </p>
         </div>
         <Button onClick={() => navigate("/clients/nouveau")} className="shadow-lg hover:shadow-xl transition-shadow">
           <Plus className="h-4 w-4 mr-2" />
@@ -200,7 +217,7 @@ export default function ClientsPage() {
             <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats.total}</div>
+            <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats.serverTotal || stats.total}</div>
             <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">clients actifs</p>
           </CardContent>
         </Card>
@@ -257,7 +274,7 @@ export default function ClientsPage() {
       />
 
       {/* Contenu principal */}
-      {filteredClients.length === 0 ? (
+      {filteredClients.length === 0 && !isLoading ? (
         <Card className="p-12">
           <div className="flex flex-col items-center justify-center text-center">
             <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -274,19 +291,29 @@ export default function ClientsPage() {
           </div>
         </Card>
       ) : viewMode === "cards" ? (
-        /* Vue Cards */
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredClients.map((client: Client) => (
-            <ClientCard
-              key={client.id}
-              client={client}
-              onEdit={(id) => navigate(`/clients/${id}/modifier`)}
-              onDelete={(c) => setDeleteConfirm({ id: c.id, nom: c.nom })}
-            />
-          ))}
+        /* Vue Cards avec scroll infini */
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredClients.map((client: Client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+                onEdit={(id) => navigate(`/clients/${id}/modifier`)}
+                onDelete={(c) => setDeleteConfirm({ id: c.id, nom: c.nom })}
+              />
+            ))}
+          </div>
+          <InfiniteScrollLoader
+            ref={loadMoreRef}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={hasNextPage}
+            loadedCount={clients.length}
+            totalCount={totalItems}
+            onLoadMore={() => fetchNextPage()}
+          />
         </div>
       ) : (
-        /* Vue Tableau */
+        /* Vue Tableau avec scroll infini */
         <Card className="shadow-sm">
           <div className="overflow-x-auto">
             <Table>
@@ -404,21 +431,15 @@ export default function ClientsPage() {
             </Table>
           </div>
 
-          {pagination && (
-            <div className="p-4 border-t">
-              <TablePagination
-                currentPage={pagination.current_page}
-                totalPages={pagination.last_page}
-                pageSize={pageSize}
-                totalItems={pagination.total}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          )}
+          {/* Loader pour scroll infini */}
+          <InfiniteScrollLoader
+            ref={loadMoreRef}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={hasNextPage}
+            loadedCount={clients.length}
+            totalCount={totalItems}
+            onLoadMore={() => fetchNextPage()}
+          />
         </Card>
       )}
 
