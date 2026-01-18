@@ -82,8 +82,8 @@ export function OrdreHeader({
   const [annulationModalOpen, setAnnulationModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
 
-  // Nom du créateur
-  const creatorName = ordre.created_by?.name || ordre.user?.name;
+  // Nom du créateur - chercher dans plusieurs champs possibles
+  const creatorName = ordre.created_by?.name || ordre.user?.name || ordre.createur?.name || ordre.createur_nom || ordre.user_name;
   
   // Client info
   const clientName = ordre.client?.raison_sociale || ordre.client?.nom_complet || ordre.client?.nom || 'Client';
@@ -305,14 +305,13 @@ L'équipe LOGISTIGA`;
                   <Calendar className="h-3.5 w-3.5" />
                   Créé le {formatDate(ordre.date)}
                 </span>
-                {creatorName && (
-                  <span className="flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5" />
-                    {creatorName}
-                  </span>
-                )}
-                <span className="font-medium text-foreground">
-                  {clientName}
+                <span className="flex items-center gap-1.5 px-2 py-0.5 bg-muted/50 rounded-full">
+                  <User className="h-3.5 w-3.5" />
+                  <span className="font-medium">{creatorName || 'Non renseigné'}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Client:</span>
+                  <span className="font-medium text-foreground">{clientName}</span>
                 </span>
               </div>
             </div>
