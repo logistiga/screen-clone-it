@@ -115,62 +115,87 @@ export default function OrdreDetailPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="details" className="gap-2">
+          <TabsList className="grid w-full grid-cols-2 max-w-md bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger 
+              value="details" 
+              className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300"
+            >
               <Receipt className="h-4 w-4" />
               Détails
             </TabsTrigger>
-            <TabsTrigger value="tracabilite" className="gap-2">
+            <TabsTrigger 
+              value="tracabilite" 
+              className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300"
+            >
               <Clock className="h-4 w-4" />
               Historique
             </TabsTrigger>
           </TabsList>
 
-          <AnimatePresence mode="wait">
-            <TabsContent value="details" className="space-y-6 mt-6">
-              {/* Infos client + récap */}
-              <div className="grid gap-6 md:grid-cols-2">
-                <OrdreClientCard client={client} />
-                <OrdreFinancialCard
-                  montantHT={ordre.montant_ht || 0}
-                  montantTVA={ordre.montant_tva || 0}
-                  montantCSS={ordre.montant_css || 0}
-                  montantTTC={ordre.montant_ttc || 0}
-                  montantPaye={ordre.montant_paye || 0}
-                  resteAPayer={resteAPayer}
-                  remiseType={ordre.remise_type}
-                  remiseValeur={ordre.remise_valeur}
-                  remiseMontant={ordre.remise_montant}
-                />
-              </div>
+          <div className="mt-6 relative overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+              {activeTab === "details" && (
+                <motion.div
+                  key="details"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="space-y-6"
+                >
+                  {/* Infos client + récap */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <OrdreClientCard client={client} />
+                    <OrdreFinancialCard
+                      montantHT={ordre.montant_ht || 0}
+                      montantTVA={ordre.montant_tva || 0}
+                      montantCSS={ordre.montant_css || 0}
+                      montantTTC={ordre.montant_ttc || 0}
+                      montantPaye={ordre.montant_paye || 0}
+                      resteAPayer={resteAPayer}
+                      remiseType={ordre.remise_type}
+                      remiseValeur={ordre.remise_valeur}
+                      remiseMontant={ordre.remise_montant}
+                    />
+                  </div>
 
-              {/* Infos BL */}
-              <OrdreBLCard
-                blNumero={ordre.bl_numero}
-                navire={ordre.navire}
-                dateArrivee={ordre.date_arrivee}
-              />
+                  {/* Infos BL */}
+                  <OrdreBLCard
+                    blNumero={ordre.bl_numero}
+                    navire={ordre.navire}
+                    dateArrivee={ordre.date_arrivee}
+                  />
 
-              {/* Prestations (lignes) */}
-              <OrdrePrestationsTable lignes={ordre.lignes || []} />
+                  {/* Prestations (lignes) */}
+                  <OrdrePrestationsTable lignes={ordre.lignes || []} />
 
-              {/* Conteneurs */}
-              <OrdreConteneursTable conteneurs={ordre.conteneurs || []} />
+                  {/* Conteneurs */}
+                  <OrdreConteneursTable conteneurs={ordre.conteneurs || []} />
 
-              {/* Lots */}
-              <OrdreLotsTable lots={ordre.lots || []} />
+                  {/* Lots */}
+                  <OrdreLotsTable lots={ordre.lots || []} />
 
-              {/* Notes */}
-              <OrdreNotesCard notes={ordre.notes} />
+                  {/* Notes */}
+                  <OrdreNotesCard notes={ordre.notes} />
 
-              {/* Primes */}
-              <OrdrePrimesTable primes={ordre.primes || []} />
-            </TabsContent>
+                  {/* Primes */}
+                  <OrdrePrimesTable primes={ordre.primes || []} />
+                </motion.div>
+              )}
 
-            <TabsContent value="tracabilite" className="mt-6">
-              <OrdreHistorique ordre={ordre} />
-            </TabsContent>
-          </AnimatePresence>
+              {activeTab === "tracabilite" && (
+                <motion.div
+                  key="tracabilite"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                >
+                  <OrdreHistorique ordre={ordre} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </Tabs>
       </motion.div>
 
