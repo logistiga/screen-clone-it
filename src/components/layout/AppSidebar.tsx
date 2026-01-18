@@ -4,10 +4,11 @@ import {
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
   FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight,
-  Tag, BookOpen
+  Tag, BookOpen, ShieldAlert
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { usePrefetch } from "@/hooks/use-prefetch";
 import {
@@ -87,6 +88,14 @@ const menuItems = {
       { title: "Numérotation", url: "/numerotation", icon: Hash },
       { title: "Guide & Installation", url: "/guide", icon: BookOpen },
     ]
+  },
+  securite: {
+    label: "Sécurité",
+    collapsible: true,
+    adminOnly: true,
+    items: [
+      { title: "Connexions suspectes", url: "/securite/connexions-suspectes", icon: ShieldAlert },
+    ]
   }
 };
 
@@ -94,13 +103,16 @@ export function AppSidebar() {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const { prefetchRoute } = usePrefetch();
+  const { user } = useAuth();
   const isCollapsed = state === "collapsed";
+  const isAdmin = user?.role === 'admin';
   
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     commercial: true,
     comptabilite: true,
     finance: true,
     parametrage: true,
+    securite: true,
   });
 
   const toggleGroup = (key: string) => {
@@ -164,6 +176,11 @@ export function AppSidebar() {
       
       <SidebarContent className={cn("py-4", isCollapsed ? "px-1" : "px-2")}>
         {Object.entries(menuItems).map(([key, group]) => {
+          // Masquer les groupes admin-only pour les non-admins
+          if ((group as any).adminOnly && !isAdmin) {
+            return null;
+          }
+
           if (!group.collapsible) {
             return (
               <SidebarGroup key={key}>
