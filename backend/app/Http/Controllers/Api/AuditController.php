@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AuditResource;
 use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,6 @@ class AuditController extends Controller
                       ->orWhere('document_id', $search)
                       ->orWhere('document_numero', 'like', "%{$search}%")
                       ->orWhereHas('user', function ($userQuery) use ($search) {
-                          // Dans notre DB, le champ affiché est "nom" (pas "name")
                           $userQuery->where('nom', 'like', "%{$search}%")
                                     ->orWhere('email', 'like', "%{$search}%");
                       });
@@ -55,7 +55,8 @@ class AuditController extends Controller
 
             $audits = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 20));
 
-            return response()->json($audits);
+            // Utiliser AuditResource pour formater correctement les données avec user.name
+            return AuditResource::collection($audits)->response();
         } catch (\Exception $e) {
             \Log::error('Erreur audit index', [
                 'message' => $e->getMessage(),
@@ -74,7 +75,7 @@ class AuditController extends Controller
     public function show(Audit $audit): JsonResponse
     {
         $audit->load('user');
-        return response()->json($audit);
+        return (new AuditResource($audit))->response();
     }
 
     public function actions(): JsonResponse
@@ -105,10 +106,15 @@ class AuditController extends Controller
                 ->groupBy('module')
                 ->get(),
             'par_utilisateur' => Audit::whereBetween('created_at', [$dateDebut, $dateFin])
-                ->with('user:id,name')
+                ->with('user')
                 ->selectRaw('user_id, COUNT(*) as total')
                 ->groupBy('user_id')
-                ->get(),
+                ->get()
+                ->map(fn($item) => [
+                    'user_id' => $item->user_id,
+                    'total' => $item->total,
+                    'user' => $item->user ? ['id' => $item->user->id, 'name' => $item->user->name] : null,
+                ]),
             'par_jour' => Audit::whereBetween('created_at', [$dateDebut, $dateFin])
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as total')
                 ->groupBy('date')
@@ -130,7 +136,7 @@ class AuditController extends Controller
         $audits = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
-            'data' => $audits,
+            'data' => AuditResource::collection($audits),
             'total' => $audits->count(),
         ]);
     }
