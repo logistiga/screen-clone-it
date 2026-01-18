@@ -85,6 +85,12 @@ class FactureResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             
+            // Créateur
+            'created_by' => $this->whenLoaded('createdBy', fn() => [
+                'id' => $this->createdBy->id,
+                'name' => $this->createdBy->name,
+            ]),
+            
             // Relations
             'client' => new ClientResource($this->whenLoaded('client')),
             'armateur' => new ArmateurResource($this->whenLoaded('armateur')),

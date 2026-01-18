@@ -110,7 +110,7 @@ class FactureController extends Controller
     {
         $facture->load([
             'client', 'transitaire', 'representant', 'armateur', 'ordreTravail', 'lignes',
-            'conteneurs.operations', 'lots', 'paiements', 'primes'
+            'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
         return response()->json(new FactureResource($facture));

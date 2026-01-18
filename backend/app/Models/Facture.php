@@ -35,6 +35,7 @@ class Facture extends Model
         'statut',
         'notes',
         'token_verification',
+        'created_by',
     ];
 
     protected $casts = [
@@ -119,6 +120,11 @@ class Facture extends Model
     public function annulation()
     {
         return $this->hasOne(Annulation::class, 'document_id')->where('type', 'facture');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     // Accessors
