@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useProfile } from "@/hooks/use-users";
@@ -49,6 +50,9 @@ export function AppHeader({ title }: AppHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Global Search */}
+        <GlobalSearch />
+        
         {/* Notifications */}
         <NotificationCenter />
         
