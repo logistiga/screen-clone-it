@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { 
   clientsApi, 
   devisApi, 
@@ -36,14 +37,33 @@ import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 
-// Clients hooks
+// Clients hooks avec préchargement de la page suivante
 export function useClients(params?: { search?: string; page?: number; per_page?: number }) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  
+  const query = useQuery({
     queryKey: ['clients', params],
     queryFn: () => clientsApi.getAll(params),
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });
+
+  // Précharger la page suivante automatiquement
+  useEffect(() => {
+    if (query.data?.meta && params?.page) {
+      const { current_page, last_page } = query.data.meta;
+      if (current_page < last_page) {
+        const nextPageParams = { ...params, page: current_page + 1 };
+        queryClient.prefetchQuery({
+          queryKey: ['clients', nextPageParams],
+          queryFn: () => clientsApi.getAll(nextPageParams),
+          staleTime: STALE_TIME,
+        });
+      }
+    }
+  }, [query.data?.meta, params, queryClient]);
+
+  return query;
 }
 
 export function useClient(id: string) {
@@ -98,17 +118,35 @@ export function useDeleteClient() {
   });
 }
 
-// Devis hooks
+// Devis hooks avec préchargement
 export function useDevis(params?: { search?: string; statut?: string; client_id?: string; page?: number; per_page?: number }) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  
+  const query = useQuery({
     queryKey: ['devis', params],
     queryFn: () => devisApi.getAll(params),
-    // Évite de marteler le backend en cas d'erreur (et de spammer la console)
     retry: 0,
     refetchOnWindowFocus: false,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });
+
+  // Précharger la page suivante
+  useEffect(() => {
+    if (query.data?.meta && params?.page) {
+      const { current_page, last_page } = query.data.meta;
+      if (current_page < last_page) {
+        const nextPageParams = { ...params, page: current_page + 1 };
+        queryClient.prefetchQuery({
+          queryKey: ['devis', nextPageParams],
+          queryFn: () => devisApi.getAll(nextPageParams),
+          staleTime: STALE_TIME,
+        });
+      }
+    }
+  }, [query.data?.meta, params, queryClient]);
+
+  return query;
 }
 
 export function useDevisById(id: string) {
@@ -230,14 +268,33 @@ export function useConvertDevisToFacture() {
   });
 }
 
-// Ordres hooks
+// Ordres hooks avec préchargement
 export function useOrdres(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  
+  const query = useQuery({
     queryKey: ['ordres', params],
     queryFn: () => ordresApi.getAll(params),
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });
+
+  // Précharger la page suivante
+  useEffect(() => {
+    if (query.data?.meta && params?.page) {
+      const { current_page, last_page } = query.data.meta;
+      if (current_page < last_page) {
+        const nextPageParams = { ...params, page: current_page + 1 };
+        queryClient.prefetchQuery({
+          queryKey: ['ordres', nextPageParams],
+          queryFn: () => ordresApi.getAll(nextPageParams),
+          staleTime: STALE_TIME,
+        });
+      }
+    }
+  }, [query.data?.meta, params, queryClient]);
+
+  return query;
 }
 
 // Stats globales des ordres (avec les mêmes filtres)
@@ -322,14 +379,33 @@ export function useConvertOrdreToFacture() {
   });
 }
 
-// Factures hooks
+// Factures hooks avec préchargement
 export function useFactures(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  
+  const query = useQuery({
     queryKey: ['factures', params],
     queryFn: () => facturesApi.getAll(params),
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });
+
+  // Précharger la page suivante
+  useEffect(() => {
+    if (query.data?.meta && params?.page) {
+      const { current_page, last_page } = query.data.meta;
+      if (current_page < last_page) {
+        const nextPageParams = { ...params, page: current_page + 1 };
+        queryClient.prefetchQuery({
+          queryKey: ['factures', nextPageParams],
+          queryFn: () => facturesApi.getAll(nextPageParams),
+          staleTime: STALE_TIME,
+        });
+      }
+    }
+  }, [query.data?.meta, params, queryClient]);
+
+  return query;
 }
 
 export function useFactureById(id: string) {
