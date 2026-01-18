@@ -486,7 +486,7 @@ L'équipe LOGISTIGA`;
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
-                          {ordre.statut === 'termine' && (
+                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
                             <Button 
                               variant="ghost" 
                               size="icon" 
