@@ -80,6 +80,12 @@ class AuthController extends Controller
 
         Audit::log('login', 'auth', 'Connexion réussie');
 
+        // Créer la session avec métadonnées AVANT l'analyse de sécurité
+        // pour pouvoir révoquer la session si bloquée par l'admin
+        $sessionData = $this->sessionManager->createSession($user, $request);
+        $token = $sessionData['plainTextToken'];
+        $sessionTokenId = $sessionData['accessToken']->id ?? null;
+
         // Détecter les connexions suspectes (IP inhabituelle ou hors Gabon)
         $loginAnalysis = $this->suspiciousLoginDetector->analyzeLogin(
             $user,
@@ -87,9 +93,9 @@ class AuthController extends Controller
             $request->userAgent() ?? ''
         );
 
-        // Envoyer alerte à l'admin si connexion suspecte
+        // Envoyer alerte à l'admin si connexion suspecte (avec ID de session pour révocation)
         if ($loginAnalysis['is_suspicious']) {
-            $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis);
+            $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis, $sessionTokenId);
             
             Audit::log('suspicious_login', 'security', 'Connexion suspecte détectée', null, [
                 'ip_address' => $loginAnalysis['ip_address'],
@@ -98,11 +104,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Créer la session avec métadonnées
-        $sessionData = $this->sessionManager->createSession($user, $request);
-        $token = $sessionData['plainTextToken'];
-
-        // Retourner le token au frontend (mode stateless / Bearer)
         // Obtenir les stats de session pour informer l'utilisateur
         $sessionStats = $this->sessionManager->getSessionStats($user);
 
