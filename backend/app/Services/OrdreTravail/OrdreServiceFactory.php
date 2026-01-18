@@ -187,6 +187,11 @@ class OrdreServiceFactory
             $categorie = $ordre->categorie;
             $service = $this->getService($categorie);
 
+            // Extraire les primes avant l'update (elles ne sont pas des colonnes de la table)
+            $primeTransitaire = $data['prime_transitaire'] ?? null;
+            $primeRepresentant = $data['prime_representant'] ?? null;
+            unset($data['prime_transitaire'], $data['prime_representant']);
+
             $ordre->update($data);
 
             // Remplacer les conteneurs si fournis
@@ -213,6 +218,11 @@ class OrdreServiceFactory
             // Recalculer les totaux
             $service->calculerTotaux($ordre);
 
+            // Gérer les primes (supprimer les anciennes non payées et créer les nouvelles)
+            if ($primeTransitaire !== null || $primeRepresentant !== null) {
+                $this->mettreAJourPrimes($ordre, $primeTransitaire ?? 0, $primeRepresentant ?? 0);
+            }
+
             // SYNCHRONISATION AUTOMATIQUE : Si l'ordre est facturé, mettre à jour la facture associée
             $ordre->load('facture');
             if ($ordre->facture) {
@@ -221,8 +231,28 @@ class OrdreServiceFactory
 
             Log::info('Ordre modifié via Factory', ['ordre_id' => $ordre->id]);
 
-            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'facture']);
+            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'facture', 'primes']);
         });
+    }
+
+    /**
+     * Mettre à jour les primes d'un ordre (supprimer les anciennes non payées et créer les nouvelles)
+     */
+    protected function mettreAJourPrimes(OrdreTravail $ordre, float $primeTransitaire, float $primeRepresentant): void
+    {
+        // Supprimer les anciennes primes non payées de cet ordre
+        Prime::where('ordre_id', $ordre->id)
+            ->where('statut', 'En attente')
+            ->delete();
+
+        // Créer les nouvelles primes
+        $this->creerPrimes($ordre, $primeTransitaire, $primeRepresentant);
+
+        Log::info('Primes mises à jour pour ordre', [
+            'ordre_id' => $ordre->id,
+            'prime_transitaire' => $primeTransitaire,
+            'prime_representant' => $primeRepresentant,
+        ]);
     }
 
     /**
