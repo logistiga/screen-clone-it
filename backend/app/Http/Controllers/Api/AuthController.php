@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Audit;
 use App\Services\SessionManager;
 use App\Services\AccountLockoutService;
+use App\Services\SuspiciousLoginDetector;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +21,8 @@ class AuthController extends Controller
 
     public function __construct(
         private SessionManager $sessionManager,
-        private AccountLockoutService $lockoutService
+        private AccountLockoutService $lockoutService,
+        private SuspiciousLoginDetector $suspiciousLoginDetector
     ) {}
 
     public function login(LoginRequest $request): JsonResponse
@@ -78,6 +80,24 @@ class AuthController extends Controller
 
         Audit::log('login', 'auth', 'Connexion réussie');
 
+        // Détecter les connexions suspectes (IP inhabituelle ou hors Gabon)
+        $loginAnalysis = $this->suspiciousLoginDetector->analyzeLogin(
+            $user,
+            $request->ip(),
+            $request->userAgent() ?? ''
+        );
+
+        // Envoyer alerte à l'admin si connexion suspecte
+        if ($loginAnalysis['is_suspicious']) {
+            $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis);
+            
+            Audit::log('suspicious_login', 'security', 'Connexion suspecte détectée', null, [
+                'ip_address' => $loginAnalysis['ip_address'],
+                'country' => $loginAnalysis['country'] ?? 'inconnu',
+                'reasons' => $loginAnalysis['reasons'],
+            ]);
+        }
+
         // Créer la session avec métadonnées
         $sessionData = $this->sessionManager->createSession($user, $request);
         $token = $sessionData['plainTextToken'];
@@ -94,6 +114,10 @@ class AuthController extends Controller
             'session' => [
                 'active_sessions' => $sessionStats['total_sessions'],
                 'max_sessions' => $sessionStats['max_sessions'],
+            ],
+            'security' => [
+                'suspicious' => $loginAnalysis['is_suspicious'],
+                'location' => $loginAnalysis['country_name'] ?? null,
             ],
         ]);
     }
