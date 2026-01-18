@@ -116,6 +116,54 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
   }
+
+  /* Scrollbar élégante et discrète */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  /* Scrollbar dans la sidebar - encore plus discrète */
+  [data-sidebar] ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  [data-sidebar] ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  [data-sidebar] ::-webkit-scrollbar-thumb {
+    background: hsl(var(--sidebar-foreground) / 0.1);
+    border-radius: 10px;
+  }
+
+  [data-sidebar] ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--sidebar-foreground) / 0.25);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
+
+  [data-sidebar] {
+    scrollbar-color: hsl(var(--sidebar-foreground) / 0.1) transparent;
+  }
 }
 
 /* Styles personnalisés pour les tableaux */
@@ -146,5 +194,28 @@
 
   .status-cancelled {
     @apply bg-red-50 text-red-600;
+  }
+
+  /* Scrollbar invisible au repos, visible au hover */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Scrollbar qui apparaît au hover */
+  .scrollbar-hover::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
+  .scrollbar-hover:hover::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
   }
 }
