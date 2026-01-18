@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 // Controllers
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SessionController;
+use App\Http\Controllers\Api\SuspiciousLoginController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DevisController;
 use App\Http\Controllers\Api\OrdreTravailController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\EmailAutomationController;
 use App\Http\Controllers\Api\EmailConfigController;
 
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -59,6 +61,14 @@ Route::prefix('auth')->group(function () {
         ->middleware('throttle:password-reset');
     Route::post('unlock-account', [AuthController::class, 'unlockAccount'])
         ->middleware('throttle:password-reset');
+});
+
+// Routes publiques pour les actions de sécurité (depuis email)
+Route::prefix('security')->group(function () {
+    Route::get('suspicious-login/{token}/approve', [SuspiciousLoginController::class, 'approve'])
+        ->name('security.suspicious-login.approve');
+    Route::get('suspicious-login/{token}/block', [SuspiciousLoginController::class, 'block'])
+        ->name('security.suspicious-login.block');
 });
 
 // Routes protégées par authentification
@@ -486,6 +496,14 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('attempts', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'attempts']);
         Route::post('unlock', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'unlock']);
         Route::post('cleanup', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'cleanup']);
+    });
+
+    // ============================================
+    // SUSPICIOUS LOGINS (Admin - Sécurité)
+    // ============================================
+    Route::prefix('suspicious-logins')->middleware(['role:administrateur'])->group(function () {
+        Route::get('/', [SuspiciousLoginController::class, 'index']);
+        Route::get('stats', [SuspiciousLoginController::class, 'stats']);
     });
 
     // ============================================

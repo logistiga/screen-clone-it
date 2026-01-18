@@ -36,6 +36,7 @@ class SessionManager
 
         return [
             'token' => $tokenResult,
+            'accessToken' => $token,
             'plainTextToken' => $tokenResult->plainTextToken,
         ];
     }

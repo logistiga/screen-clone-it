@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LoginAttempt;
+use App\Models\SuspiciousLogin;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,9 @@ class SuspiciousLoginDetector
     
     // Durée de cache pour la géolocalisation (24h)
     private const GEO_CACHE_TTL = 86400;
+    
+    // Durée de validité du token d'action (48h)
+    private const ACTION_TOKEN_TTL_HOURS = 48;
 
     /**
      * Analyser une connexion et détecter si elle est suspecte
@@ -77,15 +81,20 @@ class SuspiciousLoginDetector
 
     /**
      * Envoyer une alerte email à l'admin si la connexion est suspecte
+     * @param int|null $sessionTokenId ID du token de session pour pouvoir le révoquer
      */
-    public function sendAlertIfSuspicious(User $user, array $analysis): bool
+    public function sendAlertIfSuspicious(User $user, array $analysis, ?int $sessionTokenId = null): bool
     {
         if (!$analysis['is_suspicious']) {
             return false;
         }
 
         try {
-            $this->sendAdminAlert($user, $analysis);
+            // Créer un enregistrement de connexion suspecte avec token d'action
+            $suspiciousLogin = $this->createSuspiciousLoginRecord($user, $analysis, $sessionTokenId);
+            
+            // Envoyer l'alerte avec les boutons d'action
+            $this->sendAdminAlert($user, $analysis, $suspiciousLogin);
             
             Log::warning('Connexion suspecte détectée', [
                 'user_id' => $user->id,
@@ -93,6 +102,7 @@ class SuspiciousLoginDetector
                 'ip' => $analysis['ip_address'],
                 'country' => $analysis['country'] ?? 'inconnu',
                 'reasons' => $analysis['reasons'],
+                'suspicious_login_id' => $suspiciousLogin->id,
             ]);
 
             return true;
@@ -106,15 +116,40 @@ class SuspiciousLoginDetector
     }
 
     /**
-     * Envoyer l'email d'alerte à l'administrateur
+     * Créer un enregistrement de connexion suspecte
      */
-    private function sendAdminAlert(User $user, array $analysis): void
+    private function createSuspiciousLoginRecord(User $user, array $analysis, ?int $sessionTokenId = null): SuspiciousLogin
+    {
+        return SuspiciousLogin::create([
+            'user_id' => $user->id,
+            'ip_address' => $analysis['ip_address'],
+            'country_code' => $analysis['country'] ?? null,
+            'country_name' => $analysis['country_name'] ?? null,
+            'city' => $analysis['city'] ?? null,
+            'region' => $analysis['region'] ?? null,
+            'user_agent' => request()->userAgent(),
+            'reasons' => $analysis['reasons'],
+            'action_token' => SuspiciousLogin::generateActionToken(),
+            'token_expires_at' => now()->addHours(self::ACTION_TOKEN_TTL_HOURS),
+            'status' => 'pending',
+            'session_token_id' => $sessionTokenId,
+        ]);
+    }
+
+    /**
+     * Envoyer l'email d'alerte à l'administrateur avec boutons d'action
+     */
+    private function sendAdminAlert(User $user, array $analysis, SuspiciousLogin $suspiciousLogin): void
     {
         $mailConfig = $this->getMailConfig();
         
         $location = $this->formatLocation($analysis);
-        $reasons = implode("\n• ", $analysis['reasons']);
         $timestamp = now()->format('d/m/Y à H:i:s');
+        
+        // Générer les URLs d'action
+        $baseUrl = config('app.url');
+        $approveUrl = "{$baseUrl}/api/security/suspicious-login/{$suspiciousLogin->action_token}/approve";
+        $blockUrl = "{$baseUrl}/api/security/suspicious-login/{$suspiciousLogin->action_token}/block";
 
         $subject = "🔔 Alerte sécurité: Connexion suspecte - {$user->nom}";
         
@@ -155,18 +190,47 @@ class SuspiciousLoginDetector
                         </ul>
                     </div>
                     
-                    <div style='margin-top: 20px; padding: 15px; background: #fff; border-radius: 6px; border: 1px solid #e5e5e5;'>
-                        <strong>Actions recommandées :</strong>
-                        <ol style='margin: 10px 0 0 0; padding-left: 20px;'>
-                            <li>Vérifiez si cette connexion est légitime avec l'utilisateur</li>
-                            <li>Si non autorisée, révoquez les sessions de cet utilisateur</li>
-                            <li>Envisagez de réinitialiser le mot de passe du compte</li>
-                        </ol>
+                    <!-- BOUTONS D'ACTION -->
+                    <div style='margin-top: 25px; text-align: center;'>
+                        <p style='font-weight: bold; margin-bottom: 15px;'>Que souhaitez-vous faire ?</p>
+                        
+                        <table style='width: 100%; border-collapse: separate; border-spacing: 10px;'>
+                            <tr>
+                                <td style='width: 50%; text-align: center;'>
+                                    <a href='{$approveUrl}' 
+                                       style='display: inline-block; padding: 15px 30px; background: #16a34a; color: white; 
+                                              text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;
+                                              box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+                                        ✅ Autoriser
+                                    </a>
+                                    <p style='margin: 8px 0 0 0; font-size: 12px; color: #666;'>
+                                        La connexion est légitime
+                                    </p>
+                                </td>
+                                <td style='width: 50%; text-align: center;'>
+                                    <a href='{$blockUrl}' 
+                                       style='display: inline-block; padding: 15px 30px; background: #dc2626; color: white; 
+                                              text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;
+                                              box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+                                        🚫 Bloquer
+                                    </a>
+                                    <p style='margin: 8px 0 0 0; font-size: 12px; color: #666;'>
+                                        Révoquer la session immédiatement
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style='margin-top: 20px; padding: 12px; background: #fff3cd; border-radius: 6px; font-size: 13px;'>
+                        <strong>⏰ Important :</strong> Ce lien expire dans 48 heures. 
+                        Si vous ne faites rien, la session restera active.
                     </div>
                 </div>
                 
                 <p style='color: #666; font-size: 12px; margin-top: 20px; text-align: center;'>
-                    Cet email a été envoyé automatiquement par le système de sécurité de Logistiga.
+                    Cet email a été envoyé automatiquement par le système de sécurité de Logistiga.<br>
+                    ID de référence : #{$suspiciousLogin->id}
                 </p>
             </div>
         </body>
@@ -182,6 +246,7 @@ class SuspiciousLoginDetector
         Log::info('Alerte de connexion suspecte envoyée à l\'admin', [
             'admin_email' => self::ADMIN_EMAIL,
             'subject' => $subject,
+            'suspicious_login_id' => $suspiciousLogin->id,
         ]);
     }
 
