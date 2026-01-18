@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -15,25 +14,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowLeft,
-  FileText,
-  Edit,
-  Wallet,
-  Clock,
-  User,
   AlertCircle,
-  Mail,
   Receipt,
   Loader2,
-  Download,
-  Percent,
+  Clock,
+  FileText,
+  Anchor,
+  Hash,
+  Ship,
+  Package,
+  StickyNote,
 } from "lucide-react";
 import { useFactureById } from "@/hooks/use-commercial";
-import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
+import { formatMontant, formatDate } from "@/data/mockData";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailModal } from "@/components/EmailModal";
-import { usePdfDownload } from "@/hooks/use-pdf-download";
-import { FactureHistorique } from "@/components/factures/shared";
+import { 
+  FactureHistorique, 
+  FactureHeader, 
+  FactureFinancialCard, 
+  FactureClientCard 
+} from "@/components/factures/shared";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -43,13 +44,24 @@ export default function FactureDetailPage() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   const { data: facture, isLoading, error, refetch } = useFactureById(id || "");
-  const { downloadPdf } = usePdfDownload({ filename: facture ? `facture-${facture.numero}.pdf` : 'facture.pdf' });
 
   if (isLoading) {
     return (
       <MainLayout title="Chargement...">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          >
+            <Loader2 className="h-10 w-10 text-primary" />
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-muted-foreground"
+          >
+            Chargement de la facture...
+          </motion.p>
         </div>
       </MainLayout>
     );
@@ -58,14 +70,28 @@ export default function FactureDetailPage() {
   if (error || !facture) {
     return (
       <MainLayout title="Facture non trouvée">
-        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center py-20"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <AlertCircle className="h-20 w-20 text-destructive/50 mb-6" />
+          </motion.div>
           <h2 className="text-xl font-semibold mb-2">Facture non trouvée</h2>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-6">
             La facture demandée n'existe pas ou a été supprimée.
           </p>
-          <Button onClick={() => window.history.length <= 2 ? navigate('/factures') : navigate(-1)} className="transition-all duration-200 hover:scale-105">Retour</Button>
-        </div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button onClick={() => window.history.length <= 2 ? navigate('/factures') : navigate(-1)}>
+              Retour
+            </Button>
+          </motion.div>
+        </motion.div>
       </MainLayout>
     );
   }
@@ -73,349 +99,212 @@ export default function FactureDetailPage() {
   const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
   const client = facture.client;
 
-  const getStatutBadge = (statut: string) => {
-    const configs: Record<string, { label: string; className: string }> = {
-      brouillon: { 
-        label: getStatutLabel(statut), 
-        className: "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-700" 
-      },
-      emise: { 
-        label: getStatutLabel(statut), 
-        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700" 
-      },
-      payee: { 
-        label: getStatutLabel(statut), 
-        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700" 
-      },
-      partielle: { 
-        label: getStatutLabel(statut), 
-        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700" 
-      },
-      impayee: { 
-        label: getStatutLabel(statut), 
-        className: "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-200 dark:border-orange-700" 
-      },
-      annulee: { 
-        label: getStatutLabel(statut), 
-        className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700" 
-      },
-    };
-    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-gray-100 text-gray-800" };
-    return (
-      <Badge 
-        variant="outline" 
-        className={`${config.className} transition-all duration-200 hover:scale-105`}
-      >
-        {config.label}
-      </Badge>
-    );
-  };
-
-  // Import du composant d'historique partagé sera utilisé dans le TabsContent
-
   return (
     <MainLayout title={`Facture ${facture.numero}`}>
-      <div className="space-y-6 animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
         {/* Header avec actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.length <= 2 ? navigate('/factures') : navigate(-1)} className="transition-all duration-200 hover:scale-110">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold">{facture.numero}</h1>
-                {getStatutBadge(facture.statut)}
-              </div>
-              <p className="text-muted-foreground">
-                Créée le {formatDate(facture.date_facture)} • Échéance: {formatDate(facture.date_echeance)}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              className="gap-2 transition-all duration-200 hover:scale-105"
-              onClick={downloadPdf}
-            >
-              <Download className="h-4 w-4" />
-              Télécharger PDF
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 transition-all duration-200 hover:scale-105"
-              onClick={() => setEmailModalOpen(true)}
-            >
-              <Mail className="h-4 w-4" />
-              Email
-            </Button>
-            {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
-              <>
-                <Button
-                  variant="outline"
-                  className="gap-2 transition-all duration-200 hover:scale-105"
-                  onClick={() => navigate(`/factures/${id}/modifier`)}
-                >
-                  <Edit className="h-4 w-4" />
-                  Modifier
-                </Button>
-                {resteAPayer > 0 && (
-                  <Button variant="outline" className="gap-2 text-green-600 transition-all duration-200 hover:scale-105 hover:bg-green-50" onClick={() => setPaiementModalOpen(true)}>
-                    <Wallet className="h-4 w-4" />
-                    Paiement
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+        <FactureHeader
+          facture={facture}
+          id={id!}
+          resteAPayer={resteAPayer}
+          onPaiementClick={() => setPaiementModalOpen(true)}
+          onEmailClick={() => setEmailModalOpen(true)}
+        />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="details">Détails</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="details" className="gap-2">
+              <Receipt className="h-4 w-4" />
+              Détails
+            </TabsTrigger>
             <TabsTrigger value="tracabilite" className="gap-2">
               <Clock className="h-4 w-4" />
-              Historique / Traçabilité
+              Historique
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-6 mt-6">
-            {/* Infos client + récap */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5 text-primary" />
-                    Client
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="font-semibold text-lg">{client?.nom}</p>
-                  <p className="text-muted-foreground">{client?.email}</p>
-                  <p className="text-muted-foreground">{client?.telephone}</p>
-                  <p className="text-muted-foreground">
-                    {client?.adresse}, {client?.ville}
-                  </p>
-                </CardContent>
-              </Card>
+          <AnimatePresence mode="wait">
+            <TabsContent value="details" className="space-y-6 mt-6">
+              {/* Infos client + récap */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <FactureClientCard client={client} />
+                <FactureFinancialCard
+                  montantHT={facture.montant_ht || 0}
+                  montantTVA={facture.montant_tva || 0}
+                  montantCSS={facture.montant_css || 0}
+                  montantTTC={facture.montant_ttc || 0}
+                  montantPaye={facture.montant_paye || 0}
+                  resteAPayer={resteAPayer}
+                  remiseType={facture.remise_type}
+                  remiseValeur={facture.remise_valeur}
+                  remiseMontant={facture.remise_montant}
+                />
+              </div>
 
-              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Receipt className="h-5 w-5 text-primary" />
-                    Récapitulatif financier
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {facture.remise_montant > 0 && facture.remise_type && facture.remise_type !== 'none' ? (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Montant HT brut</span>
-                        <span className="font-medium">{formatMontant((facture.montant_ht || 0) + (facture.remise_montant || 0))}</span>
+              {/* Infos BL */}
+              {facture.bl_numero && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card via-card to-blue-500/5">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+                        <div className="p-1.5 rounded-lg bg-blue-500/10">
+                          <Anchor className="h-4 w-4 text-blue-600" />
+                        </div>
+                        Informations BL
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                            <Hash className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <span className="text-sm text-muted-foreground">Numéro BL</span>
+                            <p className="font-mono font-medium">{facture.bl_numero}</p>
+                          </div>
+                        </div>
+                        {facture.navire && (
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                              <Ship className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Navire</span>
+                              <p className="font-medium">{facture.navire}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex justify-between text-destructive">
-                        <span className="flex items-center gap-1">
-                          <Percent className="h-4 w-4" />
-                          Remise {facture.remise_type === 'pourcentage' && facture.remise_valeur ? `(${facture.remise_valeur}%)` : ''}
-                        </span>
-                        <span className="font-medium">- {formatMontant(facture.remise_montant)}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="text-muted-foreground">Sous-total HT</span>
-                        <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Montant HT</span>
-                      <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">TVA</span>
-                    <span>{formatMontant(facture.montant_tva)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CSS</span>
-                    <span>{formatMontant(facture.montant_css)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total TTC</span>
-                    <span className="text-primary">{formatMontant(facture.montant_ttc)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Montant payé</span>
-                    <span className="text-green-600 font-medium">{formatMontant(facture.montant_paye || 0)}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold">
-                    <span>Reste à payer</span>
-                    <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
-                      {formatMontant(resteAPayer)}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
 
-            {/* Infos BL */}
-            {facture.bl_numero && (
-              <Card className="transition-all duration-300 hover:shadow-lg">
-                <CardHeader>
-                  <CardTitle>Informations BL</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <span className="text-sm text-muted-foreground">Numéro BL</span>
-                      <p className="font-mono font-medium">{facture.bl_numero}</p>
-                    </div>
-                    {facture.navire && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Navire</span>
-                        <p className="font-medium">{facture.navire}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+              {/* Lignes de la facture */}
+              {facture.lignes && facture.lignes.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  <Card className="overflow-hidden border-0 shadow-lg">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+                        <div className="p-1.5 rounded-lg bg-purple-500/10">
+                          <FileText className="h-4 w-4 text-purple-600" />
+                        </div>
+                        Lignes de la facture
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Description</TableHead>
+                            <TableHead className="text-center">Quantité</TableHead>
+                            <TableHead className="text-right">Prix unitaire</TableHead>
+                            <TableHead className="text-right">Montant HT</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {facture.lignes.map((ligne: any, index: number) => (
+                            <TableRow key={ligne.id} className="hover:bg-muted/50">
+                              <TableCell>{ligne.description || ligne.type_operation}</TableCell>
+                              <TableCell className="text-center">{ligne.quantite}</TableCell>
+                              <TableCell className="text-right">{formatMontant(ligne.prix_unitaire)}</TableCell>
+                              <TableCell className="text-right font-medium">{formatMontant(ligne.montant_ht)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
 
-            {/* Lignes de la facture */}
-            {facture.lignes && facture.lignes.length > 0 && (
-              <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-                <CardHeader>
-                  <CardTitle>Lignes de la facture</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-center">Quantité</TableHead>
-                        <TableHead className="text-right">Prix unitaire</TableHead>
-                        <TableHead className="text-right">Montant HT</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {facture.lignes.map((ligne: any, index: number) => (
-                        <TableRow 
-                          key={ligne.id}
-                          className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          <TableCell>{ligne.description || ligne.type_operation}</TableCell>
-                          <TableCell className="text-center">{ligne.quantite}</TableCell>
-                          <TableCell className="text-right">
-                            {formatMontant(ligne.prix_unitaire)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatMontant(ligne.montant_ht)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+              {/* Conteneurs */}
+              {facture.conteneurs && facture.conteneurs.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Card className="overflow-hidden border-0 shadow-lg">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+                        <div className="p-1.5 rounded-lg bg-cyan-500/10">
+                          <Package className="h-4 w-4 text-cyan-600" />
+                        </div>
+                        Conteneurs
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Numéro</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Taille</TableHead>
+                            <TableHead className="text-right">Montant</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {facture.conteneurs.map((conteneur: any) => (
+                            <TableRow key={conteneur.id} className="hover:bg-muted/50">
+                              <TableCell className="font-mono">{conteneur.numero}</TableCell>
+                              <TableCell>{conteneur.type}</TableCell>
+                              <TableCell>{conteneur.taille}</TableCell>
+                              <TableCell className="text-right font-medium">{formatMontant(conteneur.montant_ht || 0)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
 
-            {/* Conteneurs */}
-            {facture.conteneurs && facture.conteneurs.length > 0 && (
-              <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-                <CardHeader>
-                  <CardTitle>Conteneurs</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Numéro</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Taille</TableHead>
-                        <TableHead className="text-right">Montant</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {facture.conteneurs.map((conteneur: any, index: number) => (
-                        <TableRow 
-                          key={conteneur.id}
-                          className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          <TableCell className="font-mono">{conteneur.numero}</TableCell>
-                          <TableCell>{conteneur.type}</TableCell>
-                          <TableCell>{conteneur.taille}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatMontant(conteneur.montant_ht || 0)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+              {/* Notes */}
+              {facture.notes && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                >
+                  <Card className="overflow-hidden border-0 shadow-lg">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+                        <div className="p-1.5 rounded-lg bg-amber-500/10">
+                          <StickyNote className="h-4 w-4 text-amber-600" />
+                        </div>
+                        Notes
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground">{facture.notes}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </TabsContent>
 
-            {/* Lots */}
-            {facture.lots && facture.lots.length > 0 && (
-              <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-                <CardHeader>
-                  <CardTitle>Lots</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Désignation</TableHead>
-                        <TableHead className="text-center">Quantité</TableHead>
-                        <TableHead className="text-right">Prix unitaire</TableHead>
-                        <TableHead className="text-right">Montant</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {facture.lots.map((lot: any, index: number) => (
-                        <TableRow 
-                          key={lot.id}
-                          className="hover:bg-muted/50 transition-all duration-200 animate-fade-in"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          <TableCell>{lot.designation}</TableCell>
-                          <TableCell className="text-center">{lot.quantite}</TableCell>
-                          <TableCell className="text-right">
-                            {formatMontant(lot.prix_unitaire)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatMontant(lot.montant_ht || lot.quantite * lot.prix_unitaire)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Notes */}
-            {facture.notes && (
-              <Card className="transition-all duration-300 hover:shadow-lg">
-                <CardHeader>
-                  <CardTitle>Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{facture.notes}</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="tracabilite" className="mt-6">
-            <FactureHistorique facture={facture} />
-          </TabsContent>
+            <TabsContent value="tracabilite" className="mt-6">
+              <FactureHistorique facture={facture} />
+            </TabsContent>
+          </AnimatePresence>
         </Tabs>
-      </div>
+      </motion.div>
 
       {/* Modal paiement */}
       <PaiementModal
