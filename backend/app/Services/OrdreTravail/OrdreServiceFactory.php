@@ -93,6 +93,9 @@ class OrdreServiceFactory
             $data['numero'] = $this->genererNumero();
             $data['statut'] = $data['statut'] ?? 'en_cours';
             $data['montant_paye'] = 0;
+            
+            // Ajouter l'utilisateur créateur
+            $data['created_by'] = auth()->id();
 
             // Extraire les primes avant l'insert
             $primeTransitaire = $data['prime_transitaire'] ?? 0;

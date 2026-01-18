@@ -167,6 +167,7 @@ class OrdreTravailController extends Controller
                 'primes.paiements',
                 'primes.transitaire',
                 'primes.representant',
+                'createdBy',
             ]);
 
             return response()->json(new OrdreTravailResource($ordreTravail));
