@@ -16,6 +16,7 @@ class UpdateOrdreTravailRequest extends FormRequest
         return [
             'client_id' => 'sometimes|exists:clients,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
+            'representant_id' => 'nullable|exists:representants,id',
             'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
             'type_operation' => 'nullable|string|max:100',
             'type_operation_indep' => 'nullable|string|max:100',
@@ -26,6 +27,10 @@ class UpdateOrdreTravailRequest extends FormRequest
             'lieu_dechargement' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:2000',
             'statut' => 'sometimes|in:en_cours,termine,facture,annule',
+
+            // Primes
+            'prime_transitaire' => 'nullable|numeric|min:0',
+            'prime_representant' => 'nullable|numeric|min:0',
             
             // Remise
             'remise_type' => 'nullable|string|in:pourcentage,montant,none',
