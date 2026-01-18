@@ -481,7 +481,7 @@ L'équipe LOGISTIGA`;
                           <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
+                          {ordre.statut !== 'annule' && (
                             <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10">
                               <Edit className="h-4 w-4" />
                             </Button>

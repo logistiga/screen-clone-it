@@ -213,10 +213,61 @@ class OrdreServiceFactory
             // Recalculer les totaux
             $service->calculerTotaux($ordre);
 
+            // SYNCHRONISATION AUTOMATIQUE : Si l'ordre est facturé, mettre à jour la facture associée
+            $ordre->load('facture');
+            if ($ordre->facture) {
+                $this->synchroniserFacture($ordre, $data);
+            }
+
             Log::info('Ordre modifié via Factory', ['ordre_id' => $ordre->id]);
 
-            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur']);
+            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'facture']);
         });
+    }
+
+    /**
+     * Synchroniser la facture associée avec les données de l'ordre
+     */
+    protected function synchroniserFacture(OrdreTravail $ordre, array $data): void
+    {
+        $facture = $ordre->facture;
+        $factureFactory = app(FactureServiceFactory::class);
+        $categorie = $ordre->categorie;
+
+        // Préparer les données de mise à jour de la facture
+        $factureData = [
+            'client_id' => $ordre->client_id,
+            'armateur_id' => $ordre->armateur_id,
+            'transitaire_id' => $ordre->transitaire_id,
+            'representant_id' => $ordre->representant_id,
+            'type_operation' => $ordre->type_operation,
+            'type_operation_indep' => $ordre->type_operation_indep,
+            'numero_bl' => $ordre->numero_bl,
+            'navire' => $ordre->navire,
+            'notes' => $ordre->notes,
+        ];
+
+        // Synchroniser les éléments selon le type
+        if ($categorie === 'conteneurs' && isset($data['conteneurs'])) {
+            $factureData['conteneurs'] = $data['conteneurs'];
+        } elseif ($categorie === 'conventionnel' && isset($data['lots'])) {
+            $factureData['lots'] = $data['lots'];
+        } elseif ($categorie === 'operations_independantes' && isset($data['lignes'])) {
+            $factureData['lignes'] = $data['lignes'];
+        } else {
+            // Copier les éléments existants de l'ordre vers la facture
+            $service = $this->getService($categorie);
+            $factureData = array_merge($factureData, $service->preparerPourConversion($ordre));
+        }
+
+        // Mettre à jour la facture
+        $factureFactory->modifier($facture, $factureData);
+
+        Log::info('Facture synchronisée avec ordre', [
+            'ordre_id' => $ordre->id,
+            'facture_id' => $facture->id,
+            'facture_numero' => $facture->numero,
+        ]);
     }
 
     /**

@@ -181,10 +181,7 @@ class OrdreTravailController extends Controller
 
     public function update(UpdateOrdreTravailRequest $request, OrdreTravail $ordreTravail): JsonResponse
     {
-        if ($ordreTravail->statut === 'facture') {
-            return response()->json(['message' => 'Impossible de modifier un ordre facturé'], 422);
-        }
-
+        // Permettre la modification même si facturé - la facture sera synchronisée automatiquement
         try {
             $ordreTravail = $this->ordreFactory->modifier($ordreTravail, $request->validated());
 
