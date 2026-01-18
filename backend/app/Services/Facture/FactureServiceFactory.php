@@ -97,6 +97,9 @@ class FactureServiceFactory
             $data['statut'] = $data['statut'] ?? 'emise';
             $data['montant_paye'] = $data['montant_paye'] ?? 0;
 
+            // Enregistrer l'utilisateur créateur
+            $data['created_by'] = auth()->id();
+
             // Extraire les primes avant l'insert
             $primeTransitaire = $data['prime_transitaire'] ?? 0;
             $primeRepresentant = $data['prime_representant'] ?? 0;
