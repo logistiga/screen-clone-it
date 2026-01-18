@@ -27,6 +27,9 @@ class SuspiciousLoginDetector
     /**
      * Analyser une connexion et détecter si elle est suspecte
      */
+    /**
+     * Analyser une connexion et détecter si elle est suspecte
+     */
     public function analyzeLogin(User $user, string $ipAddress, string $userAgent): array
     {
         $analysis = [
@@ -37,19 +40,37 @@ class SuspiciousLoginDetector
             'city' => null,
             'is_new_ip' => false,
             'is_foreign_country' => false,
+            'is_mobile' => false,
         ];
+
+        // Détecter si c'est un appareil mobile
+        $isMobile = $this->isMobileDevice($userAgent);
+        $analysis['is_mobile'] = $isMobile;
 
         // Skip pour les IPs locales/développement
         if ($this->isLocalIp($ipAddress)) {
             Log::debug('SuspiciousLoginDetector: IP locale ignorée', ['ip' => $ipAddress]);
+            
+            // Même pour les IPs locales, signaler les connexions mobiles
+            if ($isMobile) {
+                $analysis['is_suspicious'] = true;
+                $analysis['reasons'][] = "Connexion depuis un appareil mobile";
+            }
+            
             return $analysis;
         }
 
-        // 1. Vérifier si c'est une nouvelle IP pour cet utilisateur
+        // 1. Vérifier si c'est un appareil mobile
+        if ($isMobile) {
+            $analysis['is_suspicious'] = true;
+            $analysis['reasons'][] = "Connexion depuis un appareil mobile";
+        }
+
+        // 2. Vérifier si c'est une nouvelle IP pour cet utilisateur
         $isNewIp = $this->isNewIpForUser($user, $ipAddress);
         $analysis['is_new_ip'] = $isNewIp;
 
-        // 2. Obtenir la géolocalisation
+        // 3. Obtenir la géolocalisation
         $geoData = $this->getGeoLocation($ipAddress);
         if ($geoData) {
             $analysis['country'] = $geoData['country'];
@@ -57,16 +78,18 @@ class SuspiciousLoginDetector
             $analysis['city'] = $geoData['city'];
             $analysis['region'] = $geoData['region'];
 
-            // 3. Vérifier si le pays est autorisé
+            // 4. Vérifier si le pays est autorisé
             if (!in_array($geoData['country'], self::ALLOWED_COUNTRIES)) {
                 $analysis['is_foreign_country'] = true;
                 $analysis['is_suspicious'] = true;
-                $analysis['reasons'][] = "Connexion depuis {$geoData['country_name']} (hors Gabon)";
+                if (!in_array("Connexion depuis {$geoData['country_name']} (hors Gabon)", $analysis['reasons'])) {
+                    $analysis['reasons'][] = "Connexion depuis {$geoData['country_name']} (hors Gabon)";
+                }
             }
         }
 
-        // 4. Si nouvelle IP ET pas déjà signalé comme pays étranger
-        if ($isNewIp && !$analysis['is_foreign_country']) {
+        // 5. Si nouvelle IP ET pas déjà signalé pour d'autres raisons
+        if ($isNewIp && !$analysis['is_foreign_country'] && !$isMobile) {
             // Vérifier s'il y a eu des connexions récentes depuis cette IP
             $recentFromThisIp = $this->hasRecentSuccessfulLogin($user, $ipAddress, 30);
             
@@ -77,6 +100,43 @@ class SuspiciousLoginDetector
         }
 
         return $analysis;
+    }
+
+    /**
+     * Détecter si le User-Agent correspond à un appareil mobile
+     */
+    private function isMobileDevice(string $userAgent): bool
+    {
+        $mobilePatterns = [
+            '/Mobile/i',
+            '/Android/i',
+            '/iPhone/i',
+            '/iPad/i',
+            '/iPod/i',
+            '/Windows Phone/i',
+            '/BlackBerry/i',
+            '/Opera Mini/i',
+            '/Opera Mobi/i',
+            '/IEMobile/i',
+            '/webOS/i',
+            '/Fennec/i',
+            '/Kindle/i',
+            '/Silk/i',
+            '/UC Browser/i',
+            '/Samsung/i',
+            '/HTC/i',
+            '/LG/i',
+            '/Huawei/i',
+            '/Xiaomi/i',
+        ];
+
+        foreach ($mobilePatterns as $pattern) {
+            if (preg_match($pattern, $userAgent)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
