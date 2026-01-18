@@ -38,6 +38,7 @@ class OrdreTravail extends Model
         'remise_type',
         'remise_valeur',
         'remise_montant',
+        'created_by',
     ];
 
     protected $casts = [
@@ -108,6 +109,11 @@ class OrdreTravail extends Model
     public function primes()
     {
         return $this->hasMany(Prime::class, 'ordre_id');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     // Accessors
