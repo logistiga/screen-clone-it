@@ -269,18 +269,22 @@ L'équipe LOGISTIGA`;
             </Button>
           </motion.div>
 
+          {/* Modifier - disponible même si facturé (la facture sera synchronisée) */}
+          {ordre.statut !== 'annule' && (
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => navigate(`/ordres/${id}/modifier`)}
+              >
+                <Edit className="h-4 w-4" />
+                Modifier
+              </Button>
+            </motion.div>
+          )}
+
           {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
             <>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => navigate(`/ordres/${id}/modifier`)}
-                >
-                  <Edit className="h-4 w-4" />
-                  Modifier
-                </Button>
-              </motion.div>
               {resteAPayer > 0 && (
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button
