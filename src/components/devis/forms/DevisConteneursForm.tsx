@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PartenaireCombobox } from "@/components/shared/PartenaireCombobox";
 import {
   TypeOperation,
   TypeOperationConteneur,
@@ -242,60 +243,49 @@ export default function DevisConteneursForm({
             </div>
             <div className="space-y-2">
               <Label>Armateur *</Label>
-              <Select
+              <PartenaireCombobox
+                options={armateurs}
                 value={armateurId}
-                onValueChange={(v) => {
+                onChange={(v) => {
                   setArmateurId(v);
                   setTimeout(handleHeaderChange, 0);
                 }}
-              >
-                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                <SelectContent>
-                  {armateurs.map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>{a.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Sélectionner"
+                searchPlaceholder="Rechercher un armateur..."
+                emptyMessage="Aucun armateur trouvé."
+              />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-amber-600">Transitaire</Label>
-              <Select
+              <PartenaireCombobox
+                options={transitaires}
                 value={transitaireId}
-                onValueChange={(v) => {
+                onChange={(v) => {
                   setTransitaireId(v);
                   setTimeout(handleHeaderChange, 0);
                 }}
-              >
-                <SelectTrigger className="border-amber-200">
-                  <SelectValue placeholder="Sélectionner (optionnel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {transitaires.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>{t.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Sélectionner (optionnel)"
+                searchPlaceholder="Rechercher un transitaire..."
+                emptyMessage="Aucun transitaire trouvé."
+                triggerClassName="border-amber-200"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-amber-600">Représentant</Label>
-              <Select
+              <PartenaireCombobox
+                options={representants}
                 value={representantId}
-                onValueChange={(v) => {
+                onChange={(v) => {
                   setRepresentantId(v);
                   setTimeout(handleHeaderChange, 0);
                 }}
-              >
-                <SelectTrigger className="border-amber-200">
-                  <SelectValue placeholder="Sélectionner (optionnel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {representants.map((r) => (
-                    <SelectItem key={r.id} value={String(r.id)}>{r.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Sélectionner (optionnel)"
+                searchPlaceholder="Rechercher un représentant..."
+                emptyMessage="Aucun représentant trouvé."
+                triggerClassName="border-amber-200"
+              />
             </div>
           </div>
         </CardContent>
