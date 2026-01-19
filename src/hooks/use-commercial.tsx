@@ -37,6 +37,19 @@ import { extractApiErrorInfo, formatApiErrorDebug } from '@/lib/api-error';
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 
+// Helper: normaliser une réponse API en tableau (supporte: array | {data:[]} | {data:{data:[]}} | AxiosResponse-like)
+function normalizeToArray<T = unknown>(res: unknown): T[] {
+  if (Array.isArray(res)) return res;
+  const anyRes = res as Record<string, unknown>;
+  if (Array.isArray(anyRes?.data)) return anyRes.data as T[];
+  const nestedData = anyRes?.data as Record<string, unknown> | undefined;
+  if (Array.isArray(nestedData?.data)) return nestedData.data as T[];
+  if (Array.isArray(anyRes?.items)) return anyRes.items as T[];
+  const dataObj = anyRes?.data as Record<string, unknown> | undefined;
+  if (Array.isArray(dataObj?.items)) return dataObj.items as T[];
+  return [];
+}
+
 // Clients hooks avec préchargement de la page suivante
 export function useClients(params?: { search?: string; page?: number; per_page?: number }) {
   const queryClient = useQueryClient();
@@ -483,13 +496,17 @@ export function useFacturesImpayes(clientId?: string) {
   });
 }
 
-// Armateurs hooks
+// Armateurs hooks (✅ NORMALISE EN TABLEAU)
 export function useArmateurs() {
   return useQuery({
     queryKey: ['armateurs'],
-    queryFn: armateursApi.getAll,
+    queryFn: async () => {
+      const res = await armateursApi.getAll();
+      return normalizeToArray<Armateur>(res);
+    },
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
+    refetchOnMount: true,
   });
 }
 
@@ -531,33 +548,18 @@ export function useDeleteArmateur() {
   });
 }
 
-// Transitaires hooks
+// Transitaires hooks (✅ NORMALISE EN TABLEAU)
 export function useTransitaires() {
-  const query = useQuery({
+  return useQuery({
     queryKey: ['transitaires'],
     queryFn: async () => {
-      console.log('[useTransitaires] Fetching...');
-      try {
-        const result = await transitairesApi.getAll();
-        console.log('[useTransitaires] Success:', result?.length, 'items', result);
-        return result;
-      } catch (error) {
-        console.error('[useTransitaires] Error:', error);
-        throw error;
-      }
+      const res = await transitairesApi.getAll();
+      return normalizeToArray<Transitaire>(res);
     },
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
+    refetchOnMount: true,
   });
-  
-  console.log('[useTransitaires] Query state:', {
-    isLoading: query.isLoading,
-    isError: query.isError,
-    dataLength: query.data?.length,
-    data: query.data
-  });
-  
-  return query;
 }
 
 export function useTransitaireById(id: string | undefined) {
@@ -598,13 +600,17 @@ export function useDeleteTransitaire() {
   });
 }
 
-// Representants hooks
+// Representants hooks (✅ NORMALISE EN TABLEAU)
 export function useRepresentants() {
   return useQuery({
     queryKey: ['representants'],
-    queryFn: representantsApi.getAll,
+    queryFn: async () => {
+      const res = await representantsApi.getAll();
+      return normalizeToArray<Representant>(res);
+    },
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
+    refetchOnMount: true,
   });
 }
 
