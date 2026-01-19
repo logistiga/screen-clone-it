@@ -63,12 +63,15 @@ Route::prefix('auth')->group(function () {
         ->middleware('throttle:password-reset');
 });
 
-// Routes publiques pour les actions de sécurité (depuis email)
+// Routes publiques pour les actions de sécurité (depuis email ou polling frontend)
 Route::prefix('security')->group(function () {
     Route::get('suspicious-login/{token}/approve', [SuspiciousLoginController::class, 'approve'])
         ->name('security.suspicious-login.approve');
     Route::get('suspicious-login/{token}/block', [SuspiciousLoginController::class, 'block'])
         ->name('security.suspicious-login.block');
+    // Endpoint pour vérifier le statut (polling depuis frontend)
+    Route::get('suspicious-login/{id}/status', [SuspiciousLoginController::class, 'checkStatus'])
+        ->name('security.suspicious-login.status');
 });
 
 // Routes protégées par authentification

@@ -22,6 +22,7 @@ const PageLoader = () => (
 
 // Pages chargées immédiatement (critiques)
 import LoginPage from "./pages/Login";
+import PendingApprovalPage from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/Dashboard";
 
@@ -133,8 +134,9 @@ const App = () => (
             <OfflineIndicator />
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                {/* Route publique */}
+                {/* Routes publiques */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/pending-approval" element={<PendingApprovalPage />} />
                 
                 {/* Routes protégées */}
                 <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

@@ -108,9 +108,12 @@ class AuthController extends Controller
             $request->userAgent() ?? ''
         );
 
+        $suspiciousLoginId = null;
+
         // Envoyer alerte à l'admin si connexion suspecte (avec ID de session pour révocation)
         if ($loginAnalysis['is_suspicious']) {
-            $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis, $sessionTokenId);
+            $suspiciousLogin = $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis, $sessionTokenId);
+            $suspiciousLoginId = $suspiciousLogin?->id;
             
             Audit::log('suspicious_login', 'security', 'Connexion suspecte détectée', null, [
                 'ip_address' => $loginAnalysis['ip_address'],
@@ -133,8 +136,10 @@ class AuthController extends Controller
             ],
             'security' => [
                 'suspicious' => $loginAnalysis['is_suspicious'],
+                'reasons' => $loginAnalysis['reasons'] ?? [],
                 'location' => $loginAnalysis['country_name'] ?? null,
             ],
+            'suspicious_login_id' => $suspiciousLoginId,
         ]);
     }
 

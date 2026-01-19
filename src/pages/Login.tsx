@@ -56,12 +56,30 @@ const LoginPage = forwardRef<HTMLDivElement, object>(function LoginPage(_props, 
     setIsLoading(true);
     const result = await login(email, password);
     if (result.success) {
-      toast({
-        title: "Connexion réussie",
-        description: "Bienvenue sur LOGISTIGA",
-      });
-      triggerPWAInstallAfterLogin();
-      navigate("/", { replace: true });
+      // Si connexion suspecte, rediriger vers la page d'attente
+      if (result.suspiciousLogin) {
+        toast({
+          title: "Vérification de sécurité",
+          description: "Votre connexion nécessite une validation",
+          variant: "default",
+        });
+        navigate("/pending-approval", { 
+          replace: true,
+          state: {
+            suspiciousLoginId: result.suspiciousLogin.id,
+            reasons: result.suspiciousLogin.reasons,
+            location: result.suspiciousLogin.location,
+            userEmail: email,
+          }
+        });
+      } else {
+        toast({
+          title: "Connexion réussie",
+          description: "Bienvenue sur LOGISTIGA",
+        });
+        triggerPWAInstallAfterLogin();
+        navigate("/", { replace: true });
+      }
     } else {
       setError(result.error || "Erreur de connexion");
     }
