@@ -52,6 +52,21 @@ export function usePrefetch() {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
 
+  // Refs pour le debounce du prefetch client (survol)
+  const hoverTimerRef = useRef<number | null>(null);
+  const lastHoveredClientIdRef = useRef<string | number | null>(null);
+  const inFlightRef = useRef(false);
+
+  // Cleanup du timer au démontage
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        window.clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const prefetchRoute = useCallback(async (url: string) => {
     // Ne pas précharger tant que l'utilisateur n'est pas authentifié
     if (!isAuthenticated) return;
@@ -113,20 +128,6 @@ export function usePrefetch() {
   }, [queryClient, isAuthenticated]);
 
   // Précharger un client spécifique (déclenché au survol dans la liste)
-  // IMPORTANT: on debouce pour éviter un "storm" de requêtes (et donc des 429).
-  const hoverTimerRef = useRef<number | null>(null);
-  const lastHoveredClientIdRef = useRef<string | number | null>(null);
-  const inFlightRef = useRef(false);
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) {
-        window.clearTimeout(hoverTimerRef.current);
-        hoverTimerRef.current = null;
-      }
-    };
-  }, []);
-
   const doPrefetchClient = useCallback(async (clientId: string | number) => {
     if (!isAuthenticated) return;
 
