@@ -66,26 +66,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return false;
     }
 
+    // En mode cookie/session, pas besoin de refresh token : on revalide juste l'utilisateur.
+    if (isCookieAuthEnabled()) {
+      isRefreshingRef.current = true;
+      try {
+        const userResponse = await api.get('/auth/user');
+        setUser(userResponse.data);
+        return true;
+      } catch (error) {
+        console.error('[Auth] Erreur session cookie:', error);
+        if ((error as any)?.response?.status === 401) {
+          removeAuthToken();
+          resetCsrf();
+          setUser(null);
+        }
+        return false;
+      } finally {
+        isRefreshingRef.current = false;
+      }
+    }
+
+    // Mode Bearer token
+    const token = getAuthToken();
+    if (!token) {
+      return false;
+    }
+
     isRefreshingRef.current = true;
 
     try {
       const response = await api.post('/auth/refresh');
-      
-      // Si le backend renvoie un nouveau token (mode Bearer), le sauvegarder
-      if (!isCookieAuthEnabled() && response.data?.token) {
+      if (response.data?.token) {
         setAuthToken(response.data.token);
       }
-      
-      console.log('[Auth] Session rafraîchie avec succès');
-      
-      // Recharger les données utilisateur
+
+      console.log('[Auth] Token rafraîchi avec succès');
+
       const userResponse = await api.get('/auth/user');
       setUser(userResponse.data);
-      
+
       return true;
     } catch (error) {
       console.error('[Auth] Erreur lors du rafraîchissement:', error);
-      // En cas d'erreur 401, la session a expiré
       if ((error as any)?.response?.status === 401) {
         removeAuthToken();
         resetCsrf();
@@ -220,7 +242,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Appel de login
       const response = await api.post('/auth/login', { email, password });
 
-      // Récupérer et stocker le token (si le backend le renvoie - mode Bearer)
+      // Le backend peut renvoyer un token (compatibilité). En mode cookie, on évite
+      // de le stocker sauf si on en a vraiment besoin.
       const token =
         response.data?.token ??
         response.data?.access_token ??
@@ -229,17 +252,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         response.data?.data?.token ??
         response.data?.data?.access_token;
 
-      if (token) {
-        setAuthToken(token);
-      }
-
-      // Récupérer les infos utilisateur
+      // Tentative 1: session cookie
       try {
         const userResponse = await api.get('/auth/user');
         setUser(userResponse.data);
         updateLastActivity();
+
+        // Hygiène: si on est bien en cookie, on supprime tout token ancien stocké
+        if (isCookieAuthEnabled()) {
+          removeAuthToken();
+        }
+
         return { success: true };
       } catch (verifyError: any) {
+        // Si la session cookie n'est pas active, fallback Bearer token si fourni
+        if (verifyError?.response?.status === 401 && token) {
+          setAuthToken(token);
+          try {
+            const userResponse = await api.get('/auth/user');
+            setUser(userResponse.data);
+            updateLastActivity();
+            return { success: true };
+          } catch {
+            // continue vers l'erreur standard
+          }
+        }
+
         removeAuthToken();
         resetCsrf();
         setUser(null);

@@ -21,6 +21,9 @@ const api = axios.create({
   },
   // IMPORTANT: Activer les cookies pour l'auth Sanctum SPA
   withCredentials: true,
+  // Axios gère XSRF-TOKEN -> X-XSRF-TOKEN (utile en cross-origin)
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
   timeout: 30000,
 });
 
