@@ -96,7 +96,25 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
       gcTime: 1000 * 60 * 30, // 30 minutes (anciennement cacheTime)
-      retry: 2,
+      // IMPORTANT: éviter d'aggraver les rate-limits (429)
+      retry: (failureCount, error: any) => {
+        const status = error?.response?.status;
+        if (status === 429) return false;
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex, error: any) => {
+        const status = error?.response?.status;
+        const retryAfterHeader = error?.response?.headers?.['retry-after'];
+
+        if (status === 429) {
+          const retryAfterSec = Number(retryAfterHeader);
+          if (Number.isFinite(retryAfterSec) && retryAfterSec > 0) return retryAfterSec * 1000;
+          return 30000; // fallback 30s
+        }
+
+        // Backoff exponentiel (max 30s)
+        return Math.min(1000 * 2 ** attemptIndex, 30000);
+      },
       refetchOnWindowFocus: false,
     },
   },
