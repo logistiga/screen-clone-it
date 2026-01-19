@@ -1,5 +1,5 @@
 import html2pdf from 'html2pdf.js';
-import type { StatsMensuelles } from '@/lib/api/previsions';
+import type { StatsMensuelles, DetailCategorie } from '@/lib/api/previsions';
 
 const moisNoms = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -9,9 +9,162 @@ const moisNoms = [
 const formatMontant = (montant: number) => 
   montant.toLocaleString('fr-FR') + ' FCFA';
 
+// Couleurs pour le camembert
+const pieColors = [
+  '#e53e3e', '#dd6b20', '#d69e2e', '#38a169', '#319795',
+  '#3182ce', '#5a67d8', '#805ad5', '#d53f8c', '#718096'
+];
+
+// Génère un graphique camembert SVG
+function generatePieChart(data: DetailCategorie[], title: string): string {
+  if (data.length === 0) return '';
+  
+  const total = data.reduce((sum, d) => sum + d.montant_realise, 0);
+  if (total === 0) return '';
+
+  const size = 160;
+  const center = size / 2;
+  const radius = 60;
+  
+  let currentAngle = -90; // Start from top
+  
+  const slices = data
+    .filter(d => d.montant_realise > 0)
+    .map((item, index) => {
+      const percentage = (item.montant_realise / total) * 100;
+      const angle = (percentage / 100) * 360;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + angle;
+      currentAngle = endAngle;
+      
+      // Calculate SVG arc path
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+      
+      const x1 = center + radius * Math.cos(startRad);
+      const y1 = center + radius * Math.sin(startRad);
+      const x2 = center + radius * Math.cos(endRad);
+      const y2 = center + radius * Math.sin(endRad);
+      
+      const largeArc = angle > 180 ? 1 : 0;
+      
+      return {
+        path: `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`,
+        color: pieColors[index % pieColors.length],
+        label: item.categorie,
+        percentage: percentage.toFixed(1),
+        montant: item.montant_realise
+      };
+    });
+
+  const legendItems = slices.map((s, i) => `
+    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+      <div style="width: 10px; height: 10px; border-radius: 2px; background: ${s.color};"></div>
+      <span style="font-size: 9px; color: #4a5568;">${s.label}</span>
+      <span style="font-size: 9px; color: #718096; margin-left: auto;">${s.percentage}%</span>
+    </div>
+  `).join('');
+
+  return `
+    <div style="margin-bottom: 25px; page-break-inside: avoid;">
+      <h3 style="margin: 0 0 15px; color: #1a365d; font-size: 14px;">🥧 ${title}</h3>
+      <div style="display: flex; gap: 20px; align-items: flex-start;">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink: 0;">
+          ${slices.map(s => `<path d="${s.path}" fill="${s.color}" stroke="#fff" stroke-width="1"/>`).join('')}
+          <circle cx="${center}" cy="${center}" r="25" fill="#fff"/>
+          <text x="${center}" y="${center - 5}" text-anchor="middle" font-size="10" fill="#1a365d" font-weight="bold">Total</text>
+          <text x="${center}" y="${center + 8}" text-anchor="middle" font-size="8" fill="#4a5568">${(total / 1000000).toFixed(1)}M</text>
+        </svg>
+        <div style="flex: 1;">
+          ${legendItems}
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+            <div style="font-size: 10px; color: #718096;">Total: <strong style="color: #e53e3e;">${formatMontant(total)}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Génère un graphique pour les recettes
+function generateRecettesPieChart(data: DetailCategorie[]): string {
+  if (data.length === 0) return '';
+  
+  const total = data.reduce((sum, d) => sum + d.montant_realise, 0);
+  if (total === 0) return '';
+
+  const recetteColors = ['#38a169', '#48bb78', '#68d391', '#9ae6b4', '#c6f6d5', '#2f855a', '#276749', '#22543d'];
+
+  const size = 160;
+  const center = size / 2;
+  const radius = 60;
+  
+  let currentAngle = -90;
+  
+  const slices = data
+    .filter(d => d.montant_realise > 0)
+    .map((item, index) => {
+      const percentage = (item.montant_realise / total) * 100;
+      const angle = (percentage / 100) * 360;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + angle;
+      currentAngle = endAngle;
+      
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+      
+      const x1 = center + radius * Math.cos(startRad);
+      const y1 = center + radius * Math.sin(startRad);
+      const x2 = center + radius * Math.cos(endRad);
+      const y2 = center + radius * Math.sin(endRad);
+      
+      const largeArc = angle > 180 ? 1 : 0;
+      
+      return {
+        path: `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`,
+        color: recetteColors[index % recetteColors.length],
+        label: item.categorie,
+        percentage: percentage.toFixed(1),
+        montant: item.montant_realise
+      };
+    });
+
+  const legendItems = slices.map((s) => `
+    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+      <div style="width: 10px; height: 10px; border-radius: 2px; background: ${s.color};"></div>
+      <span style="font-size: 9px; color: #4a5568;">${s.label}</span>
+      <span style="font-size: 9px; color: #718096; margin-left: auto;">${s.percentage}%</span>
+    </div>
+  `).join('');
+
+  return `
+    <div style="margin-bottom: 25px; page-break-inside: avoid;">
+      <h3 style="margin: 0 0 15px; color: #38a169; font-size: 14px;">🥧 RÉPARTITION DES RECETTES</h3>
+      <div style="display: flex; gap: 20px; align-items: flex-start;">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink: 0;">
+          ${slices.map(s => `<path d="${s.path}" fill="${s.color}" stroke="#fff" stroke-width="1"/>`).join('')}
+          <circle cx="${center}" cy="${center}" r="25" fill="#fff"/>
+          <text x="${center}" y="${center - 5}" text-anchor="middle" font-size="10" fill="#22543d" font-weight="bold">Total</text>
+          <text x="${center}" y="${center + 8}" text-anchor="middle" font-size="8" fill="#38a169">${(total / 1000000).toFixed(1)}M</text>
+        </svg>
+        <div style="flex: 1;">
+          ${legendItems}
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+            <div style="font-size: 10px; color: #718096;">Total: <strong style="color: #38a169;">${formatMontant(total)}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export async function exportPrevisionsPDF(stats: StatsMensuelles): Promise<void> {
   const { periode, synthese, details } = stats;
   const moisNom = moisNoms[periode.mois - 1];
+
+  // Générer les graphiques camembert
+  const depensesPieChart = generatePieChart(details.depenses, 'RÉPARTITION DES DÉPENSES');
+  const recettesPieChart = generateRecettesPieChart(details.recettes);
   
   const htmlContent = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #333;">
@@ -95,6 +248,12 @@ export async function exportPrevisionsPDF(stats: StatsMensuelles): Promise<void>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Graphiques camembert -->
+      <div style="display: flex; gap: 30px; margin-bottom: 30px; page-break-inside: avoid;">
+        <div style="flex: 1;">${depensesPieChart}</div>
+        <div style="flex: 1;">${recettesPieChart}</div>
       </div>
 
       <!-- Tableau des recettes -->
