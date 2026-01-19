@@ -207,10 +207,10 @@ class SuspiciousLoginDetector
         $location = $this->formatLocation($analysis);
         $timestamp = now()->format('d/m/Y à H:i:s');
         
-        // Générer les URLs d'action
-        $baseUrl = config('app.url');
-        $approveUrl = "{$baseUrl}/api/security/suspicious-login/{$suspiciousLogin->action_token}/approve";
-        $blockUrl = "{$baseUrl}/api/security/suspicious-login/{$suspiciousLogin->action_token}/block";
+        // Générer les URLs d'action - pointer vers le frontend qui appelle l'API
+        $frontendUrl = config('app.frontend_url', config('app.url'));
+        $approveUrl = "{$frontendUrl}/security/{$suspiciousLogin->action_token}/approve";
+        $blockUrl = "{$frontendUrl}/security/{$suspiciousLogin->action_token}/block";
 
         $subject = "🔔 Alerte sécurité: Connexion suspecte - {$user->nom}";
         
