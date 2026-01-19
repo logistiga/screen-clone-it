@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\Request;
+use Laravel\Sanctum\Contracts\HasAbilities;
 use Laravel\Sanctum\NewAccessToken;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\User;
@@ -61,17 +62,30 @@ class SessionManager
 
     /**
      * Mettre à jour la dernière activité
+     * Accepte HasAbilities pour compatibilité SPA (TransientToken) et API (PersonalAccessToken)
      */
-    public function updateLastActivity(PersonalAccessToken $token): void
+    public function updateLastActivity(HasAbilities $token): void
     {
-        $token->update(['last_active_at' => now()]);
+        // Seul PersonalAccessToken a une table DB à mettre à jour
+        if ($token instanceof PersonalAccessToken) {
+            $token->update(['last_active_at' => now()]);
+        }
+        // TransientToken (SPA cookie) : pas de DB à mettre à jour, la session gère ça
     }
 
     /**
      * Vérifier si une session est expirée (idle timeout)
+     * Accepte HasAbilities pour compatibilité SPA (TransientToken) et API (PersonalAccessToken)
      */
-    public function isSessionExpired(PersonalAccessToken $token): bool
+    public function isSessionExpired(HasAbilities $token): bool
     {
+        // TransientToken (SPA cookie/session) : l'expiration est gérée par la session Laravel
+        // On ne peut pas vérifier "last_active_at" en DB, donc on considère non-expiré ici
+        if (!$token instanceof PersonalAccessToken) {
+            return false;
+        }
+
+        // PersonalAccessToken : vérifier last_active_at en DB
         if (!$token->last_active_at) {
             return false;
         }
@@ -103,7 +117,8 @@ class SessionManager
      */
     public function getActiveSessions(User $user): array
     {
-        $currentTokenId = $user->currentAccessToken()?->id;
+        $currentToken = $user->currentAccessToken();
+        $currentTokenId = ($currentToken instanceof PersonalAccessToken) ? $currentToken->id : null;
 
         return $user->tokens()
             ->orderBy('last_active_at', 'desc')
@@ -138,7 +153,8 @@ class SessionManager
         }
 
         // Ne pas permettre de révoquer sa propre session actuelle via cette méthode
-        if ($user->currentAccessToken()?->id === $tokenId) {
+        $currentToken = $user->currentAccessToken();
+        if (($currentToken instanceof PersonalAccessToken) && $currentToken->id === $tokenId) {
             return false;
         }
 
@@ -151,7 +167,13 @@ class SessionManager
      */
     public function revokeOtherSessions(User $user): int
     {
-        $currentTokenId = $user->currentAccessToken()?->id;
+        $currentToken = $user->currentAccessToken();
+        $currentTokenId = ($currentToken instanceof PersonalAccessToken) ? $currentToken->id : null;
+
+        if (!$currentTokenId) {
+            // En mode SPA cookie, on révoque tout (pas de token DB courant)
+            return $user->tokens()->delete();
+        }
 
         $count = $user->tokens()
             ->where('id', '!=', $currentTokenId)
