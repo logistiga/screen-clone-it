@@ -13,6 +13,7 @@ use App\Services\SuspiciousLoginDetector;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 use Illuminate\Validation\ValidationException;
 
@@ -80,7 +81,21 @@ class AuthController extends Controller
 
         Audit::log('login', 'auth', 'Connexion réussie');
 
-        // Créer la session avec métadonnées AVANT l'analyse de sécurité
+        // ================================
+        // Sanctum SPA (cookies / session)
+        // ================================
+        // Si la requête est "stateful" (Origin dans SANCTUM_STATEFUL_DOMAINS),
+        // EnsureFrontendRequestsAreStateful démarre la session et Auth::login()
+        // créera le cookie laravel_session.
+        Auth::login($user);
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        // =========================================
+        // Tokens (pour compatibilité + suivi sessions)
+        // =========================================
+        // Créer la session/token avec métadonnées AVANT l'analyse de sécurité
         // pour pouvoir révoquer la session si bloquée par l'admin
         $sessionData = $this->sessionManager->createSession($user, $request);
         $token = $sessionData['plainTextToken'];
@@ -126,10 +141,21 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         Audit::log('logout', 'auth', 'Déconnexion');
-        
-        // Supprimer le token actuel si l'utilisateur est authentifié
-        if ($request->user()) {
-            $request->user()->currentAccessToken()->delete();
+
+        // 1) Logout session (Sanctum SPA)
+        Auth::guard('web')->logout();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        // 2) Révoquer le token courant si présent (compat Bearer)
+        $user = $request->user();
+        if ($user) {
+            $current = $user->currentAccessToken();
+            if ($current) {
+                $current->delete();
+            }
         }
 
         return response()->json(['message' => 'Déconnexion réussie']);
@@ -189,8 +215,17 @@ class AuthController extends Controller
             return response()->json(['message' => 'Non authentifié'], 401);
         }
 
+        // En mode Sanctum SPA (session cookie), il n'y a parfois PAS de token courant.
+        $current = $user->currentAccessToken();
+        if (!$current) {
+            return response()->json([
+                'message' => 'Session active',
+                'token_type' => 'Cookie',
+            ]);
+        }
+
         // Supprimer l'ancien token
-        $user->currentAccessToken()->delete();
+        $current->delete();
 
         // Créer une nouvelle session avec les mêmes métadonnées
         $sessionData = $this->sessionManager->createSession($user, $request, 'auth-token-refreshed');
