@@ -120,12 +120,11 @@ export const isCookieAuthEnabled = (): boolean => useCookieAuth;
 
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // Si on n'utilise pas les cookies, ajouter le Bearer token
-    if (!useCookieAuth) {
-      const token = getAuthToken();
-      if (token) {
-        config.headers["Authorization"] = `Bearer ${token}`;
-      }
+    // TOUJOURS ajouter le Bearer token si disponible (fonctionne avec session OU token)
+    // Le backend Sanctum accepte les deux méthodes
+    const token = getAuthToken();
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
 
     // Le header X-XSRF-TOKEN est automatiquement ajouté par le navigateur
