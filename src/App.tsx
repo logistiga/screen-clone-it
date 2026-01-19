@@ -105,14 +105,14 @@ const queryClient = new QueryClient({
 const App = () => (
   <ThemeProvider defaultTheme="light" storageKey="logistiga-theme">
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <PWAInstallPrompt />
-          <PWAUpdatePrompt />
-          <OfflineIndicator />
-          <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <PWAInstallPrompt />
+            <PWAUpdatePrompt />
+            <OfflineIndicator />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Route publique */}
@@ -181,9 +181,9 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   </ThemeProvider>
 );
