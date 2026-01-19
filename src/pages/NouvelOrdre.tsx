@@ -5,13 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// Select inutilisé après remplacement par ClientCombobox
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import {
@@ -32,6 +26,7 @@ import { OrdreStepper, OrdrePreview } from "@/components/ordres/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre, useConfiguration } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
 import { Users } from "lucide-react";
 import { FormError } from "@/components/ui/form-error";
 import {
@@ -444,16 +439,12 @@ export default function NouvelOrdrePage() {
                 <CardContent>
                   <div className="max-w-md">
                     <Label htmlFor="client">Nom du client *</Label>
-                    <Select value={clientId} onValueChange={setClientId}>
-                      <SelectTrigger className="mt-1 h-11">
-                        <SelectValue placeholder="Sélectionner un client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((c) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ClientCombobox
+                      clients={clients}
+                      value={clientId}
+                      onChange={setClientId}
+                      placeholder="Rechercher un client..."
+                    />
                   </div>
                 </CardContent>
               </Card>
