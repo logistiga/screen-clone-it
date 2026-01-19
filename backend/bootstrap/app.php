@@ -26,10 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'session.track' => \App\Http\Middleware\SessionActivityTracker::class,
         ]);
 
-        // IMPORTANT: Auth API en Bearer token (stateless).
-        // Si le backend est servi sous un sous-dossier (/backend/public/...) ou derrière un proxy,
-        // certaines requêtes peuvent encore traverser le stack "web" et déclencher la validation CSRF.
-        // On exclut donc explicitement les chemins API de la validation CSRF.
+        // IMPORTANT: Sanctum SPA auth - Exclure les routes API de la validation CSRF
+        // car elles utilisent le header X-XSRF-TOKEN (cookie) ou Bearer token
         $middleware->validateCsrfTokens(except: [
             'api/*',
             'backend/api/*',
@@ -38,25 +36,25 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Middlewares globaux sur TOUTES les routes API
         $middleware->api([
-            // 1. Security Headers - appliqué en premier
+            // 1. Sanctum Stateful - DOIT être en premier pour l'auth SPA avec cookies
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            
+            // 2. Security Headers
             \App\Http\Middleware\SecurityHeaders::class,
             
-            // 2. CORS - gestion des origines autorisées
+            // 3. CORS - gestion des origines autorisées
             \Illuminate\Http\Middleware\HandleCors::class,
             
-            // 3. Auth stateless via Bearer token (Sanctum personal access tokens)
-            // (pas de cookies, pas de CSRF côté API)
-            
-            // 5. Rate Limiting global (60 req/min par défaut)
+            // 4. Rate Limiting global (60 req/min par défaut)
             'throttle:api',
             
-            // 6. Binding des paramètres de route
+            // 5. Binding des paramètres de route
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             
-            // 7. Logging sécurité (auth, exports, opérations sensibles)
+            // 6. Logging sécurité (auth, exports, opérations sensibles)
             \App\Http\Middleware\SecurityAuditLog::class,
             
-            // 8. Tracking d'activité de session (idle timeout)
+            // 7. Tracking d'activité de session (idle timeout)
             \App\Http\Middleware\SessionActivityTracker::class,
         ]);
     })
