@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, type Context } from 'react';
 import api, { getAuthToken, setAuthToken, removeAuthToken, initializeCsrf, resetCsrf, isCookieAuthEnabled } from '@/lib/api';
 
 interface User {
@@ -24,7 +24,12 @@ interface AuthContextType {
   refreshSession: () => Promise<boolean>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Garder un contexte stable à travers les reloads HMR (évite "useAuth must be used within an AuthProvider")
+const AUTH_CONTEXT_KEY = '__LOGISTIGA_AUTH_CONTEXT__';
+const AuthContext: Context<AuthContextType | undefined> =
+  ((globalThis as any)[AUTH_CONTEXT_KEY] as Context<AuthContextType | undefined>) ??
+  createContext<AuthContextType | undefined>(undefined);
+(globalThis as any)[AUTH_CONTEXT_KEY] = AuthContext;
 
 // Configuration du refresh automatique
 const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
