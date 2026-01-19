@@ -179,15 +179,13 @@ api.interceptors.response.use(
     }
 
     // Gestion de l'erreur 401 (non authentifié)
+    // NOTE: Ne pas rediriger automatiquement ici car cela crée des boucles.
+    // La redirection est gérée par ProtectedRoute et le contexte Auth.
     if (error.response?.status === 401) {
       // Supprimer le token invalide (si utilisé)
       removeAuthToken();
       resetCsrf();
-      
-      // Rediriger seulement si on n'est pas déjà sur la page de login
-      if (!window.location.pathname.includes("/login")) {
-        window.location.href = "/login";
-      }
+      // Laisser l'erreur remonter - le composant appelant gère la redirection
     }
 
     // Gestion de l'erreur 419 (CSRF token mismatch)
