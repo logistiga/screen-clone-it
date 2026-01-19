@@ -533,12 +533,31 @@ export function useDeleteArmateur() {
 
 // Transitaires hooks
 export function useTransitaires() {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['transitaires'],
-    queryFn: transitairesApi.getAll,
+    queryFn: async () => {
+      console.log('[useTransitaires] Fetching...');
+      try {
+        const result = await transitairesApi.getAll();
+        console.log('[useTransitaires] Success:', result?.length, 'items', result);
+        return result;
+      } catch (error) {
+        console.error('[useTransitaires] Error:', error);
+        throw error;
+      }
+    },
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });
+  
+  console.log('[useTransitaires] Query state:', {
+    isLoading: query.isLoading,
+    isError: query.isError,
+    dataLength: query.data?.length,
+    data: query.data
+  });
+  
+  return query;
 }
 
 export function useTransitaireById(id: string | undefined) {
