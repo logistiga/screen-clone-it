@@ -72,10 +72,32 @@ export default function PartenairesPage() {
   const { data: representantsData, isLoading: isLoadingRepresentants, error: errorRepresentants, refetch: refetchRepresentants } = useRepresentants();
   const { data: armateursData, isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
 
-  // Ensure arrays
-  const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
-  const representants = Array.isArray(representantsData) ? representantsData : [];
-  const armateurs = Array.isArray(armateursData) ? armateursData : [];
+  // Debug: log data state
+  console.log('[Partenaires] Data state:', {
+    transitaires: { data: transitairesData, loading: isLoadingTransitaires, error: errorTransitaires },
+    representants: { data: representantsData, loading: isLoadingRepresentants, error: errorRepresentants },
+    armateurs: { data: armateursData, loading: isLoadingArmateurs, error: errorArmateurs }
+  });
+
+  // Ensure arrays with robust normalization
+  const transitaires = 
+    Array.isArray(transitairesData) 
+      ? transitairesData 
+      : Array.isArray((transitairesData as any)?.data) 
+        ? (transitairesData as any).data 
+        : [];
+  const representants = 
+    Array.isArray(representantsData) 
+      ? representantsData 
+      : Array.isArray((representantsData as any)?.data) 
+        ? (representantsData as any).data 
+        : [];
+  const armateurs = 
+    Array.isArray(armateursData) 
+      ? armateursData 
+      : Array.isArray((armateursData as any)?.data) 
+        ? (armateursData as any).data 
+        : [];
 
   // Helper to get error message
   const getErrorMessage = (error: unknown): { title: string; description: string; details?: string } => {
