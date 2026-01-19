@@ -72,10 +72,10 @@ export default function PartenairesPage() {
   const { data: representantsData, isLoading: isLoadingRepresentants, error: errorRepresentants, refetch: refetchRepresentants } = useRepresentants();
   const { data: armateursData, isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
 
-  // Les hooks retournent déjà des tableaux normalisés
-  const transitaires = transitairesData ?? [];
-  const representants = representantsData ?? [];
-  const armateurs = armateursData ?? [];
+  // Garantir que ce sont des tableaux
+  const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
+  const representants = Array.isArray(representantsData) ? representantsData : [];
+  const armateurs = Array.isArray(armateursData) ? armateursData : [];
 
   // Helper to get error message
   const getErrorMessage = (error: unknown): { title: string; description: string; details?: string } => {
