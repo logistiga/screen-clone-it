@@ -4,10 +4,11 @@ import api from '../api';
 export interface Prevision {
   id: number;
   type: 'recette' | 'depense';
-  source: 'caisse' | 'banque';
   categorie: string;
   description?: string;
   montant_prevu: number;
+  realise_caisse: number;
+  realise_banque: number;
   montant_realise: number;
   ecart: number;
   taux_realisation: number;
@@ -15,68 +16,84 @@ export interface Prevision {
   mois_nom: string;
   annee: number;
   periode: string;
-  date_prevue?: string;
   statut: 'en_cours' | 'atteint' | 'depasse' | 'non_atteint';
   notes?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface PrevisionStats {
-  annee: number;
-  stats: {
+export interface StatsMensuelles {
+  periode: {
+    mois: number;
+    mois_nom: string;
+    annee: number;
+  };
+  synthese: {
     recettes: {
-      caisse: { prevu: number; realise: number };
-      banque: { prevu: number; realise: number };
+      prevu: number;
+      realise: number;
+      caisse: number;
+      banque: number;
+      ecart: number;
+      taux: number;
     };
     depenses: {
-      caisse: { prevu: number; realise: number };
-      banque: { prevu: number; realise: number };
+      prevu: number;
+      realise: number;
+      caisse: number;
+      banque: number;
+      ecart: number;
+      taux: number;
     };
+    solde_prevu: number;
+    benefice: number;
+    ecart_global: number;
+    situation: 'beneficiaire' | 'deficitaire';
+    dans_budget: boolean;
   };
-  par_mois: Array<{
-    mois: number;
-    type: string;
-    source: string;
-    prevu: number;
-    realise: number;
-  }>;
-  par_categorie: Array<{
-    categorie: string;
-    type: string;
-    source: string;
-    prevu: number;
-    realise: number;
-  }>;
-  total_prevu: number;
-  total_realise: number;
-  taux_global: number;
-  compteurs: {
-    en_cours: number;
-    atteint: number;
-    depasse: number;
-    non_atteint: number;
+  details: {
+    recettes: DetailCategorie[];
+    depenses: DetailCategorie[];
+  };
+  alertes: { type: string; message: string }[];
+  nb_previsions: number;
+}
+
+export interface DetailCategorie {
+  id: number;
+  categorie: string;
+  montant_prevu: number;
+  realise_caisse: number;
+  realise_banque: number;
+  montant_realise: number;
+  taux: number;
+  ecart: number;
+  statut: string;
+}
+
+export interface Historique {
+  annee: number;
+  historique: HistoriqueMois[];
+  totaux: {
+    recettes_prevues: number;
+    recettes_realisees: number;
+    depenses_prevues: number;
+    depenses_realisees: number;
+    benefice_total: number;
+    solde_prevu_total: number;
   };
 }
 
-export interface ComparaisonMois {
+export interface HistoriqueMois {
   mois: number;
   mois_nom: string;
-  recettes: {
-    caisse: { prevu: number; realise: number };
-    banque: { prevu: number; realise: number };
-  };
-  depenses: {
-    caisse: { prevu: number; realise: number };
-    banque: { prevu: number; realise: number };
-  };
-}
-
-export interface ComparaisonData {
-  annee: number;
-  comparaison: ComparaisonMois[];
-  reel_caisse: Record<number, { entrees: number; sorties: number }>;
-  reel_banque: Record<number, { entrees: number; sorties: number }>;
+  recettes_prevues: number;
+  recettes_realisees: number;
+  depenses_prevues: number;
+  depenses_realisees: number;
+  benefice: number;
+  solde_prevu: number;
+  nb_previsions: number;
 }
 
 export interface Categories {
@@ -86,24 +103,19 @@ export interface Categories {
 
 export interface CreatePrevisionData {
   type: 'recette' | 'depense';
-  source: 'caisse' | 'banque';
   categorie: string;
   description?: string;
   montant_prevu: number;
   mois: number;
   annee: number;
-  date_prevue?: string;
   notes?: string;
-  banque_id?: number;
 }
 
 export interface UpdatePrevisionData {
   type?: 'recette' | 'depense';
-  source?: 'caisse' | 'banque';
   categorie?: string;
   description?: string;
   montant_prevu?: number;
-  montant_realise?: number;
   mois?: number;
   annee?: number;
   statut?: string;
@@ -112,7 +124,6 @@ export interface UpdatePrevisionData {
 
 export interface PrevisionFilters {
   type?: string;
-  source?: string;
   statut?: string;
   mois?: number;
   annee?: number;
@@ -124,7 +135,6 @@ export const previsionsApi = {
   getAll: async (filters: PrevisionFilters = {}): Promise<{ data: Prevision[]; meta: any }> => {
     const params = new URLSearchParams();
     if (filters.type) params.append('type', filters.type);
-    if (filters.source) params.append('source', filters.source);
     if (filters.statut) params.append('statut', filters.statut);
     if (filters.mois) params.append('mois', filters.mois.toString());
     if (filters.annee) params.append('annee', filters.annee.toString());
@@ -153,32 +163,31 @@ export const previsionsApi = {
     await api.delete(`/previsions/${id}`);
   },
 
-  updateRealise: async (id: number, montant: number, mode: 'ajouter' | 'remplacer' = 'ajouter'): Promise<Prevision> => {
-    const response = await api.patch(`/previsions/${id}/realise`, { montant, mode });
+  // Stats mensuelles détaillées (nouvel endpoint principal)
+  getStatsMensuelles: async (annee: number, mois: number): Promise<StatsMensuelles> => {
+    const response = await api.get(`/previsions/stats-mensuelles?annee=${annee}&mois=${mois}`);
     return response.data;
   },
 
-  getStats: async (annee?: number): Promise<PrevisionStats> => {
-    const params = annee ? `?annee=${annee}` : '';
-    const response = await api.get(`/previsions/stats${params}`);
+  // Historique annuel
+  getHistorique: async (annee: number): Promise<Historique> => {
+    const response = await api.get(`/previsions/historique?annee=${annee}`);
     return response.data;
   },
 
+  // Export pour PDF
+  getExportMois: async (annee: number, mois: number): Promise<any> => {
+    const response = await api.get(`/previsions/export-mois?annee=${annee}&mois=${mois}`);
+    return response.data;
+  },
+
+  // Catégories disponibles
   getCategories: async (): Promise<Categories> => {
     const response = await api.get('/previsions/categories');
     return response.data;
   },
 
-  getComparaison: async (annee?: number, mois?: number, source?: string): Promise<ComparaisonData> => {
-    const params = new URLSearchParams();
-    if (annee) params.append('annee', annee.toString());
-    if (mois) params.append('mois', mois.toString());
-    if (source) params.append('source', source);
-    
-    const response = await api.get(`/previsions/comparaison?${params.toString()}`);
-    return response.data;
-  },
-
+  // Synchroniser les réalisés
   syncRealise: async (annee: number, mois: number): Promise<any> => {
     const response = await api.post('/previsions/sync-realise', { annee, mois });
     return response.data;

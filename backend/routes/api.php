@@ -360,11 +360,19 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.voir');
         Route::post('/', [PrevisionController::class, 'store'])
             ->middleware('permission:reporting.creer');
+        
+        // Stats mensuelles détaillées (nouvel endpoint principal)
+        Route::get('stats-mensuelles', [PrevisionController::class, 'statsMensuelles'])
+            ->middleware('permission:reporting.voir');
+        Route::get('historique', [PrevisionController::class, 'historique'])
+            ->middleware('permission:reporting.voir');
+        Route::get('export-mois', [PrevisionController::class, 'exportMois'])
+            ->middleware('permission:reporting.voir');
+        
+        // Legacy stats endpoint
         Route::get('stats', [PrevisionController::class, 'stats'])
             ->middleware('permission:reporting.voir');
         Route::get('categories', [PrevisionController::class, 'categories'])
-            ->middleware('permission:reporting.voir');
-        Route::get('comparaison', [PrevisionController::class, 'comparaison'])
             ->middleware('permission:reporting.voir');
         Route::post('sync-realise', [PrevisionController::class, 'syncRealise'])
             ->middleware('permission:reporting.modifier');
@@ -374,8 +382,6 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.modifier');
         Route::delete('{prevision}', [PrevisionController::class, 'destroy'])
             ->middleware('permission:reporting.supprimer');
-        Route::patch('{prevision}/realise', [PrevisionController::class, 'updateRealise'])
-            ->middleware('permission:reporting.modifier');
     });
 
     // ============================================
