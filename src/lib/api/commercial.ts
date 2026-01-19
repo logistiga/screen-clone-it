@@ -496,11 +496,21 @@ export const transitairesApi = {
   getAll: async () => {
     const response = await api.get('/transitaires');
     const payload: any = response.data;
+    console.log('[transitairesApi.getAll] Raw response:', payload);
     // Support multiples formats de réponse API
-    if (Array.isArray(payload)) return payload as Transitaire[];
+    if (Array.isArray(payload)) {
+      console.log('[transitairesApi.getAll] Returning direct array:', payload.length);
+      return payload as Transitaire[];
+    }
     const data = payload?.data;
-    if (Array.isArray(data)) return data as Transitaire[];
-    if (Array.isArray(data?.data)) return data.data as Transitaire[];
+    if (Array.isArray(data)) {
+      console.log('[transitairesApi.getAll] Returning payload.data:', data.length);
+      return data as Transitaire[];
+    }
+    if (Array.isArray(data?.data)) {
+      console.log('[transitairesApi.getAll] Returning payload.data.data:', data.data.length);
+      return data.data as Transitaire[];
+    }
     console.warn('[transitairesApi.getAll] Format inattendu:', payload);
     return [] as Transitaire[];
   },
