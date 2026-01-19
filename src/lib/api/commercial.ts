@@ -494,7 +494,8 @@ export const armateursApi = {
 // Transitaires API
 export const transitairesApi = {
   getAll: async () => {
-    const response = await api.get('/transitaires');
+    // Charger une liste large par défaut (le backend applique aussi une limite max)
+    const response = await api.get('/transitaires', { params: { per_page: 500 } });
     const payload: any = response.data;
     console.log('[transitairesApi.getAll] Raw response:', payload);
     // Support multiples formats de réponse API
