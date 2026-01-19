@@ -58,7 +58,8 @@ class TransitaireController extends Controller
 
         // Tri et pagination sécurisés
         $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
-        $pagination = $this->validatePaginationParameters($request);
+        // Transitaires: on autorise un per_page plus élevé (liste de référence utilisée partout)
+        $pagination = $this->validatePaginationParameters($request, 200, 500);
 
         $transitaires = $query->orderBy($sort['column'], $sort['direction'])
             ->paginate($pagination['per_page']);
