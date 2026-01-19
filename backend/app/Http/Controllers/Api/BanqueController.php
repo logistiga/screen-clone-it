@@ -23,7 +23,7 @@ class BanqueController extends Controller
      * Colonnes autorisées pour le tri
      */
     protected array $allowedSortColumns = [
-        'id', 'nom', 'code', 'solde', 'actif', 'created_at'
+        'id', 'nom', 'numero_compte', 'solde', 'actif', 'created_at'
     ];
 
     public function index(Request $request): JsonResponse
@@ -36,7 +36,8 @@ class BanqueController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nom', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                  ->orWhere('numero_compte', 'like', "%{$search}%")
+                  ->orWhere('iban', 'like', "%{$search}%");
             });
         }
 

@@ -15,13 +15,11 @@ class StoreBanqueRequest extends FormRequest
     {
         return [
             'nom' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:banques,code',
-            'adresse' => 'nullable|string|max:500',
-            'telephone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
+            'numero_compte' => 'required|string|max:100',
             'rib' => 'nullable|string|max:100',
             'iban' => 'nullable|string|max:50',
             'swift' => 'nullable|string|max:20',
+            'solde' => 'nullable|numeric|min:0',
             'actif' => 'boolean',
         ];
     }
@@ -31,8 +29,8 @@ class StoreBanqueRequest extends FormRequest
         return [
             'nom.required' => 'Le nom de la banque est obligatoire.',
             'nom.max' => 'Le nom ne peut pas dépasser 255 caractères.',
-            'code.unique' => 'Ce code de banque existe déjà.',
-            'email.email' => 'L\'adresse email n\'est pas valide.',
+            'numero_compte.required' => 'Le numéro de compte est obligatoire.',
+            'numero_compte.max' => 'Le numéro de compte ne peut pas dépasser 100 caractères.',
         ];
     }
 }
