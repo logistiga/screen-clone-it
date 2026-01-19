@@ -6,13 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// Select inutilisé après remplacement par ClientCombobox
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import {
@@ -34,6 +28,7 @@ import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateF
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
 import {
   validateFactureConteneurs,
   validateFactureConventionnel,
@@ -435,16 +430,12 @@ export default function NouvelleFacturePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nom du client *</Label>
-                      <Select value={clientId} onValueChange={setClientId}>
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients.map((c) => (
-                            <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ClientCombobox
+                        clients={clients}
+                        value={clientId}
+                        onChange={setClientId}
+                        placeholder="Rechercher un client..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">

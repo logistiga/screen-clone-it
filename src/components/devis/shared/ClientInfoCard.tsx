@@ -2,17 +2,13 @@ import { Calendar, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
 
 interface Client {
   id: string | number;
   nom: string;
+  email?: string;
+  telephone?: string;
 }
 
 interface ClientInfoCardProps {
@@ -21,6 +17,7 @@ interface ClientInfoCardProps {
   dateValidite: string;
   setDateValidite: (date: string) => void;
   clients: Client[];
+  isLoading?: boolean;
 }
 
 export default function ClientInfoCard({
@@ -29,6 +26,7 @@ export default function ClientInfoCard({
   dateValidite,
   setDateValidite,
   clients,
+  isLoading,
 }: ClientInfoCardProps) {
   return (
     <Card>
@@ -42,18 +40,13 @@ export default function ClientInfoCard({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Nom du client *</Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.nom}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ClientCombobox
+              clients={clients}
+              value={clientId}
+              onChange={setClientId}
+              placeholder="Sélectionner un client"
+              isLoading={isLoading}
+            />
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
