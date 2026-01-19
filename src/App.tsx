@@ -23,6 +23,7 @@ const PageLoader = () => (
 // Pages chargées immédiatement (critiques)
 import LoginPage from "./pages/Login";
 import PendingApprovalPage from "./pages/PendingApproval";
+import SecurityActionPage from "./pages/SecurityAction";
 import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/Dashboard";
 
@@ -137,6 +138,7 @@ const App = () => (
                 {/* Routes publiques */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/pending-approval" element={<PendingApprovalPage />} />
+                <Route path="/security/:token/:action" element={<SecurityActionPage />} />
                 
                 {/* Routes protégées */}
                 <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
