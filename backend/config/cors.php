@@ -8,21 +8,26 @@ return [
     |
     | SECURITY: CORS is configured to restrict origins in production.
     | Set CORS_ALLOWED_ORIGINS in your .env file with your specific domains.
-    | Example: CORS_ALLOWED_ORIGINS="https://app.yourdomain.com,https://preview.yourdomain.com"
     |
-    | For Lovable projects, use patterns to allow preview URLs:
-    | CORS_ALLOWED_ORIGINS_PATTERNS="^https:\\/\\/.*\\.lovableproject\\.com$"
+    | IMPORTANT: supports_credentials=true => allowed_origins ne peut pas être '*'
     |
     */
 
-    // IMPORTANT: si l'app Laravel est servie sous /backend, il faut aussi couvrir ces routes.
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'backend/api/*', 'backend/sanctum/csrf-cookie', 'backend/public/api/*', 'backend/public/sanctum/csrf-cookie'],
+    // Routes qui acceptent CORS (y compris sanctum/csrf-cookie pour l'auth SPA)
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'login',
+        'logout',
+        'backend/api/*',
+        'backend/sanctum/csrf-cookie',
+        'backend/public/api/*',
+        'backend/public/sanctum/csrf-cookie',
+    ],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    // SECURITY: No longer defaults to '*'. Must be explicitly configured.
-    // In development, set CORS_ALLOWED_ORIGINS="*" if needed.
-    // In production, always specify exact domains.
+    // SECURITY: Origines explicites (pas de '*' car supports_credentials=true)
     'allowed_origins' => (function () {
         // Origines par défaut toujours autorisées
         $defaultOrigins = [
@@ -46,14 +51,12 @@ return [
         return array_unique(array_merge($defaultOrigins, $envOrigins));
     })(),
 
-    // For pattern-based matching (e.g., Lovable preview URLs)
-    // Example: CORS_ALLOWED_ORIGINS_PATTERNS="^https:\\/\\/.*\\.lovableproject\\.com$"
+    // Patterns pour les URLs preview dynamiques
     'allowed_origins_patterns' => (function () {
-        // Patterns par défaut (utile quand les URLs preview changent)
         $defaultPatterns = [
-            '^https:\\/\\/.*\\.lovableproject\\.com$',
-            '^https:\\/\\/id-preview--.*\\.lovable\\.app$',
-            '^https:\\/\\/.*\\.lovable\\.app$',
+            '#^https://.*\.lovableproject\.com$#',
+            '#^https://id-preview--.*\.lovable\.app$#',
+            '#^https://.*\.lovable\.app$#',
         ];
 
         $raw = (string) env('CORS_ALLOWED_ORIGINS_PATTERNS', '');
@@ -62,12 +65,21 @@ return [
         return array_values(array_unique(array_merge($defaultPatterns, $envPatterns)));
     })(),
 
-    'allowed_headers' => ['*'],
+    // Headers autorisés (incluant X-XSRF-TOKEN pour Sanctum)
+    'allowed_headers' => [
+        'Content-Type',
+        'X-Requested-With',
+        'X-XSRF-TOKEN',
+        'Accept',
+        'Origin',
+        'Authorization',
+    ],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    // Cache preflight pour 24h
+    'max_age' => 86400,
 
-    // HttpOnly cookies pour l'authentification - DOIT être true
+    // IMPORTANT: true pour les cookies HttpOnly (Sanctum SPA)
     'supports_credentials' => true,
 ];

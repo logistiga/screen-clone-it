@@ -1,26 +1,31 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { getApiUrl } from "@/lib/runtime-config";
+import { getApiUrl, getBackendBaseUrl } from "@/lib/runtime-config";
 
 // Configuration de l'API - Production: https://facturation.logistiga.com/backend/public/api
 const API_URL = getApiUrl();
+const BACKEND_BASE_URL = getBackendBaseUrl();
 const IS_PRODUCTION = import.meta.env.PROD;
 
-// Clé de stockage du token
+// Clé de stockage du token (backup si cookies ne marchent pas)
 const TOKEN_STORAGE_KEY = 'auth_token';
+
+// Flag pour savoir si on utilise les cookies (Sanctum SPA) ou Bearer token
+let useCookieAuth = true;
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
+    "X-Requested-With": "XMLHttpRequest", // Important pour Sanctum
   },
-  // Désactiver les cookies pour l'auth cross-domain (on utilise Bearer token)
-  withCredentials: false,
+  // IMPORTANT: Activer les cookies pour l'auth Sanctum SPA
+  withCredentials: true,
   timeout: 30000,
 });
 
 // ============================================
-// Token Management
+// Token Management (fallback si cookies échouent)
 // ============================================
 
 /**
@@ -54,16 +59,77 @@ const log = {
 };
 
 // ============================================
+// CSRF Token Management (Sanctum SPA)
+// ============================================
+
+let csrfInitialized = false;
+let csrfInitializing: Promise<void> | null = null;
+
+/**
+ * Récupère le cookie XSRF-TOKEN et initialise la session CSRF
+ * Doit être appelé AVANT le login
+ */
+export const initializeCsrf = async (): Promise<void> => {
+  // Éviter les appels multiples simultanés
+  if (csrfInitializing) {
+    return csrfInitializing;
+  }
+
+  // Si déjà initialisé, ne rien faire
+  if (csrfInitialized) {
+    return;
+  }
+
+  csrfInitializing = (async () => {
+    try {
+      // Appel à /sanctum/csrf-cookie pour obtenir le cookie XSRF-TOKEN
+      await axios.get(`${BACKEND_BASE_URL}/sanctum/csrf-cookie`, {
+        withCredentials: true,
+      });
+      csrfInitialized = true;
+      log.info('[Auth] CSRF cookie initialisé');
+    } catch (error) {
+      log.error('[Auth] Erreur lors de l\'initialisation CSRF:', error);
+      // En cas d'échec, on bascule sur Bearer token
+      useCookieAuth = false;
+      throw error;
+    } finally {
+      csrfInitializing = null;
+    }
+  })();
+
+  return csrfInitializing;
+};
+
+/**
+ * Réinitialise l'état CSRF (après logout par exemple)
+ */
+export const resetCsrf = (): void => {
+  csrfInitialized = false;
+  csrfInitializing = null;
+};
+
+/**
+ * Vérifie si l'auth par cookies est active
+ */
+export const isCookieAuthEnabled = (): boolean => useCookieAuth;
+
+// ============================================
 // Request Interceptor
 // ============================================
 
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // Ajouter le token Bearer à toutes les requêtes si disponible
-    const token = getAuthToken();
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+    // Si on n'utilise pas les cookies, ajouter le Bearer token
+    if (!useCookieAuth) {
+      const token = getAuthToken();
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
     }
+
+    // Le header X-XSRF-TOKEN est automatiquement ajouté par le navigateur
+    // grâce au cookie XSRF-TOKEN défini par Sanctum
 
     return config;
   },
@@ -115,8 +181,9 @@ api.interceptors.response.use(
 
     // Gestion de l'erreur 401 (non authentifié)
     if (error.response?.status === 401) {
-      // Supprimer le token invalide
+      // Supprimer le token invalide (si utilisé)
       removeAuthToken();
+      resetCsrf();
       
       // Rediriger seulement si on n'est pas déjà sur la page de login
       if (!window.location.pathname.includes("/login")) {
@@ -124,26 +191,15 @@ api.interceptors.response.use(
       }
     }
 
+    // Gestion de l'erreur 419 (CSRF token mismatch)
+    if (error.response?.status === 419) {
+      log.warn("[API] CSRF token expiré, réinitialisation...");
+      resetCsrf();
+      // Ne pas rediriger, le prochain appel ré-initialisera le CSRF
+    }
+
     return Promise.reject(error);
   },
 );
-
-// ============================================
-// Exports (compatibilité avec l'ancien code)
-// ============================================
-
-/**
- * @deprecated Plus nécessaire avec Bearer token
- */
-export const initializeCsrf = async (): Promise<void> => {
-  // No-op: Plus de CSRF avec Bearer token
-};
-
-/**
- * @deprecated Plus nécessaire avec Bearer token
- */
-export const resetCsrf = (): void => {
-  // No-op: Plus de CSRF avec Bearer token
-};
 
 export default api;

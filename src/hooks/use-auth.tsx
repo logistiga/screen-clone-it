@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
-import api, { getAuthToken, setAuthToken, removeAuthToken } from '@/lib/api';
+import api, { getAuthToken, setAuthToken, removeAuthToken, initializeCsrf, resetCsrf, isCookieAuthEnabled } from '@/lib/api';
 
 interface User {
   id: number;
@@ -66,23 +66,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return false;
     }
 
-    // Vérifier qu'on a un token
-    const token = getAuthToken();
-    if (!token) {
-      return false;
-    }
-
     isRefreshingRef.current = true;
 
     try {
       const response = await api.post('/auth/refresh');
       
-      // Si le backend renvoie un nouveau token, le sauvegarder
-      if (response.data?.token) {
+      // Si le backend renvoie un nouveau token (mode Bearer), le sauvegarder
+      if (!isCookieAuthEnabled() && response.data?.token) {
         setAuthToken(response.data.token);
       }
       
-      console.log('[Auth] Token rafraîchi avec succès');
+      console.log('[Auth] Session rafraîchie avec succès');
       
       // Recharger les données utilisateur
       const userResponse = await api.get('/auth/user');
@@ -94,6 +88,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // En cas d'erreur 401, la session a expiré
       if ((error as any)?.response?.status === 401) {
         removeAuthToken();
+        resetCsrf();
         setUser(null);
       }
       return false;
@@ -183,23 +178,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [user, refreshSession, updateLastActivity]);
 
-  // Vérifier la session au chargement (via token stocké)
+  // Vérifier la session au chargement
   const checkAuthStatus = useCallback(async () => {
-    const token = getAuthToken();
-    
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      // Essayer de récupérer l'utilisateur (la session cookie sera envoyée automatiquement)
       const response = await api.get('/auth/user');
       setUser(response.data);
       updateLastActivity();
     } catch {
-      // Token invalide, le supprimer
-      removeAuthToken();
-      setUser(null);
+      // Pas de session valide, vérifier le token localStorage (fallback)
+      const token = getAuthToken();
+      if (token) {
+        try {
+          const response = await api.get('/auth/user');
+          setUser(response.data);
+          updateLastActivity();
+        } catch {
+          removeAuthToken();
+          setUser(null);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -211,10 +209,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Appel de login - le backend doit renvoyer un token
+      // IMPORTANT: Initialiser le CSRF AVANT le login (Sanctum SPA)
+      try {
+        await initializeCsrf();
+      } catch (csrfError) {
+        console.warn('[Auth] Échec CSRF, tentative avec Bearer token');
+        // Continue anyway, le backend peut supporter Bearer token en fallback
+      }
+
+      // Appel de login
       const response = await api.post('/auth/login', { email, password });
 
-      // Récupérer et stocker le token (tolérant aux différences de payload selon le backend)
+      // Récupérer et stocker le token (si le backend le renvoie - mode Bearer)
       const token =
         response.data?.token ??
         response.data?.access_token ??
@@ -223,20 +229,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         response.data?.data?.token ??
         response.data?.data?.access_token;
 
-      if (!token) {
-        if (import.meta.env.DEV) {
-          const keys = response.data && typeof response.data === 'object' ? Object.keys(response.data) : [];
-          console.warn('[Auth] Réponse /auth/login sans token', { keys, data: response.data });
-        }
-
-        return {
-          success: false,
-          error:
-            "Le serveur n'a pas renvoyé de token. Vérifiez la réponse JSON de POST /api/auth/login (champ token/access_token).",
-        };
+      if (token) {
+        setAuthToken(token);
       }
-
-      setAuthToken(token);
 
       // Récupérer les infos utilisateur
       try {
@@ -246,12 +241,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: true };
       } catch (verifyError: any) {
         removeAuthToken();
+        resetCsrf();
         setUser(null);
 
         if (verifyError?.response?.status === 401) {
           return {
             success: false,
-            error: "Token invalide. Vérifiez la configuration du backend.",
+            error: "Session invalide. Vérifiez la configuration du backend.",
           };
         }
 
@@ -270,11 +266,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const message =
         validationEmailError ||
         backendMessage ||
-        (status === 500
-          ? 'Erreur serveur (500). Vérifiez les logs du backend.'
-          : status
-            ? `Erreur (${status}) lors de la connexion.`
-            : 'Erreur de connexion');
+        (status === 419
+          ? 'Session CSRF expirée. Rechargez la page.'
+          : status === 500
+            ? 'Erreur serveur (500). Vérifiez les logs du backend.'
+            : status
+              ? `Erreur (${status}) lors de la connexion.`
+              : 'Erreur de connexion');
 
       return { success: false, error: message };
     }
@@ -289,6 +287,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
       removeAuthToken();
+      resetCsrf();
       setUser(null);
     }
   };
