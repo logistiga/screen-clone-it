@@ -494,26 +494,57 @@ export const armateursApi = {
 // Transitaires API
 export const transitairesApi = {
   getAll: async () => {
-    // Charger une liste large par défaut (le backend applique aussi une limite max)
-    const response = await api.get('/transitaires', { params: { per_page: 500 } });
-    const payload: any = response.data;
-    console.log('[transitairesApi.getAll] Raw response:', payload);
-    // Support multiples formats de réponse API
-    if (Array.isArray(payload)) {
-      console.log('[transitairesApi.getAll] Returning direct array:', payload.length);
-      return payload as Transitaire[];
+    // L'endpoint /transitaires est paginé côté backend (15 par défaut).
+    // On agrège toutes les pages pour obtenir la liste complète (utile pour /partenaires + formulaires).
+    const PER_PAGE = 100;
+
+    const fetchPage = async (page: number) => {
+      const response = await api.get('/transitaires', { params: { page, per_page: PER_PAGE } });
+      return response.data as any;
+    };
+
+    const firstPayload = await fetchPage(1);
+    console.log('[transitairesApi.getAll] Raw response:', firstPayload);
+
+    // Support format legacy: tableau direct
+    if (Array.isArray(firstPayload)) {
+      console.log('[transitairesApi.getAll] Returning direct array:', firstPayload.length);
+      return firstPayload as Transitaire[];
     }
-    const data = payload?.data;
-    if (Array.isArray(data)) {
-      console.log('[transitairesApi.getAll] Returning payload.data:', data.length);
-      return data as Transitaire[];
+
+    // Format standard: { data: Transitaire[], meta: {...} }
+    const firstData = Array.isArray(firstPayload?.data)
+      ? (firstPayload.data as Transitaire[])
+      : Array.isArray(firstPayload?.data?.data)
+        ? (firstPayload.data.data as Transitaire[])
+        : ([] as Transitaire[]);
+
+    const meta = firstPayload?.meta;
+    const lastPage = typeof meta?.last_page === 'number' ? meta.last_page : Number(meta?.last_page ?? 1);
+
+    if (!lastPage || lastPage <= 1) {
+      return firstData;
     }
-    if (Array.isArray(data?.data)) {
-      console.log('[transitairesApi.getAll] Returning payload.data.data:', data.data.length);
-      return data.data as Transitaire[];
+
+    const all: Transitaire[] = [...firstData];
+
+    // Charger les pages suivantes (séquentiel pour rester simple et éviter de spammer le serveur)
+    for (let page = 2; page <= lastPage; page++) {
+      const payload = await fetchPage(page);
+      const pageData = Array.isArray(payload?.data)
+        ? (payload.data as Transitaire[])
+        : Array.isArray(payload?.data?.data)
+          ? (payload.data.data as Transitaire[])
+          : ([] as Transitaire[]);
+
+      all.push(...pageData);
+
+      // Sécurité: si une page revient vide, on stop
+      if (pageData.length === 0) break;
     }
-    console.warn('[transitairesApi.getAll] Format inattendu:', payload);
-    return [] as Transitaire[];
+
+    console.log('[transitairesApi.getAll] Aggregated:', all.length);
+    return all;
   },
   
   getById: async (id: string) => {
