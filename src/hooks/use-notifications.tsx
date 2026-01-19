@@ -10,10 +10,10 @@ export type { AppNotification };
 
 export const NOTIFICATIONS_KEY = ['notifications'];
 
-// Configuration du polling (réduit pour éviter les 429)
-const POLLING_INTERVAL_ACTIVE = 30000; // 30s quand l'onglet est actif
-const POLLING_INTERVAL_BACKGROUND = 120000; // 2min en arrière-plan
-const ALERTS_POLLING_INTERVAL = 3 * 60 * 60 * 1000; // 3 heures pour les alertes
+// Configuration du polling (réduit pour éviter ERR_HTTP2_PROTOCOL_ERROR)
+const POLLING_INTERVAL_ACTIVE = 60000; // 1 minute quand l'onglet est actif
+const POLLING_INTERVAL_BACKGROUND = 300000; // 5 min en arrière-plan
+const DEFAULT_PER_PAGE = 20; // Réduire la taille des réponses
 
 // Hook pour détecter si l'onglet est actif
 function useTabVisibility() {
@@ -43,12 +43,15 @@ export function useNotifications(params?: {
   
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, params],
-    queryFn: () => notificationsService.getAll(params),
+    queryFn: () => notificationsService.getAll({ per_page: DEFAULT_PER_PAGE, ...params }),
     enabled: isAuthenticated,
-    staleTime: 30000, // 30 secondes
+    staleTime: 60000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: pollingInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
   });
 }
 
@@ -62,10 +65,13 @@ export function useUnreadCount() {
     queryKey: [...NOTIFICATIONS_KEY, 'unread-count'],
     queryFn: notificationsService.getUnreadCount,
     enabled: isAuthenticated,
-    staleTime: 30000,
+    staleTime: 60000, // 1 minute
+    gcTime: 5 * 60 * 1000,
     refetchInterval: pollingInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
   });
 }
 
@@ -258,7 +264,7 @@ export function useNotificationCenter() {
   const [localNotifications, setLocalNotifications] = useState<AppNotification[]>([]);
   const [useLocal, setUseLocal] = useState(false);
   
-  const { data, isLoading, error } = useNotifications({ per_page: 50 });
+  const { data, isLoading, error } = useNotifications({ per_page: DEFAULT_PER_PAGE });
   const markAsReadMutation = useMarkAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
   const deleteMutation = useDeleteNotification();
