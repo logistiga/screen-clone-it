@@ -495,8 +495,9 @@ export const armateursApi = {
 export const transitairesApi = {
   getAll: async () => {
     // L'endpoint /transitaires est paginé côté backend (15 par défaut).
-    // On agrège toutes les pages pour obtenir la liste complète (utile pour /partenaires + formulaires).
-    const PER_PAGE = 100;
+    // On demande un per_page élevé pour éviter de multiples requêtes (plus stable) ;
+    // et on garde une agrégation “au cas où” si le total dépasse la limite.
+    const PER_PAGE = 500;
 
     const fetchPage = async (page: number) => {
       const response = await api.get('/transitaires', { params: { page, per_page: PER_PAGE } });

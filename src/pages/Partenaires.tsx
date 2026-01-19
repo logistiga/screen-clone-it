@@ -61,7 +61,8 @@ export default function PartenairesPage() {
   
   // Pagination states
   const [transitairesPage, setTransitairesPage] = useState(1);
-  const [transitairesPageSize, setTransitairesPageSize] = useState(10);
+  // Par défaut on affiche “tout” (jusqu’à 200) pour éviter l’impression de liste tronquée.
+  const [transitairesPageSize, setTransitairesPageSize] = useState(200);
   const [representantsPage, setRepresentantsPage] = useState(1);
   const [representantsPageSize, setRepresentantsPageSize] = useState(10);
   const [armateursPage, setArmateursPage] = useState(1);
@@ -447,6 +448,7 @@ export default function PartenairesPage() {
                         totalItems={filteredTransitaires.length}
                         onPageChange={setTransitairesPage}
                         onPageSizeChange={(size) => { setTransitairesPageSize(size); setTransitairesPage(1); }}
+                        pageSizeOptions={[10, 20, 50, 100, 200]}
                       />
                     </>
                   )}
@@ -490,6 +492,7 @@ export default function PartenairesPage() {
                        totalItems={filteredTransitaires.length}
                        onPageChange={setTransitairesPage}
                        onPageSizeChange={(size) => { setTransitairesPageSize(size); setTransitairesPage(1); }}
+                       pageSizeOptions={[10, 20, 50, 100, 200]}
                      />
                   </>
                 )}
