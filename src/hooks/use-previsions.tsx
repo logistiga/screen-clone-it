@@ -27,11 +27,21 @@ export function usePrevision(id: number) {
   });
 }
 
-export function usePrevisionStats(annee?: number) {
+export function useStatsMensuelles(annee: number, mois: number) {
   return useQuery({
-    queryKey: ['previsions', 'stats', annee],
-    queryFn: () => previsionsApi.getStats(annee),
+    queryKey: ['previsions', 'stats-mensuelles', annee, mois],
+    queryFn: () => previsionsApi.getStatsMensuelles(annee, mois),
     staleTime: 2 * 60 * 1000,
+    enabled: !!annee && !!mois,
+  });
+}
+
+export function useHistoriquePrevisions(annee: number) {
+  return useQuery({
+    queryKey: ['previsions', 'historique', annee],
+    queryFn: () => previsionsApi.getHistorique(annee),
+    staleTime: 2 * 60 * 1000,
+    enabled: !!annee,
   });
 }
 
@@ -43,11 +53,11 @@ export function usePrevisionCategories() {
   });
 }
 
-export function usePrevisionComparaison(annee?: number, mois?: number, source?: string) {
+export function useExportMois(annee: number, mois: number) {
   return useQuery({
-    queryKey: ['previsions', 'comparaison', annee, mois, source],
-    queryFn: () => previsionsApi.getComparaison(annee, mois, source),
-    staleTime: 2 * 60 * 1000,
+    queryKey: ['previsions', 'export', annee, mois],
+    queryFn: () => previsionsApi.getExportMois(annee, mois),
+    enabled: false,
   });
 }
 
@@ -97,21 +107,6 @@ export function useDeletePrevision() {
   });
 }
 
-export function useUpdatePrevisionRealise() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, montant, mode }: { id: number; montant: number; mode?: 'ajouter' | 'remplacer' }) =>
-      previsionsApi.updateRealise(id, montant, mode),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['previsions'] });
-      toast.success('Montant réalisé mis à jour');
-    },
-    onError: (error: any) => {
-      toast.error(getApiErrorMessage(error, 'Erreur lors de la mise à jour'));
-    },
-  });
-}
 
 export function useSyncPrevisionRealise() {
   const queryClient = useQueryClient();
