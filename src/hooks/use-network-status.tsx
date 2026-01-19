@@ -14,7 +14,7 @@ interface NetworkInfo {
   effectiveType?: string;
 }
 
-const CHECK_INTERVAL = 30000; // Vérifier toutes les 30 secondes
+const CHECK_INTERVAL = 120000; // Vérifier toutes les 2 minutes (évite spam backend)
 const PING_TIMEOUT = 5000; // Timeout de 5 secondes pour le ping
 
 export function useNetworkStatus(): NetworkStatus & {

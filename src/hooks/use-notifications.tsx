@@ -10,9 +10,9 @@ export type { AppNotification };
 
 export const NOTIFICATIONS_KEY = ['notifications'];
 
-// Configuration du polling - intervalle plus court pour temps réel
-const POLLING_INTERVAL_ACTIVE = 10000; // 10 secondes quand l'onglet est actif
-const POLLING_INTERVAL_BACKGROUND = 60000; // 1 minute en arrière-plan
+// Configuration du polling (réduit pour éviter les 429)
+const POLLING_INTERVAL_ACTIVE = 30000; // 30s quand l'onglet est actif
+const POLLING_INTERVAL_BACKGROUND = 120000; // 2min en arrière-plan
 const ALERTS_POLLING_INTERVAL = 3 * 60 * 60 * 1000; // 3 heures pour les alertes
 
 // Hook pour détecter si l'onglet est actif
@@ -45,10 +45,10 @@ export function useNotifications(params?: {
     queryKey: [...NOTIFICATIONS_KEY, params],
     queryFn: () => notificationsService.getAll(params),
     enabled: isAuthenticated,
-    staleTime: 5000, // 5 secondes
+    staleTime: 30000, // 30 secondes
     refetchInterval: pollingInterval,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -62,10 +62,10 @@ export function useUnreadCount() {
     queryKey: [...NOTIFICATIONS_KEY, 'unread-count'],
     queryFn: notificationsService.getUnreadCount,
     enabled: isAuthenticated,
-    staleTime: 5000,
+    staleTime: 30000,
     refetchInterval: pollingInterval,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
 }
 
