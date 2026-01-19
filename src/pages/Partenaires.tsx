@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,6 +155,24 @@ export default function PartenairesPage() {
     a.nom?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination (données déjà chargées côté front)
+  const transitairesTotalPages = Math.max(1, Math.ceil(filteredTransitaires.length / transitairesPageSize));
+  const representantsTotalPages = Math.max(1, Math.ceil(filteredRepresentants.length / representantsPageSize));
+  const armateursTotalPages = Math.max(1, Math.ceil(filteredArmateurs.length / armateursPageSize));
+
+  // Si un filtre / une suppression réduit le nombre de pages, on “clamp” la page courante
+  useEffect(() => {
+    if (transitairesPage > transitairesTotalPages) setTransitairesPage(transitairesTotalPages);
+  }, [transitairesPage, transitairesTotalPages]);
+
+  useEffect(() => {
+    if (representantsPage > representantsTotalPages) setRepresentantsPage(representantsTotalPages);
+  }, [representantsPage, representantsTotalPages]);
+
+  useEffect(() => {
+    if (armateursPage > armateursTotalPages) setArmateursPage(armateursTotalPages);
+  }, [armateursPage, armateursTotalPages]);
+
   // Paginated data
   const paginatedTransitaires = filteredTransitaires.slice(
     (transitairesPage - 1) * transitairesPageSize,
@@ -236,7 +254,12 @@ export default function PartenairesPage() {
             <Input
               placeholder="Rechercher un partenaire..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setTransitairesPage(1);
+                setRepresentantsPage(1);
+                setArmateursPage(1);
+              }}
               className="pl-9"
             />
           </div>
@@ -419,7 +442,7 @@ export default function PartenairesPage() {
                       </Table>
                       <TablePagination
                         currentPage={transitairesPage}
-                        totalPages={Math.ceil(filteredTransitaires.length / transitairesPageSize)}
+                        totalPages={transitairesTotalPages}
                         pageSize={transitairesPageSize}
                         totalItems={filteredTransitaires.length}
                         onPageChange={setTransitairesPage}
@@ -460,14 +483,14 @@ export default function PartenairesPage() {
                         />
                       ))}
                     </div>
-                    <TablePagination
-                      currentPage={transitairesPage}
-                      totalPages={Math.ceil(filteredTransitaires.length / transitairesPageSize)}
-                      pageSize={transitairesPageSize}
-                      totalItems={filteredTransitaires.length}
-                      onPageChange={setTransitairesPage}
-                      onPageSizeChange={(size) => { setTransitairesPageSize(size); setTransitairesPage(1); }}
-                    />
+                     <TablePagination
+                       currentPage={transitairesPage}
+                       totalPages={transitairesTotalPages}
+                       pageSize={transitairesPageSize}
+                       totalItems={filteredTransitaires.length}
+                       onPageChange={setTransitairesPage}
+                       onPageSizeChange={(size) => { setTransitairesPageSize(size); setTransitairesPage(1); }}
+                     />
                   </>
                 )}
               </>
@@ -634,7 +657,7 @@ export default function PartenairesPage() {
                       </Table>
                       <TablePagination
                         currentPage={representantsPage}
-                        totalPages={Math.ceil(filteredRepresentants.length / representantsPageSize)}
+                        totalPages={representantsTotalPages}
                         pageSize={representantsPageSize}
                         totalItems={filteredRepresentants.length}
                         onPageChange={setRepresentantsPage}
@@ -676,14 +699,14 @@ export default function PartenairesPage() {
                         />
                       ))}
                     </div>
-                    <TablePagination
-                      currentPage={representantsPage}
-                      totalPages={Math.ceil(filteredRepresentants.length / representantsPageSize)}
-                      pageSize={representantsPageSize}
-                      totalItems={filteredRepresentants.length}
-                      onPageChange={setRepresentantsPage}
-                      onPageSizeChange={(size) => { setRepresentantsPageSize(size); setRepresentantsPage(1); }}
-                    />
+                     <TablePagination
+                       currentPage={representantsPage}
+                       totalPages={representantsTotalPages}
+                       pageSize={representantsPageSize}
+                       totalItems={filteredRepresentants.length}
+                       onPageChange={setRepresentantsPage}
+                       onPageSizeChange={(size) => { setRepresentantsPageSize(size); setRepresentantsPage(1); }}
+                     />
                   </>
                 )}
               </>
@@ -815,7 +838,7 @@ export default function PartenairesPage() {
                       </Table>
                       <TablePagination
                         currentPage={armateursPage}
-                        totalPages={Math.ceil(filteredArmateurs.length / armateursPageSize)}
+                        totalPages={armateursTotalPages}
                         pageSize={armateursPageSize}
                         totalItems={filteredArmateurs.length}
                         onPageChange={setArmateursPage}
@@ -854,14 +877,14 @@ export default function PartenairesPage() {
                         />
                       ))}
                     </div>
-                    <TablePagination
-                      currentPage={armateursPage}
-                      totalPages={Math.ceil(filteredArmateurs.length / armateursPageSize)}
-                      pageSize={armateursPageSize}
-                      totalItems={filteredArmateurs.length}
-                      onPageChange={setArmateursPage}
-                      onPageSizeChange={(size) => { setArmateursPageSize(size); setArmateursPage(1); }}
-                    />
+                     <TablePagination
+                       currentPage={armateursPage}
+                       totalPages={armateursTotalPages}
+                       pageSize={armateursPageSize}
+                       totalItems={filteredArmateurs.length}
+                       onPageChange={setArmateursPage}
+                       onPageSizeChange={(size) => { setArmateursPageSize(size); setArmateursPage(1); }}
+                     />
                   </>
                 )}
               </>
