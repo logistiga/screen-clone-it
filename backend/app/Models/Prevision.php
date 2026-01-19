@@ -13,56 +13,82 @@ class Prevision extends Model
 
     protected $fillable = [
         'type',
-        'source',
         'categorie',
         'description',
         'montant_prevu',
-        'montant_realise',
+        'realise_caisse',
+        'realise_banque',
         'mois',
         'annee',
-        'date_prevue',
         'statut',
         'notes',
         'user_id',
-        'banque_id',
     ];
 
     protected $casts = [
         'montant_prevu' => 'decimal:2',
-        'montant_realise' => 'decimal:2',
+        'realise_caisse' => 'decimal:2',
+        'realise_banque' => 'decimal:2',
         'mois' => 'integer',
         'annee' => 'integer',
-        'date_prevue' => 'date',
     ];
+
+    protected $appends = ['montant_realise', 'ecart', 'taux_realisation', 'mois_nom'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function banque(): BelongsTo
+    /**
+     * Montant total réalisé (caisse + banque)
+     */
+    public function getMontantRealiseAttribute(): float
     {
-        return $this->belongsTo(Banque::class);
+        return (float) $this->realise_caisse + (float) $this->realise_banque;
     }
 
+    /**
+     * Écart entre réalisé et prévu
+     */
     public function getEcartAttribute(): float
     {
-        return $this->montant_realise - $this->montant_prevu;
+        return $this->montant_realise - (float) $this->montant_prevu;
     }
 
+    /**
+     * Taux de réalisation en pourcentage
+     */
     public function getTauxRealisationAttribute(): float
     {
-        if ($this->montant_prevu == 0) return 0;
-        return round(($this->montant_realise / $this->montant_prevu) * 100, 2);
+        if ((float) $this->montant_prevu == 0) return 0;
+        return round(($this->montant_realise / (float) $this->montant_prevu) * 100, 2);
     }
 
+    /**
+     * Nom du mois
+     */
+    public function getMoisNomAttribute(): string
+    {
+        $moisNoms = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+        return $moisNoms[$this->mois] ?? '';
+    }
+
+    /**
+     * Met à jour le statut en fonction du taux de réalisation
+     */
     public function updateStatut(): void
     {
         $taux = $this->taux_realisation;
+        $now = now();
         
         if ($taux >= 100) {
             $this->statut = $taux > 110 ? 'depasse' : 'atteint';
-        } elseif ($this->mois < now()->month && $this->annee <= now()->year) {
+        } elseif ($this->mois < $now->month && $this->annee <= $now->year) {
             $this->statut = 'non_atteint';
         } else {
             $this->statut = 'en_cours';
@@ -71,6 +97,9 @@ class Prevision extends Model
         $this->save();
     }
 
+    /**
+     * Catégories de recettes par défaut
+     */
     public static function getCategoriesRecettes(): array
     {
         return [
@@ -81,6 +110,9 @@ class Prevision extends Model
         ];
     }
 
+    /**
+     * Catégories de dépenses par défaut
+     */
     public static function getCategoriesDepenses(): array
     {
         return [

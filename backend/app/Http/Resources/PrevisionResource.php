@@ -9,9 +9,10 @@ class PrevisionResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $ecart = $this->montant_realise - $this->montant_prevu;
-        $tauxRealisation = $this->montant_prevu > 0 
-            ? round(($this->montant_realise / $this->montant_prevu) * 100, 2) 
+        $montantRealise = (float) $this->realise_caisse + (float) $this->realise_banque;
+        $ecart = $montantRealise - (float) $this->montant_prevu;
+        $tauxRealisation = (float) $this->montant_prevu > 0 
+            ? round(($montantRealise / (float) $this->montant_prevu) * 100, 2) 
             : 0;
 
         $moisNoms = [
@@ -23,26 +24,33 @@ class PrevisionResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type,
-            'source' => $this->source,
             'categorie' => $this->categorie,
             'description' => $this->description,
-            'montant_prevu' => round($this->montant_prevu, 2),
-            'montant_realise' => round($this->montant_realise, 2),
+            
+            // Montants
+            'montant_prevu' => round((float) $this->montant_prevu, 2),
+            'realise_caisse' => round((float) $this->realise_caisse, 2),
+            'realise_banque' => round((float) $this->realise_banque, 2),
+            'montant_realise' => round($montantRealise, 2),
             'ecart' => round($ecart, 2),
             'taux_realisation' => $tauxRealisation,
+            
+            // Période
             'mois' => $this->mois,
             'mois_nom' => $moisNoms[$this->mois] ?? '',
             'annee' => $this->annee,
             'periode' => ($moisNoms[$this->mois] ?? '') . ' ' . $this->annee,
-            'date_prevue' => $this->date_prevue?->toDateString(),
+            
+            // Statut
             'statut' => $this->statut,
             'notes' => $this->notes,
+            
+            // Timestamps
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             
             // Relations
             'user' => new UserResource($this->whenLoaded('user')),
-            'banque' => new BanqueResource($this->whenLoaded('banque')),
         ];
     }
 }

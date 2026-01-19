@@ -9,32 +9,33 @@ import { toast } from "sonner";
 import { useCreatePrevision } from "@/hooks/use-previsions";
 import { useCategoriesDepenses } from "@/hooks/use-commercial";
 import type { CategorieDepense } from "@/lib/api/commercial";
-import { TrendingUp, TrendingDown, Wallet, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface NouvellePrevisionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   defaultType?: 'recette' | 'depense';
-  defaultSource?: 'caisse' | 'banque';
+  defaultMois?: number;
+  defaultAnnee?: number;
 }
 
 export function NouvellePrevisionModal({ 
   open, 
   onOpenChange, 
   onSuccess,
-  defaultType = 'recette',
-  defaultSource = 'caisse'
+  defaultType = 'depense',
+  defaultMois,
+  defaultAnnee,
 }: NouvellePrevisionModalProps) {
   const currentDate = new Date();
   const [formData, setFormData] = useState({
     type: defaultType,
-    source: defaultSource,
     categorie: '',
     description: '',
     montant_prevu: '',
-    mois: currentDate.getMonth() + 1,
-    annee: currentDate.getFullYear(),
+    mois: defaultMois || currentDate.getMonth() + 1,
+    annee: defaultAnnee || currentDate.getFullYear(),
     notes: '',
   });
 
@@ -50,17 +51,15 @@ export function NouvellePrevisionModal({
       setFormData(prev => ({
         ...prev,
         type: defaultType,
-        source: defaultSource,
+        mois: defaultMois || currentDate.getMonth() + 1,
+        annee: defaultAnnee || currentDate.getFullYear(),
       }));
     }
-  }, [open, defaultType, defaultSource]);
+  }, [open, defaultType, defaultMois, defaultAnnee]);
 
   const handleChange = (field: string, value: string | number) => {
-    // Reset catégorie si le type change
     if (field === 'type') {
       setFormData(prev => ({ ...prev, type: value as 'recette' | 'depense', categorie: '' }));
-    } else if (field === 'source') {
-      setFormData(prev => ({ ...prev, source: value as 'caisse' | 'banque' }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -69,12 +68,11 @@ export function NouvellePrevisionModal({
   const resetForm = () => {
     setFormData({
       type: defaultType,
-      source: defaultSource,
       categorie: '',
       description: '',
       montant_prevu: '',
-      mois: currentDate.getMonth() + 1,
-      annee: currentDate.getFullYear(),
+      mois: defaultMois || currentDate.getMonth() + 1,
+      annee: defaultAnnee || currentDate.getFullYear(),
       notes: '',
     });
   };
@@ -95,7 +93,6 @@ export function NouvellePrevisionModal({
     try {
       await createMutation.mutateAsync({
         type: formData.type as 'recette' | 'depense',
-        source: formData.source as 'caisse' | 'banque',
         categorie: formData.categorie,
         description: formData.description || undefined,
         montant_prevu: parseFloat(formData.montant_prevu),
@@ -139,9 +136,9 @@ export function NouvellePrevisionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {formData.type === 'recette' ? (
-              <TrendingUp className="h-5 w-5 text-green-600" />
+              <TrendingUp className="h-5 w-5 text-success" />
             ) : (
-              <TrendingDown className="h-5 w-5 text-red-600" />
+              <TrendingDown className="h-5 w-5 text-destructive" />
             )}
             Nouvelle prévision budgétaire
           </DialogTitle>
@@ -151,59 +148,31 @@ export function NouvellePrevisionModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Type et Source */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) => handleChange('type', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recette">
-                    <span className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                      Recette
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="depense">
-                    <span className="flex items-center gap-2">
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                      Dépense
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Source</Label>
-              <Select
-                value={formData.source}
-                onValueChange={(value) => handleChange('source', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="caisse">
-                    <span className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-orange-600" />
-                      Caisse
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="banque">
-                    <span className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-blue-600" />
-                      Banque
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Type */}
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) => handleChange('type', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recette">
+                  <span className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-success" />
+                    Recette
+                  </span>
+                </SelectItem>
+                <SelectItem value="depense">
+                  <span className="flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-destructive" />
+                    Dépense
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Période */}

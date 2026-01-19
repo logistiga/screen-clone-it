@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,9 +10,9 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Plus, Target, TrendingUp, TrendingDown, Wallet, Building2, 
-  BarChart3, PieChart, RefreshCw, Trash2, CheckCircle2, 
-  XCircle, AlertTriangle, Clock, ArrowUpRight,
-  ChevronDown, ChevronUp
+  BarChart3, RefreshCw, Trash2, CheckCircle2, 
+  XCircle, AlertTriangle, Clock, FileDown,
+  ChevronLeft, ChevronRight, Calendar
 } from "lucide-react";
 import { NouvellePrevisionModal } from "@/components/NouvellePrevisionModal";
 import {
@@ -23,27 +23,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   usePrevisions,
-  usePrevisionStats,
-  usePrevisionComparaison,
+  useStatsMensuelles,
+  useHistoriquePrevisions,
   useDeletePrevision,
   useSyncPrevisionRealise,
 } from "@/hooks/use-previsions";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DocumentStatCard, DocumentStatCardSkeleton } from "@/components/shared/documents/DocumentStatCard";
-import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
 const itemVariants = {
@@ -51,20 +42,21 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
+const moisNoms = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+];
+
 export default function PrevisionsPage() {
   const currentDate = new Date();
   const [annee, setAnnee] = useState(currentDate.getFullYear());
-  const [mois, setMois] = useState<number | undefined>();
-  const [source, setSource] = useState<string | undefined>();
+  const [mois, setMois] = useState(currentDate.getMonth() + 1);
   const [showNouvelleModal, setShowNouvelleModal] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
-  const { data: previsionsData, isLoading: loadingPrevisions } = usePrevisions({ 
-    annee, 
-    per_page: 100 
-  });
-  const { data: stats, isLoading: loadingStats } = usePrevisionStats(annee);
-  const { data: comparaison, isLoading: loadingComparaison } = usePrevisionComparaison(annee);
+  // Données
+  const { data: stats, isLoading: loadingStats } = useStatsMensuelles(annee, mois);
+  const { data: historique, isLoading: loadingHistorique } = useHistoriquePrevisions(annee);
+  const { data: previsionsData } = usePrevisions({ annee, mois, per_page: 100 });
   const deleteMutation = useDeletePrevision();
   const syncMutation = useSyncPrevisionRealise();
 
@@ -76,180 +68,177 @@ export default function PrevisionsPage() {
     return montant.toLocaleString('fr-FR');
   };
 
-  const formatMontantFull = (montant: number) => {
-    return montant.toLocaleString('fr-FR') + ' FCFA';
-  };
+  const formatMontantFull = (montant: number) => montant.toLocaleString('fr-FR') + ' FCFA';
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
       case 'en_cours': return <Badge variant="outline" className="border-primary text-primary"><Clock className="h-3 w-3 mr-1" />En cours</Badge>;
       case 'atteint': return <Badge className="bg-success text-success-foreground"><CheckCircle2 className="h-3 w-3 mr-1" />Atteint</Badge>;
-      case 'depasse': return <Badge className="bg-info text-info-foreground"><ArrowUpRight className="h-3 w-3 mr-1" />Dépassé</Badge>;
+      case 'depasse': return <Badge className="bg-info text-info-foreground"><TrendingUp className="h-3 w-3 mr-1" />Dépassé</Badge>;
       case 'non_atteint': return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Non atteint</Badge>;
       default: return <Badge variant="outline">{statut}</Badge>;
     }
   };
 
-  const getTauxColor = (taux: number) => {
+  const getTauxColor = (taux: number, isDepense = false) => {
+    if (isDepense) {
+      // Pour les dépenses, dépasser c'est mauvais
+      if (taux > 100) return 'text-destructive';
+      if (taux >= 80) return 'text-warning';
+      return 'text-success';
+    }
+    // Pour les recettes
     if (taux >= 100) return 'text-success';
-    if (taux >= 75) return 'text-primary';
     if (taux >= 50) return 'text-warning';
     return 'text-destructive';
   };
 
   const handleSync = async () => {
-    const currentMois = mois || currentDate.getMonth() + 1;
-    await syncMutation.mutateAsync({ annee, mois: currentMois });
+    await syncMutation.mutateAsync({ annee, mois });
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette prévision ?')) {
+    if (confirm('Supprimer cette prévision ?')) {
       await deleteMutation.mutateAsync(id);
     }
   };
 
-  const toggleCategory = (cat: string) => {
-    setExpandedCategories(prev => 
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
+  const navigateMois = (direction: number) => {
+    let newMois = mois + direction;
+    let newAnnee = annee;
+    if (newMois > 12) { newMois = 1; newAnnee++; }
+    if (newMois < 1) { newMois = 12; newAnnee--; }
+    setMois(newMois);
+    setAnnee(newAnnee);
   };
-
-  // Données pour les graphiques
-  const chartDataMensuel = comparaison?.comparaison?.map(c => ({
-    mois: c.mois_nom.substring(0, 3),
-    recettes_prevues: c.recettes.caisse.prevu + c.recettes.banque.prevu,
-    recettes_realisees: c.recettes.caisse.realise + c.recettes.banque.realise,
-    depenses_prevues: c.depenses.caisse.prevu + c.depenses.banque.prevu,
-    depenses_realisees: c.depenses.caisse.realise + c.depenses.banque.realise,
-  })) || [];
 
   const anneeOptions = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - 2 + i);
 
-  // Calcul totaux
-  const totalRecettesPrevu = (stats?.stats.recettes.caisse.prevu || 0) + (stats?.stats.recettes.banque.prevu || 0);
-  const totalRecettesRealise = (stats?.stats.recettes.caisse.realise || 0) + (stats?.stats.recettes.banque.realise || 0);
-  const totalDepensesPrevu = (stats?.stats.depenses.caisse.prevu || 0) + (stats?.stats.depenses.banque.prevu || 0);
-  const totalDepensesRealise = (stats?.stats.depenses.caisse.realise || 0) + (stats?.stats.depenses.banque.realise || 0);
-  const soldePrevu = totalRecettesPrevu - totalDepensesPrevu;
-  const soldeRealise = totalRecettesRealise - totalDepensesRealise;
-  const tauxRecettes = totalRecettesPrevu > 0 ? Math.round((totalRecettesRealise / totalRecettesPrevu) * 100) : 0;
-  const tauxDepenses = totalDepensesPrevu > 0 ? Math.round((totalDepensesRealise / totalDepensesPrevu) * 100) : 0;
+  // Graphique historique
+  const chartData = historique?.historique?.map(h => ({
+    mois: h.mois_nom.substring(0, 3),
+    recettes: h.recettes_realisees,
+    depenses: h.depenses_realisees,
+    benefice: h.benefice,
+  })) || [];
 
   if (loadingStats) {
     return (
       <MainLayout title="Prévisions budgétaires">
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <DocumentStatCardSkeleton key={i} />
-            ))}
+            {[1, 2, 3, 4].map(i => <DocumentStatCardSkeleton key={i} />)}
           </div>
         </div>
       </MainLayout>
     );
   }
 
+  const synthese = stats?.synthese;
+
   return (
     <MainLayout title="Prévisions budgétaires">
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="space-y-6"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Prévisions budgétaires
-          </h1>
-          <p className="text-muted-foreground">
-            Suivi des prévisions et réalisations financières
-          </p>
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+        
+        {/* Header avec navigation mois */}
+        <motion.div variants={itemVariants} className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Prévisions budgétaires
+              </h1>
+              <p className="text-muted-foreground">Vue mensuelle consolidée (Caisse + Banque)</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleSync} disabled={syncMutation.isPending}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                Synchroniser
+              </Button>
+              <Button onClick={() => setShowNouvelleModal(true)} className="shadow-md">
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle prévision
+              </Button>
+            </div>
+          </div>
+
+          {/* Navigation mois */}
+          <div className="flex items-center gap-4 bg-muted/50 rounded-lg p-3">
+            <Button variant="ghost" size="icon" onClick={() => navigateMois(-1)}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2 flex-1 justify-center">
+              <Calendar className="h-5 w-5 text-primary" />
+              <Select value={mois.toString()} onValueChange={(v) => setMois(parseInt(v))}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {moisNoms.map((nom, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>{nom}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={annee.toString()} onValueChange={(v) => setAnnee(parseInt(v))}>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {anneeOptions.map(a => (
+                    <SelectItem key={a} value={a.toString()}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => navigateMois(1)}>
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
         </motion.div>
 
-        {/* Filtres et actions */}
-        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex gap-2 flex-wrap">
-            <Select value={annee.toString()} onValueChange={(v) => setAnnee(parseInt(v))}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {anneeOptions.map(a => (
-                  <SelectItem key={a} value={a.toString()}>{a}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={source || "all"} onValueChange={(v) => setSource(v === "all" ? undefined : v)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Toutes sources" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes sources</SelectItem>
-                <SelectItem value="caisse">Caisse</SelectItem>
-                <SelectItem value="banque">Banque</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleSync} disabled={syncMutation.isPending}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-              Synchroniser
-            </Button>
-            <Button onClick={() => setShowNouvelleModal(true)} className="shadow-md">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle prévision
-            </Button>
-          </div>
-        </motion.div>
-
-        {(previsions.length === 0) && (
-          <motion.div variants={itemVariants}>
-            <Alert className="border-warning/50 bg-warning/10">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle>Prévisions non définies pour {annee}</AlertTitle>
-              <AlertDescription>
-                Les montants « Prévu » restent à 0 tant que vous n'avez pas ajouté de prévisions.
-                Le bouton « Synchroniser » met à jour uniquement le « Réalisé ».
-                <Button variant="link" className="px-1 text-primary" onClick={() => setShowNouvelleModal(true)}>
-                  Ajouter une prévision
-                </Button>
-              </AlertDescription>
-            </Alert>
+        {/* Alertes */}
+        {stats?.alertes && stats.alertes.length > 0 && (
+          <motion.div variants={itemVariants} className="space-y-2">
+            {stats.alertes.map((alerte, i) => (
+              <Alert key={i} variant={alerte.type === 'danger' ? 'destructive' : 'default'} 
+                className={alerte.type === 'warning' ? 'border-warning bg-warning/10' : ''}>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{alerte.message}</AlertDescription>
+              </Alert>
+            ))}
           </motion.div>
         )}
 
-        {/* Dashboard KPIs */}
+        {/* KPIs principaux */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <DocumentStatCard
-            title="Recettes prévues"
-            value={formatMontant(totalRecettesPrevu)}
+            title="Recettes du mois"
+            value={formatMontant(synthese?.recettes.realise || 0)}
             icon={TrendingUp}
-            subtitle={`Réalisé: ${formatMontant(totalRecettesRealise)} (${tauxRecettes}%)`}
+            subtitle={`Prévu: ${formatMontant(synthese?.recettes.prevu || 0)} (${synthese?.recettes.taux || 0}%)`}
             variant="success"
             delay={0}
           />
           <DocumentStatCard
-            title="Dépenses prévues"
-            value={formatMontant(totalDepensesPrevu)}
+            title="Dépenses du mois"
+            value={formatMontant(synthese?.depenses.realise || 0)}
             icon={TrendingDown}
-            subtitle={`Réalisé: ${formatMontant(totalDepensesRealise)} (${tauxDepenses}%)`}
+            subtitle={`Prévu: ${formatMontant(synthese?.depenses.prevu || 0)} (${synthese?.depenses.taux || 0}%)`}
             variant="danger"
             delay={0.1}
           />
           <DocumentStatCard
-            title="Solde prévisionnel"
-            value={formatMontant(soldePrevu)}
+            title={synthese?.situation === 'beneficiaire' ? 'Bénéfice' : 'Déficit'}
+            value={formatMontant(Math.abs(synthese?.benefice || 0))}
             icon={Target}
-            subtitle={`Réel: ${formatMontant(soldeRealise)}`}
-            variant={soldePrevu >= 0 ? "primary" : "danger"}
+            subtitle={synthese?.dans_budget ? '✓ Dans le budget' : '⚠ Budget dépassé'}
+            variant={synthese?.benefice && synthese.benefice >= 0 ? "primary" : "danger"}
             delay={0.2}
           />
           <DocumentStatCard
-            title="Taux global"
-            value={`${stats?.taux_global || 0}%`}
+            title="Prévisions"
+            value={`${stats?.nb_previsions || 0}`}
             icon={BarChart3}
-            subtitle={`${stats?.compteurs.atteint || 0} atteint · ${stats?.compteurs.en_cours || 0} en cours`}
+            subtitle={`${moisNoms[mois - 1]} ${annee}`}
             variant="info"
             delay={0.3}
           />
@@ -258,447 +247,282 @@ export default function PrevisionsPage() {
         {/* Détails Caisse vs Banque */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border-l-4 border-l-warning">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Wallet className="h-5 w-5 text-warning" />
-                Caisse
+                Mouvements Caisse
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Recettes</p>
-                    <p className="font-semibold">Prévu: {formatMontant(stats?.stats.recettes.caisse.prevu || 0)}</p>
-                    <p className="text-sm text-success">Réalisé: {formatMontant(stats?.stats.recettes.caisse.realise || 0)}</p>
-                  </div>
-                  <div className="text-right">
-                    <Progress 
-                      value={stats?.stats.recettes.caisse.prevu ? 
-                        Math.min(100, (stats.stats.recettes.caisse.realise / stats.stats.recettes.caisse.prevu) * 100) : 0} 
-                      className="w-20 h-2"
-                    />
-                    <p className={`text-sm font-medium mt-1 ${getTauxColor(
-                      stats?.stats.recettes.caisse.prevu ? 
-                      (stats.stats.recettes.caisse.realise / stats.stats.recettes.caisse.prevu) * 100 : 0
-                    )}`}>
-                      {stats?.stats.recettes.caisse.prevu ? 
-                        Math.round((stats.stats.recettes.caisse.realise / stats.stats.recettes.caisse.prevu) * 100) : 0}%
-                    </p>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-success/10 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Entrées</p>
+                  <p className="text-xl font-bold text-success">{formatMontant(synthese?.recettes.caisse || 0)}</p>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Dépenses</p>
-                    <p className="font-semibold">Prévu: {formatMontant(stats?.stats.depenses.caisse.prevu || 0)}</p>
-                    <p className="text-sm text-destructive">Réalisé: {formatMontant(stats?.stats.depenses.caisse.realise || 0)}</p>
-                  </div>
-                  <div className="text-right">
-                    <Progress 
-                      value={stats?.stats.depenses.caisse.prevu ? 
-                        Math.min(100, (stats.stats.depenses.caisse.realise / stats.stats.depenses.caisse.prevu) * 100) : 0} 
-                      className="w-20 h-2"
-                    />
-                    <p className={`text-sm font-medium mt-1 ${getTauxColor(
-                      stats?.stats.depenses.caisse.prevu ? 
-                      (stats.stats.depenses.caisse.realise / stats.stats.depenses.caisse.prevu) * 100 : 0
-                    )}`}>
-                      {stats?.stats.depenses.caisse.prevu ? 
-                        Math.round((stats.stats.depenses.caisse.realise / stats.stats.depenses.caisse.prevu) * 100) : 0}%
-                    </p>
-                  </div>
+                <div className="p-3 bg-destructive/10 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Sorties</p>
+                  <p className="text-xl font-bold text-destructive">{formatMontant(synthese?.depenses.caisse || 0)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-l-4 border-l-primary">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Building2 className="h-5 w-5 text-primary" />
-                Banque
+                Mouvements Banque
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Recettes</p>
-                    <p className="font-semibold">Prévu: {formatMontant(stats?.stats.recettes.banque.prevu || 0)}</p>
-                    <p className="text-sm text-success">Réalisé: {formatMontant(stats?.stats.recettes.banque.realise || 0)}</p>
-                  </div>
-                  <div className="text-right">
-                    <Progress 
-                      value={stats?.stats.recettes.banque.prevu ? 
-                        Math.min(100, (stats.stats.recettes.banque.realise / stats.stats.recettes.banque.prevu) * 100) : 0} 
-                      className="w-20 h-2"
-                    />
-                    <p className={`text-sm font-medium mt-1 ${getTauxColor(
-                      stats?.stats.recettes.banque.prevu ? 
-                      (stats.stats.recettes.banque.realise / stats.stats.recettes.banque.prevu) * 100 : 0
-                    )}`}>
-                      {stats?.stats.recettes.banque.prevu ? 
-                        Math.round((stats.stats.recettes.banque.realise / stats.stats.recettes.banque.prevu) * 100) : 0}%
-                    </p>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-success/10 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Entrées</p>
+                  <p className="text-xl font-bold text-success">{formatMontant(synthese?.recettes.banque || 0)}</p>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Dépenses</p>
-                    <p className="font-semibold">Prévu: {formatMontant(stats?.stats.depenses.banque.prevu || 0)}</p>
-                    <p className="text-sm text-destructive">Réalisé: {formatMontant(stats?.stats.depenses.banque.realise || 0)}</p>
-                  </div>
-                  <div className="text-right">
-                    <Progress 
-                      value={stats?.stats.depenses.banque.prevu ? 
-                        Math.min(100, (stats.stats.depenses.banque.realise / stats.stats.depenses.banque.prevu) * 100) : 0} 
-                      className="w-20 h-2"
-                    />
-                    <p className={`text-sm font-medium mt-1 ${getTauxColor(
-                      stats?.stats.depenses.banque.prevu ? 
-                      (stats.stats.depenses.banque.realise / stats.stats.depenses.banque.prevu) * 100 : 0
-                    )}`}>
-                      {stats?.stats.depenses.banque.prevu ? 
-                        Math.round((stats.stats.depenses.banque.realise / stats.stats.depenses.banque.prevu) * 100) : 0}%
-                    </p>
-                  </div>
+                <div className="p-3 bg-destructive/10 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Sorties</p>
+                  <p className="text-xl font-bold text-destructive">{formatMontant(synthese?.depenses.banque || 0)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
+        {/* Onglets */}
         <motion.div variants={itemVariants}>
-          <Tabs defaultValue="comparaison" className="space-y-4">
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="comparaison">
-                <BarChart3 className="h-4 w-4 mr-1" />
-                Comparaison
-              </TabsTrigger>
-              <TabsTrigger value="details">
-                <PieChart className="h-4 w-4 mr-1" />
-                Détails
-              </TabsTrigger>
-              <TabsTrigger value="liste">
-                Liste ({previsions.length})
-              </TabsTrigger>
+          <Tabs defaultValue="progression" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="progression">Progression</TabsTrigger>
+              <TabsTrigger value="historique">Historique {annee}</TabsTrigger>
+              <TabsTrigger value="liste">Liste ({previsions.length})</TabsTrigger>
             </TabsList>
 
-            {/* Onglet Comparaison */}
-            <TabsContent value="comparaison" className="space-y-4">
+            {/* Onglet Progression */}
+            <TabsContent value="progression" className="space-y-4">
+              {/* Dépenses */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Évolution mensuelle - Prévu vs Réalisé</CardTitle>
-                  <CardDescription>Comparaison des recettes et dépenses par mois</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingDown className="h-5 w-5 text-destructive" />
+                    Suivi des dépenses par catégorie
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {stats?.details?.depenses && stats.details.depenses.length > 0 ? (
+                    stats.details.depenses.map((dep) => (
+                      <div key={dep.id} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{dep.categorie}</span>
+                            {getStatutBadge(dep.statut)}
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-bold ${getTauxColor(dep.taux, true)}`}>
+                              {formatMontant(dep.montant_realise)}
+                            </span>
+                            <span className="text-muted-foreground"> / {formatMontant(dep.montant_prevu)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={Math.min(dep.taux, 100)} 
+                            className={`flex-1 h-3 ${dep.taux > 100 ? '[&>div]:bg-destructive' : ''}`}
+                          />
+                          <span className={`text-sm font-medium w-16 text-right ${getTauxColor(dep.taux, true)}`}>
+                            {dep.taux}%
+                          </span>
+                        </div>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>Caisse: {formatMontant(dep.realise_caisse)}</span>
+                          <span>Banque: {formatMontant(dep.realise_banque)}</span>
+                          <span className={dep.ecart > 0 ? 'text-destructive' : 'text-success'}>
+                            Écart: {dep.ecart > 0 ? '+' : ''}{formatMontant(dep.ecart)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">Aucune prévision de dépense pour ce mois</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recettes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-success" />
+                    Suivi des recettes par catégorie
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {stats?.details?.recettes && stats.details.recettes.length > 0 ? (
+                    stats.details.recettes.map((rec) => (
+                      <div key={rec.id} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{rec.categorie}</span>
+                            {getStatutBadge(rec.statut)}
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-bold ${getTauxColor(rec.taux)}`}>
+                              {formatMontant(rec.montant_realise)}
+                            </span>
+                            <span className="text-muted-foreground"> / {formatMontant(rec.montant_prevu)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress value={Math.min(rec.taux, 100)} className="flex-1 h-3" />
+                          <span className={`text-sm font-medium w-16 text-right ${getTauxColor(rec.taux)}`}>
+                            {rec.taux}%
+                          </span>
+                        </div>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>Caisse: {formatMontant(rec.realise_caisse)}</span>
+                          <span>Banque: {formatMontant(rec.realise_banque)}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">Aucune prévision de recette pour ce mois</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Onglet Historique */}
+            <TabsContent value="historique" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Évolution mensuelle {annee}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[400px]">
+                  <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartDataMensuel}>
+                      <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="mois" className="text-xs" />
-                        <YAxis tickFormatter={(v) => formatMontant(v)} className="text-xs" />
-                        <Tooltip 
-                          formatter={(value: number) => formatMontantFull(value)}
-                          labelFormatter={(label) => `${label}`}
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
-                          }}
-                        />
+                        <XAxis dataKey="mois" />
+                        <YAxis tickFormatter={(v) => formatMontant(v)} />
+                        <Tooltip formatter={(value: number) => formatMontantFull(value)} />
                         <Legend />
-                        <Bar dataKey="recettes_prevues" name="Recettes prévues" fill="hsl(var(--success) / 0.5)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="recettes_realisees" name="Recettes réalisées" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="depenses_prevues" name="Dépenses prévues" fill="hsl(var(--destructive) / 0.5)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="depenses_realisees" name="Dépenses réalisées" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="recettes" name="Recettes" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="depenses" name="Dépenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Tableau de comparaison mensuelle */}
+              {/* Tableau récapitulatif */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Tableau comparatif mensuel</CardTitle>
+                  <CardTitle>Récapitulatif annuel</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>Mois</TableHead>
-                          <TableHead className="text-center text-success" colSpan={2}>Recettes</TableHead>
-                          <TableHead className="text-center text-destructive" colSpan={2}>Dépenses</TableHead>
-                          <TableHead className="text-right">Solde</TableHead>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mois</TableHead>
+                        <TableHead className="text-right">Recettes</TableHead>
+                        <TableHead className="text-right">Dépenses</TableHead>
+                        <TableHead className="text-right">Bénéfice</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historique?.historique?.map((h) => (
+                        <TableRow key={h.mois} className={h.mois === mois ? 'bg-primary/5' : ''}>
+                          <TableCell className="font-medium">{h.mois_nom}</TableCell>
+                          <TableCell className="text-right text-success">{formatMontant(h.recettes_realisees)}</TableCell>
+                          <TableCell className="text-right text-destructive">{formatMontant(h.depenses_realisees)}</TableCell>
+                          <TableCell className={`text-right font-bold ${h.benefice >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {h.benefice >= 0 ? '+' : ''}{formatMontant(h.benefice)}
+                          </TableCell>
                         </TableRow>
-                        <TableRow className="bg-muted/30">
-                          <TableHead></TableHead>
-                          <TableHead className="text-center text-xs">Prévu</TableHead>
-                          <TableHead className="text-center text-xs">Réalisé</TableHead>
-                          <TableHead className="text-center text-xs">Prévu</TableHead>
-                          <TableHead className="text-center text-xs">Réalisé</TableHead>
-                          <TableHead></TableHead>
+                      ))}
+                      {historique?.totaux && (
+                        <TableRow className="bg-muted font-bold">
+                          <TableCell>TOTAL {annee}</TableCell>
+                          <TableCell className="text-right text-success">{formatMontant(historique.totaux.recettes_realisees)}</TableCell>
+                          <TableCell className="text-right text-destructive">{formatMontant(historique.totaux.depenses_realisees)}</TableCell>
+                          <TableCell className={`text-right ${historique.totaux.benefice_total >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {historique.totaux.benefice_total >= 0 ? '+' : ''}{formatMontant(historique.totaux.benefice_total)}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {comparaison?.comparaison?.map((c, index) => {
-                          const recP = c.recettes.caisse.prevu + c.recettes.banque.prevu;
-                          const recR = c.recettes.caisse.realise + c.recettes.banque.realise;
-                          const depP = c.depenses.caisse.prevu + c.depenses.banque.prevu;
-                          const depR = c.depenses.caisse.realise + c.depenses.banque.realise;
-                          const solde = recR - depR;
-                          
-                          return (
-                            <motion.tr
-                              key={c.mois}
-                              variants={itemVariants}
-                              initial="hidden"
-                              animate="visible"
-                              transition={{ delay: index * 0.03 }}
-                              className="border-b"
-                            >
-                              <TableCell className="font-medium">{c.mois_nom}</TableCell>
-                              <TableCell className="text-center">{formatMontant(recP)}</TableCell>
-                              <TableCell className="text-center text-success font-medium">{formatMontant(recR)}</TableCell>
-                              <TableCell className="text-center">{formatMontant(depP)}</TableCell>
-                              <TableCell className="text-center text-destructive font-medium">{formatMontant(depR)}</TableCell>
-                              <TableCell className={`text-right font-bold ${solde >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                {formatMontant(solde)}
-                              </TableCell>
-                            </motion.tr>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Onglet Détails par catégorie */}
-            <TabsContent value="details" className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Par catégorie - Recettes */}
-                <Card className="border-t-4 border-t-success">
-                  <CardHeader>
-                    <CardTitle className="text-success flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5" />
-                      Recettes par catégorie
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {stats?.par_categorie
-                        ?.filter(c => c.type === 'recette')
-                        .map((cat, i) => {
-                          const taux = cat.prevu > 0 ? (cat.realise / cat.prevu) * 100 : 0;
-                          return (
-                            <Collapsible 
-                              key={i} 
-                              open={expandedCategories.includes(`rec-${cat.categorie}`)}
-                              onOpenChange={() => toggleCategory(`rec-${cat.categorie}`)}
-                            >
-                              <CollapsibleTrigger className="w-full">
-                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">{cat.source}</Badge>
-                                    <span className="font-medium">{cat.categorie}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-bold ${getTauxColor(taux)}`}>{Math.round(taux)}%</span>
-                                    {expandedCategories.includes(`rec-${cat.categorie}`) ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                    }
-                                  </div>
-                                </div>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <div className="p-3 bg-muted/20 rounded-b-lg space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Prévu:</span>
-                                    <span>{formatMontantFull(cat.prevu)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Réalisé:</span>
-                                    <span className="text-success font-medium">{formatMontantFull(cat.realise)}</span>
-                                  </div>
-                                  <Progress value={Math.min(100, taux)} className="h-2" />
-                                </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          );
-                        })}
-                      {(!stats?.par_categorie || stats.par_categorie.filter(c => c.type === 'recette').length === 0) && (
-                        <p className="text-center text-muted-foreground py-4">Aucune prévision de recette</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Par catégorie - Dépenses */}
-                <Card className="border-t-4 border-t-destructive">
-                  <CardHeader>
-                    <CardTitle className="text-destructive flex items-center gap-2">
-                      <TrendingDown className="h-5 w-5" />
-                      Dépenses par catégorie
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {stats?.par_categorie
-                        ?.filter(c => c.type === 'depense')
-                        .map((cat, i) => {
-                          const taux = cat.prevu > 0 ? (cat.realise / cat.prevu) * 100 : 0;
-                          return (
-                            <Collapsible 
-                              key={i} 
-                              open={expandedCategories.includes(`dep-${cat.categorie}`)}
-                              onOpenChange={() => toggleCategory(`dep-${cat.categorie}`)}
-                            >
-                              <CollapsibleTrigger className="w-full">
-                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">{cat.source}</Badge>
-                                    <span className="font-medium">{cat.categorie}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-bold ${taux > 100 ? 'text-destructive' : getTauxColor(taux)}`}>
-                                      {Math.round(taux)}%
-                                    </span>
-                                    {expandedCategories.includes(`dep-${cat.categorie}`) ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                    }
-                                  </div>
-                                </div>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <div className="p-3 bg-muted/20 rounded-b-lg space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Prévu:</span>
-                                    <span>{formatMontantFull(cat.prevu)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Réalisé:</span>
-                                    <span className="text-destructive font-medium">{formatMontantFull(cat.realise)}</span>
-                                  </div>
-                                  <Progress value={Math.min(100, taux)} className="h-2" />
-                                </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          );
-                        })}
-                      {(!stats?.par_categorie || stats.par_categorie.filter(c => c.type === 'depense').length === 0) && (
-                        <p className="text-center text-muted-foreground py-4">Aucune prévision de dépense</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
             {/* Onglet Liste */}
-            <TabsContent value="liste" className="space-y-4">
-              {previsions.length === 0 ? (
-                <DocumentEmptyState
-                  icon={Target}
-                  title="Aucune prévision"
-                  description={`Aucune prévision budgétaire pour l'année ${annee}. Créez votre première prévision pour commencer le suivi.`}
-                  actionLabel="Nouvelle prévision"
-                  onAction={() => setShowNouvelleModal(true)}
-                />
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Liste des prévisions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
+            <TabsContent value="liste">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Prévisions de {moisNoms[mois - 1]} {annee}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {previsions.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Aucune prévision pour ce mois.</p>
+                      <Button variant="link" onClick={() => setShowNouvelleModal(true)}>
+                        Ajouter une prévision
+                      </Button>
+                    </div>
+                  ) : (
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>Période</TableHead>
+                        <TableRow>
                           <TableHead>Type</TableHead>
-                          <TableHead>Source</TableHead>
                           <TableHead>Catégorie</TableHead>
                           <TableHead className="text-right">Prévu</TableHead>
                           <TableHead className="text-right">Réalisé</TableHead>
-                          <TableHead className="text-center">Taux</TableHead>
+                          <TableHead className="text-right">Taux</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {previsions.map((prev, index) => (
-                          <motion.tr
-                            key={prev.id}
-                            variants={itemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            transition={{ delay: index * 0.03 }}
-                            className="border-b"
-                          >
-                            <TableCell className="font-medium">{prev.periode}</TableCell>
+                        {previsions.map((p) => (
+                          <TableRow key={p.id}>
                             <TableCell>
-                              {prev.type === 'recette' ? (
-                                <Badge className="bg-success/20 text-success border-success/30">
-                                  <TrendingUp className="h-3 w-3 mr-1" />
-                                  Recette
-                                </Badge>
+                              {p.type === 'recette' ? (
+                                <Badge className="bg-success/20 text-success border-0">Recette</Badge>
                               ) : (
-                                <Badge className="bg-destructive/20 text-destructive border-destructive/30">
-                                  <TrendingDown className="h-3 w-3 mr-1" />
-                                  Dépense
-                                </Badge>
+                                <Badge className="bg-destructive/20 text-destructive border-0">Dépense</Badge>
                               )}
                             </TableCell>
-                            <TableCell>
-                              {prev.source === 'caisse' ? (
-                                <span className="flex items-center gap-1">
-                                  <Wallet className="h-3 w-3 text-warning" />
-                                  Caisse
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1">
-                                  <Building2 className="h-3 w-3 text-primary" />
-                                  Banque
-                                </span>
-                              )}
+                            <TableCell className="font-medium">{p.categorie}</TableCell>
+                            <TableCell className="text-right">{formatMontantFull(p.montant_prevu)}</TableCell>
+                            <TableCell className="text-right">{formatMontantFull(p.montant_realise)}</TableCell>
+                            <TableCell className={`text-right font-bold ${getTauxColor(p.taux_realisation, p.type === 'depense')}`}>
+                              {p.taux_realisation}%
                             </TableCell>
-                            <TableCell>{prev.categorie}</TableCell>
-                            <TableCell className="text-right">{formatMontant(prev.montant_prevu)}</TableCell>
-                            <TableCell className="text-right font-medium">{formatMontant(prev.montant_realise)}</TableCell>
-                            <TableCell className="text-center">
-                              <span className={`font-bold ${getTauxColor(prev.taux_realisation)}`}>
-                                {prev.taux_realisation}%
-                              </span>
-                            </TableCell>
-                            <TableCell>{getStatutBadge(prev.statut)}</TableCell>
+                            <TableCell>{getStatutBadge(p.statut)}</TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDelete(prev.id)}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TableCell>
-                          </motion.tr>
+                          </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                  </CardContent>
-                </Card>
-              )}
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </motion.div>
       </motion.div>
 
-      <NouvellePrevisionModal open={showNouvelleModal} onOpenChange={setShowNouvelleModal} />
+      <NouvellePrevisionModal
+        open={showNouvelleModal}
+        onOpenChange={setShowNouvelleModal}
+        defaultMois={mois}
+        defaultAnnee={annee}
+      />
     </MainLayout>
   );
 }
