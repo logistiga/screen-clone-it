@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Plus, Target, TrendingUp, TrendingDown, Wallet, Building2, 
   BarChart3, RefreshCw, Trash2, CheckCircle2, 
-  XCircle, AlertTriangle, Clock, FileDown,
+  XCircle, AlertTriangle, Clock, FileDown, Loader2,
   ChevronLeft, ChevronRight, Calendar
 } from "lucide-react";
+import { toast } from "sonner";
+import { exportPrevisionsPDF } from "@/utils/export-previsions-pdf";
 import { NouvellePrevisionModal } from "@/components/NouvellePrevisionModal";
 import {
   Select,
@@ -52,6 +54,7 @@ export default function PrevisionsPage() {
   const [annee, setAnnee] = useState(currentDate.getFullYear());
   const [mois, setMois] = useState(currentDate.getMonth() + 1);
   const [showNouvelleModal, setShowNouvelleModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Données
   const { data: stats, isLoading: loadingStats } = useStatsMensuelles(annee, mois);
@@ -103,6 +106,23 @@ export default function PrevisionsPage() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!stats) {
+      toast.error('Aucune donnée à exporter');
+      return;
+    }
+    setExporting(true);
+    try {
+      await exportPrevisionsPDF(stats);
+      toast.success(`PDF exporté: Prévisions ${moisNoms[mois - 1]} ${annee}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Erreur lors de l\'export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const navigateMois = (direction: number) => {
     let newMois = mois + direction;
     let newAnnee = annee;
@@ -150,6 +170,18 @@ export default function PrevisionsPage() {
               <p className="text-muted-foreground">Vue mensuelle consolidée (Caisse + Banque)</p>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleExportPDF} 
+                disabled={exporting || !stats}
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4 mr-2" />
+                )}
+                Exporter PDF
+              </Button>
               <Button variant="outline" onClick={handleSync} disabled={syncMutation.isPending}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
                 Synchroniser
