@@ -142,11 +142,12 @@ class SuspiciousLoginDetector
     /**
      * Envoyer une alerte email à l'admin si la connexion est suspecte
      * @param int|null $sessionTokenId ID du token de session pour pouvoir le révoquer
+     * @return SuspiciousLogin|null L'enregistrement créé ou null si pas suspect
      */
-    public function sendAlertIfSuspicious(User $user, array $analysis, ?int $sessionTokenId = null): bool
+    public function sendAlertIfSuspicious(User $user, array $analysis, ?int $sessionTokenId = null): ?SuspiciousLogin
     {
         if (!$analysis['is_suspicious']) {
-            return false;
+            return null;
         }
 
         try {
@@ -165,13 +166,13 @@ class SuspiciousLoginDetector
                 'suspicious_login_id' => $suspiciousLogin->id,
             ]);
 
-            return true;
+            return $suspiciousLogin;
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'envoi de l\'alerte de connexion suspecte', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
             ]);
-            return false;
+            return null;
         }
     }
 

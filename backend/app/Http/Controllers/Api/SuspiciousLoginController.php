@@ -125,6 +125,33 @@ class SuspiciousLoginController extends Controller
     }
 
     /**
+     * Vérifier le statut d'une connexion suspecte (polling depuis frontend)
+     * Route publique
+     */
+    public function checkStatus(int $id): JsonResponse
+    {
+        $suspiciousLogin = SuspiciousLogin::find($id);
+
+        if (!$suspiciousLogin) {
+            return response()->json([
+                'status' => 'not_found',
+                'message' => 'Connexion non trouvée.',
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => $suspiciousLogin->status,
+            'reviewed_at' => $suspiciousLogin->reviewed_at,
+            'message' => match($suspiciousLogin->status) {
+                'pending' => 'En attente de validation par l\'administrateur.',
+                'approved' => 'Connexion approuvée.',
+                'blocked' => 'Connexion bloquée.',
+                default => 'Statut inconnu.',
+            },
+        ]);
+    }
+
+    /**
      * Liste des connexions suspectes (pour le dashboard admin)
      */
     public function index(Request $request): JsonResponse

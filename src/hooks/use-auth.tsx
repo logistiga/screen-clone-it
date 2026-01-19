@@ -12,11 +12,23 @@ interface User {
   permissions?: { name: string }[];
 }
 
+interface SuspiciousLoginInfo {
+  id: number;
+  reasons: string[];
+  location?: string;
+}
+
+interface LoginResult {
+  success: boolean;
+  error?: string;
+  suspiciousLogin?: SuspiciousLoginInfo;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   hasPermission: (permission: string) => boolean;
@@ -234,7 +246,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
       // IMPORTANT: Initialiser le CSRF AVANT le login (Sanctum SPA)
       try {
@@ -246,6 +258,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Appel de login
       const response = await api.post('/auth/login', { email, password });
+
+      // Extraire les infos de connexion suspecte si présentes
+      const securityInfo = response.data?.security;
+      const suspiciousLoginId = response.data?.suspicious_login_id;
 
       // Le backend peut renvoyer un token (compatibilité). En mode cookie, on évite
       // de le stocker sauf si on en a vraiment besoin.
@@ -268,6 +284,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           removeAuthToken();
         }
 
+        // Si connexion suspecte, retourner les infos pour redirection
+        if (securityInfo?.suspicious && suspiciousLoginId) {
+          return { 
+            success: true,
+            suspiciousLogin: {
+              id: suspiciousLoginId,
+              reasons: securityInfo.reasons || ['Connexion depuis un appareil inhabituel'],
+              location: securityInfo.location,
+            }
+          };
+        }
+
         return { success: true };
       } catch (verifyError: any) {
         // Si la session cookie n'est pas active, fallback Bearer token si fourni
@@ -277,6 +305,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const userResponse = await api.get('/auth/user');
             setUser(userResponse.data);
             updateLastActivity();
+
+            // Si connexion suspecte avec Bearer token aussi
+            if (securityInfo?.suspicious && suspiciousLoginId) {
+              return { 
+                success: true,
+                suspiciousLogin: {
+                  id: suspiciousLoginId,
+                  reasons: securityInfo.reasons || ['Connexion depuis un appareil inhabituel'],
+                  location: securityInfo.location,
+                }
+              };
+            }
+
             return { success: true };
           } catch {
             // continue vers l'erreur standard
