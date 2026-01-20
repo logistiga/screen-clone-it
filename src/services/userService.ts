@@ -133,20 +133,24 @@ export const userService = {
 
   // Créer un utilisateur
   async createUser(data: CreateUserData): Promise<User> {
-    const payload = {
-      nom: data.nom?.trim()?.slice(0, 100),
-      email: data.email?.trim()?.toLowerCase(),
-      password: data.password,
-      password_confirmation: data.password_confirmation,
-      role: data.role,
+    const payload: CreateUserData = {
+      nom: String(data.nom ?? '').trim().slice(0, 100),
+      email: String(data.email ?? '').trim().toLowerCase(),
+      password: String(data.password ?? ''),
+      password_confirmation: String(data.password_confirmation ?? ''),
+      role: String(data.role ?? '').trim(),
       actif: data.actif ?? true,
     };
 
-    if (import.meta.env.DEV) {
-      // Debug temporaire pour trancher rapidement les erreurs 422
-      // eslint-disable-next-line no-console
-      console.log('POST /utilisateurs payload:', payload, 'nom length:', payload.nom?.length);
-    }
+    // Debug: à garder le temps de corriger le formulaire
+    // eslint-disable-next-line no-console
+    console.log('POST /utilisateurs payload:', {
+      ...payload,
+      password: '***',
+      password_confirmation: '***',
+    });
+    // eslint-disable-next-line no-console
+    console.log('payload.nom length:', payload.nom.length);
 
     const response = await api.post('/utilisateurs', payload);
     return response.data;
