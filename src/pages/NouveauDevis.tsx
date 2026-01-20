@@ -45,10 +45,10 @@ export default function NouveauDevisPage() {
   const navigate = useNavigate();
   
   // API hooks
-  const { data: clientsData, isLoading: loadingClients, error: clientsError } = useClients({ per_page: 100 });
+  const { data: clientsData, isLoading: loadingClients, error: clientsError } = useClients({ per_page: 500 });
   const { data: armateursData, isLoading: loadingArmateurs, error: armateursError } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires, error: transitairesError } = useTransitaires();
-  const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants();
+  const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants({ per_page: 500 });
   const { data: taxesData, error: taxesError } = useTaxes();
   const createDevisMutation = useCreateDevis();
 

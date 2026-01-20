@@ -570,8 +570,8 @@ export const transitairesApi = {
 
 // Representants API
 export const representantsApi = {
-  getAll: async () => {
-    const response = await api.get('/representants');
+  getAll: async (params?: { per_page?: number }) => {
+    const response = await api.get('/representants', { params });
     const payload: any = response.data;
     // Support multiples formats de réponse API
     if (Array.isArray(payload)) return payload as Representant[];

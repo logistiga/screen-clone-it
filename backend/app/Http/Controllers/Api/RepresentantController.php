@@ -52,7 +52,9 @@ class RepresentantController extends Controller
             $query->where('actif', $request->boolean('actif'));
         }
 
-        $representants = $query->orderBy('nom')->paginate($request->get('per_page', 15));
+        // Limite augmentée pour les sélecteurs/combobox (max 500)
+        $perPage = min((int) $request->get('per_page', 15), 500);
+        $representants = $query->orderBy('nom')->paginate($perPage);
 
         return response()->json(RepresentantResource::collection($representants)->response()->getData(true));
     }

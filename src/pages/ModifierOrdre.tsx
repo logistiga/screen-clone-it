@@ -44,10 +44,10 @@ export default function ModifierOrdrePage() {
 
   // Fetch data
   const { data: ordreData, isLoading: loadingOrdre } = useOrdreById(id || '');
-  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
+  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 500 });
   const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
-  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants();
+  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants({ per_page: 500 });
   const { data: config } = useConfiguration();
   const updateOrdreMutation = useUpdateOrdre();
 

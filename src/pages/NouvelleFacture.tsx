@@ -50,10 +50,10 @@ interface DraftData {
 export default function NouvelleFacturePage() {
   const navigate = useNavigate();
   
-  const { data: clientsData } = useClients();
+  const { data: clientsData } = useClients({ per_page: 500 });
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
-  const { data: representantsData } = useRepresentants();
+  const { data: representantsData } = useRepresentants({ per_page: 500 });
   const { data: configData } = useConfiguration();
   const createFactureMutation = useCreateFacture();
   
