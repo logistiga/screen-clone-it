@@ -80,7 +80,7 @@ export const MODULES: ModuleDefinition[] = [
     category: 'commercial',
     actions: {
       global: ['view', 'create', 'edit', 'delete'],
-      specific: ['validate', 'cancel', 'duplicate', 'export', 'print', 'send'],
+      specific: ['validate', 'cancel', 'duplicate', 'export', 'print', 'send', 'convert'],
     },
   },
   {
@@ -203,7 +203,7 @@ export const MODULES: ModuleDefinition[] = [
     category: 'finance',
     actions: {
       global: ['view', 'create', 'edit', 'delete'],
-      specific: ['validate', 'approve', 'reject', 'export'],
+      specific: ['validate', 'approve', 'reject', 'export', 'print', 'send', 'payment', 'download'],
     },
   },
   
