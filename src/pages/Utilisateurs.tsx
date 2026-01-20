@@ -187,47 +187,60 @@ export default function UtilisateursPage() {
   };
 
   const validateForm = (): boolean => {
-    if (!formData.nom.trim()) return false;
-    if (!formData.email.trim()) return false;
+    const nom = formData.nom.trim();
+    const email = formData.email.trim();
+
+    if (!nom) return false;
+    if (nom.length > 100) return false;
+
+    if (!email) return false;
+
     if (!isEditing && (!formData.password || formData.password.length < 8)) return false;
     if (!isEditing && formData.password !== formData.password_confirmation) return false;
     if (isEditing && formData.password && formData.password !== formData.password_confirmation) return false;
+
     if (!formData.role) return false;
+
     return true;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    if (isEditing && selectedUser) {
-      const updateData: UpdateUserData = {
-        nom: formData.nom.trim(),
-        email: formData.email.trim(),
-        role: formData.role,
-        actif: formData.actif,
-      };
-      
-      if (formData.password) {
-        updateData.password = formData.password;
-        updateData.password_confirmation = formData.password_confirmation;
-      }
-      
-      await updateUser.mutateAsync({ id: selectedUser.id, data: updateData });
-    } else {
-      const createData: CreateUserData = {
-        nom: formData.nom.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        password_confirmation: formData.password_confirmation,
-        role: formData.role,
-        actif: formData.actif,
-      };
-      
-      await createUser.mutateAsync(createData);
-    }
+    try {
+      if (isEditing && selectedUser) {
+        const updateData: UpdateUserData = {
+          nom: formData.nom.trim().slice(0, 100),
+          email: formData.email.trim().toLowerCase(),
+          role: formData.role,
+          actif: formData.actif,
+        };
 
-    setShowModal(false);
-    resetForm();
+        if (formData.password) {
+          updateData.password = formData.password;
+          updateData.password_confirmation = formData.password_confirmation;
+        }
+
+        await updateUser.mutateAsync({ id: selectedUser.id, data: updateData });
+      } else {
+        const createData: CreateUserData = {
+          nom: formData.nom.trim().slice(0, 100),
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+          password_confirmation: formData.password_confirmation,
+          role: formData.role,
+          actif: formData.actif ?? true,
+        };
+
+        await createUser.mutateAsync(createData);
+      }
+
+      setShowModal(false);
+      resetForm();
+    } catch {
+      // L'erreur est déjà gérée par React Query (toast), on évite juste une rejection non gérée.
+      return;
+    }
   };
 
   const handleDelete = async () => {
@@ -736,6 +749,7 @@ export default function UtilisateursPage() {
                 <Input
                   id="nom"
                   value={formData.nom}
+                  maxLength={100}
                   onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   placeholder="Jean Dupont"
                 />
@@ -747,6 +761,7 @@ export default function UtilisateursPage() {
                   id="email"
                   type="email"
                   value={formData.email}
+                  maxLength={255}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="jean.dupont@exemple.com"
                 />
@@ -762,6 +777,7 @@ export default function UtilisateursPage() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
+                    maxLength={100}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder={isEditing ? '••••••••' : 'Min. 8 caractères'}
                     className="pr-10"
@@ -778,13 +794,14 @@ export default function UtilisateursPage() {
                 </div>
               </div>
 
-              {(formData.password || !isEditing) && (
+                {(formData.password || !isEditing) && (
                 <div className="space-y-2">
                   <Label htmlFor="password_confirmation">Confirmer le mot de passe *</Label>
                   <Input
                     id="password_confirmation"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password_confirmation}
+                    maxLength={100}
                     onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
                     placeholder="Confirmer le mot de passe"
                   />

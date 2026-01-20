@@ -55,14 +55,14 @@ export interface UserFilters {
   page?: number;
 }
 
-export interface CreateUserData {
+export type CreateUserData = {
   nom: string;
   email: string;
   password: string;
   password_confirmation: string;
   role: string;
   actif?: boolean;
-}
+};
 
 export interface UpdateUserData {
   nom?: string;
@@ -133,7 +133,22 @@ export const userService = {
 
   // Créer un utilisateur
   async createUser(data: CreateUserData): Promise<User> {
-    const response = await api.post('/utilisateurs', data);
+    const payload = {
+      nom: data.nom?.trim()?.slice(0, 100),
+      email: data.email?.trim()?.toLowerCase(),
+      password: data.password,
+      password_confirmation: data.password_confirmation,
+      role: data.role,
+      actif: data.actif ?? true,
+    };
+
+    if (import.meta.env.DEV) {
+      // Debug temporaire pour trancher rapidement les erreurs 422
+      // eslint-disable-next-line no-console
+      console.log('POST /utilisateurs payload:', payload, 'nom length:', payload.nom?.length);
+    }
+
+    const response = await api.post('/utilisateurs', payload);
     return response.data;
   },
 
