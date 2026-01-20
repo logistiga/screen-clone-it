@@ -75,6 +75,8 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // === Administration ===
   { path: '/utilisateurs', permission: 'utilisateurs.voir', role: 'administrateur' },
   { path: '/roles', permission: 'roles.voir', role: 'administrateur' },
+  { path: '/roles/nouveau', permission: 'roles.creer', role: 'administrateur' },
+  { path: '/roles/:id/modifier', permission: 'roles.modifier', role: 'administrateur' },
   { path: '/profil' }, // Pas de permission requise, chaque utilisateur peut voir son profil
   { path: '/notifications' }, // Pas de permission requise
 

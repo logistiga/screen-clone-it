@@ -105,6 +105,7 @@ const CreditDetailPage = lazy(() => import("./pages/CreditDetail"));
 
 const UtilisateursPage = lazy(() => import("./pages/Utilisateurs"));
 const RolesPage = lazy(() => import("./pages/Roles"));
+const RoleFormPage = lazy(() => import("./pages/RoleForm"));
 const ProfilPage = lazy(() => import("./pages/Profil"));
 const NotificationsPage = lazy(() => import("./pages/Notifications"));
 const TracabilitePage = lazy(() => import("./pages/Tracabilite"));
@@ -233,6 +234,8 @@ const App = () => (
                 {/* Routes protégées - Administration (rôle admin requis) */}
                 <Route path="/utilisateurs" element={<ProtectedRoute requiredPermission={P.utilisateurs.view} requiredRole="administrateur"><UtilisateursPage /></ProtectedRoute>} />
                 <Route path="/roles" element={<ProtectedRoute requiredPermission={P.roles.view} requiredRole="administrateur"><RolesPage /></ProtectedRoute>} />
+                <Route path="/roles/nouveau" element={<ProtectedRoute requiredPermission={P.roles.view} requiredRole="administrateur"><RoleFormPage /></ProtectedRoute>} />
+                <Route path="/roles/:id/modifier" element={<ProtectedRoute requiredPermission={P.roles.view} requiredRole="administrateur"><RoleFormPage /></ProtectedRoute>} />
                 
                 {/* Routes protégées - Profil et Notifications (accessibles à tous les utilisateurs connectés) */}
                 <Route path="/profil" element={<ProtectedRoute><ProfilPage /></ProtectedRoute>} />

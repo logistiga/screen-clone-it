@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -109,13 +110,12 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function RolesPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("liste");
-  const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [expandedRoles, setExpandedRoles] = useState<number[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   
@@ -128,25 +128,10 @@ export default function RolesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   
-  // Filtre par catégorie dans la modal de permissions
-  const [permissionSearch, setPermissionSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [expandedModules, setExpandedModules] = useState<string[]>([]);
-  
   const [filterHasUsers, setFilterHasUsers] = useState<boolean | undefined>(undefined);
   const [filterIsSystem, setFilterIsSystem] = useState<boolean | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>("asc");
-  
-  const [formData, setFormData] = useState<{
-    name: string;
-    description: string;
-    permissions: string[];
-  }>({
-    name: '',
-    description: '',
-    permissions: []
-  });
 
   // Filtres combinés
   const filters: RoleFilters = useMemo(() => ({
@@ -187,25 +172,6 @@ export default function RolesPage() {
   const modulesByCategory = useMemo(() => getModulesByCategory(), []);
 
   // Filtrage des modules par recherche et catégorie
-  const filteredModules = useMemo(() => {
-    let modules = localPermissionModules;
-    
-    if (selectedCategory) {
-      modules = modules.filter(m => m.category === selectedCategory);
-    }
-    
-    if (permissionSearch) {
-      const search = permissionSearch.toLowerCase();
-      modules = modules.filter(m => 
-        m.label.toLowerCase().includes(search) ||
-        m.module.toLowerCase().includes(search) ||
-        m.permissions.some(p => p.label.toLowerCase().includes(search))
-      );
-    }
-    
-    return modules;
-  }, [localPermissionModules, selectedCategory, permissionSearch]);
-
   // Stats
   const stats = useMemo(() => {
     if (!statsData) return null;
@@ -229,29 +195,12 @@ export default function RolesPage() {
   };
 
   // Fonctions de gestion
-  const resetForm = () => {
-    setFormData({ name: '', description: '', permissions: [] });
-    setSelectedRole(null);
-    setIsEditing(false);
-    setPermissionSearch("");
-    setSelectedCategory(null);
-    setExpandedModules([]);
-  };
-
   const handleOpenAdd = () => {
-    resetForm();
-    setShowModal(true);
+    navigate('/roles/nouveau');
   };
 
   const handleOpenEdit = (role: Role) => {
-    setSelectedRole(role);
-    setIsEditing(true);
-    setFormData({
-      name: role.name,
-      description: role.description || '',
-      permissions: [...role.permissions]
-    });
-    setShowModal(true);
+    navigate(`/roles/${role.id}/modifier`);
   };
 
   const handleDuplicate = async (role: Role) => {
@@ -343,103 +292,6 @@ export default function RolesPage() {
     }
   };
 
-  // Gestion des permissions dans le formulaire
-  const hasPermission = (permName: string): boolean => {
-    return formData.permissions.includes(permName);
-  };
-
-  const togglePermission = (permName: string) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: prev.permissions.includes(permName)
-        ? prev.permissions.filter(p => p !== permName)
-        : [...prev.permissions, permName]
-    }));
-  };
-
-  const toggleModuleAll = (moduleKey: string, permissions: Array<{ name: string }>) => {
-    const modulePermNames = permissions.map(p => p.name);
-    const allActive = modulePermNames.every(name => formData.permissions.includes(name));
-    
-    setFormData(prev => ({
-      ...prev,
-      permissions: allActive
-        ? prev.permissions.filter(p => !modulePermNames.includes(p))
-        : [...new Set([...prev.permissions, ...modulePermNames])]
-    }));
-  };
-
-  const toggleCategoryAll = (category: string) => {
-    const categoryModules = localPermissionModules.filter(m => m.category === category);
-    const categoryPerms = categoryModules.flatMap(m => m.permissions.map(p => p.name));
-    const allActive = categoryPerms.every(p => formData.permissions.includes(p));
-    
-    setFormData(prev => ({
-      ...prev,
-      permissions: allActive
-        ? prev.permissions.filter(p => !categoryPerms.includes(p))
-        : [...new Set([...prev.permissions, ...categoryPerms])]
-    }));
-  };
-
-  const isModuleFullyActive = (permissions: Array<{ name: string }>): boolean => {
-    return permissions.every(p => formData.permissions.includes(p.name));
-  };
-
-  const isModulePartiallyActive = (permissions: Array<{ name: string }>): boolean => {
-    const count = permissions.filter(p => formData.permissions.includes(p.name)).length;
-    return count > 0 && count < permissions.length;
-  };
-
-  const isCategoryFullyActive = (category: string): boolean => {
-    const categoryModules = localPermissionModules.filter(m => m.category === category);
-    return categoryModules.every(m => isModuleFullyActive(m.permissions));
-  };
-
-  const isCategoryPartiallyActive = (category: string): boolean => {
-    const categoryModules = localPermissionModules.filter(m => m.category === category);
-    const hasAny = categoryModules.some(m => m.permissions.some(p => formData.permissions.includes(p.name)));
-    const hasAll = isCategoryFullyActive(category);
-    return hasAny && !hasAll;
-  };
-
-  const getCategoryPermissionCount = (category: string): { active: number; total: number } => {
-    const categoryModules = localPermissionModules.filter(m => m.category === category);
-    const total = categoryModules.reduce((sum, m) => sum + m.permissions.length, 0);
-    const active = categoryModules.reduce((sum, m) => 
-      sum + m.permissions.filter(p => formData.permissions.includes(p.name)).length, 0
-    );
-    return { active, total };
-  };
-
-  const selectAllPermissions = () => {
-    const allPerms = localPermissionModules.flatMap(m => m.permissions.map(p => p.name));
-    setFormData(prev => ({ ...prev, permissions: allPerms }));
-  };
-
-  const deselectAllPermissions = () => {
-    setFormData(prev => ({ ...prev, permissions: [] }));
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) return;
-
-    const payload: RoleFormData = {
-      name: formData.name.trim(),
-      description: formData.description.trim() || undefined,
-      permissions: formData.permissions,
-    };
-
-    if (isEditing && selectedRole) {
-      await updateRole.mutateAsync({ id: selectedRole.id, data: payload });
-    } else {
-      await createRole.mutateAsync(payload);
-    }
-
-    setShowModal(false);
-    resetForm();
-  };
-
   const handleDelete = async () => {
     if (!selectedRole) return;
     await deleteRole.mutateAsync(selectedRole.id);
@@ -468,16 +320,6 @@ export default function RolesPage() {
     }
     setCurrentPage(1);
   };
-
-  // Toggle module expanded in form
-  const toggleModuleExpanded = (moduleKey: string) => {
-    setExpandedModules(prev => 
-      prev.includes(moduleKey) 
-        ? prev.filter(k => k !== moduleKey)
-        : [...prev, moduleKey]
-    );
-  };
-
   // Données pour les graphiques
   const pieChartData = useMemo(() => {
     if (!stats?.rolesDistribution) return [];
@@ -1178,204 +1020,6 @@ export default function RolesPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Modal Ajout/Modification avec matrice */}
-        <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-              <DialogTitle>{isEditing ? 'Modifier le rôle' : 'Nouveau rôle'}</DialogTitle>
-              <DialogDescription>
-                {isEditing ? 'Modifiez les informations et permissions du rôle' : 'Créez un nouveau rôle avec ses permissions'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="flex-1 overflow-hidden flex flex-col gap-4">
-              {/* Infos de base */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom du rôle *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ex: Comptable, Commercial..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Description du rôle..."
-                    rows={1}
-                  />
-                </div>
-              </div>
-
-              {/* Barre d'outils permissions */}
-              <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 flex-1">
-                  <Lock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    <strong>{formData.permissions.length}</strong> / {totalLocalPermissions} permissions
-                  </span>
-                  <Progress value={(formData.permissions.length / totalLocalPermissions) * 100} className="h-2 w-24" />
-                </div>
-                
-                <div className="relative flex-1 max-w-xs">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Rechercher..."
-                    value={permissionSearch}
-                    onChange={(e) => setPermissionSearch(e.target.value)}
-                    className="pl-9 h-8"
-                  />
-                </div>
-                
-                <Select value={selectedCategory || "all"} onValueChange={(v) => setSelectedCategory(v === "all" ? null : v)}>
-                  <SelectTrigger className="w-40 h-8">
-                    <SelectValue placeholder="Catégorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Button variant="outline" size="sm" onClick={selectAllPermissions}>
-                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                  Tout
-                </Button>
-                <Button variant="outline" size="sm" onClick={deselectAllPermissions}>
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Aucun
-                </Button>
-              </div>
-
-              {/* Matrice de permissions par catégorie */}
-              <ScrollArea className="flex-1 border rounded-lg">
-                <div className="p-4 space-y-4">
-                  {Object.entries(CATEGORY_LABELS).map(([categoryKey, categoryLabel]) => {
-                    const categoryModules = filteredModules.filter(m => m.category === categoryKey);
-                    if (categoryModules.length === 0) return null;
-                    
-                    const { active, total } = getCategoryPermissionCount(categoryKey);
-                    const isFullyActive = isCategoryFullyActive(categoryKey);
-                    const isPartiallyActive = isCategoryPartiallyActive(categoryKey);
-                    
-                    return (
-                      <div key={categoryKey} className="space-y-2">
-                        {/* En-tête catégorie */}
-                        <div 
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${CATEGORY_COLORS[categoryKey] || ''}`}
-                          onClick={() => toggleCategoryAll(categoryKey)}
-                        >
-                          <Checkbox
-                            checked={isFullyActive}
-                            className={isPartiallyActive ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
-                            onCheckedChange={() => toggleCategoryAll(categoryKey)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span className="font-semibold flex-1">{categoryLabel}</span>
-                          <Badge variant={isFullyActive ? "default" : isPartiallyActive ? "secondary" : "outline"}>
-                            {active}/{total}
-                          </Badge>
-                        </div>
-                        
-                        {/* Modules de cette catégorie */}
-                        <div className="ml-4 space-y-1">
-                          {categoryModules.map(module => {
-                            const Icon = MODULE_ICONS[module.module] || Shield;
-                            const isModuleFull = isModuleFullyActive(module.permissions);
-                            const isModulePartial = isModulePartiallyActive(module.permissions);
-                            const activeCount = module.permissions.filter(p => formData.permissions.includes(p.name)).length;
-                            const isExpanded = expandedModules.includes(module.module);
-                            
-                            return (
-                              <div key={module.module} className="border rounded-lg overflow-hidden">
-                                {/* En-tête module */}
-                                <div 
-                                  className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? 'border-b' : ''}`}
-                                  onClick={() => toggleModuleExpanded(module.module)}
-                                >
-                                  <Checkbox
-                                    checked={isModuleFull}
-                                    className={isModulePartial ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
-                                    onCheckedChange={() => toggleModuleAll(module.module, module.permissions)}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                  <Icon className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium flex-1">{module.label}</span>
-                                  <Badge variant={isModuleFull ? "default" : isModulePartial ? "secondary" : "outline"} className="mr-2">
-                                    {activeCount}/{module.permissions.length}
-                                  </Badge>
-                                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                </div>
-                                
-                                {/* Actions du module */}
-                                <AnimatePresence>
-                                  {isExpanded && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: "auto", opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.15 }}
-                                    >
-                                      <div className="p-3 bg-muted/30 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                        {module.permissions.map(perm => (
-                                          <div 
-                                            key={perm.name}
-                                            className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
-                                              hasPermission(perm.name) 
-                                                ? 'bg-primary/10 border border-primary/20' 
-                                                : 'bg-background border hover:bg-muted/50'
-                                            }`}
-                                            onClick={() => togglePermission(perm.name)}
-                                          >
-                                            <Checkbox
-                                              checked={hasPermission(perm.name)}
-                                              onCheckedChange={() => togglePermission(perm.name)}
-                                              onClick={(e) => e.stopPropagation()}
-                                            />
-                                            <span className="text-sm">{perm.label}</span>
-                                            {hasPermission(perm.name) && (
-                                              <Unlock className="h-3 w-3 text-primary ml-auto" />
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </div>
-
-            <DialogFooter className="gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => setShowModal(false)}>
-                Annuler
-              </Button>
-              <Button 
-                onClick={handleSubmit} 
-                disabled={!formData.name.trim() || createRole.isPending || updateRole.isPending}
-              >
-                {(createRole.isPending || updateRole.isPending) && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                )}
-                {isEditing ? 'Enregistrer' : 'Créer le rôle'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Modal Utilisateurs du rôle */}
         <Dialog open={showUsersModal} onOpenChange={(open) => {
