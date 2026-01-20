@@ -25,7 +25,7 @@ return [
         'exporter' => ['label' => 'Exporter', 'description' => 'Exporter les données'],
         'importer' => ['label' => 'Importer', 'description' => 'Importer des données'],
         'imprimer' => ['label' => 'Imprimer', 'description' => 'Imprimer'],
-        'envoyer' => ['label' => 'Envoyer', 'description' => 'Envoyer par email'],
+        'envoyer' => ['label' => 'Envoyer', 'description' => 'Envoyer par email/WhatsApp'],
         'dupliquer' => ['label' => 'Dupliquer', 'description' => 'Dupliquer un élément'],
         'assigner' => ['label' => 'Assigner', 'description' => 'Assigner à un utilisateur'],
         'desassigner' => ['label' => 'Désassigner', 'description' => 'Retirer une assignation'],
@@ -40,6 +40,9 @@ return [
         'entree' => ['label' => 'Entrée stock', 'description' => 'Enregistrer une entrée de stock'],
         'sortie' => ['label' => 'Sortie stock', 'description' => 'Enregistrer une sortie de stock'],
         'assigner_role' => ['label' => 'Assigner rôle', 'description' => 'Assigner un rôle'],
+        'convertir' => ['label' => 'Convertir', 'description' => 'Convertir en autre document'],
+        'paiement' => ['label' => 'Paiement', 'description' => 'Enregistrer un paiement'],
+        'telecharger' => ['label' => 'Télécharger', 'description' => 'Télécharger le document'],
     ],
 
     /**
@@ -77,7 +80,7 @@ return [
             'description' => 'Gestion des ordres de travail',
             'category' => 'commercial',
             'global_actions' => ['voir', 'creer', 'modifier', 'supprimer'],
-            'specific_actions' => ['valider', 'annuler', 'assigner', 'exporter', 'imprimer'],
+            'specific_actions' => ['valider', 'annuler', 'exporter', 'imprimer', 'envoyer', 'convertir', 'paiement', 'telecharger'],
         ],
         'factures' => [
             'label' => 'Factures',

@@ -20,7 +20,7 @@ export const SPECIFIC_ACTIONS = {
   export: { key: 'exporter', label: 'Exporter', description: 'Exporter les données' },
   import: { key: 'importer', label: 'Importer', description: 'Importer des données' },
   print: { key: 'imprimer', label: 'Imprimer', description: 'Imprimer' },
-  send: { key: 'envoyer', label: 'Envoyer', description: 'Envoyer par email' },
+  send: { key: 'envoyer', label: 'Envoyer', description: 'Envoyer par email/WhatsApp' },
   duplicate: { key: 'dupliquer', label: 'Dupliquer', description: 'Dupliquer un élément' },
   assign: { key: 'assigner', label: 'Assigner', description: 'Assigner à un utilisateur' },
   unassign: { key: 'desassigner', label: 'Désassigner', description: 'Retirer une assignation' },
@@ -35,6 +35,9 @@ export const SPECIFIC_ACTIONS = {
   stockIn: { key: 'entree', label: 'Entrée stock', description: 'Enregistrer une entrée de stock' },
   stockOut: { key: 'sortie', label: 'Sortie stock', description: 'Enregistrer une sortie de stock' },
   assignRole: { key: 'assigner_role', label: 'Assigner rôle', description: 'Assigner un rôle à un utilisateur' },
+  convert: { key: 'convertir', label: 'Convertir', description: 'Convertir en autre document' },
+  payment: { key: 'paiement', label: 'Paiement', description: 'Enregistrer un paiement' },
+  download: { key: 'telecharger', label: 'Télécharger', description: 'Télécharger le document' },
 } as const;
 
 // Type pour les clés d'actions
@@ -88,7 +91,7 @@ export const MODULES: ModuleDefinition[] = [
     category: 'commercial',
     actions: {
       global: ['view', 'create', 'edit', 'delete'],
-      specific: ['validate', 'cancel', 'assign', 'export', 'print'],
+      specific: ['validate', 'cancel', 'export', 'print', 'send', 'convert', 'payment', 'download'],
     },
   },
   {
