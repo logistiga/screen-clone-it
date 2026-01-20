@@ -601,11 +601,11 @@ export function useDeleteTransitaire() {
 }
 
 // Representants hooks (✅ NORMALISE EN TABLEAU)
-export function useRepresentants() {
+export function useRepresentants(params?: { per_page?: number }) {
   return useQuery({
-    queryKey: ['representants'],
+    queryKey: ['representants', params],
     queryFn: async () => {
-      const res = await representantsApi.getAll();
+      const res = await representantsApi.getAll(params);
       return normalizeToArray<Representant>(res);
     },
     staleTime: STALE_TIME,

@@ -45,10 +45,10 @@ export default function ModifierFacturePage() {
 
   // Fetch data
   const { data: factureData, isLoading: loadingFacture } = useFactureById(id || '');
-  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 100 });
+  const { data: clientsData, isLoading: loadingClients } = useClients({ per_page: 500 });
   const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
-  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants();
+  const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants({ per_page: 500 });
   const { data: config } = useConfiguration();
   const updateFactureMutation = useUpdateFacture();
 
