@@ -97,6 +97,10 @@ export default function RolesPage() {
   // Pagination & filtres
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  
+  // Pagination des modules dans la modal
+  const [modulePage, setModulePage] = useState(1);
+  const modulesPerPage = 5;
   const [filterHasUsers, setFilterHasUsers] = useState<boolean | undefined>(undefined);
   const [filterIsSystem, setFilterIsSystem] = useState<boolean | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("name");
@@ -173,6 +177,7 @@ export default function RolesPage() {
     setFormData({ name: '', description: '', permissions: [] });
     setSelectedRole(null);
     setIsEditing(false);
+    setModulePage(1);
   };
 
   const handleOpenAdd = () => {
@@ -1069,68 +1074,114 @@ export default function RolesPage() {
                 </div>
               </div>
 
-              {/* Permissions par module */}
+              {/* Permissions par module avec pagination */}
               <div className="space-y-4">
-                <Label className="text-base font-semibold">Permissions par module</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Permissions par module</Label>
+                  {permissionModules.length > modulesPerPage && (
+                    <span className="text-sm text-muted-foreground">
+                      Page {modulePage} sur {Math.ceil(permissionModules.length / modulesPerPage)}
+                    </span>
+                  )}
+                </div>
 
                 {isLoadingPermissions ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
                   </div>
                 ) : (
-                  <Accordion type="multiple" className="w-full border rounded-lg">
-                    {permissionModules.map(module => {
-                      const Icon = MODULE_ICONS[module.module] || Shield;
-                      const fullyActive = isModuleFullyActive(module);
-                      const partiallyActive = isModulePartiallyActive(module);
-                      const activeCount = module.permissions.filter(p => formData.permissions.includes(p.name)).length;
-                      
-                      return (
-                        <AccordionItem key={module.module} value={module.module} className="border-b last:border-0">
-                          <AccordionTrigger className="hover:no-underline px-4">
-                            <div className="flex items-center gap-3 flex-1">
-                              <Checkbox
-                                checked={fullyActive}
-                                className={partiallyActive ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
-                                onCheckedChange={() => toggleModuleAll(module)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{module.label}</span>
-                              <Badge 
-                                variant={fullyActive ? "default" : partiallyActive ? "secondary" : "outline"}
-                                className="ml-auto"
-                              >
-                                {activeCount}/{module.permissions.length}
-                              </Badge>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-8 pt-2">
-                              {module.permissions.map(perm => (
-                                <div 
-                                  key={perm.name} 
-                                  className={`flex items-center gap-2 p-2 rounded transition-colors ${hasPermission(perm.name) ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
-                                >
+                  <>
+                    <Accordion type="multiple" className="w-full border rounded-lg">
+                      {permissionModules
+                        .slice((modulePage - 1) * modulesPerPage, modulePage * modulesPerPage)
+                        .map(module => {
+                          const Icon = MODULE_ICONS[module.module] || Shield;
+                          const fullyActive = isModuleFullyActive(module);
+                          const partiallyActive = isModulePartiallyActive(module);
+                          const activeCount = module.permissions.filter(p => formData.permissions.includes(p.name)).length;
+                          
+                          return (
+                            <AccordionItem key={module.module} value={module.module} className="border-b last:border-0">
+                              <AccordionTrigger className="hover:no-underline px-4">
+                                <div className="flex items-center gap-3 flex-1">
                                   <Checkbox
-                                    id={perm.name}
-                                    checked={hasPermission(perm.name)}
-                                    onCheckedChange={() => togglePermission(perm.name)}
+                                    checked={fullyActive}
+                                    className={partiallyActive ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
+                                    onCheckedChange={() => toggleModuleAll(module)}
+                                    onClick={(e) => e.stopPropagation()}
                                   />
-                                  <Label htmlFor={perm.name} className="text-sm cursor-pointer flex-1">
-                                    {perm.label}
-                                  </Label>
-                                  {hasPermission(perm.name) && (
-                                    <Unlock className="h-3.5 w-3.5 text-primary" />
-                                  )}
+                                  <Icon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium">{module.label}</span>
+                                  <Badge 
+                                    variant={fullyActive ? "default" : partiallyActive ? "secondary" : "outline"}
+                                    className="ml-auto"
+                                  >
+                                    {activeCount}/{module.permissions.length}
+                                  </Badge>
                                 </div>
-                              ))}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      );
-                    })}
-                  </Accordion>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 pb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-8 pt-2">
+                                  {module.permissions.map(perm => (
+                                    <div 
+                                      key={perm.name} 
+                                      className={`flex items-center gap-2 p-2 rounded transition-colors ${hasPermission(perm.name) ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
+                                    >
+                                      <Checkbox
+                                        id={perm.name}
+                                        checked={hasPermission(perm.name)}
+                                        onCheckedChange={() => togglePermission(perm.name)}
+                                      />
+                                      <Label htmlFor={perm.name} className="text-sm cursor-pointer flex-1">
+                                        {perm.label}
+                                      </Label>
+                                      {hasPermission(perm.name) && (
+                                        <Unlock className="h-3.5 w-3.5 text-primary" />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          );
+                        })}
+                    </Accordion>
+
+                    {/* Pagination des modules */}
+                    {permissionModules.length > modulesPerPage && (
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setModulePage(p => Math.max(1, p - 1))}
+                          disabled={modulePage === 1}
+                        >
+                          Précédent
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.ceil(permissionModules.length / modulesPerPage) }, (_, i) => i + 1).map(page => (
+                            <Button
+                              key={page}
+                              variant={modulePage === page ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                              onClick={() => setModulePage(page)}
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setModulePage(p => Math.min(Math.ceil(permissionModules.length / modulesPerPage), p + 1))}
+                          disabled={modulePage >= Math.ceil(permissionModules.length / modulesPerPage)}
+                        >
+                          Suivant
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
