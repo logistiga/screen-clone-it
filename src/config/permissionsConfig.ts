@@ -474,53 +474,91 @@ export const PREDEFINED_ROLES = {
     label: 'Comptable',
     description: 'Gestion financière et comptabilité',
     permissions: [
-      'clients.voir',
-      'devis.voir',
-      'ordres.voir', 'ordres.paiement', 'ordres.telecharger',
-      'factures.voir', 'factures.creer', 'factures.modifier', 'factures.exporter', 'factures.imprimer', 'factures.envoyer', 'factures.telecharger',
-      'paiements.voir', 'paiements.creer', 'paiements.valider', 'paiements.exporter',
-      'caisse.voir', 'caisse.creer', 'caisse.exporter',
-      'banques.voir', 'banques.exporter',
-      'credits.voir', 'credits.creer', 'credits.exporter',
-      'notes.voir', 'notes.creer', 'notes.valider', 'notes.exporter', 'notes.imprimer', 'notes.envoyer', 'notes.paiement', 'notes.telecharger',
+      // Profil personnel (tous les rôles)
+      'profil.voir', 'profil.modifier',
+      // Clients - lecture et modification, PAS de suppression
+      'clients.voir', 'clients.modifier', 'clients.exporter',
+      // Devis - lecture complète
+      'devis.voir', 'devis.exporter', 'devis.imprimer', 'devis.telecharger',
+      // Ordres - toutes les actions sauf suppression
+      'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.valider', 'ordres.exporter', 'ordres.imprimer', 'ordres.envoyer', 'ordres.paiement', 'ordres.telecharger', 'ordres.convertir',
+      // Factures - toutes les actions sauf suppression
+      'factures.voir', 'factures.creer', 'factures.modifier', 'factures.valider', 'factures.exporter', 'factures.imprimer', 'factures.envoyer', 'factures.telecharger',
+      // Paiements
+      'paiements.voir', 'paiements.creer', 'paiements.modifier', 'paiements.valider', 'paiements.exporter',
+      // Caisse
+      'caisse.voir', 'caisse.creer', 'caisse.modifier', 'caisse.exporter',
+      // Banques
+      'banques.voir', 'banques.creer', 'banques.modifier', 'banques.exporter',
+      // Crédits
+      'credits.voir', 'credits.creer', 'credits.modifier', 'credits.exporter',
+      // Notes - toutes les actions sauf suppression
+      'notes.voir', 'notes.creer', 'notes.modifier', 'notes.valider', 'notes.exporter', 'notes.imprimer', 'notes.envoyer', 'notes.paiement', 'notes.telecharger',
+      // Reporting & Dashboard
       'reporting.voir', 'reporting.exporter',
       'dashboard.voir',
+      // PAS d'accès: configuration, securite, utilisateurs, roles
     ],
   },
   caissier: {
     label: 'Caissier',
     description: 'Gestion de la caisse et paiements',
     permissions: [
+      // Profil personnel
+      'profil.voir', 'profil.modifier',
+      // Clients - lecture seule
       'clients.voir',
-      'factures.voir',
-      'paiements.voir', 'paiements.creer',
-      'caisse.voir', 'caisse.creer',
+      // Factures - lecture seule
+      'factures.voir', 'factures.imprimer',
+      // Paiements
+      'paiements.voir', 'paiements.creer', 'paiements.modifier',
+      // Caisse
+      'caisse.voir', 'caisse.creer', 'caisse.modifier',
+      // Banques - lecture
       'banques.voir',
+      // Dashboard
+      'dashboard.voir',
     ],
   },
   commercial: {
     label: 'Commercial',
     description: 'Gestion commerciale et relation client',
     permissions: [
+      // Profil personnel
+      'profil.voir', 'profil.modifier',
+      // Clients - toutes actions sauf suppression
       'clients.voir', 'clients.creer', 'clients.modifier', 'clients.exporter',
-      'devis.voir', 'devis.creer', 'devis.modifier', 'devis.dupliquer', 'devis.exporter', 'devis.imprimer', 'devis.envoyer', 'devis.convertir',
-      'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.envoyer', 'ordres.telecharger', 'ordres.convertir',
-      'factures.voir', 'factures.envoyer', 'factures.telecharger',
+      // Devis - toutes les actions sauf suppression
+      'devis.voir', 'devis.creer', 'devis.modifier', 'devis.dupliquer', 'devis.valider', 'devis.exporter', 'devis.imprimer', 'devis.envoyer', 'devis.convertir', 'devis.telecharger',
+      // Ordres - toutes les actions sauf suppression
+      'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.valider', 'ordres.exporter', 'ordres.imprimer', 'ordres.envoyer', 'ordres.paiement', 'ordres.telecharger', 'ordres.convertir',
+      // Factures - toutes les actions sauf suppression et création
+      'factures.voir', 'factures.modifier', 'factures.exporter', 'factures.imprimer', 'factures.envoyer', 'factures.telecharger',
+      // Partenaires, transitaires, transporteurs - lecture
       'partenaires.voir',
       'transitaires.voir',
       'transporteurs.voir',
+      // Reporting & Dashboard
       'reporting.voir',
       'dashboard.voir',
+      // PAS d'accès: configuration, securite, utilisateurs, roles
     ],
   },
   operateur: {
     label: 'Opérateur',
     description: 'Suivi des ordres et exécution',
     permissions: [
+      // Profil personnel
+      'profil.voir', 'profil.modifier',
+      // Clients - lecture
       'clients.voir',
-      'ordres.voir', 'ordres.modifier',
-      'factures.voir',
-      'stocks.voir',
+      // Ordres - consultation et modification
+      'ordres.voir', 'ordres.modifier', 'ordres.imprimer', 'ordres.telecharger',
+      // Factures - lecture
+      'factures.voir', 'factures.imprimer',
+      // Stocks
+      'stocks.voir', 'stocks.modifier',
+      // Dashboard
       'dashboard.voir',
     ],
   },
