@@ -10,6 +10,37 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PWAInstallPrompt, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
 import { Loader2 } from "lucide-react";
 
+// Permissions par module
+const P = {
+  // Dashboard
+  dashboard: { view: 'dashboard.voir' },
+  // Clients
+  clients: { view: 'clients.voir', create: 'clients.creer', edit: 'clients.modifier' },
+  // Devis
+  devis: { view: 'devis.voir', create: 'devis.creer', edit: 'devis.modifier' },
+  // Ordres
+  ordres: { view: 'ordres.voir', create: 'ordres.creer', edit: 'ordres.modifier' },
+  // Factures
+  factures: { view: 'factures.voir', create: 'factures.creer', edit: 'factures.modifier', cancel: 'factures.annuler' },
+  // Notes
+  notes: { view: 'notes.voir', create: 'notes.creer', edit: 'notes.modifier' },
+  // Finance
+  caisse: { view: 'caisse.voir' },
+  banques: { view: 'banques.voir' },
+  credits: { view: 'credits.voir' },
+  // Reporting
+  reporting: { view: 'reporting.voir' },
+  // Administration
+  utilisateurs: { view: 'utilisateurs.voir' },
+  roles: { view: 'roles.voir' },
+  configuration: { view: 'configuration.voir' },
+  audit: { view: 'audit.voir' },
+  securite: { view: 'securite.voir' },
+  // Partenaires
+  partenaires: { view: 'partenaires.voir' },
+  transitaires: { view: 'transitaires.voir' },
+};
+
 // Loading component pour le lazy loading
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -140,66 +171,95 @@ const App = () => (
                 <Route path="/pending-approval" element={<PendingApprovalPage />} />
                 <Route path="/security/:token/:action" element={<SecurityActionPage />} />
                 
-                {/* Routes protégées */}
-                <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-                <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
-                <Route path="/clients/nouveau" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
-                <Route path="/clients/:id" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
-                <Route path="/clients/:id/modifier" element={<ProtectedRoute><NouveauClientPage /></ProtectedRoute>} />
-                <Route path="/devis" element={<ProtectedRoute><DevisPage /></ProtectedRoute>} />
-                <Route path="/devis/nouveau" element={<ProtectedRoute><NouveauDevisPage /></ProtectedRoute>} />
-                <Route path="/devis/:id" element={<ProtectedRoute><DevisDetailPage /></ProtectedRoute>} />
-                <Route path="/devis/:id/pdf" element={<ProtectedRoute><DevisPDFPage /></ProtectedRoute>} />
-                <Route path="/devis/:id/modifier" element={<ProtectedRoute><ModifierDevisPage /></ProtectedRoute>} />
-                <Route path="/ordres" element={<ProtectedRoute><OrdresTravailPage /></ProtectedRoute>} />
-                <Route path="/ordres/nouveau" element={<ProtectedRoute><NouvelOrdrePage /></ProtectedRoute>} />
-                <Route path="/ordres/:id" element={<ProtectedRoute><OrdreDetailPage /></ProtectedRoute>} />
-                <Route path="/ordres/:id/pdf" element={<ProtectedRoute><OrdrePDFPage /></ProtectedRoute>} />
-                <Route path="/ordres/:id/connaissement" element={<ProtectedRoute><ConnaissementPDFPage /></ProtectedRoute>} />
-                <Route path="/ordres/:id/modifier" element={<ProtectedRoute><ModifierOrdrePage /></ProtectedRoute>} />
-                <Route path="/factures" element={<ProtectedRoute><FacturesPage /></ProtectedRoute>} />
-                <Route path="/factures/nouvelle" element={<ProtectedRoute><NouvelleFacturePage /></ProtectedRoute>} />
-                <Route path="/factures/:id" element={<ProtectedRoute><FactureDetailPage /></ProtectedRoute>} />
-                <Route path="/factures/:id/pdf" element={<ProtectedRoute><FacturePDFPage /></ProtectedRoute>} />
-                <Route path="/factures/:id/modifier" element={<ProtectedRoute><ModifierFacturePage /></ProtectedRoute>} />
+                {/* Routes protégées - Dashboard */}
+                <Route path="/" element={<ProtectedRoute requiredPermission={P.dashboard.view}><DashboardPage /></ProtectedRoute>} />
                 
-                <Route path="/annulations" element={<ProtectedRoute><AnnulationsPage /></ProtectedRoute>} />
-                <Route path="/annulations/:id/avoir" element={<ProtectedRoute><AvoirPDFPage /></ProtectedRoute>} />
-                <Route path="/notes-debut" element={<ProtectedRoute><NotesDebutPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/nouvelle" element={<ProtectedRoute><NouvelleNoteDebutPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/ouverture-port" element={<ProtectedRoute><NouvelleNoteOuverturePortPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/detention" element={<ProtectedRoute><NouvelleNoteDetentionPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/reparation" element={<ProtectedRoute><NouvelleNoteReparationPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/relache" element={<ProtectedRoute><NouvelleNoteRelachePage /></ProtectedRoute>} />
-                <Route path="/notes-debut/:id" element={<ProtectedRoute><NoteDebutDetailPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/:id/pdf" element={<ProtectedRoute><NoteDebutPDFPage /></ProtectedRoute>} />
-                <Route path="/notes-debut/:id/modifier" element={<ProtectedRoute><ModifierNoteDebutPage /></ProtectedRoute>} />
-                <Route path="/caisse" element={<ProtectedRoute><CaissePage /></ProtectedRoute>} />
-                <Route path="/banque" element={<ProtectedRoute><BanquePage /></ProtectedRoute>} />
-                <Route path="/caisse-globale" element={<ProtectedRoute><CaisseGlobalePage /></ProtectedRoute>} />
-                <Route path="/reporting" element={<ProtectedRoute><ReportingPage /></ProtectedRoute>} />
-                <Route path="/previsions" element={<ProtectedRoute><PrevisionsPage /></ProtectedRoute>} />
-                <Route path="/credits" element={<ProtectedRoute><CreditsPage /></ProtectedRoute>} />
-                <Route path="/credits/:id" element={<ProtectedRoute><CreditDetailPage /></ProtectedRoute>} />
-                <Route path="/utilisateurs" element={<ProtectedRoute><UtilisateursPage /></ProtectedRoute>} />
-                <Route path="/roles" element={<ProtectedRoute><RolesPage /></ProtectedRoute>} />
+                {/* Routes protégées - Clients */}
+                <Route path="/clients" element={<ProtectedRoute requiredPermission={P.clients.view}><ClientsPage /></ProtectedRoute>} />
+                <Route path="/clients/nouveau" element={<ProtectedRoute requiredPermission={P.clients.create}><NouveauClientPage /></ProtectedRoute>} />
+                <Route path="/clients/:id" element={<ProtectedRoute requiredPermission={P.clients.view}><ClientDetailPage /></ProtectedRoute>} />
+                <Route path="/clients/:id/modifier" element={<ProtectedRoute requiredPermission={P.clients.edit}><NouveauClientPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Devis */}
+                <Route path="/devis" element={<ProtectedRoute requiredPermission={P.devis.view}><DevisPage /></ProtectedRoute>} />
+                <Route path="/devis/nouveau" element={<ProtectedRoute requiredPermission={P.devis.create}><NouveauDevisPage /></ProtectedRoute>} />
+                <Route path="/devis/:id" element={<ProtectedRoute requiredPermission={P.devis.view}><DevisDetailPage /></ProtectedRoute>} />
+                <Route path="/devis/:id/pdf" element={<ProtectedRoute requiredPermission={P.devis.view}><DevisPDFPage /></ProtectedRoute>} />
+                <Route path="/devis/:id/modifier" element={<ProtectedRoute requiredPermission={P.devis.edit}><ModifierDevisPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Ordres de travail */}
+                <Route path="/ordres" element={<ProtectedRoute requiredPermission={P.ordres.view}><OrdresTravailPage /></ProtectedRoute>} />
+                <Route path="/ordres/nouveau" element={<ProtectedRoute requiredPermission={P.ordres.create}><NouvelOrdrePage /></ProtectedRoute>} />
+                <Route path="/ordres/:id" element={<ProtectedRoute requiredPermission={P.ordres.view}><OrdreDetailPage /></ProtectedRoute>} />
+                <Route path="/ordres/:id/pdf" element={<ProtectedRoute requiredPermission={P.ordres.view}><OrdrePDFPage /></ProtectedRoute>} />
+                <Route path="/ordres/:id/connaissement" element={<ProtectedRoute requiredPermission={P.ordres.view}><ConnaissementPDFPage /></ProtectedRoute>} />
+                <Route path="/ordres/:id/modifier" element={<ProtectedRoute requiredPermission={P.ordres.edit}><ModifierOrdrePage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Factures */}
+                <Route path="/factures" element={<ProtectedRoute requiredPermission={P.factures.view}><FacturesPage /></ProtectedRoute>} />
+                <Route path="/factures/nouvelle" element={<ProtectedRoute requiredPermission={P.factures.create}><NouvelleFacturePage /></ProtectedRoute>} />
+                <Route path="/factures/:id" element={<ProtectedRoute requiredPermission={P.factures.view}><FactureDetailPage /></ProtectedRoute>} />
+                <Route path="/factures/:id/pdf" element={<ProtectedRoute requiredPermission={P.factures.view}><FacturePDFPage /></ProtectedRoute>} />
+                <Route path="/factures/:id/modifier" element={<ProtectedRoute requiredPermission={P.factures.edit}><ModifierFacturePage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Annulations */}
+                <Route path="/annulations" element={<ProtectedRoute requiredPermission={P.factures.cancel}><AnnulationsPage /></ProtectedRoute>} />
+                <Route path="/annulations/:id/avoir" element={<ProtectedRoute requiredPermission={P.factures.view}><AvoirPDFPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Notes de débit */}
+                <Route path="/notes-debut" element={<ProtectedRoute requiredPermission={P.notes.view}><NotesDebutPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/nouvelle" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteDebutPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/ouverture-port" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteOuverturePortPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/detention" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteDetentionPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/reparation" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteReparationPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/relache" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteRelachePage /></ProtectedRoute>} />
+                <Route path="/notes-debut/:id" element={<ProtectedRoute requiredPermission={P.notes.view}><NoteDebutDetailPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/:id/pdf" element={<ProtectedRoute requiredPermission={P.notes.view}><NoteDebutPDFPage /></ProtectedRoute>} />
+                <Route path="/notes-debut/:id/modifier" element={<ProtectedRoute requiredPermission={P.notes.edit}><ModifierNoteDebutPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Finance */}
+                <Route path="/caisse" element={<ProtectedRoute requiredPermission={P.caisse.view}><CaissePage /></ProtectedRoute>} />
+                <Route path="/banque" element={<ProtectedRoute requiredPermission={P.banques.view}><BanquePage /></ProtectedRoute>} />
+                <Route path="/caisse-globale" element={<ProtectedRoute requiredPermission={P.caisse.view}><CaisseGlobalePage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Reporting */}
+                <Route path="/reporting" element={<ProtectedRoute requiredPermission={P.reporting.view}><ReportingPage /></ProtectedRoute>} />
+                <Route path="/previsions" element={<ProtectedRoute requiredPermission={P.reporting.view}><PrevisionsPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Crédits */}
+                <Route path="/credits" element={<ProtectedRoute requiredPermission={P.credits.view}><CreditsPage /></ProtectedRoute>} />
+                <Route path="/credits/:id" element={<ProtectedRoute requiredPermission={P.credits.view}><CreditDetailPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Administration (rôle admin requis) */}
+                <Route path="/utilisateurs" element={<ProtectedRoute requiredPermission={P.utilisateurs.view} requiredRole="administrateur"><UtilisateursPage /></ProtectedRoute>} />
+                <Route path="/roles" element={<ProtectedRoute requiredPermission={P.roles.view} requiredRole="administrateur"><RolesPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Profil et Notifications (accessibles à tous les utilisateurs connectés) */}
                 <Route path="/profil" element={<ProtectedRoute><ProfilPage /></ProtectedRoute>} />
                 <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-                <Route path="/tracabilite" element={<ProtectedRoute><TracabilitePage /></ProtectedRoute>} />
-                <Route path="/emails" element={<ProtectedRoute><EmailsPage /></ProtectedRoute>} />
-                <Route path="/taxes" element={<ProtectedRoute><TaxesPage /></ProtectedRoute>} />
-                <Route path="/banques" element={<ProtectedRoute><BanquesPage /></ProtectedRoute>} />
-                <Route path="/numerotation" element={<ProtectedRoute><NumerotationPage /></ProtectedRoute>} />
-                <Route path="/categories-depenses" element={<ProtectedRoute><CategoriesDepensesPage /></ProtectedRoute>} />
-                <Route path="/categories-depenses/:id" element={<ProtectedRoute><CategorieDepenseDetailPage /></ProtectedRoute>} />
-                <Route path="/verification" element={<ProtectedRoute><VerificationDocumentPage /></ProtectedRoute>} />
-                <Route path="/partenaires" element={<ProtectedRoute><PartenairesPage /></ProtectedRoute>} />
-                <Route path="/partenaires/transitaires/:id" element={<ProtectedRoute><TransitaireDetailPage /></ProtectedRoute>} />
-                <Route path="/partenaires/representants/:id" element={<ProtectedRoute><RepresentantDetailPage /></ProtectedRoute>} />
-                <Route path="/partenaires/armateurs/:id" element={<ProtectedRoute><ArmateurDetailPage /></ProtectedRoute>} />
-                <Route path="/partenaires/recu-prime/:id" element={<ProtectedRoute><RecuPrimePDFPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Configuration */}
+                <Route path="/tracabilite" element={<ProtectedRoute requiredPermission={P.audit.view}><TracabilitePage /></ProtectedRoute>} />
+                <Route path="/emails" element={<ProtectedRoute requiredPermission={P.configuration.view}><EmailsPage /></ProtectedRoute>} />
+                <Route path="/taxes" element={<ProtectedRoute requiredPermission={P.configuration.view}><TaxesPage /></ProtectedRoute>} />
+                <Route path="/banques" element={<ProtectedRoute requiredPermission={P.banques.view}><BanquesPage /></ProtectedRoute>} />
+                <Route path="/numerotation" element={<ProtectedRoute requiredPermission={P.configuration.view}><NumerotationPage /></ProtectedRoute>} />
+                <Route path="/categories-depenses" element={<ProtectedRoute requiredPermission={P.configuration.view}><CategoriesDepensesPage /></ProtectedRoute>} />
+                <Route path="/categories-depenses/:id" element={<ProtectedRoute requiredPermission={P.configuration.view}><CategorieDepenseDetailPage /></ProtectedRoute>} />
+                <Route path="/verification" element={<ProtectedRoute requiredPermission={P.factures.view}><VerificationDocumentPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Partenaires */}
+                <Route path="/partenaires" element={<ProtectedRoute requiredPermission={P.partenaires.view}><PartenairesPage /></ProtectedRoute>} />
+                <Route path="/partenaires/transitaires/:id" element={<ProtectedRoute requiredPermission={P.transitaires.view}><TransitaireDetailPage /></ProtectedRoute>} />
+                <Route path="/partenaires/representants/:id" element={<ProtectedRoute requiredPermission={P.partenaires.view}><RepresentantDetailPage /></ProtectedRoute>} />
+                <Route path="/partenaires/armateurs/:id" element={<ProtectedRoute requiredPermission={P.partenaires.view}><ArmateurDetailPage /></ProtectedRoute>} />
+                <Route path="/partenaires/recu-prime/:id" element={<ProtectedRoute requiredPermission={P.partenaires.view}><RecuPrimePDFPage /></ProtectedRoute>} />
+                
+                {/* Routes protégées - Autres */}
                 <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
-                <Route path="/securite/connexions-suspectes" element={<ProtectedRoute><ConnexionsSuspectesPage /></ProtectedRoute>} />
+                <Route path="/securite/connexions-suspectes" element={<ProtectedRoute requiredPermission={P.securite.view} requiredRole="administrateur"><ConnexionsSuspectesPage /></ProtectedRoute>} />
+                
+                {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
