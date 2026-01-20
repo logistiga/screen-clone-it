@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Pagination, 
   PaginationContent, 
@@ -28,7 +29,10 @@ import {
   ShieldCheck, Lock, Unlock, Eye, ChevronRight, RefreshCw,
   BarChart3, Layers, AlertTriangle, CheckCircle2, XCircle, Loader2,
   Download, FileSpreadsheet, FileText, MoreHorizontal, Filter,
-  ArrowUpDown, SortAsc, SortDesc
+  ArrowUpDown, SortAsc, SortDesc, Check, ChevronDown,
+  Building2, CreditCard, Package, Warehouse, Settings, History,
+  LayoutDashboard, Receipt, FileStack, Truck, Store, Ship,
+  Handshake, TrendingUp, Wallet, ClipboardList
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -48,6 +52,14 @@ import { Role, PermissionModule, RoleFormData, RoleFilters } from "@/services/ro
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  MODULES, 
+  CATEGORY_LABELS, 
+  GLOBAL_ACTIONS, 
+  SPECIFIC_ACTIONS,
+  getPermissionsByModule,
+  getModulesByCategory 
+} from "@/config/permissionsConfig";
 
 // Couleurs pour les graphiques
 const CHART_COLORS = [
@@ -62,19 +74,37 @@ const CHART_COLORS = [
 // Icônes pour les modules
 const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   clients: Users,
-  devis: Layers,
-  ordres: Layers,
-  factures: Layers,
-  paiements: Layers,
-  caisse: Layers,
-  banques: Layers,
-  credits: Layers,
-  partenaires: Users,
-  notes: Layers,
+  devis: FileText,
+  ordres: ClipboardList,
+  factures: Receipt,
+  paiements: CreditCard,
+  caisse: Wallet,
+  banques: Building2,
+  credits: TrendingUp,
+  partenaires: Handshake,
+  transitaires: Ship,
+  transporteurs: Truck,
+  fournisseurs: Store,
+  produits: Package,
+  stocks: Warehouse,
+  notes: FileStack,
   utilisateurs: Users,
-  configuration: Shield,
+  roles: Shield,
+  configuration: Settings,
   reporting: BarChart3,
-  audit: Eye,
+  dashboard: LayoutDashboard,
+  audit: History,
+  securite: ShieldCheck,
+  exports: Download,
+};
+
+// Couleurs par catégorie
+const CATEGORY_COLORS: Record<string, string> = {
+  commercial: 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800',
+  finance: 'bg-green-500/10 text-green-600 border-green-200 dark:border-green-800',
+  stock: 'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800',
+  administration: 'bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800',
+  reporting: 'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-800',
 };
 
 export default function RolesPage() {
@@ -98,9 +128,11 @@ export default function RolesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   
-  // Pagination des modules dans la modal
-  const [modulePage, setModulePage] = useState(1);
-  const modulesPerPage = 5;
+  // Filtre par catégorie dans la modal de permissions
+  const [permissionSearch, setPermissionSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  
   const [filterHasUsers, setFilterHasUsers] = useState<boolean | undefined>(undefined);
   const [filterIsSystem, setFilterIsSystem] = useState<boolean | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("name");
@@ -150,6 +182,30 @@ export default function RolesPage() {
   const permissionModules = permissionsData?.data || [];
   const totalPermissions = permissionsData?.total || 0;
 
+  // Utiliser la config locale pour l'UI de la matrice
+  const localPermissionModules = useMemo(() => getPermissionsByModule(), []);
+  const modulesByCategory = useMemo(() => getModulesByCategory(), []);
+
+  // Filtrage des modules par recherche et catégorie
+  const filteredModules = useMemo(() => {
+    let modules = localPermissionModules;
+    
+    if (selectedCategory) {
+      modules = modules.filter(m => m.category === selectedCategory);
+    }
+    
+    if (permissionSearch) {
+      const search = permissionSearch.toLowerCase();
+      modules = modules.filter(m => 
+        m.label.toLowerCase().includes(search) ||
+        m.module.toLowerCase().includes(search) ||
+        m.permissions.some(p => p.label.toLowerCase().includes(search))
+      );
+    }
+    
+    return modules;
+  }, [localPermissionModules, selectedCategory, permissionSearch]);
+
   // Stats
   const stats = useMemo(() => {
     if (!statsData) return null;
@@ -177,7 +233,9 @@ export default function RolesPage() {
     setFormData({ name: '', description: '', permissions: [] });
     setSelectedRole(null);
     setIsEditing(false);
-    setModulePage(1);
+    setPermissionSearch("");
+    setSelectedCategory(null);
+    setExpandedModules([]);
   };
 
   const handleOpenAdd = () => {
@@ -299,8 +357,8 @@ export default function RolesPage() {
     }));
   };
 
-  const toggleModuleAll = (module: PermissionModule) => {
-    const modulePermNames = module.permissions.map(p => p.name);
+  const toggleModuleAll = (moduleKey: string, permissions: Array<{ name: string }>) => {
+    const modulePermNames = permissions.map(p => p.name);
     const allActive = modulePermNames.every(name => formData.permissions.includes(name));
     
     setFormData(prev => ({
@@ -311,17 +369,51 @@ export default function RolesPage() {
     }));
   };
 
-  const isModuleFullyActive = (module: PermissionModule): boolean => {
-    return module.permissions.every(p => formData.permissions.includes(p.name));
+  const toggleCategoryAll = (category: string) => {
+    const categoryModules = localPermissionModules.filter(m => m.category === category);
+    const categoryPerms = categoryModules.flatMap(m => m.permissions.map(p => p.name));
+    const allActive = categoryPerms.every(p => formData.permissions.includes(p));
+    
+    setFormData(prev => ({
+      ...prev,
+      permissions: allActive
+        ? prev.permissions.filter(p => !categoryPerms.includes(p))
+        : [...new Set([...prev.permissions, ...categoryPerms])]
+    }));
   };
 
-  const isModulePartiallyActive = (module: PermissionModule): boolean => {
-    const count = module.permissions.filter(p => formData.permissions.includes(p.name)).length;
-    return count > 0 && count < module.permissions.length;
+  const isModuleFullyActive = (permissions: Array<{ name: string }>): boolean => {
+    return permissions.every(p => formData.permissions.includes(p.name));
+  };
+
+  const isModulePartiallyActive = (permissions: Array<{ name: string }>): boolean => {
+    const count = permissions.filter(p => formData.permissions.includes(p.name)).length;
+    return count > 0 && count < permissions.length;
+  };
+
+  const isCategoryFullyActive = (category: string): boolean => {
+    const categoryModules = localPermissionModules.filter(m => m.category === category);
+    return categoryModules.every(m => isModuleFullyActive(m.permissions));
+  };
+
+  const isCategoryPartiallyActive = (category: string): boolean => {
+    const categoryModules = localPermissionModules.filter(m => m.category === category);
+    const hasAny = categoryModules.some(m => m.permissions.some(p => formData.permissions.includes(p.name)));
+    const hasAll = isCategoryFullyActive(category);
+    return hasAny && !hasAll;
+  };
+
+  const getCategoryPermissionCount = (category: string): { active: number; total: number } => {
+    const categoryModules = localPermissionModules.filter(m => m.category === category);
+    const total = categoryModules.reduce((sum, m) => sum + m.permissions.length, 0);
+    const active = categoryModules.reduce((sum, m) => 
+      sum + m.permissions.filter(p => formData.permissions.includes(p.name)).length, 0
+    );
+    return { active, total };
   };
 
   const selectAllPermissions = () => {
-    const allPerms = permissionModules.flatMap(m => m.permissions.map(p => p.name));
+    const allPerms = localPermissionModules.flatMap(m => m.permissions.map(p => p.name));
     setFormData(prev => ({ ...prev, permissions: allPerms }));
   };
 
@@ -357,8 +449,9 @@ export default function RolesPage() {
 
   // Helper pour calculer le pourcentage de permissions
   const getPermissionPercentage = (role: Role): number => {
-    if (totalPermissions === 0) return 0;
-    return Math.round((role.permissions_count / totalPermissions) * 100);
+    const total = localPermissionModules.reduce((sum, m) => sum + m.permissions.length, 0);
+    if (total === 0) return 0;
+    return Math.round((role.permissions_count / total) * 100);
   };
 
   const getModulePermissionCount = (role: Role, moduleName: string): number => {
@@ -374,6 +467,15 @@ export default function RolesPage() {
       setSortOrder('asc');
     }
     setCurrentPage(1);
+  };
+
+  // Toggle module expanded in form
+  const toggleModuleExpanded = (moduleKey: string) => {
+    setExpandedModules(prev => 
+      prev.includes(moduleKey) 
+        ? prev.filter(k => k !== moduleKey)
+        : [...prev, moduleKey]
+    );
   };
 
   // Données pour les graphiques
@@ -396,6 +498,9 @@ export default function RolesPage() {
 
   // Check if any filter is active
   const hasActiveFilters = filterHasUsers !== undefined || filterIsSystem !== undefined;
+
+  // Total permissions from local config
+  const totalLocalPermissions = localPermissionModules.reduce((sum, m) => sum + m.permissions.length, 0);
 
   return (
     <MainLayout title="Gestion des Rôles et Permissions">
@@ -437,7 +542,7 @@ export default function RolesPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Permissions</p>
-                        <p className="text-2xl font-bold">{stats?.totalPermissions || 0}</p>
+                        <p className="text-2xl font-bold">{totalLocalPermissions}</p>
                       </div>
                       <div className="p-3 bg-blue-500/10 rounded-full">
                         <Lock className="h-5 w-5 text-blue-500" />
@@ -469,7 +574,7 @@ export default function RolesPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Modules</p>
-                        <p className="text-2xl font-bold">{stats?.permissionsByModule?.length || 0}</p>
+                        <p className="text-2xl font-bold">{MODULES.length}</p>
                       </div>
                       <div className="p-3 bg-amber-500/10 rounded-full">
                         <Layers className="h-5 w-5 text-amber-500" />
@@ -490,6 +595,10 @@ export default function RolesPage() {
                 <TabsTrigger value="liste" className="gap-2">
                   <Shield className="h-4 w-4" />
                   Liste des rôles
+                </TabsTrigger>
+                <TabsTrigger value="matrice" className="gap-2">
+                  <Layers className="h-4 w-4" />
+                  Matrice
                 </TabsTrigger>
                 <TabsTrigger value="statistiques" className="gap-2">
                   <BarChart3 className="h-4 w-4" />
@@ -798,7 +907,7 @@ export default function RolesPage() {
                                   <div className="border-t pt-4">
                                     <h4 className="text-sm font-medium mb-3">Permissions par module</h4>
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                                      {permissionModules.map(module => {
+                                      {localPermissionModules.map(module => {
                                         const moduleCount = getModulePermissionCount(role, module.module);
                                         const totalModulePerms = module.permissions.length;
                                         const Icon = MODULE_ICONS[module.module] || Shield;
@@ -810,19 +919,15 @@ export default function RolesPage() {
                                           >
                                             <div className="flex items-center gap-2 mb-1">
                                               <Icon className={`h-4 w-4 ${moduleCount === totalModulePerms ? 'text-green-600' : moduleCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}`} />
-                                              <span className="text-sm font-medium capitalize">{module.label}</span>
+                                              <span className="text-sm font-medium truncate">{module.label}</span>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                              {moduleCount === totalModulePerms ? (
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                              ) : moduleCount > 0 ? (
-                                                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                                              ) : (
-                                                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                                              )}
+                                            <div className="flex items-center justify-between">
                                               <span className="text-xs text-muted-foreground">
-                                                {moduleCount}/{totalModulePerms}
+                                                {moduleCount}/{totalModulePerms} permissions
                                               </span>
+                                              {moduleCount === totalModulePerms && (
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                              )}
                                             </div>
                                           </div>
                                         );
@@ -841,7 +946,7 @@ export default function RolesPage() {
 
                 {/* Pagination */}
                 {lastPage > 1 && (
-                  <div className="mt-6">
+                  <div className="mt-6 flex justify-center">
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>
@@ -850,14 +955,8 @@ export default function RolesPage() {
                             className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                           />
                         </PaginationItem>
-                        
                         {Array.from({ length: lastPage }, (_, i) => i + 1)
-                          .filter(page => {
-                            if (lastPage <= 5) return true;
-                            if (page === 1 || page === lastPage) return true;
-                            if (Math.abs(page - currentPage) <= 1) return true;
-                            return false;
-                          })
+                          .filter(page => page === 1 || page === lastPage || Math.abs(page - currentPage) <= 1)
                           .map((page, idx, arr) => (
                             <PaginationItem key={page}>
                               {idx > 0 && arr[idx - 1] !== page - 1 && (
@@ -872,7 +971,6 @@ export default function RolesPage() {
                               </PaginationLink>
                             </PaginationItem>
                           ))}
-                        
                         <PaginationItem>
                           <PaginationNext 
                             onClick={() => setCurrentPage(p => Math.min(lastPage, p + 1))}
@@ -887,44 +985,144 @@ export default function RolesPage() {
             )}
           </TabsContent>
 
+          {/* Tab: Matrice des permissions */}
+          <TabsContent value="matrice" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Matrice Modules × Actions</CardTitle>
+                <CardDescription>
+                  Vue d'ensemble de toutes les permissions disponibles organisées par module et action
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-6">
+                    {Object.entries(CATEGORY_LABELS).map(([categoryKey, categoryLabel]) => {
+                      const categoryModules = localPermissionModules.filter(m => m.category === categoryKey);
+                      if (categoryModules.length === 0) return null;
+                      
+                      return (
+                        <div key={categoryKey} className="space-y-3">
+                          <div className={`flex items-center gap-2 p-2 rounded-lg border ${CATEGORY_COLORS[categoryKey] || ''}`}>
+                            <h3 className="font-semibold">{categoryLabel}</h3>
+                            <Badge variant="outline" className="ml-auto">
+                              {categoryModules.length} modules
+                            </Badge>
+                          </div>
+                          
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b">
+                                  <th className="text-left py-2 px-3 font-medium w-48">Module</th>
+                                  <th className="text-center py-2 px-2 font-medium">Voir</th>
+                                  <th className="text-center py-2 px-2 font-medium">Créer</th>
+                                  <th className="text-center py-2 px-2 font-medium">Modifier</th>
+                                  <th className="text-center py-2 px-2 font-medium">Supprimer</th>
+                                  <th className="text-left py-2 px-3 font-medium">Actions spécifiques</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {categoryModules.map(module => {
+                                  const Icon = MODULE_ICONS[module.module] || Shield;
+                                  const hasAction = (action: string) => 
+                                    module.permissions.some(p => p.action === action);
+                                  const specificActions = module.permissions.filter(p => 
+                                    !['voir', 'creer', 'modifier', 'supprimer'].includes(p.action)
+                                  );
+                                  
+                                  return (
+                                    <tr key={module.module} className="border-b last:border-0 hover:bg-muted/50">
+                                      <td className="py-3 px-3">
+                                        <div className="flex items-center gap-2">
+                                          <Icon className="h-4 w-4 text-muted-foreground" />
+                                          <span className="font-medium">{module.label}</span>
+                                        </div>
+                                      </td>
+                                      <td className="text-center py-3 px-2">
+                                        {hasAction('voir') ? (
+                                          <Check className="h-4 w-4 text-green-600 mx-auto" />
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center py-3 px-2">
+                                        {hasAction('creer') ? (
+                                          <Check className="h-4 w-4 text-green-600 mx-auto" />
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center py-3 px-2">
+                                        {hasAction('modifier') ? (
+                                          <Check className="h-4 w-4 text-green-600 mx-auto" />
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center py-3 px-2">
+                                        {hasAction('supprimer') ? (
+                                          <Check className="h-4 w-4 text-green-600 mx-auto" />
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+                                      <td className="py-3 px-3">
+                                        <div className="flex flex-wrap gap-1">
+                                          {specificActions.map(action => (
+                                            <Badge key={action.name} variant="outline" className="text-xs">
+                                              {action.label}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Tab: Statistiques */}
           <TabsContent value="statistiques" className="mt-6">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Distribution des utilisateurs */}
+              {/* Distribution des rôles */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Répartition des utilisateurs par rôle</CardTitle>
+                  <CardTitle>Distribution des utilisateurs par rôle</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {isLoadingStats ? (
-                    <div className="h-64 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : pieChartData.length > 0 ? (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieChartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={90}
-                            paddingAngle={2}
-                            dataKey="value"
-                            label={({ name, value }) => `${name}: ${value}`}
-                            labelLine={false}
-                          >
-                            {pieChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
+                <CardContent className="h-80">
+                  {pieChartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value}`}
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={index} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
                   ) : (
-                    <div className="h-64 flex items-center justify-center text-muted-foreground">
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
                       Aucune donnée disponible
                     </div>
                   )}
@@ -934,85 +1132,45 @@ export default function RolesPage() {
               {/* Permissions par module */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Permissions par module</CardTitle>
+                  <CardTitle>Permissions par module</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {isLoadingStats ? (
-                    <div className="h-64 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : barChartData.length > 0 ? (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={barChartData} layout="vertical">
-                          <XAxis type="number" />
-                          <YAxis type="category" dataKey="module" width={100} tick={{ fontSize: 12 }} />
-                          <Tooltip />
-                          <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-64 flex items-center justify-center text-muted-foreground">
-                      Aucune donnée disponible
-                    </div>
-                  )}
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={localPermissionModules.map(m => ({ 
+                      module: m.label, 
+                      count: m.permissions.length 
+                    }))}>
+                      <XAxis dataKey="module" angle={-45} textAnchor="end" height={80} fontSize={11} />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              {/* Liste détaillée des rôles */}
+              {/* Résumé par catégorie */}
               <Card className="md:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-base">Détail des rôles</CardTitle>
+                  <CardTitle>Résumé par catégorie</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 font-medium">Rôle</th>
-                          <th className="text-center py-3 px-4 font-medium">Utilisateurs</th>
-                          <th className="text-center py-3 px-4 font-medium">Permissions</th>
-                          <th className="text-center py-3 px-4 font-medium">Niveau d'accès</th>
-                          <th className="text-center py-3 px-4 font-medium">Type</th>
-                          <th className="text-center py-3 px-4 font-medium">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {roles.map(role => (
-                          <tr key={role.id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-primary" />
-                                <span className="font-medium capitalize">{role.name}</span>
-                              </div>
-                            </td>
-                            <td className="text-center py-3 px-4">
-                              <Badge variant="secondary">{role.users_count}</Badge>
-                            </td>
-                            <td className="text-center py-3 px-4">{role.permissions_count}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <Progress value={getPermissionPercentage(role)} className="h-2 w-20" />
-                                <span className="text-xs text-muted-foreground">{getPermissionPercentage(role)}%</span>
-                              </div>
-                            </td>
-                            <td className="text-center py-3 px-4">
-                              {role.is_system ? (
-                                <Badge>Système</Badge>
-                              ) : (
-                                <Badge variant="outline">Personnalisé</Badge>
-                              )}
-                            </td>
-                            <td className="text-center py-3 px-4">
-                              <Button variant="ghost" size="sm" onClick={() => handleShowUsers(role)}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid gap-4 md:grid-cols-5">
+                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+                      const categoryModules = localPermissionModules.filter(m => m.category === key);
+                      const totalPerms = categoryModules.reduce((sum, m) => sum + m.permissions.length, 0);
+                      
+                      return (
+                        <Card key={key} className={`border ${CATEGORY_COLORS[key] || ''}`}>
+                          <CardContent className="p-4 text-center">
+                            <h4 className="font-semibold text-sm mb-2">{label}</h4>
+                            <p className="text-2xl font-bold">{categoryModules.length}</p>
+                            <p className="text-xs text-muted-foreground">modules</p>
+                            <p className="text-sm mt-2">{totalPerms} permissions</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -1020,9 +1178,9 @@ export default function RolesPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Modal Ajout/Modification */}
+        {/* Modal Ajout/Modification avec matrice */}
         <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>{isEditing ? 'Modifier le rôle' : 'Nouveau rôle'}</DialogTitle>
               <DialogDescription>
@@ -1030,7 +1188,7 @@ export default function RolesPage() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+            <div className="flex-1 overflow-hidden flex flex-col gap-4">
               {/* Infos de base */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -1054,136 +1212,152 @@ export default function RolesPage() {
                 </div>
               </div>
 
-              {/* Résumé des permissions */}
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2">
+              {/* Barre d'outils permissions */}
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 flex-1">
                   <Lock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
-                    <strong>{formData.permissions.length}</strong> permissions sélectionnées sur {totalPermissions}
+                    <strong>{formData.permissions.length}</strong> / {totalLocalPermissions} permissions
                   </span>
+                  <Progress value={(formData.permissions.length / totalLocalPermissions) * 100} className="h-2 w-24" />
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={selectAllPermissions}>
-                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                    Tout sélectionner
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={deselectAllPermissions}>
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Tout désélectionner
-                  </Button>
+                
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={permissionSearch}
+                    onChange={(e) => setPermissionSearch(e.target.value)}
+                    className="pl-9 h-8"
+                  />
                 </div>
+                
+                <Select value={selectedCategory || "all"} onValueChange={(v) => setSelectedCategory(v === "all" ? null : v)}>
+                  <SelectTrigger className="w-40 h-8">
+                    <SelectValue placeholder="Catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Button variant="outline" size="sm" onClick={selectAllPermissions}>
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Tout
+                </Button>
+                <Button variant="outline" size="sm" onClick={deselectAllPermissions}>
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Aucun
+                </Button>
               </div>
 
-              {/* Permissions par module avec pagination */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Permissions par module</Label>
-                  {permissionModules.length > modulesPerPage && (
-                    <span className="text-sm text-muted-foreground">
-                      Page {modulePage} sur {Math.ceil(permissionModules.length / modulesPerPage)}
-                    </span>
-                  )}
-                </div>
-
-                {isLoadingPermissions ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
-                  </div>
-                ) : (
-                  <>
-                    <Accordion type="multiple" className="w-full border rounded-lg">
-                      {permissionModules
-                        .slice((modulePage - 1) * modulesPerPage, modulePage * modulesPerPage)
-                        .map(module => {
-                          const Icon = MODULE_ICONS[module.module] || Shield;
-                          const fullyActive = isModuleFullyActive(module);
-                          const partiallyActive = isModulePartiallyActive(module);
-                          const activeCount = module.permissions.filter(p => formData.permissions.includes(p.name)).length;
-                          
-                          return (
-                            <AccordionItem key={module.module} value={module.module} className="border-b last:border-0">
-                              <AccordionTrigger className="hover:no-underline px-4">
-                                <div className="flex items-center gap-3 flex-1">
+              {/* Matrice de permissions par catégorie */}
+              <ScrollArea className="flex-1 border rounded-lg">
+                <div className="p-4 space-y-4">
+                  {Object.entries(CATEGORY_LABELS).map(([categoryKey, categoryLabel]) => {
+                    const categoryModules = filteredModules.filter(m => m.category === categoryKey);
+                    if (categoryModules.length === 0) return null;
+                    
+                    const { active, total } = getCategoryPermissionCount(categoryKey);
+                    const isFullyActive = isCategoryFullyActive(categoryKey);
+                    const isPartiallyActive = isCategoryPartiallyActive(categoryKey);
+                    
+                    return (
+                      <div key={categoryKey} className="space-y-2">
+                        {/* En-tête catégorie */}
+                        <div 
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${CATEGORY_COLORS[categoryKey] || ''}`}
+                          onClick={() => toggleCategoryAll(categoryKey)}
+                        >
+                          <Checkbox
+                            checked={isFullyActive}
+                            className={isPartiallyActive ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
+                            onCheckedChange={() => toggleCategoryAll(categoryKey)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span className="font-semibold flex-1">{categoryLabel}</span>
+                          <Badge variant={isFullyActive ? "default" : isPartiallyActive ? "secondary" : "outline"}>
+                            {active}/{total}
+                          </Badge>
+                        </div>
+                        
+                        {/* Modules de cette catégorie */}
+                        <div className="ml-4 space-y-1">
+                          {categoryModules.map(module => {
+                            const Icon = MODULE_ICONS[module.module] || Shield;
+                            const isModuleFull = isModuleFullyActive(module.permissions);
+                            const isModulePartial = isModulePartiallyActive(module.permissions);
+                            const activeCount = module.permissions.filter(p => formData.permissions.includes(p.name)).length;
+                            const isExpanded = expandedModules.includes(module.module);
+                            
+                            return (
+                              <div key={module.module} className="border rounded-lg overflow-hidden">
+                                {/* En-tête module */}
+                                <div 
+                                  className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? 'border-b' : ''}`}
+                                  onClick={() => toggleModuleExpanded(module.module)}
+                                >
                                   <Checkbox
-                                    checked={fullyActive}
-                                    className={partiallyActive ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
-                                    onCheckedChange={() => toggleModuleAll(module)}
+                                    checked={isModuleFull}
+                                    className={isModulePartial ? "data-[state=checked]:bg-amber-500 border-amber-500" : ""}
+                                    onCheckedChange={() => toggleModuleAll(module.module, module.permissions)}
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                   <Icon className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium">{module.label}</span>
-                                  <Badge 
-                                    variant={fullyActive ? "default" : partiallyActive ? "secondary" : "outline"}
-                                    className="ml-auto"
-                                  >
+                                  <span className="font-medium flex-1">{module.label}</span>
+                                  <Badge variant={isModuleFull ? "default" : isModulePartial ? "secondary" : "outline"} className="mr-2">
                                     {activeCount}/{module.permissions.length}
                                   </Badge>
+                                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                 </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-4 pb-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-8 pt-2">
-                                  {module.permissions.map(perm => (
-                                    <div 
-                                      key={perm.name} 
-                                      className={`flex items-center gap-2 p-2 rounded transition-colors ${hasPermission(perm.name) ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
+                                
+                                {/* Actions du module */}
+                                <AnimatePresence>
+                                  {isExpanded && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.15 }}
                                     >
-                                      <Checkbox
-                                        id={perm.name}
-                                        checked={hasPermission(perm.name)}
-                                        onCheckedChange={() => togglePermission(perm.name)}
-                                      />
-                                      <Label htmlFor={perm.name} className="text-sm cursor-pointer flex-1">
-                                        {perm.label}
-                                      </Label>
-                                      {hasPermission(perm.name) && (
-                                        <Unlock className="h-3.5 w-3.5 text-primary" />
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          );
-                        })}
-                    </Accordion>
-
-                    {/* Pagination des modules */}
-                    {permissionModules.length > modulesPerPage && (
-                      <div className="flex items-center justify-center gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setModulePage(p => Math.max(1, p - 1))}
-                          disabled={modulePage === 1}
-                        >
-                          Précédent
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.ceil(permissionModules.length / modulesPerPage) }, (_, i) => i + 1).map(page => (
-                            <Button
-                              key={page}
-                              variant={modulePage === page ? "default" : "outline"}
-                              size="sm"
-                              className="w-8 h-8 p-0"
-                              onClick={() => setModulePage(page)}
-                            >
-                              {page}
-                            </Button>
-                          ))}
+                                      <div className="p-3 bg-muted/30 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                        {module.permissions.map(perm => (
+                                          <div 
+                                            key={perm.name}
+                                            className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
+                                              hasPermission(perm.name) 
+                                                ? 'bg-primary/10 border border-primary/20' 
+                                                : 'bg-background border hover:bg-muted/50'
+                                            }`}
+                                            onClick={() => togglePermission(perm.name)}
+                                          >
+                                            <Checkbox
+                                              checked={hasPermission(perm.name)}
+                                              onCheckedChange={() => togglePermission(perm.name)}
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <span className="text-sm">{perm.label}</span>
+                                            {hasPermission(perm.name) && (
+                                              <Unlock className="h-3 w-3 text-primary ml-auto" />
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setModulePage(p => Math.min(Math.ceil(permissionModules.length / modulesPerPage), p + 1))}
-                          disabled={modulePage >= Math.ceil(permissionModules.length / modulesPerPage)}
-                        >
-                          Suivant
-                        </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             </div>
 
             <DialogFooter className="gap-2 pt-4 border-t">
@@ -1357,20 +1531,15 @@ export default function RolesPage() {
                           const isSelected = selectedUsersToAdd.includes(user.id);
                           return (
                             <div 
-                              key={user.id} 
+                              key={user.id}
                               className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                                isSelected 
-                                  ? 'bg-primary/10 border-primary' 
-                                  : 'bg-card hover:bg-muted/50'
+                                isSelected ? 'bg-primary/5 border-primary' : 'hover:bg-muted/50'
                               }`}
                               onClick={() => toggleUserSelection(user.id)}
                             >
-                              <Checkbox 
-                                checked={isSelected}
-                                onCheckedChange={() => toggleUserSelection(user.id)}
-                              />
-                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs font-semibold">
+                              <Checkbox checked={isSelected} />
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs font-semibold text-primary">
                                   {user.name.charAt(0).toUpperCase()}
                                 </span>
                               </div>
@@ -1378,50 +1547,36 @@ export default function RolesPage() {
                                 <p className="font-medium text-sm truncate">{user.name}</p>
                                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                               </div>
-                              {user.current_role && (
-                                <Badge variant="outline" className="text-xs flex-shrink-0">
-                                  {user.current_role}
-                                </Badge>
-                              )}
                             </div>
                           );
                         })}
                       </>
                     ) : (
-                      <div className="text-center py-8">
-                        <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {userSearchTerm 
-                            ? "Aucun utilisateur trouvé" 
-                            : "Tous les utilisateurs ont déjà un rôle assigné"}
-                        </p>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Aucun utilisateur disponible</p>
                       </div>
                     )}
                   </div>
+
+                  {/* Bouton d'assignation */}
+                  {selectedUsersToAdd.length > 0 && (
+                    <Button 
+                      className="w-full" 
+                      onClick={handleAssignUsers}
+                      disabled={assignUsers.isPending}
+                    >
+                      {assignUsers.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2" />
+                      )}
+                      Assigner {selectedUsersToAdd.length} utilisateur(s)
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
-
-            <DialogFooter className="gap-2 pt-4 border-t">
-              {showAddUsers ? (
-                <>
-                  <Button variant="outline" onClick={() => setShowAddUsers(false)}>
-                    Retour
-                  </Button>
-                  <Button 
-                    onClick={handleAssignUsers}
-                    disabled={selectedUsersToAdd.length === 0 || assignUsers.isPending}
-                  >
-                    {assignUsers.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Assigner {selectedUsersToAdd.length > 0 && `(${selectedUsersToAdd.length})`}
-                  </Button>
-                </>
-              ) : (
-                <Button variant="outline" onClick={() => setShowUsersModal(false)}>
-                  Fermer
-                </Button>
-              )}
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1429,24 +1584,32 @@ export default function RolesPage() {
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer ce rôle ?</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Supprimer le rôle
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Êtes-vous sûr de vouloir supprimer le rôle "<strong className="capitalize">{selectedRole?.name}</strong>" ?
-                {selectedRole && selectedRole.users_count > 0 && (
+                Êtes-vous sûr de vouloir supprimer le rôle <strong>"{selectedRole?.name}"</strong> ?
+                {(selectedRole?.users_count || 0) > 0 && (
                   <span className="block mt-2 text-destructive">
-                    ⚠️ Ce rôle est assigné à {selectedRole.users_count} utilisateur(s).
+                    ⚠️ Ce rôle est assigné à {selectedRole?.users_count} utilisateur(s).
                   </span>
                 )}
+                <span className="block mt-2">Cette action est irréversible.</span>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleDelete} 
+              <AlertDialogAction
+                onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={deleteRole.isPending}
               >
-                {deleteRole.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {deleteRole.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
                 Supprimer
               </AlertDialogAction>
             </AlertDialogFooter>
