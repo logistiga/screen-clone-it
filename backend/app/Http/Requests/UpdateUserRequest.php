@@ -40,6 +40,14 @@ class UpdateUserRequest extends BaseFormRequest
                 'max:50',
                 'exists:roles,name',
                 'regex:/^[a-zA-Z_]+$/',
+                function ($attribute, $value, $fail) {
+                    $currentUserRole = $this->user()->roles->first()?->name;
+                    
+                    // Seul l'admin peut assigner le rôle admin
+                    if ($value === 'administrateur' && $currentUserRole !== 'administrateur') {
+                        $fail('Vous n\'êtes pas autorisé à assigner le rôle administrateur.');
+                    }
+                },
             ],
             'actif' => 'boolean',
         ];
