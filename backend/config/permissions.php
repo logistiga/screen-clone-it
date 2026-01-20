@@ -73,7 +73,7 @@ return [
             'description' => 'Création et suivi des devis',
             'category' => 'commercial',
             'global_actions' => ['voir', 'creer', 'modifier', 'supprimer'],
-            'specific_actions' => ['valider', 'annuler', 'dupliquer', 'exporter', 'imprimer', 'envoyer'],
+            'specific_actions' => ['valider', 'annuler', 'dupliquer', 'exporter', 'imprimer', 'envoyer', 'convertir'],
         ],
         'ordres' => [
             'label' => 'Ordres de travail',
@@ -152,7 +152,7 @@ return [
             'description' => 'Gestion des notes de frais',
             'category' => 'finance',
             'global_actions' => ['voir', 'creer', 'modifier', 'supprimer'],
-            'specific_actions' => ['valider', 'approuver', 'rejeter', 'exporter'],
+            'specific_actions' => ['valider', 'approuver', 'rejeter', 'exporter', 'imprimer', 'envoyer', 'paiement', 'telecharger'],
         ],
 
         // === STOCK & PRODUITS ===
