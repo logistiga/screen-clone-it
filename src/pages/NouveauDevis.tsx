@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ApiErrorState } from "@/components/ApiErrorState";
-import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useConfiguration } from "@/hooks/use-commercial";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useTaxes } from "@/hooks/use-commercial";
 import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
 import {
   CategorieSelector,
@@ -49,7 +49,7 @@ export default function NouveauDevisPage() {
   const { data: armateursData, isLoading: loadingArmateurs, error: armateursError } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires, error: transitairesError } = useTransitaires();
   const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants();
-  const { data: config, error: configError } = useConfiguration();
+  const { data: taxesData, error: taxesError } = useTaxes();
   const createDevisMutation = useCreateDevis();
 
   const clients = clientsData?.data || [];
@@ -69,8 +69,10 @@ export default function NouveauDevisPage() {
       ? (representantsData as any).data
       : [];
   
-  const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
-  const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
+  const tvaTax = taxesData?.data?.find((t: any) => t.code === 'TVA' || t.nom?.toLowerCase().includes('tva'));
+  const cssTax = taxesData?.data?.find((t: any) => t.code === 'CSS' || t.nom?.toLowerCase().includes('css'));
+  const TAUX_TVA = tvaTax?.taux ? parseFloat(tvaTax.taux) / 100 : 0.18;
+  const TAUX_CSS = cssTax?.taux ? parseFloat(cssTax.taux) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
 
@@ -305,7 +307,7 @@ export default function NouveauDevisPage() {
   };
 
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
-  const loadError = clientsError || armateursError || transitairesError || representantsError || configError;
+  const loadError = clientsError || armateursError || transitairesError || representantsError || taxesError;
 
   if (loadError) {
     return (
