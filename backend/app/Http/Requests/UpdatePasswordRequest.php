@@ -24,9 +24,7 @@ class UpdatePasswordRequest extends BaseFormRequest
                 'string',
                 Password::min(8)
                     ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-                    ->uncompromised(),
+                    ->symbols(),
                 'confirmed',
                 'max:100',
                 'different:current_password',
