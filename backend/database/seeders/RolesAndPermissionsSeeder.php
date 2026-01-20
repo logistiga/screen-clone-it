@@ -10,106 +10,68 @@ class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
+        // Clear cached permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Modules complets de l'application
-        $modules = [
-            // Commercial
-            'clients', 'devis', 'ordres', 'factures', 'partenaires',
-            'transitaires', 'transporteurs', 'fournisseurs',
-            // Finance
-            'paiements', 'caisse', 'banques', 'credits', 'notes',
-            // Stock & Produits
-            'produits', 'stocks',
-            // Administration
-            'utilisateurs', 'roles', 'configuration', 
-            // Rapports & Sécurité
-            'reporting', 'audit', 'securite', 'dashboard', 'exports'
-        ];
+        // Load config
+        $config = config('permissions');
         
-        // Actions standards
-        $actions = ['voir', 'creer', 'modifier', 'supprimer'];
+        $modules = $config['modules'];
+        $globalActions = $config['global_actions'];
+        $specificActions = $config['specific_actions'];
+        $predefinedRoles = $config['predefined_roles'];
         
-        // Créer permissions standard
-        foreach ($modules as $module) {
-            foreach ($actions as $action) {
-                Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
+        $allPermissions = [];
+        
+        // Create all permissions from modules config
+        foreach ($modules as $moduleKey => $module) {
+            // Global actions for this module
+            foreach ($module['global_actions'] as $actionKey) {
+                $permName = "{$moduleKey}.{$actionKey}";
+                Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
+                $allPermissions[] = $permName;
+            }
+            
+            // Specific actions for this module
+            foreach ($module['specific_actions'] as $actionKey) {
+                $permName = "{$moduleKey}.{$actionKey}";
+                Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
+                $allPermissions[] = $permName;
             }
         }
         
-        // Actions supplémentaires par module
-        $extraActions = [
-            'devis' => ['valider', 'annuler', 'dupliquer', 'exporter', 'imprimer'],
-            'ordres' => ['valider', 'annuler', 'assigner', 'exporter', 'imprimer'],
-            'factures' => ['valider', 'annuler', 'exporter', 'imprimer', 'envoyer'],
-            'paiements' => ['valider', 'annuler', 'exporter'],
-            'caisse' => ['valider', 'annuler', 'exporter', 'cloture'],
-            'clients' => ['exporter', 'importer', 'fusionner'],
-            'utilisateurs' => ['activer', 'desactiver', 'assigner_role'],
-            'roles' => ['assigner'],
-            'reporting' => ['exporter'],
-            'audit' => ['exporter'],
-            'dashboard' => ['exporter'],
-            'stocks' => ['entree', 'sortie', 'inventaire', 'exporter'],
-        ];
+        $this->command->info('Created ' . count($allPermissions) . ' permissions from config.');
         
-        foreach ($extraActions as $module => $actions) {
-            foreach ($actions as $action) {
-                Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
+        // Create predefined roles
+        foreach ($predefinedRoles as $roleName => $roleConfig) {
+            $role = Role::firstOrCreate(
+                ['name' => $roleName, 'guard_name' => 'web'],
+                ['description' => $roleConfig['description'] ?? null]
+            );
+            
+            // Update description if role already exists
+            if ($role->description !== ($roleConfig['description'] ?? null)) {
+                $role->description = $roleConfig['description'] ?? null;
+                $role->save();
+            }
+            
+            // Assign permissions
+            if ($roleConfig['permissions'] === 'all') {
+                $role->syncPermissions(Permission::all());
+                $this->command->info("Role '{$roleName}' created with ALL permissions.");
+            } else {
+                // Filter only valid permissions
+                $validPerms = array_filter($roleConfig['permissions'], function($perm) use ($allPermissions) {
+                    return in_array($perm, $allPermissions);
+                });
+                $role->syncPermissions($validPerms);
+                $this->command->info("Role '{$roleName}' created with " . count($validPerms) . " permissions.");
             }
         }
-
-        foreach ($modules as $module) {
-            foreach ($actions as $action) {
-                Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
-            }
-        }
-
-        // Rôle Administrateur
-        $admin = Role::firstOrCreate(['name' => 'administrateur']);
-        $admin->syncPermissions(Permission::all());
-
-        // Rôle Directeur (tous les droits comme admin)
-        $directeur = Role::firstOrCreate(['name' => 'directeur']);
-        $directeur->syncPermissions(Permission::all());
-
-        // Rôle Comptable
-        $comptable = Role::firstOrCreate(['name' => 'comptable']);
-        $comptable->syncPermissions([
-            'clients.voir', 'devis.voir', 'ordres.voir',
-            'factures.voir', 'factures.creer', 'factures.modifier',
-            'paiements.voir', 'paiements.creer',
-            'caisse.voir', 'caisse.creer',
-            'banques.voir',
-            'credits.voir', 'credits.creer',
-            'reporting.voir',
-        ]);
-
-        // Rôle Caissier
-        $caissier = Role::firstOrCreate(['name' => 'caissier']);
-        $caissier->syncPermissions([
-            'clients.voir',
-            'paiements.voir', 'paiements.creer',
-            'caisse.voir', 'caisse.creer',
-            'banques.voir',
-        ]);
-
-        // Rôle Commercial
-        $commercial = Role::firstOrCreate(['name' => 'commercial']);
-        $commercial->syncPermissions([
-            'clients.voir', 'clients.creer', 'clients.modifier',
-            'devis.voir', 'devis.creer', 'devis.modifier',
-            'ordres.voir', 'ordres.creer',
-            'factures.voir',
-            'partenaires.voir',
-        ]);
-
-        // Rôle Opérateur
-        $operateur = Role::firstOrCreate(['name' => 'operateur']);
-        $operateur->syncPermissions([
-            'clients.voir',
-            'ordres.voir', 'ordres.modifier',
-            'factures.voir',
-        ]);
+        
+        // Clear cache again
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        
+        $this->command->info('Roles and permissions seeding completed!');
     }
 }
