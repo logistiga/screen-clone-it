@@ -26,6 +26,19 @@ class AuthController extends Controller
         private SuspiciousLoginDetector $suspiciousLoginDetector
     ) {}
 
+    /**
+     * IMPORTANT: Spatie 'permissions' relation ne contient que les permissions directes.
+     * Pour le contrôle d'accès UI, on renvoie les permissions EFFECTIVES (rôles + direct).
+     */
+    private function serializeAuthUser(User $user): User
+    {
+        $user->loadMissing('roles');
+        $user->setRelation('permissions', $user->getAllPermissions());
+        // Champ pratique côté front (rôle principal)
+        $user->setAttribute('role', $user->roles->first()?->name);
+        return $user;
+    }
+
     public function login(LoginRequest $request): JsonResponse
     {
         $email = strtolower($request->email);
@@ -126,7 +139,7 @@ class AuthController extends Controller
         $sessionStats = $this->sessionManager->getSessionStats($user);
 
         return response()->json([
-            'user' => $user->load('roles', 'permissions'),
+            'user' => $this->serializeAuthUser($user),
             'token' => $token,
             'token_type' => 'Bearer',
             'message' => 'Connexion réussie',
@@ -168,7 +181,7 @@ class AuthController extends Controller
 
     public function user(Request $request): JsonResponse
     {
-        return response()->json($request->user()->load('roles', 'permissions'));
+        return response()->json($this->serializeAuthUser($request->user()));
     }
 
     public function updateProfile(Request $request): JsonResponse
@@ -185,7 +198,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profil mis à jour avec succès',
-            'user' => $request->user()->fresh()->load('roles', 'permissions'),
+            'user' => $this->serializeAuthUser($request->user()->fresh()),
         ]);
     }
 
