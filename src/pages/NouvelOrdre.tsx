@@ -50,7 +50,7 @@ export default function NouvelOrdrePage() {
   const navigate = useNavigate();
   
   // API hooks
-  const { data: clientsData } = useClients();
+  const { data: clientsData } = useClients({ per_page: 1000 });
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
   const { data: representantsData } = useRepresentants();
