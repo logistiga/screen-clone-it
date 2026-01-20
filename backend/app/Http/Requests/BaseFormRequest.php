@@ -123,9 +123,9 @@ abstract class BaseFormRequest extends FormRequest
     /**
      * Règles pour les champs texte courts (nom, titre)
      */
-    protected function shortTextRules(bool $required = true, int $max = 100): array
+    protected function shortTextRules(bool $required = true, int $min = 1, int $max = 100): array
     {
-        $rules = ['string', 'max:' . $max];
+        $rules = ['string', 'min:' . $min, 'max:' . $max];
 
         if ($required) {
             array_unshift($rules, 'required');
