@@ -83,11 +83,20 @@ export function useCreateUser() {
       });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.message || 
-                     Object.values(error.response?.data?.errors || {}).flat().join(', ') ||
-                     'Erreur lors de la création';
+      console.error('Erreur création utilisateur:', error.response?.data);
+      
+      const errors = error.response?.data?.errors;
+      let message = error.response?.data?.message || 'Erreur lors de la création';
+      
+      if (errors && typeof errors === 'object') {
+        const errorMessages = Object.entries(errors)
+          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+          .join('\n');
+        message = errorMessages || message;
+      }
+      
       toast({
-        title: 'Erreur',
+        title: 'Erreur de validation',
         description: message,
         variant: 'destructive',
       });
