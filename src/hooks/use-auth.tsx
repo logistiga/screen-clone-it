@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, type Context } from 'react';
 import api, { getAuthToken, setAuthToken, removeAuthToken, initializeCsrf, resetCsrf, isCookieAuthEnabled } from '@/lib/api';
 
+type NamedEntity = { name: string };
+
 interface User {
   id: number;
   nom: string;
@@ -8,8 +10,8 @@ interface User {
   telephone?: string;
   role: string;
   actif: boolean;
-  roles?: { name: string }[];
-  permissions?: { name: string }[];
+  roles?: NamedEntity[] | string[];
+  permissions?: NamedEntity[] | string[];
 }
 
 interface SuspiciousLoginInfo {
@@ -364,8 +366,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     stopRefreshTimer();
-    
+
     try {
+      // En mode cookie (Sanctum SPA), s'assurer d'avoir un XSRF token avant POST logout
+      if (isCookieAuthEnabled()) {
+        try {
+          await initializeCsrf();
+        } catch {
+          // ignore (fallback possible via Bearer token)
+        }
+      }
+
       await api.post('/auth/logout');
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
@@ -380,16 +391,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(updatedUser);
   };
 
+  const normalizeNames = (items?: NamedEntity[] | string[]): string[] => {
+    if (!items) return [];
+    return items
+      .map((item) => (typeof item === 'string' ? item : item?.name))
+      .filter((v): v is string => typeof v === 'string' && v.length > 0);
+  };
+
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    return user.permissions?.some(p => p.name === permission) || false;
+    const perms = normalizeNames(user.permissions);
+    return perms.includes(permission);
   };
 
   const hasRole = (role: string): boolean => {
     if (!user) return false;
     if (user.role === role) return true;
-    return user.roles?.some(r => r.name === role) || false;
+    const roles = normalizeNames(user.roles);
+    return roles.includes(role);
   };
 
   return (

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2, ShieldX, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,14 @@ export function ProtectedRoute({
   requiredRole,
   requireAny = true 
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, hasPermission, hasRole, user } = useAuth();
+  const { isAuthenticated, isLoading, hasPermission, hasRole, user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleForceLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true, state: { from: location } });
+  };
 
   if (isLoading) {
     return (
@@ -95,13 +101,20 @@ export function ProtectedRoute({
               </p>
             )}
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => window.history.back()}
-            className="mt-4"
-          >
-            Retour
-          </Button>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => window.history.back()}
+            >
+              Retour
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleForceLogout}
+            >
+              Se déconnecter
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -127,13 +140,20 @@ export function ProtectedRoute({
               </p>
             )}
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => window.history.back()}
-            className="mt-4"
-          >
-            Retour
-          </Button>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => window.history.back()}
+            >
+              Retour
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleForceLogout}
+            >
+              Se déconnecter
+            </Button>
+          </div>
         </div>
       </div>
     );
