@@ -142,13 +142,9 @@ export const userService = {
       actif: data.actif ?? true,
     };
 
-    // Debug: à garder le temps de corriger le formulaire
+    // Debug temporaire - affiche le payload complet pour diagnostic
     // eslint-disable-next-line no-console
-    console.log('POST /utilisateurs payload:', {
-      ...payload,
-      password: '***',
-      password_confirmation: '***',
-    });
+    console.log('POST /utilisateurs payload:', payload);
     // eslint-disable-next-line no-console
     console.log('payload.nom length:', payload.nom.length);
 
