@@ -89,9 +89,10 @@ export function useCreateUser() {
       let message = error.response?.data?.message || 'Erreur lors de la création';
       
       if (errors && typeof errors === 'object') {
-        const errorMessages = Object.entries(errors)
-          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
-          .join('\n');
+        const errorMessages = Object.values(errors)
+          .flat()
+          .filter(Boolean)
+          .join(' | ');
         message = errorMessages || message;
       }
       
