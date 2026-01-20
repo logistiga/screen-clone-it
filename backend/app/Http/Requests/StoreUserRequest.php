@@ -38,7 +38,13 @@ class StoreUserRequest extends BaseFormRequest
                 'exists:roles,name',
                 'regex:/^[a-zA-Z_]+$/',
                 function ($attribute, $value, $fail) {
-                    $currentUserRole = $this->user()->roles->first()?->name;
+                    $user = $this->user();
+                    if (!$user) {
+                        $fail('Utilisateur non authentifié.');
+                        return;
+                    }
+                    
+                    $currentUserRole = $user->roles()->first()?->name;
                     
                     // Seul l'admin peut assigner le rôle admin
                     if ($value === 'administrateur' && $currentUserRole !== 'administrateur') {
