@@ -141,7 +141,18 @@ class UserController extends Controller
 
     public function roles(): JsonResponse
     {
-        $roles = Role::with('permissions')->get();
+        $currentUser = auth()->user();
+        $currentUserRole = $currentUser->roles->first()?->name;
+        
+        $query = Role::with('permissions');
+        
+        // Si l'utilisateur n'est pas administrateur, exclure le rôle administrateur
+        if ($currentUserRole !== 'administrateur') {
+            $query->where('name', '!=', 'administrateur');
+        }
+        
+        $roles = $query->orderBy('name')->get();
+        
         return response()->json($roles);
     }
 
