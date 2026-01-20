@@ -61,8 +61,8 @@ class ClientController extends Controller
         // Tri sécurisé
         $sort = $this->validateSortParameters($request, $this->allowedSortColumns);
         
-        // Pagination sécurisée
-        $pagination = $this->validatePaginationParameters($request);
+        // Pagination sécurisée (limite augmentée pour les sélecteurs/combobox)
+        $pagination = $this->validatePaginationParameters($request, 15, 500);
         
         $clients = $query->orderBy($sort['column'], $sort['direction'])
             ->paginate($pagination['per_page']);
