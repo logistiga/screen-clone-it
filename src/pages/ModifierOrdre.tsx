@@ -696,7 +696,7 @@ export default function ModifierOrdrePage() {
                       taxes={availableTaxes}
                       montantHT={montantHT}
                       onChange={setTaxesSelectionData}
-                      initialData={taxesSelectionData}
+                      value={taxesSelectionData}
                     />
                   )}
 

@@ -554,7 +554,7 @@ export default function NouvelleFacturePage() {
                     taxes={availableTaxes}
                     montantHT={montantHTApresRemise}
                     onChange={setTaxesSelectionData}
-                    initialData={taxesSelectionData}
+                    value={taxesSelectionData}
                   />
                 )}
 

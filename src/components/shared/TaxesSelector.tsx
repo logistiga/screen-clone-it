@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -27,73 +27,59 @@ export interface TaxesSelectionData {
 interface TaxesSelectorProps {
   taxes: TaxeItem[];
   montantHT: number;
+  value: TaxesSelectionData;
   onChange: (data: TaxesSelectionData) => void;
-  initialData?: TaxesSelectionData;
 }
 
 export default function TaxesSelector({
   taxes,
   montantHT,
+  value,
   onChange,
-  initialData,
 }: TaxesSelectorProps) {
-  // Utiliser useRef pour stocker onChange et éviter les boucles infinies
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  
-  // Stocker la version sérialisée des données initiales pour comparaison
-  const initialDataRef = useRef<string | null>(null);
-  
-  const [taxesAppliquees, setTaxesAppliquees] = useState<TaxeItem[]>(
-    initialData?.taxesAppliquees || taxes.filter(t => t.active)
-  );
-  const [exonere, setExonere] = useState(initialData?.exonere || false);
-  const [motifExoneration, setMotifExoneration] = useState(initialData?.motifExoneration || "");
-  const [isInitialized, setIsInitialized] = useState(false);
+  const { taxesAppliquees, exonere, motifExoneration } = value;
 
-  // Sync initial data seulement si les données ont vraiment changé
-  useEffect(() => {
-    if (initialData) {
-      const newDataStr = JSON.stringify({
-        taxesAppliquees: initialData.taxesAppliquees,
-        exonere: initialData.exonere,
-        motifExoneration: initialData.motifExoneration
+  // Composant contrôlé: toutes les mises à jour passent par onChange (pas de useEffect/setState)
+  const toggleTaxe = useCallback(
+    (taxe: TaxeItem) => {
+      const exists = taxesAppliquees.some((t) => t.code === taxe.code);
+      const nextTaxes = exists
+        ? taxesAppliquees.filter((t) => t.code !== taxe.code)
+        : [...taxesAppliquees, taxe];
+
+      onChange({
+        ...value,
+        taxesAppliquees: nextTaxes,
       });
-      
-      // Seulement mettre à jour si les données sont différentes
-      if (initialDataRef.current !== newDataStr) {
-        initialDataRef.current = newDataStr;
-        setTaxesAppliquees(initialData.taxesAppliquees);
-        setExonere(initialData.exonere);
-        setMotifExoneration(initialData.motifExoneration);
-      }
-    }
-    setIsInitialized(true);
-  }, [initialData]);
+    },
+    [onChange, taxesAppliquees, value]
+  );
 
-  // Notify parent of changes - utiliser useRef pour éviter la boucle
-  useEffect(() => {
-    if (!isInitialized) return;
-    
-    onChangeRef.current({
-      taxesAppliquees: exonere ? [] : taxesAppliquees,
-      exonere,
-      motifExoneration: exonere ? motifExoneration : "",
-    });
-  }, [taxesAppliquees, exonere, motifExoneration, isInitialized]);
+  const isTaxeSelected = useCallback(
+    (code: string) => taxesAppliquees.some((t) => t.code === code),
+    [taxesAppliquees]
+  );
 
-  const toggleTaxe = (taxe: TaxeItem) => {
-    setTaxesAppliquees(prev => {
-      const exists = prev.some(t => t.code === taxe.code);
-      if (exists) {
-        return prev.filter(t => t.code !== taxe.code);
-      } else {
-        return [...prev, taxe];
-      }
-    });
-  };
+  const handleExonereChange = useCallback(
+    (checked: boolean) => {
+      onChange({
+        ...value,
+        exonere: checked,
+        motifExoneration: checked ? (value.motifExoneration ?? "") : "",
+      });
+    },
+    [onChange, value]
+  );
 
-  const isTaxeSelected = (code: string) => taxesAppliquees.some(t => t.code === code);
+  const handleMotifChange = useCallback(
+    (nextMotif: string) => {
+      onChange({
+        ...value,
+        motifExoneration: nextMotif,
+      });
+    },
+    [onChange, value]
+  );
 
   // Calcul des montants
   const totalTaxes = taxesAppliquees.reduce((acc, t) => {
@@ -113,7 +99,7 @@ export default function TaxesSelector({
             <span className="text-sm text-muted-foreground">Exonérer tout</span>
             <Switch 
               checked={exonere} 
-              onCheckedChange={setExonere}
+              onCheckedChange={handleExonereChange}
               className="data-[state=checked]:bg-amber-600"
             />
           </div>
@@ -248,7 +234,7 @@ export default function TaxesSelector({
                 <Input
                   id="motif"
                   value={motifExoneration}
-                  onChange={(e) => setMotifExoneration(e.target.value)}
+                  onChange={(e) => handleMotifChange(e.target.value)}
                   placeholder="Ex: Export zone franche, ONG, Marché public..."
                   maxLength={255}
                   className={!motifExoneration ? "border-amber-300 focus:border-amber-500" : ""}
