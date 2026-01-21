@@ -1,16 +1,29 @@
 import api from '@/lib/api';
 
-// Types
-export interface TaxeConfig {
-  id: string;
+// Types pour une taxe
+export interface Taxe {
+  id: number;
   code: string;
   nom: string;
   taux: number;
-  description: string;
+  description: string | null;
   obligatoire: boolean;
   active: boolean;
+  ordre: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
+export interface TaxeFormData {
+  code: string;
+  nom: string;
+  taux: number;
+  description?: string | null;
+  obligatoire?: boolean;
+  active?: boolean;
+}
+
+// Types pour les angles mensuels (compatibilité legacy avec tva/css)
 export interface AngleTaxe {
   type_taxe: string;
   taux: number;
@@ -76,33 +89,70 @@ export interface HistoriqueAnnuelData {
   };
 }
 
-// API Client
+// API Client pour CRUD des taxes
 export const taxesApi = {
-  // Récupérer la configuration des taxes
-  getConfig: async (): Promise<{ data: TaxeConfig[]; taux_tva: number; taux_css: number }> => {
-    const response = await api.get('/taxes/config');
+  // ====== CRUD Taxes ======
+  
+  // Lister toutes les taxes
+  getAll: async (activeOnly?: boolean): Promise<{ data: Taxe[]; total: number }> => {
+    const params = activeOnly !== undefined ? { active: activeOnly } : undefined;
+    const response = await api.get('/taxes', { params });
     return response.data;
   },
 
-  // Mettre à jour les taux de taxes
-  updateConfig: async (data: {
-    taux_tva: number;
-    taux_css: number;
-    tva_actif?: boolean;
-    css_actif?: boolean;
-  }): Promise<void> => {
-    await api.put('/taxes/config', data);
+  // Récupérer les taxes actives (pour formulaires)
+  getActives: async (): Promise<{ data: Taxe[] }> => {
+    const response = await api.get('/taxes/actives');
+    return response.data;
   },
 
+  // Récupérer une taxe
+  getById: async (id: number): Promise<{ data: Taxe }> => {
+    const response = await api.get(`/taxes/${id}`);
+    return response.data;
+  },
+
+  // Créer une taxe
+  create: async (data: TaxeFormData): Promise<{ message: string; data: Taxe }> => {
+    const response = await api.post('/taxes', data);
+    return response.data;
+  },
+
+  // Mettre à jour une taxe
+  update: async (id: number, data: Partial<TaxeFormData>): Promise<{ message: string; data: Taxe }> => {
+    const response = await api.put(`/taxes/${id}`, data);
+    return response.data;
+  },
+
+  // Supprimer une taxe
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/taxes/${id}`);
+    return response.data;
+  },
+
+  // Réordonner les taxes
+  reorder: async (ordres: { id: number; ordre: number }[]): Promise<{ message: string }> => {
+    const response = await api.post('/taxes/reorder', { ordres });
+    return response.data;
+  },
+
+  // Activer/désactiver une taxe
+  toggleActive: async (id: number): Promise<{ message: string; data: Taxe }> => {
+    const response = await api.post(`/taxes/${id}/toggle-active`);
+    return response.data;
+  },
+
+  // ====== Angles mensuels ======
+  
   // Récupérer les angles du mois courant
   getMoisCourant: async (): Promise<MoisCourantData> => {
-    const response = await api.get('/taxes/mois-courant');
+    const response = await api.get('/taxes-mensuelles/mois-courant');
     return response.data;
   },
 
   // Récupérer l'historique annuel
   getHistorique: async (annee?: number): Promise<HistoriqueAnnuelData> => {
-    const response = await api.get('/taxes/historique', {
+    const response = await api.get('/taxes-mensuelles/historique', {
       params: annee ? { annee } : undefined,
     });
     return response.data;
@@ -110,12 +160,12 @@ export const taxesApi = {
 
   // Recalculer les taxes d'un mois
   recalculer: async (annee: number, mois: number): Promise<void> => {
-    await api.post('/taxes/recalculer', { annee, mois });
+    await api.post('/taxes-mensuelles/recalculer', { annee, mois });
   },
 
   // Clôturer un mois
   cloturerMois: async (annee: number, mois: number): Promise<{ success: boolean; message: string }> => {
-    const response = await api.post('/taxes/cloturer-mois', { annee, mois });
+    const response = await api.post('/taxes-mensuelles/cloturer-mois', { annee, mois });
     return response.data;
   },
 };

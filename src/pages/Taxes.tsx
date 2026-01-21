@@ -1,28 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,12 +15,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Percent, Save, RefreshCw, Lock, Calendar, Settings, History, Calculator, TrendingUp, FileText, Ban } from "lucide-react";
+import { Percent, RefreshCw, Lock, Calendar, History, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { formatMontant } from "@/data/mockData";
 import { 
-  useTaxesConfig, 
-  useUpdateTaxesConfig, 
+  useTaxes,
   useTaxesMoisCourant, 
   useTaxesHistorique,
   useRecalculerTaxes,
@@ -47,53 +27,23 @@ import {
 } from "@/hooks/use-taxes";
 import { AngleTaxeCard } from "@/components/taxes/AngleTaxeCard";
 import { HistoriqueTaxes } from "@/components/taxes/HistoriqueTaxes";
+import { GestionTaxes } from "@/components/taxes/GestionTaxes";
 
 export default function TaxesPage() {
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showCloturerModal, setShowCloturerModal] = useState(false);
   const [historiqueAnnee, setHistoriqueAnnee] = useState(new Date().getFullYear());
-  const [editFormData, setEditFormData] = useState({
-    taux_tva: 18,
-    taux_css: 1,
-  });
 
   // Hooks de données
-  const { data: taxesConfig, isLoading: isLoadingConfig, refetch: refetchConfig } = useTaxesConfig();
+  const { refetch: refetchTaxes } = useTaxes();
   const { data: moisCourant, isLoading: isLoadingMois, refetch: refetchMois } = useTaxesMoisCourant();
   const { data: historique, isLoading: isLoadingHistorique, refetch: refetchHistorique } = useTaxesHistorique(historiqueAnnee);
   
   // Mutations
-  const updateTaxesMutation = useUpdateTaxesConfig();
   const recalculerMutation = useRecalculerTaxes();
   const cloturerMutation = useCloturerMois();
 
-  const handleOpenEdit = () => {
-    if (taxesConfig) {
-      setEditFormData({
-        taux_tva: taxesConfig.taux_tva,
-        taux_css: taxesConfig.taux_css,
-      });
-    }
-    setShowEditModal(true);
-  };
-
-  const handleSaveTaxes = () => {
-    if (editFormData.taux_tva < 0 || editFormData.taux_tva > 100 || 
-        editFormData.taux_css < 0 || editFormData.taux_css > 100) {
-      toast.error("Les taux doivent être entre 0 et 100%");
-      return;
-    }
-
-    updateTaxesMutation.mutate(editFormData, {
-      onSuccess: () => {
-        setShowEditModal(false);
-        refetchConfig();
-      },
-    });
-  };
-
   const handleRefresh = () => {
-    refetchConfig();
+    refetchTaxes();
     refetchMois();
     refetchHistorique();
     toast.success("Données actualisées");
@@ -123,8 +73,6 @@ export default function TaxesPage() {
     });
   };
 
-  const isLoading = isLoadingConfig || isLoadingMois;
-
   return (
     <MainLayout title="Taxes">
       <motion.div 
@@ -143,23 +91,21 @@ export default function TaxesPage() {
               Gestion des Taxes
             </h1>
             <p className="text-muted-foreground mt-1">
-              Suivez les taxes collectées et gérez les taux applicables
+              Configurez les taxes et suivez les montants collectés
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button onClick={handleOpenEdit} className="gap-2">
-              <Settings className="h-4 w-4" />
-              Modifier les taux
-            </Button>
-          </div>
+          <Button variant="outline" size="icon" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="mois-courant" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+        <Tabs defaultValue="configuration" className="space-y-6">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
+            <TabsTrigger value="configuration" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configuration
+            </TabsTrigger>
             <TabsTrigger value="mois-courant" className="gap-2">
               <Calendar className="h-4 w-4" />
               Mois courant
@@ -170,9 +116,14 @@ export default function TaxesPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Tab: Configuration des taxes */}
+          <TabsContent value="configuration" className="space-y-6">
+            <GestionTaxes onRefresh={handleRefresh} />
+          </TabsContent>
+
           {/* Tab: Mois courant */}
           <TabsContent value="mois-courant" className="space-y-6">
-            {isLoadingMois || isLoadingConfig ? (
+            {isLoadingMois ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
@@ -223,78 +174,6 @@ export default function TaxesPage() {
                   />
                 </div>
 
-                {/* Configuration des taux */}
-                <Card className="border-border/50">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Calculator className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle className="text-lg">Taux configurés</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50 hover:bg-muted/50">
-                          <TableHead className="font-semibold">Code</TableHead>
-                          <TableHead className="font-semibold">Nom</TableHead>
-                          <TableHead className="text-center font-semibold">Taux</TableHead>
-                          <TableHead className="font-semibold">Description</TableHead>
-                          <TableHead className="text-center font-semibold">Type</TableHead>
-                          <TableHead className="text-center font-semibold">Statut</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {taxesConfig?.data.map((taxe, index) => (
-                          <motion.tr
-                            key={taxe.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                          >
-                            <TableCell className="font-mono font-bold text-primary">
-                              {taxe.code}
-                            </TableCell>
-                            <TableCell className="font-medium">{taxe.nom}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge 
-                                variant="secondary" 
-                                className="text-sm font-semibold bg-primary/10 text-primary border-0"
-                              >
-                                {taxe.taux}%
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground max-w-xs truncate">
-                              {taxe.description}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {taxe.obligatoire ? (
-                                <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                  Obligatoire
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-muted-foreground">
-                                  Optionnelle
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge 
-                                variant={taxe.active ? "default" : "secondary"}
-                                className={taxe.active ? "bg-emerald-500/10 text-emerald-600 border-0" : ""}
-                              >
-                                {taxe.active ? "Active" : "Inactive"}
-                              </Badge>
-                            </TableCell>
-                          </motion.tr>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-
                 {/* Action clôture */}
                 <Card className="border-border/50 bg-muted/30">
                   <CardContent className="py-4">
@@ -306,7 +185,7 @@ export default function TaxesPage() {
                         <div>
                           <h3 className="font-medium">Clôture mensuelle</h3>
                           <p className="text-sm text-muted-foreground">
-                            Archiver les taxes du mois précédent et verrouiller les modifications
+                            Archiver les taxes du mois précédent
                           </p>
                         </div>
                       </div>
@@ -317,7 +196,7 @@ export default function TaxesPage() {
                         className="gap-2"
                       >
                         <Lock className="h-4 w-4" />
-                        Clôturer le mois précédent
+                        Clôturer
                       </Button>
                     </div>
                   </CardContent>
@@ -326,9 +205,6 @@ export default function TaxesPage() {
             ) : (
               <Card className="p-8 text-center">
                 <p className="text-muted-foreground">Aucune donnée disponible</p>
-                <Button variant="outline" className="mt-4" onClick={handleRefresh}>
-                  Actualiser
-                </Button>
               </Card>
             )}
           </TabsContent>
@@ -355,105 +231,20 @@ export default function TaxesPage() {
         </Tabs>
       </motion.div>
 
-      {/* Modal édition des taux */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Percent className="h-5 w-5 text-primary" />
-              </div>
-              Modifier les taux de taxes
-            </DialogTitle>
-            <DialogDescription>
-              Modifiez les taux applicables aux factures et ordres de travail
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="taux_tva">Taux TVA (%)</Label>
-                <Input
-                  id="taux_tva"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={editFormData.taux_tva}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, taux_tva: parseFloat(e.target.value) || 0 })
-                  }
-                  className="font-mono"
-                />
-                <p className="text-xs text-muted-foreground">Taxe sur la Valeur Ajoutée</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="taux_css">Taux CSS (%)</Label>
-                <Input
-                  id="taux_css"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={editFormData.taux_css}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, taux_css: parseFloat(e.target.value) || 0 })
-                  }
-                  className="font-mono"
-                />
-                <p className="text-xs text-muted-foreground">Contribution Spéciale de Solidarité</p>
-              </div>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-              <p className="text-sm text-muted-foreground">
-                <strong>Taux total cumulé:</strong>{" "}
-                <span className="text-primary font-semibold">
-                  {(editFormData.taux_tva + editFormData.taux_css).toFixed(2)}%
-                </span>
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditModal(false)}>
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleSaveTaxes} 
-              disabled={updateTaxesMutation.isPending}
-              className="gap-2"
-            >
-              {updateTaxesMutation.isPending ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              Enregistrer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Modal confirmation clôture */}
       <AlertDialog open={showCloturerModal} onOpenChange={setShowCloturerModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-amber-600" />
-              Confirmer la clôture
-            </AlertDialogTitle>
+            <AlertDialogTitle>Clôturer le mois ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action va clôturer les taxes du mois précédent. Une fois clôturé, 
-              les données ne pourront plus être modifiées. Voulez-vous continuer ?
+              Cette action va archiver les taxes du mois précédent.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleCloturer}
-              disabled={cloturerMutation.isPending}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              {cloturerMutation.isPending ? "Clôture en cours..." : "Confirmer la clôture"}
+            <AlertDialogAction onClick={handleCloturer}>
+              {cloturerMutation.isPending && <RefreshCw className="h-4 w-4 animate-spin mr-2" />}
+              Confirmer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
