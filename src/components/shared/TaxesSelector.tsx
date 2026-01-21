@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -37,29 +37,50 @@ export default function TaxesSelector({
   onChange,
   initialData,
 }: TaxesSelectorProps) {
+  // Utiliser useRef pour stocker onChange et éviter les boucles infinies
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  
+  // Stocker la version sérialisée des données initiales pour comparaison
+  const initialDataRef = useRef<string | null>(null);
+  
   const [taxesAppliquees, setTaxesAppliquees] = useState<TaxeItem[]>(
     initialData?.taxesAppliquees || taxes.filter(t => t.active)
   );
   const [exonere, setExonere] = useState(initialData?.exonere || false);
   const [motifExoneration, setMotifExoneration] = useState(initialData?.motifExoneration || "");
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Sync initial data
+  // Sync initial data seulement si les données ont vraiment changé
   useEffect(() => {
     if (initialData) {
-      setTaxesAppliquees(initialData.taxesAppliquees);
-      setExonere(initialData.exonere);
-      setMotifExoneration(initialData.motifExoneration);
+      const newDataStr = JSON.stringify({
+        taxesAppliquees: initialData.taxesAppliquees,
+        exonere: initialData.exonere,
+        motifExoneration: initialData.motifExoneration
+      });
+      
+      // Seulement mettre à jour si les données sont différentes
+      if (initialDataRef.current !== newDataStr) {
+        initialDataRef.current = newDataStr;
+        setTaxesAppliquees(initialData.taxesAppliquees);
+        setExonere(initialData.exonere);
+        setMotifExoneration(initialData.motifExoneration);
+      }
     }
-  }, [initialData?.exonere, initialData?.motifExoneration, JSON.stringify(initialData?.taxesAppliquees)]);
+    setIsInitialized(true);
+  }, [initialData]);
 
-  // Notify parent of changes
+  // Notify parent of changes - utiliser useRef pour éviter la boucle
   useEffect(() => {
-    onChange({
+    if (!isInitialized) return;
+    
+    onChangeRef.current({
       taxesAppliquees: exonere ? [] : taxesAppliquees,
       exonere,
       motifExoneration: exonere ? motifExoneration : "",
     });
-  }, [taxesAppliquees, exonere, motifExoneration, onChange]);
+  }, [taxesAppliquees, exonere, motifExoneration, isInitialized]);
 
   const toggleTaxe = (taxe: TaxeItem) => {
     setTaxesAppliquees(prev => {
