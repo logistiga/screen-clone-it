@@ -39,6 +39,10 @@ class OrdreTravail extends Model
         'remise_valeur',
         'remise_montant',
         'created_by',
+        // Exonérations
+        'exonere_tva',
+        'exonere_css',
+        'motif_exoneration',
     ];
 
     protected $casts = [
@@ -53,6 +57,8 @@ class OrdreTravail extends Model
         'taux_css' => 'decimal:2',
         'remise_valeur' => 'decimal:2',
         'remise_montant' => 'decimal:2',
+        'exonere_tva' => 'boolean',
+        'exonere_css' => 'boolean',
     ];
 
     // Relations
@@ -117,22 +123,39 @@ class OrdreTravail extends Model
     }
 
     // Accessors
-    public function getResteAPayerAttribute()
+    /**
+     * Calculer le montant effectif (tenant compte des exonérations)
+     */
+    public function getMontantEffectifAttribute(): float
     {
-        return max(0, $this->montant_ttc - $this->montant_paye);
+        $montantHTNet = (float) $this->montant_ht - (float) ($this->remise_montant ?? 0);
+        $tvaEffective = $this->exonere_tva ? 0 : (float) $this->tva;
+        $cssEffective = $this->exonere_css ? 0 : (float) $this->css;
+        
+        return $montantHTNet + $tvaEffective + $cssEffective;
     }
 
-    public function getEstPayeAttribute()
+    public function getResteAPayerAttribute(): float
     {
-        return $this->montant_paye >= $this->montant_ttc;
+        // Si exonération, utiliser le montant effectif
+        if ($this->exonere_tva || $this->exonere_css) {
+            return max(0, $this->montant_effectif - (float) ($this->montant_paye ?? 0));
+        }
+        return max(0, (float) $this->montant_ttc - (float) ($this->montant_paye ?? 0));
     }
 
-    public function getEstFactureAttribute()
+    public function getEstPayeAttribute(): bool
+    {
+        $montantTotal = ($this->exonere_tva || $this->exonere_css) 
+            ? $this->montant_effectif 
+            : (float) $this->montant_ttc;
+        return (float) ($this->montant_paye ?? 0) >= $montantTotal;
+    }
+
+    public function getEstFactureAttribute(): bool
     {
         return $this->facture()->exists();
     }
-
-    /**
      * Calculer le montant de la remise en fonction du type et de la valeur.
      */
     public function calculerRemise(float $montantHTBrut): float

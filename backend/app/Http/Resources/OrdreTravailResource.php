@@ -54,6 +54,12 @@ class OrdreTravailResource extends JsonResource
             'remise_valeur' => (float) ($this->remise_valeur ?? 0),
             'remise_montant' => round((float) ($this->remise_montant ?? 0), 2),
             
+            // Exonérations
+            'exonere_tva' => (bool) $this->exonere_tva,
+            'exonere_css' => (bool) $this->exonere_css,
+            'motif_exoneration' => $this->motif_exoneration,
+            'montant_effectif' => round((float) $this->montant_effectif, 2),
+            
             // Envoi
             'date_envoi' => $this->date_envoi?->toISOString(),
             

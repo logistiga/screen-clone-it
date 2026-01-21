@@ -44,6 +44,11 @@ class StoreFactureRequest extends FormRequest
             'remise_valeur' => ['nullable', 'numeric', 'min:0', 'max:100'], // Max 100% pour pourcentage
             'remise_montant' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             
+            // Exonérations
+            'exonere_tva' => ['nullable', 'boolean'],
+            'exonere_css' => ['nullable', 'boolean'],
+            'motif_exoneration' => ['nullable', 'string', 'max:255'],
+            
             // Lignes - Tableau limité
             'lignes' => ['nullable', 'array', 'max:100'],
             'lignes.*.type_operation' => ['required_with:lignes', 'string', 'max:100'],

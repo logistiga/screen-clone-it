@@ -272,12 +272,22 @@ export default function FacturePDFPage() {
                 <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
-                <span>TVA ({facture.taux_tva || 18}%)</span>
-                <span>{formatMontant(facture.montant_tva)}</span>
+                <span>
+                  TVA ({facture.taux_tva || 18}%)
+                  {facture.exonere_tva && <span className="text-amber-600 ml-1 text-[9px]">(Exonéré)</span>}
+                </span>
+                <span className={facture.exonere_tva ? "line-through text-muted-foreground" : ""}>
+                  {formatMontant(facture.exonere_tva ? 0 : facture.montant_tva)}
+                </span>
               </div>
               <div className="flex justify-between py-1 px-3 border-b">
-                <span>CSS ({facture.taux_css || 1}%)</span>
-                <span>{formatMontant(facture.montant_css)}</span>
+                <span>
+                  CSS ({facture.taux_css || 1}%)
+                  {facture.exonere_css && <span className="text-amber-600 ml-1 text-[9px]">(Exonéré)</span>}
+                </span>
+                <span className={facture.exonere_css ? "line-through text-muted-foreground" : ""}>
+                  {formatMontant(facture.exonere_css ? 0 : facture.montant_css)}
+                </span>
               </div>
               <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold border-b">
                 <span>Total TTC</span>
@@ -295,6 +305,14 @@ export default function FacturePDFPage() {
               </div>
             </div>
           </div>
+
+          {/* Motif d'exonération */}
+          {facture.motif_exoneration && (
+            <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+              <strong className="text-amber-700">Exonération:</strong>{" "}
+              <span className="text-amber-600">{facture.motif_exoneration}</span>
+            </div>
+          )}
 
           {/* Coordonnées bancaires */}
           <DocumentBankDetails />

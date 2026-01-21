@@ -276,12 +276,22 @@ export default function OrdrePDFPage() {
                 <span className="font-medium">{formatMontant(ordre.montant_ht)}</span>
               </div>
               <div className="flex justify-between py-0.5 px-2 border-b">
-                <span>TVA ({ordre.taux_tva || 18}%)</span>
-                <span>{formatMontant(ordre.montant_tva)}</span>
+                <span>
+                  TVA ({ordre.taux_tva || 18}%)
+                  {ordre.exonere_tva && <span className="text-amber-600 ml-1 text-[8px]">(Exonéré)</span>}
+                </span>
+                <span className={ordre.exonere_tva ? "line-through text-muted-foreground" : ""}>
+                  {formatMontant(ordre.exonere_tva ? 0 : ordre.montant_tva)}
+                </span>
               </div>
               <div className="flex justify-between py-0.5 px-2 border-b">
-                <span>CSS ({ordre.taux_css || 1}%)</span>
-                <span>{formatMontant(ordre.montant_css)}</span>
+                <span>
+                  CSS ({ordre.taux_css || 1}%)
+                  {ordre.exonere_css && <span className="text-amber-600 ml-1 text-[8px]">(Exonéré)</span>}
+                </span>
+                <span className={ordre.exonere_css ? "line-through text-muted-foreground" : ""}>
+                  {formatMontant(ordre.exonere_css ? 0 : ordre.montant_css)}
+                </span>
               </div>
               <div className="flex justify-between py-1 px-2 bg-primary text-primary-foreground font-bold border-b">
                 <span>Total TTC</span>
@@ -299,6 +309,14 @@ export default function OrdrePDFPage() {
               </div>
             </div>
           </div>
+
+          {/* Motif d'exonération */}
+          {ordre.motif_exoneration && (
+            <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded text-[9px]">
+              <strong className="text-amber-700">Exonération:</strong>{" "}
+              <span className="text-amber-600">{ordre.motif_exoneration}</span>
+            </div>
+          )}
 
           {/* DECLARATION CLIENT & CONDITIONS DE TRANSPORT */}
           <div className="border mb-2">
