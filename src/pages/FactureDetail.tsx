@@ -35,6 +35,7 @@ import {
   FactureFinancialCard, 
   FactureClientCard 
 } from "@/components/factures/shared";
+import { ExonerationStatusCard } from "@/components/shared/ExonerationStatusCard";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -161,6 +162,16 @@ export default function FactureDetailPage() {
                       remiseMontant={facture.remise_montant}
                     />
                   </div>
+
+                  {/* Exonération de taxes */}
+                  <ExonerationStatusCard
+                    exonereTva={facture.exonere_tva}
+                    exonereCss={facture.exonere_css}
+                    motifExoneration={facture.motif_exoneration}
+                    montantTva={facture.montant_tva}
+                    montantCss={facture.montant_css}
+                    updatedAt={facture.updated_at}
+                  />
 
                   {/* Infos BL */}
                   {facture.bl_numero && (

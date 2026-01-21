@@ -20,6 +20,7 @@ import {
   OrdreNotesCard,
   OrdreHistorique,
 } from "@/components/ordres/shared";
+import { ExonerationStatusCard } from "@/components/shared/ExonerationStatusCard";
 
 export default function OrdreDetailPage() {
   const navigate = useNavigate();
@@ -158,6 +159,16 @@ export default function OrdreDetailPage() {
                       remiseMontant={ordre.remise_montant}
                     />
                   </div>
+
+                  {/* Exonération de taxes */}
+                  <ExonerationStatusCard
+                    exonereTva={ordre.exonere_tva}
+                    exonereCss={ordre.exonere_css}
+                    motifExoneration={ordre.motif_exoneration}
+                    montantTva={ordre.montant_tva}
+                    montantCss={ordre.montant_css}
+                    updatedAt={ordre.updated_at}
+                  />
 
                   {/* Infos BL */}
                   <OrdreBLCard
