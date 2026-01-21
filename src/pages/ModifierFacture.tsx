@@ -297,6 +297,11 @@ export default function ModifierFacturePage() {
       return;
     }
 
+    if ((exonerationData.exonereTva || exonerationData.exonereCss) && !exonerationData.motif.trim()) {
+      toast.error("Le motif d'exonération est obligatoire");
+      return;
+    }
+
     const data: any = {
       client_id: parseInt(clientId),
       date_echeance: dateEcheance || null,
