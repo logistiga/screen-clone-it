@@ -98,7 +98,16 @@ export default function OrdresTravailPage() {
     numero: string;
   } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{ id: number; numero: string } | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number; clientId?: number } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ 
+    id: string; 
+    numero: string; 
+    montantRestant: number; 
+    clientId?: number;
+    montantHT: number;
+    montantDejaPaye: number;
+    exonereTva: boolean;
+    exonereCss: boolean;
+  } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [emailModal, setEmailModal] = useState<any>(null);
@@ -507,7 +516,11 @@ L'équipe LOGISTIGA`;
                                 id: ordre.id, 
                                 numero: ordre.numero, 
                                 montantRestant: resteAPayer,
-                                clientId: ordre.client_id ? Number(ordre.client_id) : undefined
+                                clientId: ordre.client_id ? Number(ordre.client_id) : undefined,
+                                montantHT: ordre.montant_ht || 0,
+                                montantDejaPaye: ordre.montant_paye || 0,
+                                exonereTva: ordre.exonere_tva || false,
+                                exonereCss: ordre.exonere_css || false
                               })}
                             >
                               <Wallet className="h-4 w-4" />
@@ -627,6 +640,12 @@ L'équipe LOGISTIGA`;
           documentNumero={paiementModal.numero}
           montantRestant={paiementModal.montantRestant}
           clientId={paiementModal.clientId}
+          montantHT={paiementModal.montantHT}
+          montantDejaPaye={paiementModal.montantDejaPaye}
+          exonereTva={paiementModal.exonereTva}
+          exonereCss={paiementModal.exonereCss}
+          tauxTva={18}
+          tauxCss={1}
           onSuccess={() => refetch()}
         />
       )}
