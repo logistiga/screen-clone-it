@@ -101,22 +101,24 @@ export default function NouvelleFacturePage() {
     montantCalcule: 0,
   });
 
-  // État de la sélection des taxes - initialisé avec valeurs par défaut
+  // État de la sélection des taxes - initialisé avec les taxes par défaut du hook
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
-    taxesAppliquees: [],
+    taxesAppliquees: [
+      { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
+      { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
+    ],
     exonere: false,
     motifExoneration: "",
   }));
   
-  // Initialiser les taxes quand elles sont chargées (une seule fois)
+  // Synchroniser les taxes quand elles sont chargées depuis l'API (une seule fois)
   const [taxesInitialized, setTaxesInitialized] = useState(false);
   useEffect(() => {
     if (!taxesLoading && availableTaxes.length > 0 && !taxesInitialized) {
-      setTaxesSelectionData({
-        taxesAppliquees: availableTaxes,
-        exonere: false,
-        motifExoneration: "",
-      });
+      setTaxesSelectionData(prev => ({
+        ...prev,
+        taxesAppliquees: prev.exonere ? [] : availableTaxes,
+      }));
       setTaxesInitialized(true);
     }
   }, [taxesLoading, availableTaxes, taxesInitialized]);
