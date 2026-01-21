@@ -388,29 +388,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
     
-    // DEBUG: Log user data pour diagnostic
-    console.log('[Auth] hasPermission check:', {
-      permission,
-      userRole: user.role,
-      userRoles: user.roles,
-      userPermissions: user.permissions,
-    });
+    // DEBUG (dev only): Log user data pour diagnostic sans polluer la prod
+    if (import.meta.env.DEV) {
+      console.log('[Auth] hasPermission check:', {
+        permission,
+        userRole: user.role,
+        userRoles: user.roles,
+        userPermissions: user.permissions,
+      });
+    }
     
     // Super-users: accès total (le backend applique aussi ses propres règles)
     const userRole = user.role?.toLowerCase().trim();
     if (userRole === 'admin' || userRole === 'administrateur' || userRole === 'directeur') {
-      console.log('[Auth] Bypass admin/directeur détecté via user.role');
+      if (import.meta.env.DEV) {
+        console.log('[Auth] Bypass admin/directeur détecté via user.role');
+      }
       return true;
     }
     // Compat: certains backends peuvent ne pas remplir le champ `role` mais remplir `roles`.
     if (hasRole('administrateur') || hasRole('directeur')) {
-      console.log('[Auth] Bypass admin/directeur détecté via hasRole()');
+      if (import.meta.env.DEV) {
+        console.log('[Auth] Bypass admin/directeur détecté via hasRole()');
+      }
       return true;
     }
     
     const perms = normalizeNames(user.permissions);
     const hasIt = perms.includes(permission);
-    console.log('[Auth] Permissions normalisées:', perms, '→ has', permission, '=', hasIt);
+    if (import.meta.env.DEV) {
+      console.log('[Auth] Permissions normalisées:', perms, '→ has', permission, '=', hasIt);
+    }
     return hasIt;
   };
 
