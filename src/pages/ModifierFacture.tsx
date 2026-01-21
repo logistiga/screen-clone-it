@@ -509,7 +509,14 @@ export default function ModifierFacturePage() {
           onStepClick={handleStepClick}
         />
 
-        <form onSubmit={handleSubmit}>
+        <form 
+          onSubmit={handleSubmit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+              e.preventDefault();
+            }
+          }}
+        >
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main form area */}
             <div className="lg:col-span-2 space-y-6">

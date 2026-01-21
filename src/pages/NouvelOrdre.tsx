@@ -445,7 +445,16 @@ export default function NouvelOrdrePage() {
         onStepClick={handleStepClick}
       />
 
-      <form onSubmit={handleSubmit} className="animate-fade-in">
+      <form 
+        onSubmit={handleSubmit} 
+        onKeyDown={(e) => {
+          // Empêcher la soumission sur Entrée sauf si focus sur le bouton submit
+          if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+            e.preventDefault();
+          }
+        }}
+        className="animate-fade-in"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main form area */}
           <div className="lg:col-span-2 space-y-6">
