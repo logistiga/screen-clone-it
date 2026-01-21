@@ -6,6 +6,7 @@ use App\Models\Facture;
 use App\Models\Client;
 use App\Models\Configuration;
 use App\Models\Prime;
+use App\Traits\CalculeTaxesTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
  */
 class FactureServiceFactory
 {
+    use CalculeTaxesTrait;
     protected FactureConteneursService $conteneursService;
     protected FactureConventionnelService $conventionnelService;
     protected FactureIndependantService $independantService;
@@ -134,6 +136,9 @@ class FactureServiceFactory
             // Mettre à jour le solde client
             $this->mettreAJourSoldeClient($facture->client_id);
 
+            // Agréger les taxes pour les angles mensuels
+            $this->agregerTaxesDocument($facture, 'facture');
+
             Log::info('Facture créée via Factory', [
                 'facture_id' => $facture->id,
                 'numero' => $facture->numero,
@@ -196,6 +201,9 @@ class FactureServiceFactory
             $categorie = $facture->categorie;
             $service = $this->getService($categorie);
 
+            // Sauvegarder l'état avant modification pour recalcul des taxes
+            $ancienEtat = clone $facture;
+
             // Extraire les primes avant update (elles ne sont pas des colonnes de la table factures)
             $primeTransitaire = $data['prime_transitaire'] ?? 0;
             $primeRepresentant = $data['prime_representant'] ?? 0;
@@ -243,6 +251,9 @@ class FactureServiceFactory
             if ($ancienClientId !== $facture->client_id) {
                 $this->mettreAJourSoldeClient($ancienClientId);
             }
+
+            // Recalculer les taxes (retirer ancien état, ajouter nouveau)
+            $this->recalculerTaxesDocument($ancienEtat, $facture->fresh(), 'facture');
 
             Log::info('Facture modifiée via Factory', ['facture_id' => $facture->id]);
 
