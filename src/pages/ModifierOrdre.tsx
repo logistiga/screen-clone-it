@@ -697,7 +697,7 @@ export default function ModifierOrdrePage() {
                   {/* Sélection des taxes */}
                   {montantHT > 0 && (
                     <TaxesSelector
-                      taxes={availableTaxes}
+                      taxes={availableTaxes.length > 0 ? availableTaxes : taxesSelectionData.taxesAppliquees}
                       montantHT={montantHT}
                       onChange={handleTaxesChange}
                       value={taxesSelectionData}
