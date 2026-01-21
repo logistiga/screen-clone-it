@@ -208,6 +208,12 @@ export default function OrdreDetailPage() {
         documentNumero={ordre.numero}
         montantRestant={resteAPayer}
         clientId={client?.id ? Number(client.id) : undefined}
+        montantHT={ordre.montant_ht || 0}
+        montantDejaPaye={ordre.montant_paye || 0}
+        exonereTva={ordre.exonere_tva || false}
+        exonereCss={ordre.exonere_css || false}
+        tauxTva={18}
+        tauxCss={1}
         onSuccess={() => refetch()}
       />
     </MainLayout>

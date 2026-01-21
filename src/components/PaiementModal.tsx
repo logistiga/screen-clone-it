@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, Banknote, CreditCard, Building2, Smartphone, Gift, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Wallet, Banknote, CreditCard, Building2, Smartphone, Gift, AlertCircle, Shield, Percent } from "lucide-react";
 import { useCreatePaiement, useBanques } from "@/hooks/use-commercial";
+import { PaiementData } from "@/lib/api/commercial";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAvoirsClient, utiliserAvoir, Annulation } from "@/lib/api/annulations";
 import { toast } from "sonner";
+import ExonerationTaxesSelector, { ExonerationData } from "@/components/shared/ExonerationTaxesSelector";
 
 interface PaiementModalProps {
   open: boolean;
@@ -35,6 +38,13 @@ interface PaiementModalProps {
   montantRestant: number;
   clientId?: number;
   onSuccess?: () => void;
+  // Données pour l'exonération
+  montantHT?: number;
+  montantDejaPaye?: number;
+  exonereTva?: boolean;
+  exonereCss?: boolean;
+  tauxTva?: number;
+  tauxCss?: number;
 }
 
 type ModePaiement = "Espèces" | "Chèque" | "Virement" | "Mobile Money" | "Avoir";
@@ -52,6 +62,12 @@ export function PaiementModal({
   montantRestant,
   clientId,
   onSuccess,
+  montantHT = 0,
+  montantDejaPaye = 0,
+  exonereTva: initialExonereTva = false,
+  exonereCss: initialExonereCss = false,
+  tauxTva = 18,
+  tauxCss = 1,
 }: PaiementModalProps) {
   const [montant, setMontant] = useState<number>(montantRestant);
   const [modePaiement, setModePaiement] = useState<ModePaiement>("Espèces");
@@ -59,6 +75,13 @@ export function PaiementModal({
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedAvoirId, setSelectedAvoirId] = useState<number | null>(null);
+  
+  // État pour l'exonération
+  const [exonerationData, setExonerationData] = useState<ExonerationData>({
+    exonereTva: initialExonereTva,
+    exonereCss: initialExonereCss,
+    motif: "",
+  });
 
   const queryClient = useQueryClient();
   const { data: banques = [], isLoading: isLoadingBanques } = useBanques();
@@ -102,17 +125,47 @@ export function PaiementModal({
     },
   });
 
+  // Calcul dynamique du reste à payer selon l'exonération
+  const resteAPayerEffectif = useMemo(() => {
+    if (montantHT === 0) return montantRestant;
+    
+    const tvaAmount = exonerationData.exonereTva ? 0 : montantHT * (tauxTva / 100);
+    const cssAmount = exonerationData.exonereCss ? 0 : montantHT * (tauxCss / 100);
+    const montantEffectif = montantHT + tvaAmount + cssAmount;
+    
+    return Math.max(0, montantEffectif - montantDejaPaye);
+  }, [montantHT, montantDejaPaye, exonerationData, tauxTva, tauxCss, montantRestant]);
+
+  // Économie calculée
+  const economieExoneration = useMemo(() => {
+    if (montantHT === 0) return 0;
+    const economieTva = exonerationData.exonereTva ? montantHT * (tauxTva / 100) : 0;
+    const economieCss = exonerationData.exonereCss ? montantHT * (tauxCss / 100) : 0;
+    return Math.round(economieTva + economieCss);
+  }, [montantHT, exonerationData, tauxTva, tauxCss]);
+
+  // Callback stable pour l'exonération
+  const handleExonerationChange = useCallback((data: ExonerationData) => {
+    setExonerationData(data);
+  }, []);
+
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      setMontant(montantRestant);
+      const initialReste = montantRestant;
+      setMontant(initialReste);
       setModePaiement("Espèces");
       setBanqueId("");
       setReference("");
       setNotes("");
       setSelectedAvoirId(null);
+      setExonerationData({
+        exonereTva: initialExonereTva,
+        exonereCss: initialExonereCss,
+        motif: "",
+      });
     }
-  }, [open, montantRestant]);
+  }, [open, montantRestant, initialExonereTva, initialExonereCss]);
 
   // When switching to Avoir mode, pre-select the first available avoir
   useEffect(() => {
@@ -135,10 +188,20 @@ export function PaiementModal({
   };
 
   const selectedAvoir = availableAvoirs.find((a: Annulation) => a.id === selectedAvoirId);
-  const maxMontantAvoir = selectedAvoir ? Math.min(selectedAvoir.solde_avoir, montantRestant) : montantRestant;
+  const maxMontantAvoir = selectedAvoir ? Math.min(selectedAvoir.solde_avoir, resteAPayerEffectif) : resteAPayerEffectif;
+
+  // Validation du montant exonération
+  const isExonerationValid = !(exonerationData.exonereTva || exonerationData.exonereCss) || exonerationData.motif.trim().length > 0;
 
   const handleSubmit = async () => {
-    if (montant <= 0 || montant > montantRestant) {
+    const maxPayable = modePaiement === "Avoir" ? maxMontantAvoir : resteAPayerEffectif;
+    if (montant <= 0 || montant > maxPayable + 0.01) {
+      return;
+    }
+    
+    // Vérifier motif exonération
+    if ((exonerationData.exonereTva || exonerationData.exonereCss) && !exonerationData.motif.trim()) {
+      toast.error("Le motif d'exonération est obligatoire");
       return;
     }
 
@@ -163,7 +226,7 @@ export function PaiementModal({
       });
     } else {
       const docId = parseInt(documentId);
-      const paiementData = {
+      const paiementData: PaiementData = {
         montant,
         mode_paiement: modePaiement,
         banque_id: (modePaiement === "Chèque" || modePaiement === "Virement") && banqueId ? parseInt(banqueId) : undefined,
@@ -175,6 +238,13 @@ export function PaiementModal({
             ? { ordre_id: docId } 
             : { note_debut_id: docId }),
       };
+
+      // Ajouter les données d'exonération si activées
+      if (documentType !== "note_debut" && (exonerationData.exonereTva || exonerationData.exonereCss)) {
+        paiementData.exonere_tva = exonerationData.exonereTva;
+        paiementData.exonere_css = exonerationData.exonereCss;
+        paiementData.motif_exoneration = exonerationData.motif;
+      }
 
       createPaiement.mutate(paiementData, {
         onSuccess: () => {
@@ -240,6 +310,40 @@ export function PaiementModal({
             </div>
           )}
 
+          {/* Exonération de taxes - uniquement pour factures et ordres */}
+          {documentType !== "note_debut" && montantHT > 0 && modePaiement !== "Avoir" && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-200/50 p-4 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="h-4 w-4 text-amber-600" />
+                  <span className="font-medium text-amber-800 dark:text-amber-400">Exonération de taxes</span>
+                </div>
+                <ExonerationTaxesSelector
+                  onChange={handleExonerationChange}
+                  tauxTva={tauxTva}
+                  tauxCss={tauxCss}
+                  montantHT={montantHT}
+                  initialData={{
+                    exonereTva: initialExonereTva,
+                    exonereCss: initialExonereCss,
+                    motif: "",
+                  }}
+                />
+                
+                {/* Afficher le nouveau reste à payer si exonération */}
+                {economieExoneration > 0 && (
+                  <Alert className="mt-3 bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800">
+                    <Percent className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-700 dark:text-green-400">
+                      <strong>Nouveau reste à payer:</strong> {formatMontant(resteAPayerEffectif)}
+                      <span className="text-sm ml-2">(économie: {formatMontant(economieExoneration)})</span>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Montant */}
           <div className="space-y-2">
             <Label htmlFor="montant">Montant du paiement (FCFA)</Label>
@@ -249,7 +353,7 @@ export function PaiementModal({
               value={montant || ""}
               onChange={(e) => setMontant(parseFloat(e.target.value) || 0)}
               className="text-right text-lg font-semibold"
-              max={modePaiement === "Avoir" ? maxMontantAvoir : montantRestant}
+              max={modePaiement === "Avoir" ? maxMontantAvoir : resteAPayerEffectif}
             />
             <div className="flex gap-2">
               <Button
@@ -257,11 +361,11 @@ export function PaiementModal({
                 variant="link"
                 size="sm"
                 className="p-0 h-auto text-xs"
-                onClick={() => setMontant(modePaiement === "Avoir" ? maxMontantAvoir : montantRestant)}
+                onClick={() => setMontant(modePaiement === "Avoir" ? maxMontantAvoir : resteAPayerEffectif)}
               >
                 {modePaiement === "Avoir" 
                   ? `Maximum de l'avoir (${formatMontant(maxMontantAvoir)})`
-                  : `Payer la totalité (${formatMontant(montantRestant)})`
+                  : `Payer la totalité (${formatMontant(resteAPayerEffectif)})`
                 }
               </Button>
             </div>
@@ -434,8 +538,9 @@ export function PaiementModal({
             disabled={
               isLoading || 
               montant <= 0 || 
-              montant > montantRestant ||
-              (modePaiement === "Avoir" && (!selectedAvoirId || montant > (selectedAvoir?.solde_avoir || 0)))
+              montant > resteAPayerEffectif + 0.01 ||
+              (modePaiement === "Avoir" && (!selectedAvoirId || montant > (selectedAvoir?.solde_avoir || 0))) ||
+              !isExonerationValid
             } 
             className="gap-2"
           >

@@ -130,19 +130,16 @@ class PaiementController extends Controller
             $clientId = $request->client_id;
             $resteAPayer = 0;
             $documentNumero = '';
+            $document = null;
 
             if ($request->facture_id) {
-                $facture = Facture::with('paiements')->findOrFail($request->facture_id);
-                $montantPaye = $facture->paiements->sum('montant');
-                $resteAPayer = $facture->montant_ttc - $montantPaye;
-                $clientId = $facture->client_id;
-                $documentNumero = $facture->numero;
+                $document = Facture::with('paiements')->findOrFail($request->facture_id);
+                $clientId = $document->client_id;
+                $documentNumero = $document->numero;
             } elseif ($request->ordre_id) {
-                $ordre = OrdreTravail::with('paiements')->findOrFail($request->ordre_id);
-                $montantPaye = $ordre->paiements->sum('montant');
-                $resteAPayer = $ordre->montant_ttc - $montantPaye;
-                $clientId = $ordre->client_id;
-                $documentNumero = $ordre->numero;
+                $document = OrdreTravail::with('paiements')->findOrFail($request->ordre_id);
+                $clientId = $document->client_id;
+                $documentNumero = $document->numero;
             } elseif ($request->note_debut_id) {
                 $note = NoteDebut::findOrFail($request->note_debut_id);
                 // Calculer les paiements existants pour la note
@@ -155,6 +152,24 @@ class PaiementController extends Controller
                 return response()->json([
                     'message' => 'Vous devez spécifier une facture, un ordre de travail ou une note de début'
                 ], 422);
+            }
+
+            // Appliquer l'exonération si demandée (pour factures et ordres uniquement)
+            if ($document && ($request->has('exonere_tva') || $request->has('exonere_css'))) {
+                $document->update([
+                    'exonere_tva' => $request->boolean('exonere_tva'),
+                    'exonere_css' => $request->boolean('exonere_css'),
+                    'motif_exoneration' => $request->motif_exoneration,
+                ]);
+                
+                // Recalculer les totaux avec les nouvelles exonérations
+                $document->calculerTotaux();
+                $document->refresh();
+            }
+
+            // Calculer le reste à payer APRÈS exonération
+            if ($document) {
+                $resteAPayer = $document->reste_a_payer;
             }
 
             if ($request->montant > $resteAPayer + 0.01) {
