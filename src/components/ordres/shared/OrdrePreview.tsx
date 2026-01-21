@@ -23,6 +23,7 @@ interface OrdrePreviewProps {
   lots?: { description: string; quantite: number }[];
   prestations?: { description: string; quantite: number }[];
   notes?: string;
+  currentStep?: number; // Pour n'afficher les taxes qu'à l'étape 4
 }
 
 export function OrdrePreview({
@@ -39,6 +40,7 @@ export function OrdrePreview({
   lots = [],
   prestations = [],
   notes,
+  currentStep = 4,
 }: OrdrePreviewProps) {
   const categoriesLabels = getCategoriesLabels();
 
@@ -260,24 +262,32 @@ export function OrdrePreview({
                 <span className="text-muted-foreground">Montant HT</span>
                 <span className="font-medium">{formatMontant(montantHT)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">TVA</span>
-                <span>{formatMontant(tva)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">CSS</span>
-                <span>{formatMontant(css)}</span>
-              </div>
-              <Separator />
-              <motion.div 
-                className="flex justify-between text-lg font-bold"
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <span>Total TTC</span>
-                <span className="text-primary">{formatMontant(montantTTC)}</span>
-              </motion.div>
+              {currentStep === 4 ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">TVA</span>
+                    <span>{formatMontant(tva)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">CSS</span>
+                    <span>{formatMontant(css)}</span>
+                  </div>
+                  <Separator />
+                  <motion.div 
+                    className="flex justify-between text-lg font-bold"
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <span>Total TTC</span>
+                    <span className="text-primary">{formatMontant(montantTTC)}</span>
+                  </motion.div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground italic pt-2">
+                  Taxes calculées à l'étape Récapitulatif
+                </p>
+              )}
             </div>
           </motion.div>
 
