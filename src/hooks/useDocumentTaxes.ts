@@ -29,6 +29,7 @@ export function useDocumentTaxes() {
 
   // Générer availableTaxes stabilisé pour TaxesSelector
   // Force active: true car on filtre déjà via l'endpoint /taxes/actives
+  // Normalise les codes en majuscules pour cohérence
   const availableTaxes = useMemo<TaxeItem[]>(() => {
     if (taxesList.length === 0) {
       // Valeurs par défaut si aucune taxe configurée ou en cours de chargement
@@ -39,11 +40,11 @@ export function useDocumentTaxes() {
     }
     
     return taxesList.map(t => ({
-      code: t.code,
+      code: (t.code || '').toUpperCase(), // Normaliser en majuscules
       nom: t.nom,
       taux: t.taux,
       active: true, // Toujours true car endpoint /actives filtre déjà
-      obligatoire: t.obligatoire ?? false,
+      obligatoire: t.obligatoire ?? (t.code?.toUpperCase() === 'TVA' || t.code?.toUpperCase() === 'CSS'), // TVA et CSS obligatoires par défaut
     }));
   }, [taxesList]);
 

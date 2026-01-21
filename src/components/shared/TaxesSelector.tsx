@@ -60,12 +60,12 @@ export default function TaxesSelector({
     [activeTaxes]
   );
 
-  // Sets pour vérifications rapides
-  const selectedSet = useMemo(() => new Set(selectedTaxCodes), [selectedTaxCodes]);
-  const exoSet = useMemo(() => new Set(exoneratedTaxCodes), [exoneratedTaxCodes]);
+  // Sets pour vérifications rapides - normalisés en majuscules
+  const selectedSet = useMemo(() => new Set(selectedTaxCodes.map(c => c.toUpperCase())), [selectedTaxCodes]);
+  const exoSet = useMemo(() => new Set(exoneratedTaxCodes.map(c => c.toUpperCase())), [exoneratedTaxCodes]);
 
-  const isSelected = useCallback((code: string) => selectedSet.has(code), [selectedSet]);
-  const isExonerated = useCallback((code: string) => exoSet.has(code), [exoSet]);
+  const isSelected = useCallback((code: string) => selectedSet.has(code.toUpperCase()), [selectedSet]);
+  const isExonerated = useCallback((code: string) => exoSet.has(code.toUpperCase()), [exoSet]);
 
   // Toggle sélection taxe à appliquer
   const toggleSelectTax = useCallback(
