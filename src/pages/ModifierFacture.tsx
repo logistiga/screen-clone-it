@@ -38,7 +38,7 @@ import type { FactureIndependantData } from "@/components/factures/forms/Facture
 import { getCategoriesLabels, CategorieDocument, typesOperationConteneur, TypeOperationIndep } from "@/types/documents";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
-import ExonerationTaxesSelector, { ExonerationData } from "@/components/shared/ExonerationTaxesSelector";
+import TaxesSelector, { TaxeItem, TaxesSelectionData } from "@/components/shared/TaxesSelector";
 
 export default function ModifierFacturePage() {
   const navigate = useNavigate();
@@ -61,6 +61,12 @@ export default function ModifierFacturePage() {
   const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
   const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
   
+  // Préparer les taxes disponibles
+  const availableTaxes: TaxeItem[] = [
+    { code: "TVA", nom: "Taxe sur la Valeur Ajoutée", taux: Math.round(TAUX_TVA * 100), active: true },
+    { code: "CSS", nom: "Contribution Spéciale de Solidarité", taux: Math.round(TAUX_CSS * 100), active: true },
+  ];
+  
   const categoriesLabels = getCategoriesLabels();
 
   // Stepper state - start at step 2 since category is not editable
@@ -76,11 +82,11 @@ export default function ModifierFacturePage() {
   const [independantData, setIndependantData] = useState<FactureIndependantData | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // État pour l'exonération
-  const [exonerationData, setExonerationData] = useState<ExonerationData>({
-    exonereTva: false,
-    exonereCss: false,
-    motif: "",
+  // État pour la sélection des taxes
+  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
+    taxesAppliquees: availableTaxes,
+    exonere: false,
+    motifExoneration: "",
   });
 
   // Populate form when data loads
@@ -100,21 +106,24 @@ export default function ModifierFacturePage() {
       }
       setCategorie(cat);
       
-      // Initialiser les données d'exonération
-      setExonerationData({
-        exonereTva: (factureData as any).exonere_tva || false,
-        exonereCss: (factureData as any).exonere_css || false,
-        motif: (factureData as any).motif_exoneration || "",
+      // Initialiser les données de taxes
+      const exonereTva = (factureData as any).exonere_tva || false;
+      const exonereCss = (factureData as any).exonere_css || false;
+      const motif = (factureData as any).motif_exoneration || "";
+      
+      // Si exonéré totalement, mettre exonere à true, sinon on garde les taxes sélectionnées
+      const isFullyExempt = exonereTva && exonereCss;
+      setTaxesSelectionData({
+        taxesAppliquees: isFullyExempt ? [] : availableTaxes.filter(t => 
+          (t.code === "TVA" && !exonereTva) || (t.code === "CSS" && !exonereCss)
+        ),
+        exonere: isFullyExempt,
+        motifExoneration: motif,
       });
       
       setIsInitialized(true);
     }
-  }, [factureData, isInitialized]);
-
-  // Callback stable pour l'exonération
-  const handleExonerationChange = useCallback((data: ExonerationData) => {
-    setExonerationData(data);
-  }, []);
+  }, [factureData, isInitialized, availableTaxes]);
 
   // Initial data for forms
   const conteneursInitialData = useMemo(() => {
@@ -297,7 +306,11 @@ export default function ModifierFacturePage() {
       return;
     }
 
-    if ((exonerationData.exonereTva || exonerationData.exonereCss) && !exonerationData.motif.trim()) {
+    // Validation exonération
+    const exonereTva = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA");
+    const exonereCss = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS");
+    
+    if ((exonereTva || exonereCss) && taxesSelectionData.exonere && !taxesSelectionData.motifExoneration.trim()) {
       toast.error("Le motif d'exonération est obligatoire");
       return;
     }
@@ -307,9 +320,9 @@ export default function ModifierFacturePage() {
       date_echeance: dateEcheance || null,
       notes: notes || null,
       // Données d'exonération
-      exonere_tva: exonerationData.exonereTva,
-      exonere_css: exonerationData.exonereCss,
-      motif_exoneration: exonerationData.motif || null,
+      exonere_tva: exonereTva,
+      exonere_css: exonereCss,
+      motif_exoneration: taxesSelectionData.motifExoneration || null,
     };
 
     if (categorie === "conteneurs" && conteneursData) {
@@ -597,27 +610,28 @@ export default function ModifierFacturePage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  {/* Exonération de taxes - en premier pour modifier les taxes */}
+                  {/* Sélection des taxes */}
                   {montantHT > 0 && (
-                    <ExonerationTaxesSelector
-                      onChange={handleExonerationChange}
-                      tauxTva={Math.round(TAUX_TVA * 100)}
-                      tauxCss={Math.round(TAUX_CSS * 100)}
+                    <TaxesSelector
+                      taxes={availableTaxes}
                       montantHT={montantHT}
-                      initialData={exonerationData}
+                      onChange={setTaxesSelectionData}
+                      initialData={taxesSelectionData}
                     />
                   )}
 
                   <RecapitulatifCard
                     montantHT={montantHT}
-                    tva={exonerationData.exonereTva ? 0 : tva}
-                    css={exonerationData.exonereCss ? 0 : css}
-                    montantTTC={montantHT + (exonerationData.exonereTva ? 0 : tva) + (exonerationData.exonereCss ? 0 : css)}
+                    tva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva}
+                    css={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css}
+                    montantTTC={montantHT + 
+                      (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva) + 
+                      (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css)}
                     tauxTva={Math.round(TAUX_TVA * 100)}
                     tauxCss={Math.round(TAUX_CSS * 100)}
-                    exonereTva={exonerationData.exonereTva}
-                    exonereCss={exonerationData.exonereCss}
-                    motifExoneration={exonerationData.motif}
+                    exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
+                    exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
+                    motifExoneration={taxesSelectionData.motifExoneration}
                   />
                 </motion.div>
               )}
