@@ -639,6 +639,17 @@ export default function ModifierOrdrePage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
+                  {/* Exonération de taxes - en premier pour modifier les taxes */}
+                  {montantHT > 0 && (
+                    <ExonerationTaxesSelector
+                      onChange={handleExonerationChange}
+                      tauxTva={Math.round(TAUX_TVA * 100)}
+                      tauxCss={Math.round(TAUX_CSS * 100)}
+                      montantHT={montantHT}
+                      initialData={exonerationData}
+                    />
+                  )}
+
                   <RecapitulatifCard
                     montantHT={montantHT}
                     tva={exonerationData.exonereTva ? 0 : tva}
@@ -646,19 +657,9 @@ export default function ModifierOrdrePage() {
                     montantTTC={montantHT + (exonerationData.exonereTva ? 0 : tva) + (exonerationData.exonereCss ? 0 : css)}
                     tauxTva={Math.round(TAUX_TVA * 100)}
                     tauxCss={Math.round(TAUX_CSS * 100)}
-                  />
-                  
-                  {/* Exonération de taxes */}
-                  <ExonerationTaxesSelector
-                    onChange={handleExonerationChange}
-                    tauxTva={Math.round(TAUX_TVA * 100)}
-                    tauxCss={Math.round(TAUX_CSS * 100)}
-                    montantHT={montantHT}
-                    initialData={{
-                      exonereTva: (ordreData as any)?.exonere_tva || false,
-                      exonereCss: (ordreData as any)?.exonere_css || false,
-                      motif: (ordreData as any)?.motif_exoneration || "",
-                    }}
+                    exonereTva={exonerationData.exonereTva}
+                    exonereCss={exonerationData.exonereCss}
+                    motifExoneration={exonerationData.motif}
                   />
                 </motion.div>
               )}
