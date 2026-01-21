@@ -66,7 +66,8 @@ export default function NouvelleFacturePage() {
     availableTaxes, 
     isLoading: taxesLoading,
     getInitialTaxesSelection,
-    calculateTaxes 
+    calculateTaxes,
+    toApiPayload 
   } = useDocumentTaxes();
   
   const clients = clientsData?.data || [];
@@ -101,13 +102,11 @@ export default function NouvelleFacturePage() {
     montantCalcule: 0,
   });
 
-  // État de la sélection des taxes - initialisé avec les taxes par défaut du hook
+  // État de la sélection des taxes - nouvelle structure avec codes
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
-    taxesAppliquees: [
-      { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
-      { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
-    ],
-    exonere: false,
+    selectedTaxCodes: ['TVA', 'CSS'], // Taxes obligatoires par défaut
+    hasExoneration: false,
+    exoneratedTaxCodes: [],
     motifExoneration: "",
   }));
   
@@ -115,9 +114,10 @@ export default function NouvelleFacturePage() {
   const [taxesInitialized, setTaxesInitialized] = useState(false);
   useEffect(() => {
     if (!taxesLoading && availableTaxes.length > 0 && !taxesInitialized) {
+      const mandatoryCodes = availableTaxes.filter(t => t.obligatoire).map(t => t.code);
       setTaxesSelectionData(prev => ({
         ...prev,
-        taxesAppliquees: prev.exonere ? [] : availableTaxes,
+        selectedTaxCodes: mandatoryCodes.length > 0 ? mandatoryCodes : ['TVA', 'CSS'],
       }));
       setTaxesInitialized(true);
     }
@@ -348,10 +348,8 @@ export default function NouvelleFacturePage() {
       remise_type: remiseData.type !== "none" ? remiseData.type : null,
       remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
       remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
-      // Exonérations - basées sur les taxes sélectionnées
-      exonere_tva: taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA"),
-      exonere_css: taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS"),
-      motif_exoneration: taxesSelectionData.exonere ? taxesSelectionData.motifExoneration : null,
+      // Exonérations - basées sur la nouvelle structure
+      ...toApiPayload(taxesSelectionData),
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataForApi,
@@ -580,7 +578,7 @@ export default function NouvelleFacturePage() {
                 {/* Sélection des taxes */}
                 {montantHTApresRemise > 0 && (
                   <TaxesSelector
-                    taxes={availableTaxes.length > 0 ? availableTaxes : taxesSelectionData.taxesAppliquees}
+                    taxes={availableTaxes}
                     montantHT={montantHTApresRemise}
                     onChange={handleTaxesChange}
                     value={taxesSelectionData}
@@ -597,9 +595,7 @@ export default function NouvelleFacturePage() {
                   remiseMontant={remiseData.montantCalcule}
                   remiseType={remiseData.type}
                   remiseValeur={remiseData.valeur}
-                  exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
-                  exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
-                  motifExoneration={taxesSelectionData.motifExoneration}
+                  {...toApiPayload(taxesSelectionData)}
                 />
               </div>
             )}
@@ -679,9 +675,7 @@ export default function NouvelleFacturePage() {
         css={css}
         montantTTC={montantTTC}
         remise={remiseData.montantCalcule}
-        exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
-        exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
-        motifExoneration={taxesSelectionData.motifExoneration}
+        {...toApiPayload(taxesSelectionData)}
         clientName={selectedClient?.nom}
         categorie={categorie || undefined}
       />

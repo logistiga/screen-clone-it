@@ -6,7 +6,7 @@ import { TaxeItem, TaxesSelectionData } from '@/components/shared/TaxesSelector'
  * Hook unifié pour la gestion des taxes dans les documents (OT/Factures)
  * - Charge les taxes actives depuis la table taxes via l'API
  * - Fournit les taux et availableTaxes mémorisés
- * - Fournit un helper pour créer des handlers onChange stables
+ * - Fournit des helpers pour la nouvelle structure de données
  */
 export function useDocumentTaxes() {
   // Fetch les taxes actives depuis /api/taxes/actives
@@ -48,38 +48,44 @@ export function useDocumentTaxes() {
       }));
   }, [taxesList]);
 
-  // Helper pour initialiser taxesSelectionData
-  const getInitialTaxesSelection = useCallback((): TaxesSelectionData => {
-    return {
-      taxesAppliquees: availableTaxes,
-      exonere: false,
-      motifExoneration: '',
-    };
+  // Codes des taxes obligatoires
+  const mandatoryCodes = useMemo(() => {
+    return availableTaxes.filter(t => t.obligatoire).map(t => t.code);
   }, [availableTaxes]);
 
+  // Helper pour initialiser TaxesSelectionData (nouveau document)
+  const getInitialTaxesSelection = useCallback((): TaxesSelectionData => {
+    // Par défaut: sélectionner toutes les taxes obligatoires
+    return {
+      selectedTaxCodes: mandatoryCodes,
+      hasExoneration: false,
+      exoneratedTaxCodes: [],
+      motifExoneration: '',
+    };
+  }, [mandatoryCodes]);
+
   // Helper pour initialiser depuis des données existantes (modification)
+  // Compatible avec l'ancien format (exonere_tva, exonere_css) et le nouveau (taxes_selection JSON)
   const getTaxesSelectionFromDocument = useCallback((
     exonereTva: boolean,
     exonereCss: boolean,
     motifExoneration: string
   ): TaxesSelectionData => {
-    const isFullyExempt = exonereTva && exonereCss;
+    // Taxes sélectionnées par défaut (toutes les obligatoires + celles qui ne sont pas exonérées)
+    const selectedCodes = availableTaxes.map(t => t.code);
     
-    if (isFullyExempt) {
-      return {
-        taxesAppliquees: [],
-        exonere: true,
-        motifExoneration: motifExoneration || '',
-      };
-    }
+    // Déterminer les taxes exonérées
+    const exoneratedCodes: string[] = [];
+    if (exonereTva) exoneratedCodes.push('TVA');
+    if (exonereCss) exoneratedCodes.push('CSS');
+    
+    const hasExo = exoneratedCodes.length > 0;
     
     return {
-      taxesAppliquees: availableTaxes.filter(t => 
-        (t.code === 'TVA' && !exonereTva) || 
-        (t.code === 'CSS' && !exonereCss)
-      ),
-      exonere: false,
-      motifExoneration: '',
+      selectedTaxCodes: selectedCodes,
+      hasExoneration: hasExo,
+      exoneratedTaxCodes: exoneratedCodes,
+      motifExoneration: hasExo ? (motifExoneration || '') : '',
     };
   }, [availableTaxes]);
 
@@ -87,24 +93,63 @@ export function useDocumentTaxes() {
   const calculateTaxes = useCallback((
     montantHTApresRemise: number,
     taxesSelection: TaxesSelectionData
-  ) => {
-    if (taxesSelection.exonere) {
-      return { tva: 0, css: 0, totalTaxes: 0 };
+  ): { tva: number; css: number; totalTaxes: number; details: Record<string, number> } => {
+    const { selectedTaxCodes, hasExoneration, exoneratedTaxCodes } = taxesSelection;
+    
+    const details: Record<string, number> = {};
+    let totalTaxes = 0;
+    let tva = 0;
+    let css = 0;
+    
+    for (const taxe of availableTaxes) {
+      // Taxe non sélectionnée → pas appliquée
+      if (!selectedTaxCodes.includes(taxe.code)) {
+        details[taxe.code] = 0;
+        continue;
+      }
+      
+      // Taxe exonérée → montant = 0
+      const isExonerated = hasExoneration && exoneratedTaxCodes.includes(taxe.code);
+      const montant = isExonerated ? 0 : Math.round(montantHTApresRemise * (taxe.taux / 100));
+      
+      details[taxe.code] = montant;
+      totalTaxes += montant;
+      
+      // Mapping pour TVA/CSS (rétrocompatibilité)
+      if (taxe.code === 'TVA') tva = montant;
+      if (taxe.code === 'CSS') css = montant;
     }
     
-    const tvaAppliquee = taxesSelection.taxesAppliquees.find(t => t.code === 'TVA');
-    const cssAppliquee = taxesSelection.taxesAppliquees.find(t => t.code === 'CSS');
+    return { tva, css, totalTaxes, details };
+  }, [availableTaxes]);
+
+  // Helper pour convertir TaxesSelectionData vers le format API actuel (exonere_tva, exonere_css)
+  const toApiPayload = useCallback((selection: TaxesSelectionData): {
+    exonere_tva: boolean;
+    exonere_css: boolean;
+    motif_exoneration: string | null;
+  } => {
+    const { selectedTaxCodes, hasExoneration, exoneratedTaxCodes, motifExoneration } = selection;
     
-    const tva = tvaAppliquee ? Math.round(montantHTApresRemise * (tvaAppliquee.taux / 100)) : 0;
-    const css = cssAppliquee ? Math.round(montantHTApresRemise * (cssAppliquee.taux / 100)) : 0;
+    // TVA non sélectionnée OU exonérée = exonere_tva: true
+    const exonereTva = !selectedTaxCodes.includes('TVA') || 
+                       (hasExoneration && exoneratedTaxCodes.includes('TVA'));
     
-    return { tva, css, totalTaxes: tva + css };
+    const exonereCss = !selectedTaxCodes.includes('CSS') || 
+                       (hasExoneration && exoneratedTaxCodes.includes('CSS'));
+    
+    return {
+      exonere_tva: exonereTva,
+      exonere_css: exonereCss,
+      motif_exoneration: hasExoneration && motifExoneration ? motifExoneration : null,
+    };
   }, []);
 
   return {
     // Données
     taxRates,
     availableTaxes,
+    mandatoryCodes,
     isLoading,
     error,
     
@@ -112,6 +157,7 @@ export function useDocumentTaxes() {
     getInitialTaxesSelection,
     getTaxesSelectionFromDocument,
     calculateTaxes,
+    toApiPayload,
   };
 }
 
@@ -123,12 +169,20 @@ export function areTaxesSelectionDataEqual(
   a: TaxesSelectionData,
   b: TaxesSelectionData
 ): boolean {
-  if (a.exonere !== b.exonere) return false;
+  if (a.hasExoneration !== b.hasExoneration) return false;
   if (a.motifExoneration !== b.motifExoneration) return false;
-  if (a.taxesAppliquees.length !== b.taxesAppliquees.length) return false;
   
-  const aCodes = a.taxesAppliquees.map(t => t.code).sort();
-  const bCodes = b.taxesAppliquees.map(t => t.code).sort();
+  // Comparer selectedTaxCodes
+  const aSelected = [...a.selectedTaxCodes].sort();
+  const bSelected = [...b.selectedTaxCodes].sort();
+  if (aSelected.length !== bSelected.length) return false;
+  if (!aSelected.every((code, i) => code === bSelected[i])) return false;
   
-  return aCodes.every((code, i) => code === bCodes[i]);
+  // Comparer exoneratedTaxCodes
+  const aExo = [...a.exoneratedTaxCodes].sort();
+  const bExo = [...b.exoneratedTaxCodes].sort();
+  if (aExo.length !== bExo.length) return false;
+  if (!aExo.every((code, i) => code === bExo[i])) return false;
+  
+  return true;
 }
