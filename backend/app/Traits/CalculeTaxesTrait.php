@@ -22,6 +22,12 @@ trait CalculeTaxesTrait
     protected function agregerTaxesDocument(object $document, string $typeDocument = 'facture'): void
     {
         try {
+            // Vérifier si la table taxes existe
+            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes')) {
+                Log::info("Table taxes non disponible, agrégation ignorée");
+                return;
+            }
+
             // Récupérer la date du document
             $dateCreation = $document->date_creation ?? $document->created_at ?? now();
             if (is_string($dateCreation)) {
@@ -38,6 +44,12 @@ trait CalculeTaxesTrait
             
             // Récupérer les taxes actives depuis la table taxes
             $taxesActives = Taxe::active()->ordonne()->get();
+            
+            // Si pas de taxes configurées, ignorer silencieusement
+            if ($taxesActives->isEmpty()) {
+                Log::info("Aucune taxe active configurée, agrégation ignorée");
+                return;
+            }
             
             foreach ($taxesActives as $taxe) {
                 $code = strtoupper($taxe->code);
@@ -56,6 +68,11 @@ trait CalculeTaxesTrait
                     } else {
                         $montantTaxe = round($montantHTNet * ($taxe->taux / 100), 2);
                     }
+                }
+                
+                // Vérifier si la table taxes_mensuelles existe
+                if (!\Illuminate\Support\Facades\Schema::hasTable('taxes_mensuelles')) {
+                    continue;
                 }
                 
                 // Ajouter à l'agrégation mensuelle
@@ -94,6 +111,12 @@ trait CalculeTaxesTrait
     protected function retirerTaxesDocument(object $document, string $typeDocument = 'facture'): void
     {
         try {
+            // Vérifier si les tables existent
+            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes') || 
+                !\Illuminate\Support\Facades\Schema::hasTable('taxes_mensuelles')) {
+                return;
+            }
+
             $dateCreation = $document->date_creation ?? $document->created_at ?? now();
             if (is_string($dateCreation)) {
                 $dateCreation = Carbon::parse($dateCreation);
@@ -107,6 +130,10 @@ trait CalculeTaxesTrait
             $montantHTNet = $montantHT - $remise;
             
             $taxesActives = Taxe::active()->ordonne()->get();
+            
+            if ($taxesActives->isEmpty()) {
+                return;
+            }
             
             foreach ($taxesActives as $taxe) {
                 $code = strtoupper($taxe->code);
