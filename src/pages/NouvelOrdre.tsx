@@ -530,7 +530,12 @@ export default function NouvelOrdrePage() {
                 {montantHT > 0 && (
                   <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
                 )}
+              </div>
+            )}
 
+            {/* Step 4: Récapitulatif */}
+            {currentStep === 4 && (
+              <div className="space-y-6 animate-fade-in">
                 {/* Exonération de taxes */}
                 {montantHTApresRemise > 0 && (
                   <ExonerationTaxesSelector
@@ -538,15 +543,10 @@ export default function NouvelOrdrePage() {
                     tauxTva={Math.round(TAUX_TVA * 100)}
                     tauxCss={Math.round(TAUX_CSS * 100)}
                     onChange={setExonerationData}
-                    initialData={isRestoredFromDraft ? exonerationData : undefined}
+                    initialData={exonerationData}
                   />
                 )}
-              </div>
-            )}
 
-            {/* Step 4: Récapitulatif */}
-            {currentStep === 4 && (
-              <div className="space-y-6 animate-fade-in">
                 <RecapitulatifCard
                   montantHT={montantHT}
                   tauxTva={Math.round(TAUX_TVA * 100)}
@@ -557,6 +557,9 @@ export default function NouvelOrdrePage() {
                   remiseMontant={remiseData.montantCalcule}
                   remiseType={remiseData.type}
                   remiseValeur={remiseData.valeur}
+                  exonereTva={exonerationData.exonereTva}
+                  exonereCss={exonerationData.exonereCss}
+                  motifExoneration={exonerationData.motif}
                 />
               </div>
             )}
