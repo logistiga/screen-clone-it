@@ -214,8 +214,15 @@ export default function NouvelleFacturePage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+
+    // Empêche la validation/soumission involontaire (ex: touche Entrée) avant le récapitulatif.
+    if (e.type === "submit" && currentStep !== 4) {
+      toast.info("Cliquez sur « Suivant » pour aller au récapitulatif avant de valider.");
+      return;
+    }
+
     if (!clientId) { toast.error("Veuillez sélectionner un client"); return; }
     if (!categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
 
