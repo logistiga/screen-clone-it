@@ -235,6 +235,11 @@ export default function TaxesSelector({
                   id="motif"
                   value={motifExoneration}
                   onChange={(e) => handleMotifChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="Ex: Export zone franche, ONG, Marché public..."
                   maxLength={255}
                   className={!motifExoneration ? "border-amber-300 focus:border-amber-500" : ""}
