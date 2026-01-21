@@ -58,22 +58,42 @@ export default function FacturesExonereesPage() {
     per_page: 500, // Fetch more to filter
   });
 
-  // Filter for exempted invoices
+  // Helper to detect exoneration from new taxes_selection OR legacy fields
+  const getExonerationStatus = (f: any) => {
+    // New system: taxes_selection JSON
+    const taxesSelection = f.taxes_selection;
+    if (taxesSelection?.has_exoneration && Array.isArray(taxesSelection.exonerated_tax_codes)) {
+      return {
+        hasTva: taxesSelection.exonerated_tax_codes.includes('TVA'),
+        hasCss: taxesSelection.exonerated_tax_codes.includes('CSS'),
+        motif: taxesSelection.motif_exoneration || f.motif_exoneration || '',
+      };
+    }
+    // Legacy system: boolean fields
+    return {
+      hasTva: !!f.exonere_tva,
+      hasCss: !!f.exonere_css,
+      motif: f.motif_exoneration || '',
+    };
+  };
+
+  // Filter for exempted invoices (supports both new and legacy systems)
   const facturesList = (facturesData?.data || []).filter((f: any) => {
-    const hasExoneration = f.exonere_tva || f.exonere_css;
+    const exo = getExonerationStatus(f);
+    const hasExoneration = exo.hasTva || exo.hasCss;
     if (!hasExoneration) return false;
 
     // Type filter
-    if (typeFilter === "tva" && !f.exonere_tva) return false;
-    if (typeFilter === "css" && !f.exonere_css) return false;
-    if (typeFilter === "both" && !(f.exonere_tva && f.exonere_css)) return false;
+    if (typeFilter === "tva" && !exo.hasTva) return false;
+    if (typeFilter === "css" && !exo.hasCss) return false;
+    if (typeFilter === "both" && !(exo.hasTva && exo.hasCss)) return false;
 
     // Search filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       const matchNumero = f.numero?.toLowerCase().includes(search);
       const matchClient = f.client?.nom?.toLowerCase().includes(search);
-      const matchMotif = f.motif_exoneration?.toLowerCase().includes(search);
+      const matchMotif = exo.motif?.toLowerCase().includes(search);
       return matchNumero || matchClient || matchMotif;
     }
 
@@ -88,31 +108,41 @@ export default function FacturesExonereesPage() {
     currentPage * pageSize
   );
 
-  // Statistics
+  // Statistics (using helper to support both systems)
   const totalExonerationTva = facturesList
-    .filter((f: any) => f.exonere_tva)
+    .filter((f: any) => getExonerationStatus(f).hasTva)
     .reduce((sum: number, f: any) => sum + (f.montant_tva || 0), 0);
   
   const totalExonerationCss = facturesList
-    .filter((f: any) => f.exonere_css)
+    .filter((f: any) => getExonerationStatus(f).hasCss)
     .reduce((sum: number, f: any) => sum + (f.montant_css || 0), 0);
 
   const totalEconomie = totalExonerationTva + totalExonerationCss;
 
-  const countTvaOnly = facturesList.filter((f: any) => f.exonere_tva && !f.exonere_css).length;
-  const countCssOnly = facturesList.filter((f: any) => f.exonere_css && !f.exonere_tva).length;
-  const countBoth = facturesList.filter((f: any) => f.exonere_tva && f.exonere_css).length;
+  const countTvaOnly = facturesList.filter((f: any) => {
+    const exo = getExonerationStatus(f);
+    return exo.hasTva && !exo.hasCss;
+  }).length;
+  const countCssOnly = facturesList.filter((f: any) => {
+    const exo = getExonerationStatus(f);
+    return exo.hasCss && !exo.hasTva;
+  }).length;
+  const countBoth = facturesList.filter((f: any) => {
+    const exo = getExonerationStatus(f);
+    return exo.hasTva && exo.hasCss;
+  }).length;
 
   const getExonerationBadges = (facture: any) => {
+    const exo = getExonerationStatus(facture);
     const badges = [];
-    if (facture.exonere_tva) {
+    if (exo.hasTva) {
       badges.push(
         <Badge key="tva" variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 text-xs">
           TVA
         </Badge>
       );
     }
-    if (facture.exonere_css) {
+    if (exo.hasCss) {
       badges.push(
         <Badge key="css" variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 text-xs">
           CSS
@@ -290,9 +320,10 @@ export default function FacturesExonereesPage() {
                 </TableRow>
               ) : (
                 paginatedFactures.map((facture: any, index: number) => {
+                  const exo = getExonerationStatus(facture);
                   const economie = 
-                    (facture.exonere_tva ? (facture.montant_tva || 0) : 0) + 
-                    (facture.exonere_css ? (facture.montant_css || 0) : 0);
+                    (exo.hasTva ? (facture.montant_tva || 0) : 0) + 
+                    (exo.hasCss ? (facture.montant_css || 0) : 0);
 
                   return (
                     <AnimatedTableRow key={facture.id} index={index} className="hover:bg-muted/50">
@@ -304,8 +335,8 @@ export default function FacturesExonereesPage() {
                           {getExonerationBadges(facture)}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={facture.motif_exoneration}>
-                        {facture.motif_exoneration || "-"}
+                      <TableCell className="max-w-[200px] truncate" title={exo.motif}>
+                        {exo.motif || "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatMontant(facture.montant_ttc)}
