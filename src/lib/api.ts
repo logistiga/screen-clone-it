@@ -194,9 +194,14 @@ api.interceptors.response.use(
     // NOTE: Ne pas rediriger automatiquement ici car cela crée des boucles.
     // La redirection est gérée par ProtectedRoute et le contexte Auth.
     if (error.response?.status === 401) {
-      // Supprimer le token invalide (si utilisé)
-      removeAuthToken();
+      // Reset CSRF state
       resetCsrf();
+      
+      // Ne supprimer le token que si on est en mode Bearer (pas cookie auth)
+      // Évite de casser l'auth pendant l'initialisation CSRF
+      if (!isCookieAuthEnabled()) {
+        removeAuthToken();
+      }
       // Laisser l'erreur remonter - le composant appelant gère la redirection
     }
 
