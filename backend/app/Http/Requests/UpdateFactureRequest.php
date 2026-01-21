@@ -41,14 +41,19 @@ class UpdateFactureRequest extends FormRequest
             'remise_valeur' => 'nullable|numeric|min:0',
             'remise_montant' => 'nullable|numeric|min:0',
             
-            // Exonérations
-            'exonere_tva' => 'nullable|boolean',
-            'exonere_css' => 'nullable|boolean',
-            'motif_exoneration' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
+            // Exonérations (legacy - rétrocompatibilité)
+            'exonere_tva' => ['nullable', 'boolean'],
+            'exonere_css' => ['nullable', 'boolean'],
+            'motif_exoneration' => ['nullable', 'string', 'max:255'],
+            
+            // Nouvelle structure taxes_selection (JSON)
+            'taxes_selection' => ['nullable', 'array'],
+            'taxes_selection.selected_tax_codes' => ['required_with:taxes_selection', 'array', 'max:20'],
+            'taxes_selection.selected_tax_codes.*' => ['string', 'max:20', 'regex:/^[A-Z0-9_]+$/'],
+            'taxes_selection.has_exoneration' => ['nullable', 'boolean'],
+            'taxes_selection.exonerated_tax_codes' => ['nullable', 'array', 'max:20'],
+            'taxes_selection.exonerated_tax_codes.*' => ['string', 'max:20', 'regex:/^[A-Z0-9_]+$/'],
+            'taxes_selection.motif_exoneration' => ['required_if:taxes_selection.has_exoneration,true', 'nullable', 'string', 'max:255'],
             
             // Lignes (Opérations indépendantes)
             'lignes' => 'nullable|array',
