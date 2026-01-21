@@ -29,7 +29,7 @@ import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 import { ClientCombobox } from "@/components/shared/ClientCombobox";
-import ExonerationTaxesSelector, { ExonerationData } from "@/components/shared/ExonerationTaxesSelector";
+import TaxesSelector, { TaxesSelectionData, TaxeItem } from "@/components/shared/TaxesSelector";
 import {
   validateFactureConteneurs,
   validateFactureConventionnel,
@@ -46,7 +46,7 @@ interface DraftData {
   conventionnelData: FactureConventionnelData | null;
   independantData: FactureIndependantData | null;
   remiseData: RemiseData;
-  exonerationData: ExonerationData;
+  taxesSelectionData: TaxesSelectionData;
 }
 
 export default function NouvelleFacturePage() {
@@ -66,6 +66,12 @@ export default function NouvelleFacturePage() {
   
   const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
   const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
+  
+  // Liste des taxes disponibles
+  const availableTaxes: TaxeItem[] = [
+    { code: "TVA", nom: "Taxe sur la Valeur Ajoutée", taux: Math.round(TAUX_TVA * 100), active: true, obligatoire: true },
+    { code: "CSS", nom: "Contribution Spéciale de Solidarité", taux: Math.round(TAUX_CSS * 100), active: true, obligatoire: true },
+  ];
   
   const categoriesLabels = getCategoriesLabels();
 
@@ -93,10 +99,11 @@ export default function NouvelleFacturePage() {
     montantCalcule: 0,
   });
 
-  const [exonerationData, setExonerationData] = useState<ExonerationData>({
-    exonereTva: false,
-    exonereCss: false,
-    motif: "",
+  // État de la sélection des taxes
+  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
+    taxesAppliquees: availableTaxes,
+    exonere: false,
+    motifExoneration: "",
   });
 
   // Auto-save
@@ -118,10 +125,10 @@ export default function NouvelleFacturePage() {
         conventionnelData,
         independantData,
         remiseData,
-        exonerationData,
+        taxesSelectionData,
       });
     }
-  }, [categorie, clientId, dateEcheance, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, exonerationData, save]);
+  }, [categorie, clientId, dateEcheance, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, taxesSelectionData, save]);
 
   const handleRestoreDraft = () => {
     const draft = restore();
@@ -134,7 +141,7 @@ export default function NouvelleFacturePage() {
       setConventionnelData(draft.conventionnelData);
       setIndependantData(draft.independantData);
       setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
-      setExonerationData(draft.exonerationData || { exonereTva: false, exonereCss: false, motif: "" });
+      setTaxesSelectionData(draft.taxesSelectionData || { taxesAppliquees: availableTaxes, exonere: false, motifExoneration: "" });
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
       toast.success("Brouillon restauré avec succès");
@@ -151,9 +158,12 @@ export default function NouvelleFacturePage() {
 
   const montantHT = getMontantHT();
   const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  // Appliquer les exonérations
-  const tva = exonerationData.exonereTva ? 0 : Math.round(montantHTApresRemise * TAUX_TVA);
-  const css = exonerationData.exonereCss ? 0 : Math.round(montantHTApresRemise * TAUX_CSS);
+  
+  // Calculer les taxes à appliquer
+  const tvaAppliquee = taxesSelectionData.taxesAppliquees.find(t => t.code === "TVA");
+  const cssAppliquee = taxesSelectionData.taxesAppliquees.find(t => t.code === "CSS");
+  const tva = taxesSelectionData.exonere ? 0 : (tvaAppliquee ? Math.round(montantHTApresRemise * (tvaAppliquee.taux / 100)) : 0);
+  const css = taxesSelectionData.exonere ? 0 : (cssAppliquee ? Math.round(montantHTApresRemise * (cssAppliquee.taux / 100)) : 0);
   const montantTTC = montantHTApresRemise + tva + css;
 
   const handleCategorieChange = (value: CategorieDocument) => {
@@ -162,7 +172,7 @@ export default function NouvelleFacturePage() {
     setConventionnelData(null);
     setIndependantData(null);
     setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
-    setExonerationData({ exonereTva: false, exonereCss: false, motif: "" });
+    setTaxesSelectionData({ taxesAppliquees: availableTaxes, exonere: false, motifExoneration: "" });
     setCurrentStep(2);
   };
 
@@ -303,10 +313,10 @@ export default function NouvelleFacturePage() {
       remise_type: remiseData.type !== "none" ? remiseData.type : null,
       remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
       remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
-      // Exonérations
-      exonere_tva: exonerationData.exonereTva,
-      exonere_css: exonerationData.exonereCss,
-      motif_exoneration: (exonerationData.exonereTva || exonerationData.exonereCss) ? exonerationData.motif : null,
+      // Exonérations - basées sur les taxes sélectionnées
+      exonere_tva: taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA"),
+      exonere_css: taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS"),
+      motif_exoneration: taxesSelectionData.exonere ? taxesSelectionData.motifExoneration : null,
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataForApi,
@@ -522,14 +532,13 @@ export default function NouvelleFacturePage() {
             {/* Step 4: Récapitulatif */}
             {currentStep === 4 && (
               <div className="space-y-6 animate-fade-in">
-                {/* Exonération de taxes */}
+                {/* Sélection des taxes */}
                 {montantHTApresRemise > 0 && (
-                  <ExonerationTaxesSelector
+                  <TaxesSelector
+                    taxes={availableTaxes}
                     montantHT={montantHTApresRemise}
-                    tauxTva={Math.round(TAUX_TVA * 100)}
-                    tauxCss={Math.round(TAUX_CSS * 100)}
-                    onChange={setExonerationData}
-                    initialData={exonerationData}
+                    onChange={setTaxesSelectionData}
+                    initialData={taxesSelectionData}
                   />
                 )}
 
@@ -543,9 +552,9 @@ export default function NouvelleFacturePage() {
                   remiseMontant={remiseData.montantCalcule}
                   remiseType={remiseData.type}
                   remiseValeur={remiseData.valeur}
-                  exonereTva={exonerationData.exonereTva}
-                  exonereCss={exonerationData.exonereCss}
-                  motifExoneration={exonerationData.motif}
+                  exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
+                  exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
+                  motifExoneration={taxesSelectionData.motifExoneration}
                 />
               </div>
             )}
