@@ -234,11 +234,25 @@ export default function ModifierOrdrePage() {
   const css = Math.round(montantHT * TAUX_CSS);
   const montantTTC = montantHT + tva + css;
 
-  // Stepper navigation
+  // Stepper navigation - vérifie les prérequis avant de changer d'étape
   const handleStepClick = (step: number) => {
-    if (step >= 2 && step <= 4) {
+    if (step < 2 || step > 4) return;
+    
+    // Permet de revenir en arrière sans restriction
+    if (step < currentStep) {
       setCurrentStep(step);
+      return;
     }
+    
+    // Pour avancer, vérifie les prérequis de chaque étape intermédiaire
+    for (let s = currentStep + 1; s <= step; s++) {
+      if (!canProceedToStep(s)) {
+        if (s === 3) toast.error("Veuillez sélectionner un client");
+        else if (s === 4) toast.error("Veuillez compléter les détails de l'ordre");
+        return;
+      }
+    }
+    setCurrentStep(step);
   };
 
   const canProceedToStep = (step: number): boolean => {
