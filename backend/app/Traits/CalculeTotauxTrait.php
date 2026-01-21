@@ -108,6 +108,14 @@ trait CalculeTotauxTrait
         // Calculer les taxes
         $taxes = $this->calculerTaxes($montantHTApresRemise, $document->categorie ?? null);
 
+        // Appliquer les exonérations sélectives
+        if ($document->exonere_tva ?? false) {
+            $taxes['tva'] = 0;
+        }
+        if ($document->exonere_css ?? false) {
+            $taxes['css'] = 0;
+        }
+
         // Calculer le TTC
         $montantTTC = $montantHTApresRemise + $taxes['tva'] + $taxes['css'];
 

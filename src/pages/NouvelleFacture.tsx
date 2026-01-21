@@ -29,6 +29,7 @@ import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 import { ClientCombobox } from "@/components/shared/ClientCombobox";
+import ExonerationTaxesSelector, { ExonerationData } from "@/components/shared/ExonerationTaxesSelector";
 import {
   validateFactureConteneurs,
   validateFactureConventionnel,
@@ -45,6 +46,7 @@ interface DraftData {
   conventionnelData: FactureConventionnelData | null;
   independantData: FactureIndependantData | null;
   remiseData: RemiseData;
+  exonerationData: ExonerationData;
 }
 
 export default function NouvelleFacturePage() {
@@ -91,6 +93,12 @@ export default function NouvelleFacturePage() {
     montantCalcule: 0,
   });
 
+  const [exonerationData, setExonerationData] = useState<ExonerationData>({
+    exonereTva: false,
+    exonereCss: false,
+    motif: "",
+  });
+
   // Auto-save
   const { save, clear, restore, hasDraft, lastSaved, isSaving } = useAutoSave<DraftData>({
     key: 'nouvelle_facture',
@@ -110,9 +118,10 @@ export default function NouvelleFacturePage() {
         conventionnelData,
         independantData,
         remiseData,
+        exonerationData,
       });
     }
-  }, [categorie, clientId, dateEcheance, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, save]);
+  }, [categorie, clientId, dateEcheance, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, exonerationData, save]);
 
   const handleRestoreDraft = () => {
     const draft = restore();
@@ -125,6 +134,7 @@ export default function NouvelleFacturePage() {
       setConventionnelData(draft.conventionnelData);
       setIndependantData(draft.independantData);
       setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
+      setExonerationData(draft.exonerationData || { exonereTva: false, exonereCss: false, motif: "" });
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
       toast.success("Brouillon restauré avec succès");
@@ -141,8 +151,9 @@ export default function NouvelleFacturePage() {
 
   const montantHT = getMontantHT();
   const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
-  const css = Math.round(montantHTApresRemise * TAUX_CSS);
+  // Appliquer les exonérations
+  const tva = exonerationData.exonereTva ? 0 : Math.round(montantHTApresRemise * TAUX_TVA);
+  const css = exonerationData.exonereCss ? 0 : Math.round(montantHTApresRemise * TAUX_CSS);
   const montantTTC = montantHTApresRemise + tva + css;
 
   const handleCategorieChange = (value: CategorieDocument) => {
@@ -151,6 +162,7 @@ export default function NouvelleFacturePage() {
     setConventionnelData(null);
     setIndependantData(null);
     setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
+    setExonerationData({ exonereTva: false, exonereCss: false, motif: "" });
     setCurrentStep(2);
   };
 
@@ -291,6 +303,10 @@ export default function NouvelleFacturePage() {
       remise_type: remiseData.type !== "none" ? remiseData.type : null,
       remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
       remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
+      // Exonérations
+      exonere_tva: exonerationData.exonereTva,
+      exonere_css: exonerationData.exonereCss,
+      motif_exoneration: (exonerationData.exonereTva || exonerationData.exonereCss) ? exonerationData.motif : null,
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataForApi,
@@ -499,6 +515,17 @@ export default function NouvelleFacturePage() {
                 {/* Remise */}
                 {montantHT > 0 && (
                   <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+                )}
+
+                {/* Exonération de taxes */}
+                {montantHTApresRemise > 0 && (
+                  <ExonerationTaxesSelector
+                    montantHT={montantHTApresRemise}
+                    tauxTva={Math.round(TAUX_TVA * 100)}
+                    tauxCss={Math.round(TAUX_CSS * 100)}
+                    onChange={setExonerationData}
+                    initialData={isRestoredFromDraft ? exonerationData : undefined}
+                  />
                 )}
               </div>
             )}

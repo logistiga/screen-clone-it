@@ -41,6 +41,15 @@ class UpdateFactureRequest extends FormRequest
             'remise_valeur' => 'nullable|numeric|min:0',
             'remise_montant' => 'nullable|numeric|min:0',
             
+            // Exonérations
+            'exonere_tva' => 'nullable|boolean',
+            'exonere_css' => 'nullable|boolean',
+            'motif_exoneration' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            
             // Lignes (Opérations indépendantes)
             'lignes' => 'nullable|array',
             'lignes.*.type_operation' => 'required_with:lignes|string|max:100',

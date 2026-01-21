@@ -87,6 +87,11 @@ export interface OrdreTravail {
   remise_type?: string | null;
   remise_valeur?: number;
   remise_montant?: number;
+  // Exonérations
+  exonere_tva?: boolean;
+  exonere_css?: boolean;
+  motif_exoneration?: string;
+  montant_effectif?: number;
   statut: string;
   notes?: string;
   created_at?: string;
@@ -127,6 +132,11 @@ export interface Facture {
   remise_type?: string | null;
   remise_valeur?: number;
   remise_montant?: number;
+  // Exonérations
+  exonere_tva?: boolean;
+  exonere_css?: boolean;
+  motif_exoneration?: string;
+  montant_effectif?: number;
   statut: string;
   notes?: string;
   created_at?: string;

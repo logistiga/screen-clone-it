@@ -36,6 +36,10 @@ class Facture extends Model
         'notes',
         'token_verification',
         'created_by',
+        // Exonérations
+        'exonere_tva',
+        'exonere_css',
+        'motif_exoneration',
     ];
 
     protected $casts = [
@@ -49,6 +53,8 @@ class Facture extends Model
         'montant_paye' => 'decimal:2',
         'remise_valeur' => 'decimal:2',
         'remise_montant' => 'decimal:2',
+        'exonere_tva' => 'boolean',
+        'exonere_css' => 'boolean',
     ];
 
     protected static function boot()
@@ -128,12 +134,28 @@ class Facture extends Model
     }
 
     // Accessors
-    public function getResteAPayerAttribute()
+    /**
+     * Calculer le montant effectif (tenant compte des exonérations)
+     */
+    public function getMontantEffectifAttribute(): float
     {
-        return $this->montant_ttc - $this->montant_paye;
+        $montantHTNet = (float) $this->montant_ht - (float) ($this->remise_montant ?? 0);
+        $tvaEffective = $this->exonere_tva ? 0 : (float) $this->tva;
+        $cssEffective = $this->exonere_css ? 0 : (float) $this->css;
+        
+        return $montantHTNet + $tvaEffective + $cssEffective;
     }
 
-    public function getEstEnRetardAttribute()
+    public function getResteAPayerAttribute(): float
+    {
+        // Si exonération, utiliser le montant effectif
+        if ($this->exonere_tva || $this->exonere_css) {
+            return max(0, $this->montant_effectif - (float) ($this->montant_paye ?? 0));
+        }
+        return max(0, (float) $this->montant_ttc - (float) ($this->montant_paye ?? 0));
+    }
+
+    public function getEstEnRetardAttribute(): bool
     {
         return $this->statut !== 'payee' && 
                $this->statut !== 'annulee' && 
