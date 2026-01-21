@@ -445,6 +445,7 @@ L'équipe LOGISTIGA`;
                   <TableHead className="text-right">Total TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Facture</TableHead>
                   <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -485,6 +486,18 @@ L'équipe LOGISTIGA`;
                         )}
                       </TableCell>
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
+                      <TableCell>
+                        {ordre.facture?.numero ? (
+                          <span 
+                            className="text-sm font-medium text-blue-600 hover:underline cursor-pointer"
+                            onClick={() => navigate(`/factures/${ordre.facture.id}`)}
+                          >
+                            {ordre.facture.numero}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
