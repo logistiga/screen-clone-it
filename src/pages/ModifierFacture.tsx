@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Save, Receipt, Loader2, Users, Calendar, ArrowRight } from "lucide-react";
@@ -38,6 +38,7 @@ import type { FactureIndependantData } from "@/components/factures/forms/Facture
 import { getCategoriesLabels, CategorieDocument, typesOperationConteneur, TypeOperationIndep } from "@/types/documents";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
+import ExonerationTaxesSelector, { ExonerationData } from "@/components/shared/ExonerationTaxesSelector";
 
 export default function ModifierFacturePage() {
   const navigate = useNavigate();
@@ -74,6 +75,13 @@ export default function ModifierFacturePage() {
   const [conventionnelData, setConventionnelData] = useState<FactureConventionnelData | null>(null);
   const [independantData, setIndependantData] = useState<FactureIndependantData | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // État pour l'exonération
+  const [exonerationData, setExonerationData] = useState<ExonerationData>({
+    exonereTva: false,
+    exonereCss: false,
+    motif: "",
+  });
 
   // Populate form when data loads
   useEffect(() => {
@@ -92,9 +100,21 @@ export default function ModifierFacturePage() {
       }
       setCategorie(cat);
       
+      // Initialiser les données d'exonération
+      setExonerationData({
+        exonereTva: (factureData as any).exonere_tva || false,
+        exonereCss: (factureData as any).exonere_css || false,
+        motif: (factureData as any).motif_exoneration || "",
+      });
+      
       setIsInitialized(true);
     }
   }, [factureData, isInitialized]);
+
+  // Callback stable pour l'exonération
+  const handleExonerationChange = useCallback((data: ExonerationData) => {
+    setExonerationData(data);
+  }, []);
 
   // Initial data for forms
   const conteneursInitialData = useMemo(() => {
@@ -281,6 +301,10 @@ export default function ModifierFacturePage() {
       client_id: parseInt(clientId),
       date_echeance: dateEcheance || null,
       notes: notes || null,
+      // Données d'exonération
+      exonere_tva: exonerationData.exonereTva,
+      exonere_css: exonerationData.exonereCss,
+      motif_exoneration: exonerationData.motif || null,
     };
 
     if (categorie === "conteneurs" && conteneursData) {
@@ -566,14 +590,28 @@ export default function ModifierFacturePage() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
                 >
                   <RecapitulatifCard
                     montantHT={montantHT}
-                    tva={tva}
-                    css={css}
-                    montantTTC={montantTTC}
+                    tva={exonerationData.exonereTva ? 0 : tva}
+                    css={exonerationData.exonereCss ? 0 : css}
+                    montantTTC={montantHT + (exonerationData.exonereTva ? 0 : tva) + (exonerationData.exonereCss ? 0 : css)}
                     tauxTva={Math.round(TAUX_TVA * 100)}
                     tauxCss={Math.round(TAUX_CSS * 100)}
+                  />
+                  
+                  {/* Exonération de taxes */}
+                  <ExonerationTaxesSelector
+                    onChange={handleExonerationChange}
+                    tauxTva={Math.round(TAUX_TVA * 100)}
+                    tauxCss={Math.round(TAUX_CSS * 100)}
+                    montantHT={montantHT}
+                    initialData={{
+                      exonereTva: (factureData as any)?.exonere_tva || false,
+                      exonereCss: (factureData as any)?.exonere_css || false,
+                      motif: (factureData as any)?.motif_exoneration || "",
+                    }}
                   />
                 </motion.div>
               )}
