@@ -298,8 +298,15 @@ export default function ModifierFacturePage() {
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+
+    // Empêche la validation/soumission involontaire (ex: touche Entrée) avant le récapitulatif.
+    // On autorise toujours le bouton "Enregistrer" du header (event type = "click").
+    if (e.type === "submit" && currentStep !== 4) {
+      toast.info("Cliquez sur « Suivant » pour aller au récapitulatif avant de valider.");
+      return;
+    }
 
     if (!clientId) {
       toast.error("Veuillez sélectionner un client");
