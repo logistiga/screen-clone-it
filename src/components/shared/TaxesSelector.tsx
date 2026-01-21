@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,6 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, Percent, Info, Shield } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface TaxeItem {
@@ -40,12 +39,20 @@ function uniqSorted(arr: string[]): string[] {
   return Array.from(new Set(arr)).sort((a, b) => a.localeCompare(b));
 }
 
-export default function TaxesSelector({
+// Composant mémorisé pour éviter les re-renders inutiles
+const TaxesSelector = memo(function TaxesSelector({
   taxes,
   montantHT,
   value,
   onChange,
 }: TaxesSelectorProps) {
+  // Refs pour éviter les boucles de re-render
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   const { selectedTaxCodes, hasExoneration, exoneratedTaxCodes, motifExoneration } = value;
 
   // Taxes actives triées
@@ -54,114 +61,121 @@ export default function TaxesSelector({
     [taxes]
   );
 
-  // Codes des taxes obligatoires
+  // Codes des taxes obligatoires (normalisés en majuscules)
   const mandatoryCodes = useMemo(
-    () => activeTaxes.filter(t => t.obligatoire).map(t => t.code),
+    () => activeTaxes.filter(t => t.obligatoire).map(t => t.code.toUpperCase()),
     [activeTaxes]
   );
 
   // Sets pour vérifications rapides - normalisés en majuscules
-  const selectedSet = useMemo(() => new Set(selectedTaxCodes.map(c => c.toUpperCase())), [selectedTaxCodes]);
-  const exoSet = useMemo(() => new Set(exoneratedTaxCodes.map(c => c.toUpperCase())), [exoneratedTaxCodes]);
-
-  const isSelected = useCallback((code: string) => selectedSet.has(code.toUpperCase()), [selectedSet]);
-  const isExonerated = useCallback((code: string) => exoSet.has(code.toUpperCase()), [exoSet]);
-
-  // Toggle sélection taxe à appliquer
-  const toggleSelectTax = useCallback(
-    (taxe: TaxeItem) => {
-      const code = (taxe.code || "").toUpperCase();
-
-      // Taxes obligatoires: toujours sélectionnées
-      if (taxe.obligatoire) return;
-
-      const nextSelected = selectedSet.has(code)
-        ? selectedTaxCodes.filter(c => c.toUpperCase() !== code)
-        : [...selectedTaxCodes, code];
-
-      // S'assurer que les taxes obligatoires sont toujours incluses
-      const nextSelectedNorm = uniqSorted([
-        ...nextSelected.map(c => c.toUpperCase()),
-        ...mandatoryCodes.map(c => c.toUpperCase()),
-      ]);
-      
-      // Nettoyer les exonérations qui ne sont plus dans la sélection
-      const nextExo = exoneratedTaxCodes
-        .map(c => c.toUpperCase())
-        .filter(c => nextSelectedNorm.includes(c));
-
-      onChange({
-        ...value,
-        selectedTaxCodes: nextSelectedNorm,
-        exoneratedTaxCodes: uniqSorted(nextExo),
-      });
-    },
-    [selectedSet, selectedTaxCodes, exoneratedTaxCodes, mandatoryCodes, onChange, value]
+  const selectedSet = useMemo(
+    () => new Set(selectedTaxCodes.map(c => c.toUpperCase())),
+    [selectedTaxCodes]
+  );
+  const exoSet = useMemo(
+    () => new Set(exoneratedTaxCodes.map(c => c.toUpperCase())),
+    [exoneratedTaxCodes]
   );
 
-  // Toggle exonération sur une taxe (uniquement si la taxe est sélectionnée)
-  const toggleExonerateTax = useCallback(
-    (code: string) => {
-      const norm = (code || "").toUpperCase();
-      if (!selectedSet.has(norm)) return;
-
-      const nextExo = exoSet.has(norm)
-        ? exoneratedTaxCodes.filter(c => c.toUpperCase() !== norm)
-        : [...exoneratedTaxCodes, norm];
-
-      onChange({
-        ...value,
-        exoneratedTaxCodes: uniqSorted(nextExo),
-      });
-    },
-    [selectedSet, exoSet, exoneratedTaxCodes, onChange, value]
+  const isSelected = useCallback(
+    (code: string) => selectedSet.has(code.toUpperCase()),
+    [selectedSet]
+  );
+  const isExonerated = useCallback(
+    (code: string) => exoSet.has(code.toUpperCase()),
+    [exoSet]
   );
 
-  // Toggle mode exonération global
-  const handleHasExonerationChange = useCallback(
-    (checked: boolean) => {
-      onChange({
-        ...value,
-        hasExoneration: checked,
-        // Si on coupe l'exonération: on reset la liste + motif
-        exoneratedTaxCodes: checked
-          ? uniqSorted(exoneratedTaxCodes.map(c => c.toUpperCase()).filter(c => selectedSet.has(c)))
-          : [],
-        motifExoneration: checked ? (motifExoneration ?? "") : "",
-      });
-    },
-    [onChange, value, exoneratedTaxCodes, selectedSet, motifExoneration]
-  );
+  // Toggle sélection taxe - STABLE via refs
+  const toggleSelectTax = useCallback((taxe: TaxeItem) => {
+    const code = (taxe.code || "").toUpperCase();
+    
+    // Taxes obligatoires: toujours sélectionnées
+    if (taxe.obligatoire) return;
 
-  // Mise à jour du motif
-  const handleMotifChange = useCallback(
-    (nextMotif: string) => {
-      onChange({
-        ...value,
-        motifExoneration: nextMotif,
-      });
-    },
-    [onChange, value]
-  );
+    const currentValue = valueRef.current;
+    const currentSelectedSet = new Set(currentValue.selectedTaxCodes.map(c => c.toUpperCase()));
+
+    const nextSelected = currentSelectedSet.has(code)
+      ? currentValue.selectedTaxCodes.filter(c => c.toUpperCase() !== code)
+      : [...currentValue.selectedTaxCodes, code];
+
+    // S'assurer que les taxes obligatoires sont toujours incluses
+    const nextSelectedNorm = uniqSorted([
+      ...nextSelected.map(c => c.toUpperCase()),
+      ...mandatoryCodes,
+    ]);
+    
+    // Nettoyer les exonérations qui ne sont plus dans la sélection
+    const nextExo = currentValue.exoneratedTaxCodes
+      .map(c => c.toUpperCase())
+      .filter(c => nextSelectedNorm.includes(c));
+
+    onChangeRef.current({
+      ...currentValue,
+      selectedTaxCodes: nextSelectedNorm,
+      exoneratedTaxCodes: uniqSorted(nextExo),
+    });
+  }, [mandatoryCodes]);
+
+  // Toggle exonération - STABLE via refs
+  const toggleExonerateTax = useCallback((code: string) => {
+    const norm = (code || "").toUpperCase();
+    const currentValue = valueRef.current;
+    const currentSelectedSet = new Set(currentValue.selectedTaxCodes.map(c => c.toUpperCase()));
+    
+    if (!currentSelectedSet.has(norm)) return;
+
+    const currentExoSet = new Set(currentValue.exoneratedTaxCodes.map(c => c.toUpperCase()));
+    const nextExo = currentExoSet.has(norm)
+      ? currentValue.exoneratedTaxCodes.filter(c => c.toUpperCase() !== norm)
+      : [...currentValue.exoneratedTaxCodes, norm];
+
+    onChangeRef.current({
+      ...currentValue,
+      exoneratedTaxCodes: uniqSorted(nextExo),
+    });
+  }, []);
+
+  // Toggle mode exonération global - STABLE via refs
+  const handleHasExonerationChange = useCallback((checked: boolean) => {
+    const currentValue = valueRef.current;
+    const currentSelectedSet = new Set(currentValue.selectedTaxCodes.map(c => c.toUpperCase()));
+    
+    onChangeRef.current({
+      ...currentValue,
+      hasExoneration: checked,
+      exoneratedTaxCodes: checked
+        ? uniqSorted(currentValue.exoneratedTaxCodes.map(c => c.toUpperCase()).filter(c => currentSelectedSet.has(c)))
+        : [],
+      motifExoneration: checked ? (currentValue.motifExoneration ?? "") : "",
+    });
+  }, []);
+
+  // Mise à jour du motif - STABLE via refs
+  const handleMotifChange = useCallback((nextMotif: string) => {
+    onChangeRef.current({
+      ...valueRef.current,
+      motifExoneration: nextMotif,
+    });
+  }, []);
 
   // Taxes sélectionnées (objets) - inclut toujours les obligatoires
   const selectedTaxes = useMemo(() => {
-    const codes = new Set(uniqSorted([...selectedTaxCodes, ...mandatoryCodes]));
-    return activeTaxes.filter(t => codes.has(t.code));
+    const codes = new Set(uniqSorted([...selectedTaxCodes.map(c => c.toUpperCase()), ...mandatoryCodes]));
+    return activeTaxes.filter(t => codes.has(t.code.toUpperCase()));
   }, [activeTaxes, selectedTaxCodes, mandatoryCodes]);
 
   // Calcul total taxes (hors exonérées si mode exonération actif)
   const totalTaxes = useMemo(() => {
     if (montantHT <= 0) return 0;
     return selectedTaxes.reduce((acc, t) => {
-      if (hasExoneration && exoSet.has(t.code)) return acc;
+      if (hasExoneration && exoSet.has(t.code.toUpperCase())) return acc;
       return acc + Math.round(montantHT * (t.taux / 100));
     }, 0);
   }, [montantHT, selectedTaxes, hasExoneration, exoSet]);
 
   const montantTTC = montantHT + totalTaxes;
-
-  // Pour l'affichage
   const selectedCodesDisplay = selectedTaxes.map(t => t.code).join(", ");
 
   return (
@@ -170,7 +184,7 @@ export default function TaxesSelector({
         <CardTitle className="text-lg flex items-center justify-between">
           <span className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-blue-600" />
-            Taxes (depuis la table)
+            Taxes applicables
           </span>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Exonération</span>
@@ -192,15 +206,14 @@ export default function TaxesSelector({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {activeTaxes.map((taxe) => {
-              const selected = isSelected(taxe.code) || !!taxe.obligatoire;
+              const codeUpper = taxe.code.toUpperCase();
+              const selected = isSelected(codeUpper) || !!taxe.obligatoire;
               const montantTaxe = Math.round(montantHT * (taxe.taux / 100));
               const disabled = !!taxe.obligatoire;
 
               return (
-                <motion.div
+                <div
                   key={taxe.code}
-                  whileHover={{ scale: disabled ? 1 : 1.02 }}
-                  whileTap={{ scale: disabled ? 1 : 0.98 }}
                   className={cn(
                     "flex items-start gap-3 p-3 rounded-lg border-2 transition-all",
                     disabled ? "cursor-not-allowed opacity-80" : "cursor-pointer",
@@ -208,12 +221,18 @@ export default function TaxesSelector({
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
                       : "border-border hover:border-blue-300 hover:bg-muted/50"
                   )}
-                  onClick={() => !disabled && toggleSelectTax(taxe)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!disabled) toggleSelectTax(taxe);
+                  }}
                 >
                   <Checkbox
                     checked={selected}
                     disabled={disabled}
-                    onCheckedChange={() => !disabled && toggleSelectTax(taxe)}
+                    onCheckedChange={(checked) => {
+                      if (!disabled) toggleSelectTax(taxe);
+                    }}
                     onClick={(e) => e.stopPropagation()}
                     className="mt-0.5 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   />
@@ -252,7 +271,7 @@ export default function TaxesSelector({
                       </p>
                     )}
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -265,91 +284,87 @@ export default function TaxesSelector({
         </div>
 
         {/* 2) Exonération par taxe (uniquement sur les taxes sélectionnées) */}
-        <AnimatePresence>
-          {hasExoneration && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-4 pt-2"
-            >
-              <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
-                <Shield className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700 dark:text-amber-400">
-                  Sélectionne les taxes dont ce document est exonéré (parmi celles appliquées).
-                </AlertDescription>
-              </Alert>
+        {hasExoneration && (
+          <div className="space-y-4 pt-2 animate-in fade-in-0 duration-200">
+            <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+              <Shield className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-700 dark:text-amber-400">
+                Sélectionne les taxes dont ce document est exonéré (parmi celles appliquées).
+              </AlertDescription>
+            </Alert>
 
-              {/* Liste exonération */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Taxes exonérées
-                </Label>
+            {/* Liste exonération */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Taxes exonérées
+              </Label>
 
-                {selectedTaxes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">
-                    Sélectionne d'abord au moins une taxe à appliquer.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {selectedTaxes.map((t) => {
-                      const exo = isExonerated(t.code);
+              {selectedTaxes.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Sélectionne d'abord au moins une taxe à appliquer.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {selectedTaxes.map((t) => {
+                    const exo = isExonerated(t.code);
 
-                      return (
-                        <div
-                          key={`exo-${t.code}`}
-                          className={cn(
-                            "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all cursor-pointer",
-                            exo
-                              ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
-                              : "border-border hover:border-amber-300"
-                          )}
-                          onClick={() => toggleExonerateTax(t.code)}
-                          role="button"
-                        >
-                          <Checkbox
-                            checked={exo}
-                            onCheckedChange={() => toggleExonerateTax(t.code)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
-                          />
-                          <span className={cn("text-sm font-medium", exo && "text-amber-700")}>
-                            {t.code} ({t.taux}%)
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                    return (
+                      <div
+                        key={`exo-${t.code}`}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all cursor-pointer",
+                          exo
+                            ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
+                            : "border-border hover:border-amber-300"
+                        )}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleExonerateTax(t.code);
+                        }}
+                        role="button"
+                      >
+                        <Checkbox
+                          checked={exo}
+                          onCheckedChange={() => toggleExonerateTax(t.code)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+                        />
+                        <span className={cn("text-sm font-medium", exo && "text-amber-700")}>
+                          {t.code} ({t.taux}%)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-              {/* Motif */}
-              <div className="space-y-2">
-                <Label htmlFor="motif" className="flex items-center gap-1">
-                  Motif d'exonération <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="motif"
-                  value={motifExoneration}
-                  onChange={(e) => handleMotifChange(e.target.value)}
-                  placeholder="Ex: Export zone franche, ONG, Marché public..."
-                  maxLength={255}
-                  className={!motifExoneration ? "border-amber-300 focus:border-amber-500" : ""}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.preventDefault();
-                  }}
-                />
-                {!motifExoneration && (
-                  <p className="text-xs text-amber-600 flex items-center gap-1">
-                    <Info className="h-3 w-3" />
-                    Le motif est obligatoire si exonération activée
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            {/* Motif */}
+            <div className="space-y-2">
+              <Label htmlFor="motif" className="flex items-center gap-1">
+                Motif d'exonération <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="motif"
+                value={motifExoneration}
+                onChange={(e) => handleMotifChange(e.target.value)}
+                placeholder="Ex: Export zone franche, ONG, Marché public..."
+                maxLength={255}
+                className={!motifExoneration ? "border-amber-300 focus:border-amber-500" : ""}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.preventDefault();
+                }}
+              />
+              {!motifExoneration && (
+                <p className="text-xs text-amber-600 flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  Le motif est obligatoire si exonération activée
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 3) Résumé calcul */}
         {montantHT > 0 && (
@@ -382,4 +397,6 @@ export default function TaxesSelector({
       </CardContent>
     </Card>
   );
-}
+});
+
+export default TaxesSelector;
