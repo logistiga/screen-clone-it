@@ -80,7 +80,16 @@ export default function FacturesPage() {
   // États modales consolidés
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; numero: string } | null>(null);
   const [emailModal, setEmailModal] = useState<any | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ id: string; numero: string; montantRestant: number; clientId?: number } | null>(null);
+  const [paiementModal, setPaiementModal] = useState<{ 
+    id: string; 
+    numero: string; 
+    montantRestant: number; 
+    clientId?: number;
+    montantHT: number;
+    montantDejaPaye: number;
+    exonereTva: boolean;
+    exonereCss: boolean;
+  } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{
     id: string;
     numero: string;
@@ -336,7 +345,16 @@ export default function FacturesPage() {
                               size="icon" 
                               title="Paiement" 
                               className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
-                              onClick={() => setPaiementModal({ id: facture.id, numero: facture.numero, montantRestant: resteAPayer, clientId: facture.client?.id ? Number(facture.client.id) : undefined })}
+                              onClick={() => setPaiementModal({ 
+                                id: facture.id, 
+                                numero: facture.numero, 
+                                montantRestant: resteAPayer, 
+                                clientId: facture.client?.id ? Number(facture.client.id) : undefined,
+                                montantHT: facture.montant_ht || 0,
+                                montantDejaPaye: facture.montant_paye || 0,
+                                exonereTva: facture.exonere_tva || false,
+                                exonereCss: facture.exonere_css || false
+                              })}
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
@@ -466,6 +484,13 @@ export default function FacturesPage() {
           documentNumero={paiementModal.numero}
           montantRestant={paiementModal.montantRestant}
           clientId={paiementModal.clientId ? Number(paiementModal.clientId) : undefined}
+          montantHT={paiementModal.montantHT}
+          montantDejaPaye={paiementModal.montantDejaPaye}
+          exonereTva={paiementModal.exonereTva}
+          exonereCss={paiementModal.exonereCss}
+          tauxTva={18}
+          tauxCss={1}
+          onSuccess={() => {}}
         />
       )}
 
