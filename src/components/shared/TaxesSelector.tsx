@@ -70,20 +70,25 @@ export default function TaxesSelector({
   // Toggle sélection taxe à appliquer
   const toggleSelectTax = useCallback(
     (taxe: TaxeItem) => {
-      const code = taxe.code;
+      const code = (taxe.code || "").toUpperCase();
 
       // Taxes obligatoires: toujours sélectionnées
       if (taxe.obligatoire) return;
 
       const nextSelected = selectedSet.has(code)
-        ? selectedTaxCodes.filter(c => c !== code)
+        ? selectedTaxCodes.filter(c => c.toUpperCase() !== code)
         : [...selectedTaxCodes, code];
 
       // S'assurer que les taxes obligatoires sont toujours incluses
-      const nextSelectedNorm = uniqSorted([...nextSelected, ...mandatoryCodes]);
+      const nextSelectedNorm = uniqSorted([
+        ...nextSelected.map(c => c.toUpperCase()),
+        ...mandatoryCodes.map(c => c.toUpperCase()),
+      ]);
       
       // Nettoyer les exonérations qui ne sont plus dans la sélection
-      const nextExo = exoneratedTaxCodes.filter(c => nextSelectedNorm.includes(c));
+      const nextExo = exoneratedTaxCodes
+        .map(c => c.toUpperCase())
+        .filter(c => nextSelectedNorm.includes(c));
 
       onChange({
         ...value,
@@ -97,11 +102,12 @@ export default function TaxesSelector({
   // Toggle exonération sur une taxe (uniquement si la taxe est sélectionnée)
   const toggleExonerateTax = useCallback(
     (code: string) => {
-      if (!selectedSet.has(code)) return;
+      const norm = (code || "").toUpperCase();
+      if (!selectedSet.has(norm)) return;
 
-      const nextExo = exoSet.has(code)
-        ? exoneratedTaxCodes.filter(c => c !== code)
-        : [...exoneratedTaxCodes, code];
+      const nextExo = exoSet.has(norm)
+        ? exoneratedTaxCodes.filter(c => c.toUpperCase() !== norm)
+        : [...exoneratedTaxCodes, norm];
 
       onChange({
         ...value,
@@ -118,7 +124,9 @@ export default function TaxesSelector({
         ...value,
         hasExoneration: checked,
         // Si on coupe l'exonération: on reset la liste + motif
-        exoneratedTaxCodes: checked ? uniqSorted(exoneratedTaxCodes.filter(c => selectedSet.has(c))) : [],
+        exoneratedTaxCodes: checked
+          ? uniqSorted(exoneratedTaxCodes.map(c => c.toUpperCase()).filter(c => selectedSet.has(c)))
+          : [],
         motifExoneration: checked ? (motifExoneration ?? "") : "",
       });
     },
@@ -206,6 +214,7 @@ export default function TaxesSelector({
                     checked={selected}
                     disabled={disabled}
                     onCheckedChange={() => !disabled && toggleSelectTax(taxe)}
+                    onClick={(e) => e.stopPropagation()}
                     className="mt-0.5 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   />
 
@@ -302,6 +311,7 @@ export default function TaxesSelector({
                           <Checkbox
                             checked={exo}
                             onCheckedChange={() => toggleExonerateTax(t.code)}
+                            onClick={(e) => e.stopPropagation()}
                             className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
                           />
                           <span className={cn("text-sm font-medium", exo && "text-amber-700")}>
