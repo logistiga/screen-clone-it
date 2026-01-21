@@ -64,6 +64,7 @@ const menuItems = {
       { title: "Caisse", url: "/caisse", icon: Wallet },
       { title: "Banque", url: "/banque", icon: Building2 },
       { title: "Caisse Globale", url: "/caisse-globale", icon: PiggyBank },
+      { title: "Factures exonérées", url: "/factures-exonerees", icon: Percent },
     ]
   },
   finance: {
