@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, memo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -39,8 +39,7 @@ function uniqSorted(arr: string[]): string[] {
   return Array.from(new Set(arr)).sort((a, b) => a.localeCompare(b));
 }
 
-// Composant mémorisé pour éviter les re-renders inutiles
-const TaxesSelector = memo(function TaxesSelector({
+function TaxesSelectorComponent({
   taxes,
   montantHT,
   value,
@@ -397,6 +396,6 @@ const TaxesSelector = memo(function TaxesSelector({
       </CardContent>
     </Card>
   );
-});
+}
 
-export default TaxesSelector;
+export default TaxesSelectorComponent;
