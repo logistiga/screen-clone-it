@@ -13,8 +13,8 @@ export interface RoutePermission {
 
 // Mapping des routes vers les permissions requises
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
-  // === Dashboard ===
-  { path: '/', permission: 'dashboard.voir' },
+  // === Dashboard === (accessible à tous les utilisateurs authentifiés, pas de permission spécifique)
+  // { path: '/', permission: 'dashboard.voir' }, // Désactivé - le dashboard est accessible à tous
 
   // === Clients ===
   { path: '/clients', permission: 'clients.voir' },

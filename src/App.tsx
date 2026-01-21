@@ -172,8 +172,8 @@ const App = () => (
                 <Route path="/pending-approval" element={<PendingApprovalPage />} />
                 <Route path="/security/:token/:action" element={<SecurityActionPage />} />
                 
-                {/* Routes protégées - Dashboard */}
-                <Route path="/" element={<ProtectedRoute requiredPermission={P.dashboard.view}><DashboardPage /></ProtectedRoute>} />
+                {/* Routes protégées - Dashboard (accessible à tous les utilisateurs authentifiés) */}
+                <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
                 
                 {/* Routes protégées - Clients */}
                 <Route path="/clients" element={<ProtectedRoute requiredPermission={P.clients.view}><ClientsPage /></ProtectedRoute>} />
