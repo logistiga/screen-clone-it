@@ -259,15 +259,8 @@ export default function NouvelOrdrePage() {
     }
   };
 
-  const handleSubmit = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-
-    // Empêche la validation/soumission involontaire (ex: touche Entrée) avant le récapitulatif.
-    if (e.type === "submit" && currentStep !== 4) {
-      toast.info("Cliquez sur « Suivant » pour aller au récapitulatif avant de valider.");
-      return;
-    }
-
+  // Fonction de validation + ouverture du modal (appelée par bouton, PAS par form submit)
+  const handleOpenConfirmModal = () => {
     if (!clientId) {
       toast.error("Veuillez sélectionner un client");
       return;
@@ -305,6 +298,12 @@ export default function NouvelOrdrePage() {
         console.log("Validation errors:", validation.errors);
         return;
       }
+    }
+
+    // Validation exonération : si activée, le motif est obligatoire
+    if (taxesSelectionData.hasExoneration && !taxesSelectionData.motifExoneration?.trim()) {
+      toast.error("Veuillez renseigner le motif d'exonération");
+      return;
     }
 
     // Ouvrir le modal de confirmation
@@ -467,10 +466,9 @@ export default function NouvelOrdrePage() {
         onStepClick={handleStepClick}
       />
 
-      <form 
-        onSubmit={handleSubmit} 
+      <div 
         onKeyDown={(e) => {
-          // Empêcher la soumission sur Entrée sauf si focus sur le bouton submit
+          // Empêcher la soumission sur Entrée
           if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
             e.preventDefault();
           }
@@ -659,7 +657,8 @@ export default function NouvelOrdrePage() {
                 </Button>
               ) : (
                 <Button 
-                  type="submit" 
+                  type="button"
+                  onClick={handleOpenConfirmModal}
                   size="lg" 
                   disabled={createOrdreMutation.isPending}
                   className="transition-all duration-200 hover:scale-105 hover:shadow-md"
@@ -695,7 +694,7 @@ export default function NouvelOrdrePage() {
             />
           </div>
         </div>
-      </form>
+      </div>
 
       {/* Modal de confirmation */}
       <ConfirmationSaveModal

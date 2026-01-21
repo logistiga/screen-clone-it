@@ -261,15 +261,8 @@ export default function NouvelleFacturePage() {
     }
   };
 
-  const handleSubmit = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-
-    // Empêche la validation/soumission involontaire (ex: touche Entrée) avant le récapitulatif.
-    if (e.type === "submit" && currentStep !== 4) {
-      toast.info("Cliquez sur « Suivant » pour aller au récapitulatif avant de valider.");
-      return;
-    }
-
+  // Fonction de validation + ouverture du modal (appelée par bouton, PAS par form submit)
+  const handleOpenConfirmModal = () => {
     if (!clientId) { toast.error("Veuillez sélectionner un client"); return; }
     if (!categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
 
@@ -301,6 +294,12 @@ export default function NouvelleFacturePage() {
         console.log("Validation errors:", validation.errors);
         return;
       }
+    }
+
+    // Validation exonération : si activée, le motif est obligatoire
+    if (taxesSelectionData.hasExoneration && !taxesSelectionData.motifExoneration?.trim()) {
+      toast.error("Veuillez renseigner le motif d'exonération");
+      return;
     }
 
     // Ouvrir le modal de confirmation
@@ -459,8 +458,7 @@ export default function NouvelleFacturePage() {
         onStepClick={handleStepClick}
       />
 
-      <form 
-        onSubmit={handleSubmit} 
+      <div 
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
             e.preventDefault();
@@ -647,7 +645,8 @@ export default function NouvelleFacturePage() {
                 </Button>
               ) : (
                 <Button 
-                  type="submit" 
+                  type="button"
+                  onClick={handleOpenConfirmModal}
                   size="lg" 
                   disabled={createFactureMutation.isPending}
                   className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
@@ -685,7 +684,7 @@ export default function NouvelleFacturePage() {
             />
           </div>
         </div>
-      </form>
+      </div>
 
       {/* Modal de confirmation */}
       <ConfirmationSaveModal
