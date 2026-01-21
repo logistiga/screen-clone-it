@@ -40,6 +40,8 @@ class Facture extends Model
         'exonere_tva',
         'exonere_css',
         'motif_exoneration',
+        // Nouvelle sélection dynamique des taxes
+        'taxes_selection',
     ];
 
     protected $casts = [
@@ -55,6 +57,7 @@ class Facture extends Model
         'remise_montant' => 'decimal:2',
         'exonere_tva' => 'boolean',
         'exonere_css' => 'boolean',
+        'taxes_selection' => 'array',
     ];
 
     protected static function boot()
