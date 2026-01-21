@@ -375,21 +375,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
       .filter((v): v is string => typeof v === 'string' && v.length > 0);
   };
 
-  const hasPermission = (permission: string): boolean => {
-    if (!user) return false;
-    // Super-users: accès total (le backend applique aussi ses propres règles)
-    if (user.role === 'admin' || user.role === 'administrateur' || user.role === 'directeur') return true;
-    // Compat: certains backends peuvent ne pas remplir le champ `role` mais remplir `roles`.
-    if (hasRole('administrateur') || hasRole('directeur')) return true;
-    const perms = normalizeNames(user.permissions);
-    return perms.includes(permission);
-  };
-
   const hasRole = (role: string): boolean => {
     if (!user) return false;
-    if (user.role === role) return true;
-    const roles = normalizeNames(user.roles);
-    return roles.includes(role);
+    // Normalize role for comparison (lowercase, trim)
+    const normalizedRole = role.toLowerCase().trim();
+    const userRole = user.role?.toLowerCase().trim();
+    if (userRole === normalizedRole) return true;
+    const roles = normalizeNames(user.roles).map(r => r.toLowerCase().trim());
+    return roles.includes(normalizedRole);
+  };
+
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false;
+    
+    // DEBUG: Log user data pour diagnostic
+    console.log('[Auth] hasPermission check:', {
+      permission,
+      userRole: user.role,
+      userRoles: user.roles,
+      userPermissions: user.permissions,
+    });
+    
+    // Super-users: accès total (le backend applique aussi ses propres règles)
+    const userRole = user.role?.toLowerCase().trim();
+    if (userRole === 'admin' || userRole === 'administrateur' || userRole === 'directeur') {
+      console.log('[Auth] Bypass admin/directeur détecté via user.role');
+      return true;
+    }
+    // Compat: certains backends peuvent ne pas remplir le champ `role` mais remplir `roles`.
+    if (hasRole('administrateur') || hasRole('directeur')) {
+      console.log('[Auth] Bypass admin/directeur détecté via hasRole()');
+      return true;
+    }
+    
+    const perms = normalizeNames(user.permissions);
+    const hasIt = perms.includes(permission);
+    console.log('[Auth] Permissions normalisées:', perms, '→ has', permission, '=', hasIt);
+    return hasIt;
   };
 
   return (
