@@ -106,7 +106,16 @@ export const roleService = {
   // Détail d'un rôle
   async getRole(id: number): Promise<RoleDetail> {
     const response = await api.get(`/roles/${id}`);
-    return response.data;
+    const data = response.data;
+    
+    // Normaliser les permissions (peuvent être des objets ou des chaînes)
+    if (data.permissions && Array.isArray(data.permissions)) {
+      data.permissions = data.permissions.map((p: string | { name: string }) => 
+        typeof p === 'string' ? p : p?.name
+      ).filter((p: string | undefined): p is string => typeof p === 'string' && p.length > 0);
+    }
+    
+    return data;
   },
 
   // Créer un rôle
