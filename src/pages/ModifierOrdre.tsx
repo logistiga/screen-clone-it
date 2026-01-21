@@ -81,9 +81,12 @@ export default function ModifierOrdrePage() {
   const [independantData, setIndependantData] = useState<OrdreIndependantData | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // État pour la sélection des taxes - initialisé vide
+  // État pour la sélection des taxes - initialisé avec les taxes par défaut
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
-    taxesAppliquees: [],
+    taxesAppliquees: [
+      { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
+      { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
+    ],
     exonere: false,
     motifExoneration: "",
   });
