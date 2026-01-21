@@ -265,8 +265,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const securityInfo = response.data?.security;
       const suspiciousLoginId = response.data?.suspicious_login_id;
 
-      // Le backend peut renvoyer un token (compatibilité). En mode cookie, on évite
-      // de le stocker sauf si on en a vraiment besoin.
+      // Le backend renvoie toujours un token (même en mode cookie).
+      // On le stocke IMMÉDIATEMENT pour garantir que /auth/user fonctionne.
       const token =
         response.data?.token ??
         response.data?.access_token ??
@@ -275,16 +275,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         response.data?.data?.token ??
         response.data?.data?.access_token;
 
-      // Tentative 1: session cookie
+      // IMPORTANT: Stocker le token AVANT d'appeler /auth/user
+      // En cross-origin, les cookies SameSite=none ne marchent pas toujours
+      if (token) {
+        setAuthToken(token);
+      }
+
+      // Récupérer les infos utilisateur (le Bearer token sera ajouté par l'intercepteur)
       try {
         const userResponse = await api.get('/auth/user');
         setUser(userResponse.data);
         updateLastActivity();
-
-        // Hygiène: si on est bien en cookie, on supprime tout token ancien stocké
-        if (isCookieAuthEnabled()) {
-          removeAuthToken();
-        }
 
         // Si connexion suspecte, retourner les infos pour redirection
         if (securityInfo?.suspicious && suspiciousLoginId) {
@@ -300,31 +301,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         return { success: true };
       } catch (verifyError: any) {
-        // Si la session cookie n'est pas active, fallback Bearer token si fourni
-        if (verifyError?.response?.status === 401 && token) {
-          setAuthToken(token);
-          try {
-            const userResponse = await api.get('/auth/user');
-            setUser(userResponse.data);
-            updateLastActivity();
-
-            // Si connexion suspecte avec Bearer token aussi
-            if (securityInfo?.suspicious && suspiciousLoginId) {
-              return { 
-                success: true,
-                suspiciousLogin: {
-                  id: suspiciousLoginId,
-                  reasons: securityInfo.reasons || ['Connexion depuis un appareil inhabituel'],
-                  location: securityInfo.location,
-                }
-              };
-            }
-
-            return { success: true };
-          } catch {
-            // continue vers l'erreur standard
-          }
-        }
+        // Échec de récupération utilisateur après login
 
         removeAuthToken();
         resetCsrf();
