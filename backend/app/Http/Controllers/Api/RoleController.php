@@ -116,7 +116,20 @@ class RoleController extends Controller
     public function show(Role $role): JsonResponse
     {
         $role->load('permissions');
-        $users = User::role($role->name)->select('id', 'name', 'email', 'actif')->get();
+        // NOTE: dans notre base, le champ affiché est `nom` (pas `name`).
+        // On normalise la réponse API vers { name } pour le frontend.
+        $users = User::role($role->name)
+            ->select('id', 'nom', 'email', 'actif')
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->nom,
+                    'email' => $user->email,
+                    'actif' => $user->actif,
+                ];
+            })
+            ->values();
 
         return response()->json([
             'id' => $role->id,
