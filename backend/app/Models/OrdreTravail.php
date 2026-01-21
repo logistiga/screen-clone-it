@@ -156,6 +156,8 @@ class OrdreTravail extends Model
     {
         return $this->facture()->exists();
     }
+
+    /**
      * Calculer le montant de la remise en fonction du type et de la valeur.
      */
     public function calculerRemise(float $montantHTBrut): float
