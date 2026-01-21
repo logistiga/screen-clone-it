@@ -28,24 +28,23 @@ export function useDocumentTaxes() {
   }, [taxesList]);
 
   // Générer availableTaxes stabilisé pour TaxesSelector
+  // Force active: true car on filtre déjà via l'endpoint /taxes/actives
   const availableTaxes = useMemo<TaxeItem[]>(() => {
     if (taxesList.length === 0) {
-      // Valeurs par défaut si aucune taxe configurée
+      // Valeurs par défaut si aucune taxe configurée ou en cours de chargement
       return [
         { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
         { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
       ];
     }
     
-    return taxesList
-      .filter(t => t.active)
-      .map(t => ({
-        code: t.code,
-        nom: t.nom,
-        taux: t.taux,
-        active: true,
-        obligatoire: t.obligatoire ?? false,
-      }));
+    return taxesList.map(t => ({
+      code: t.code,
+      nom: t.nom,
+      taux: t.taux,
+      active: true, // Toujours true car endpoint /actives filtre déjà
+      obligatoire: t.obligatoire ?? false,
+    }));
   }, [taxesList]);
 
   // Codes des taxes obligatoires

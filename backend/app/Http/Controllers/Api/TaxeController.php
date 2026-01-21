@@ -142,7 +142,7 @@ class TaxeController extends Controller
      */
     public function actives(): JsonResponse
     {
-        $taxes = Taxe::active()->ordonne()->get(['id', 'code', 'nom', 'taux', 'obligatoire']);
+        $taxes = Taxe::active()->ordonne()->get(['id', 'code', 'nom', 'taux', 'active', 'obligatoire']);
 
         return response()->json([
             'data' => $taxes,
