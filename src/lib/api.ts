@@ -74,10 +74,33 @@ let csrfInitialized = false;
 let csrfInitializing: Promise<void> | null = null;
 
 /**
+ * Désactive l'auth par cookies (Sanctum SPA) et bascule en Bearer token.
+ * Utile quand les cookies provoquent des erreurs (ex: 431 header too large).
+ */
+const disableCookieAuth = (reason?: string) => {
+  useCookieAuth = false;
+  csrfInitialized = false;
+  csrfInitializing = null;
+
+  // IMPORTANT: en cross-origin, si withCredentials=true le navigateur enverra les cookies
+  // (et donc peut déclencher 431 si les cookies sont trop gros). On coupe donc les cookies.
+  api.defaults.withCredentials = false;
+
+  if (reason) {
+    log.warn(`[Auth] Cookie auth désactivée: ${reason}`);
+  } else {
+    log.warn('[Auth] Cookie auth désactivée');
+  }
+};
+
+/**
  * Récupère le cookie XSRF-TOKEN et initialise la session CSRF
  * Doit être appelé AVANT le login
  */
 export const initializeCsrf = async (): Promise<void> => {
+  // Si on a déjà basculé en mode Bearer, ne pas tenter le CSRF cookie.
+  if (!useCookieAuth) return;
+
   // Éviter les appels multiples simultanés
   if (csrfInitializing) {
     return csrfInitializing;
@@ -103,7 +126,7 @@ export const initializeCsrf = async (): Promise<void> => {
     } catch (error) {
       log.error('[Auth] Erreur lors de l\'initialisation CSRF:', error);
       // En cas d'échec, on bascule sur Bearer token
-      useCookieAuth = false;
+      disableCookieAuth('échec /sanctum/csrf-cookie');
       throw error;
     } finally {
       csrfInitializing = null;
@@ -156,6 +179,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // Gestion 431 (headers trop gros) — généralement cookies trop volumineux/dupliqués.
+    // On bascule automatiquement en Bearer token pour éviter d'envoyer les cookies.
+    if (error.response?.status === 431) {
+      disableCookieAuth('431 Request Header Fields Too Large');
+    }
+
     // Diagnostics (uniquement en développement)
     if (!IS_PRODUCTION) {
       try {
