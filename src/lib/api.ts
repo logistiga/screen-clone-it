@@ -6,6 +6,11 @@ const API_URL = getApiUrl();
 const BACKEND_BASE_URL = getBackendBaseUrl();
 const IS_PRODUCTION = import.meta.env.PROD;
 
+// Debug: afficher les URLs configurées au démarrage
+if (!IS_PRODUCTION) {
+  console.log('[API Config]', { API_URL, BACKEND_BASE_URL });
+}
+
 // Clé de stockage du token (backup si cookies ne marchent pas)
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -86,11 +91,15 @@ export const initializeCsrf = async (): Promise<void> => {
   csrfInitializing = (async () => {
     try {
       // Appel à /sanctum/csrf-cookie pour obtenir le cookie XSRF-TOKEN
-      await axios.get(`${BACKEND_BASE_URL}/sanctum/csrf-cookie`, {
+      // IMPORTANT: L'URL doit inclure /backend/public pour atteindre Laravel
+      const csrfUrl = `${BACKEND_BASE_URL}/sanctum/csrf-cookie`;
+      log.info('[Auth] Initialisation CSRF:', csrfUrl);
+      
+      await axios.get(csrfUrl, {
         withCredentials: true,
       });
       csrfInitialized = true;
-      log.info('[Auth] CSRF cookie initialisé');
+      log.info('[Auth] CSRF cookie initialisé avec succès');
     } catch (error) {
       log.error('[Auth] Erreur lors de l\'initialisation CSRF:', error);
       // En cas d'échec, on bascule sur Bearer token
