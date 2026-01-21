@@ -8,53 +8,67 @@ use App\Models\OrdreTravail;
 use App\Models\Facture;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
- * Trait partagé pour le calcul des totaux (HT, TVA, CSS, TTC) avec remise.
- * Utilisé par les services Devis, OrdreTravail et Facture.
+ * Trait partagé pour le calcul des totaux (HT, taxes dynamiques, TTC) avec remise.
+ * Supporte la nouvelle structure taxes_selection pour sélection/exonération par taxe.
  */
 trait CalculeTotauxTrait
 {
     /**
-     * Récupérer la configuration des taxes avec mise en cache (5 minutes).
-     * Évite les requêtes répétées à la base de données.
+     * Récupérer toutes les taxes actives depuis la table taxes.
+     * Retourne un tableau indexé par code.
      */
-    /**
-     * Récupérer la configuration des taxes depuis la table taxes.
-     * Lit les taux directement depuis Taxe::active() pour synchronisation avec la gestion des taxes.
-     */
-    protected function getTaxesConfig(): array
+    protected function getAllActiveTaxes(): array
     {
-        return Cache::remember('taxes_config', 300, function () {
-            // Vérifier si la table taxes existe
-            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes')) {
+        return Cache::remember('all_active_taxes', 300, function () {
+            if (!Schema::hasTable('taxes')) {
                 Log::info("Table taxes non disponible, utilisation des valeurs par défaut");
                 return [
-                    'tva_taux' => 18,
-                    'css_taux' => 1,
-                    'tva_actif' => true,
-                    'css_actif' => true,
+                    'TVA' => ['code' => 'TVA', 'nom' => 'TVA', 'taux' => 18, 'active' => true, 'obligatoire' => true],
+                    'CSS' => ['code' => 'CSS', 'nom' => 'CSS', 'taux' => 1, 'active' => true, 'obligatoire' => true],
                 ];
             }
             
-            // Récupérer les taxes actives depuis la table taxes
             $taxesActives = \App\Models\Taxe::active()->get();
+            $result = [];
             
-            $taxes = [];
             foreach ($taxesActives as $taxe) {
-                $code = strtolower($taxe->code);
-                $taxes[$code . '_taux'] = $taxe->taux;
-                $taxes[$code . '_actif'] = $taxe->active;
+                $result[$taxe->code] = [
+                    'code' => $taxe->code,
+                    'nom' => $taxe->nom,
+                    'taux' => (float) $taxe->taux,
+                    'active' => (bool) $taxe->active,
+                    'obligatoire' => (bool) ($taxe->obligatoire ?? false),
+                ];
             }
             
-            // Retourner les taux avec valeurs par défaut si non trouvées
-            return [
-                'tva_taux' => $taxes['tva_taux'] ?? 18,
-                'css_taux' => $taxes['css_taux'] ?? 1,
-                'tva_actif' => $taxes['tva_actif'] ?? true,
-                'css_actif' => $taxes['css_actif'] ?? true,
-            ];
+            // Fallback si aucune taxe
+            if (empty($result)) {
+                return [
+                    'TVA' => ['code' => 'TVA', 'nom' => 'TVA', 'taux' => 18, 'active' => true, 'obligatoire' => true],
+                    'CSS' => ['code' => 'CSS', 'nom' => 'CSS', 'taux' => 1, 'active' => true, 'obligatoire' => true],
+                ];
+            }
+            
+            return $result;
         });
+    }
+
+    /**
+     * Récupérer la configuration des taxes (rétrocompatibilité).
+     */
+    protected function getTaxesConfig(): array
+    {
+        $allTaxes = $this->getAllActiveTaxes();
+        
+        return [
+            'tva_taux' => $allTaxes['TVA']['taux'] ?? 18,
+            'css_taux' => $allTaxes['CSS']['taux'] ?? 1,
+            'tva_actif' => $allTaxes['TVA']['active'] ?? true,
+            'css_actif' => $allTaxes['CSS']['active'] ?? true,
+        ];
     }
 
     /**
@@ -62,7 +76,6 @@ trait CalculeTotauxTrait
      */
     protected function calculerMontantRemise(float $montantHTBrut, ?string $remiseType, float $remiseValeur): float
     {
-        // Pas de remise si type null/none ou valeur <= 0
         if (empty($remiseType) || $remiseType === 'none') {
             return 0;
         }
@@ -72,41 +85,90 @@ trait CalculeTotauxTrait
         }
 
         if ($remiseType === 'pourcentage') {
-            // Pourcentage limité à 100%
             $pourcentage = min($remiseValeur, 100);
             return $montantHTBrut * ($pourcentage / 100);
         }
 
-        // Remise en montant fixe - ne peut pas dépasser le montant HT
         return min($remiseValeur, $montantHTBrut);
     }
 
     /**
-     * Calculer les taxes (TVA, CSS) sur un montant donné.
+     * Calculer les taxes dynamiquement depuis taxes_selection.
+     * 
+     * @param float $montantHTApresRemise Montant HT après remise
+     * @param array|null $taxesSelection La structure taxes_selection du document
+     * @param string|null $categorie Catégorie du document (pour non_assujetti)
+     * @return array ['details' => [...], 'tva' => x, 'css' => x, 'total' => y]
      */
-    protected function calculerTaxes(float $montantHTApresRemise, ?string $categorie = null): array
-    {
-        $config = $this->getTaxesConfig();
-        
+    protected function calculerTaxesDynamiques(
+        float $montantHTApresRemise,
+        ?array $taxesSelection = null,
+        ?string $categorie = null
+    ): array {
         // Catégorie non assujettie = pas de taxes
         if ($categorie === 'non_assujetti') {
             return [
+                'details' => [],
                 'tva' => 0,
                 'css' => 0,
+                'total' => 0,
             ];
         }
 
-        $montantTVA = $config['tva_actif'] ? $montantHTApresRemise * ($config['tva_taux'] / 100) : 0;
-        $montantCSS = $config['css_actif'] ? $montantHTApresRemise * ($config['css_taux'] / 100) : 0;
+        $allTaxes = $this->getAllActiveTaxes();
+        $details = [];
+        $total = 0;
+        
+        // Extraire les données de taxes_selection
+        $selectedCodes = $taxesSelection['selected_tax_codes'] ?? array_keys($allTaxes);
+        $hasExoneration = $taxesSelection['has_exoneration'] ?? false;
+        $exoneratedCodes = $taxesSelection['exonerated_tax_codes'] ?? [];
+        
+        // Calculer chaque taxe sélectionnée
+        foreach ($allTaxes as $code => $taxe) {
+            if (!in_array($code, $selectedCodes)) {
+                continue; // Taxe non sélectionnée
+            }
+            
+            $isExonerated = $hasExoneration && in_array($code, $exoneratedCodes);
+            $montant = $isExonerated ? 0 : round($montantHTApresRemise * ($taxe['taux'] / 100), 2);
+            
+            $details[$code] = [
+                'taux' => $taxe['taux'],
+                'montant' => $montant,
+                'exonere' => $isExonerated,
+            ];
+            
+            $total += $montant;
+        }
+        
+        // Rétrocompatibilité: extraire TVA et CSS pour les colonnes legacy
+        $tva = $details['TVA']['montant'] ?? 0;
+        $css = $details['CSS']['montant'] ?? 0;
 
         return [
-            'tva' => $montantTVA,
-            'css' => $montantCSS,
+            'details' => $details,
+            'tva' => $tva,
+            'css' => $css,
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Calculer les taxes (rétrocompatibilité avec ancien système).
+     */
+    protected function calculerTaxes(float $montantHTApresRemise, ?string $categorie = null): array
+    {
+        $result = $this->calculerTaxesDynamiques($montantHTApresRemise, null, $categorie);
+        return [
+            'tva' => $result['tva'],
+            'css' => $result['css'],
         ];
     }
 
     /**
      * Appliquer le calcul complet des totaux sur un document (Devis, Ordre ou Facture).
+     * Supporte la nouvelle structure taxes_selection pour calcul dynamique.
      * 
      * @param Devis|OrdreTravail|Facture $document Le document à mettre à jour
      * @param float $montantHTBrut Le montant HT brut avant remise
@@ -129,41 +191,78 @@ trait CalculeTotauxTrait
         // Montant HT après remise
         $montantHTApresRemise = max(0, $montantHTBrut - $remiseMontant);
 
-        // Calculer les taxes
-        $taxes = $this->calculerTaxes($montantHTApresRemise, $document->categorie ?? null);
+        // Utiliser taxes_selection si disponible, sinon fallback sur exonere_tva/exonere_css
+        $taxesSelection = $document->taxes_selection;
+        
+        if (empty($taxesSelection)) {
+            // Fallback: construire taxes_selection depuis les anciennes colonnes
+            $taxesSelection = $this->buildTaxesSelectionFromLegacy($document);
+        }
 
-        // Appliquer les exonérations sélectives
-        if ($document->exonere_tva ?? false) {
-            $taxes['tva'] = 0;
-        }
-        if ($document->exonere_css ?? false) {
-            $taxes['css'] = 0;
-        }
+        // Calculer les taxes dynamiquement
+        $taxes = $this->calculerTaxesDynamiques(
+            $montantHTApresRemise,
+            $taxesSelection,
+            $document->categorie ?? null
+        );
 
         // Calculer le TTC
-        $montantTTC = $montantHTApresRemise + $taxes['tva'] + $taxes['css'];
+        $montantTTC = $montantHTApresRemise + $taxes['total'];
 
-        // Mettre à jour le document
-        $document->update([
+        // Mettre à jour le document (colonnes legacy + nouveau)
+        $updateData = [
             'montant_ht' => round($montantHTBrut, 2),
             'remise_montant' => round($remiseMontant, 2),
             'tva' => round($taxes['tva'], 2),
             'css' => round($taxes['css'], 2),
             'montant_ttc' => round($montantTTC, 2),
-        ]);
+        ];
+        
+        // Synchroniser exonere_tva/exonere_css depuis taxes_selection pour rétrocompatibilité
+        if (!empty($taxesSelection)) {
+            $hasExo = $taxesSelection['has_exoneration'] ?? false;
+            $exoCodes = $taxesSelection['exonerated_tax_codes'] ?? [];
+            $updateData['exonere_tva'] = $hasExo && in_array('TVA', $exoCodes);
+            $updateData['exonere_css'] = $hasExo && in_array('CSS', $exoCodes);
+            $updateData['motif_exoneration'] = $taxesSelection['motif_exoneration'] ?? null;
+        }
+        
+        $document->update($updateData);
 
-        Log::info("Totaux {$context} calculés", [
+        Log::info("Totaux {$context} calculés (dynamique)", [
             'document_id' => $document->id,
             'document_type' => class_basename($document),
             'montant_ht_brut' => $montantHTBrut,
-            'remise_type' => $document->remise_type,
-            'remise_valeur' => $document->remise_valeur,
             'remise_montant' => $remiseMontant,
             'montant_ht_net' => $montantHTApresRemise,
-            'tva' => $taxes['tva'],
-            'css' => $taxes['css'],
+            'taxes_details' => $taxes['details'],
+            'taxes_total' => $taxes['total'],
             'montant_ttc' => $montantTTC,
         ]);
+    }
+
+    /**
+     * Construire taxes_selection depuis les anciennes colonnes (rétrocompatibilité).
+     */
+    protected function buildTaxesSelectionFromLegacy($document): array
+    {
+        $exoneratedCodes = [];
+        
+        if ($document->exonere_tva ?? false) {
+            $exoneratedCodes[] = 'TVA';
+        }
+        if ($document->exonere_css ?? false) {
+            $exoneratedCodes[] = 'CSS';
+        }
+        
+        $hasExoneration = !empty($exoneratedCodes);
+        
+        return [
+            'selected_tax_codes' => ['TVA', 'CSS'],
+            'has_exoneration' => $hasExoneration,
+            'exonerated_tax_codes' => $exoneratedCodes,
+            'motif_exoneration' => $document->motif_exoneration ?? '',
+        ];
     }
 
     /**
@@ -172,5 +271,6 @@ trait CalculeTotauxTrait
     public static function invaliderCacheTaxes(): void
     {
         Cache::forget('taxes_config');
+        Cache::forget('all_active_taxes');
     }
 }
