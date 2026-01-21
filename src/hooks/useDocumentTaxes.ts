@@ -1,6 +1,15 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { useTaxesActives } from './use-taxes';
 import { TaxeItem, TaxesSelectionData } from '@/components/shared/TaxesSelector';
+
+// Constante stable pour les taxes par défaut (évite les re-renders)
+const DEFAULT_TAXES: TaxeItem[] = [
+  { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
+  { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
+];
+
+// Tableau vide stable
+const EMPTY_ARRAY: any[] = [];
 
 /**
  * Hook unifié pour la gestion des taxes dans les documents (OT/Factures)
@@ -12,8 +21,8 @@ export function useDocumentTaxes() {
   // Fetch les taxes actives depuis /api/taxes/actives
   const { data: taxesResponse, isLoading, error } = useTaxesActives();
   
-  // Extraire le tableau de taxes de la réponse
-  const taxesList = taxesResponse?.data ?? [];
+  // Extraire le tableau de taxes de la réponse - STABLE
+  const taxesList = taxesResponse?.data ?? EMPTY_ARRAY;
 
   // Calculer les taux depuis les taxes actives
   const taxRates = useMemo(() => {
@@ -27,25 +36,39 @@ export function useDocumentTaxes() {
     };
   }, [taxesList]);
 
+  // Référence stable pour les taxes générées
+  const taxesRef = useRef<TaxeItem[]>(DEFAULT_TAXES);
+
   // Générer availableTaxes stabilisé pour TaxesSelector
   // Force active: true car on filtre déjà via l'endpoint /taxes/actives
   // Normalise les codes en majuscules pour cohérence
   const availableTaxes = useMemo<TaxeItem[]>(() => {
     if (taxesList.length === 0) {
-      // Valeurs par défaut si aucune taxe configurée ou en cours de chargement
-      return [
-        { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
-        { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
-      ];
+      // Utiliser la constante stable
+      return DEFAULT_TAXES;
     }
     
-    return taxesList.map(t => ({
-      code: (t.code || '').toUpperCase(), // Normaliser en majuscules
+    const newTaxes = taxesList.map(t => ({
+      code: (t.code || '').toUpperCase(),
       nom: t.nom,
       taux: t.taux,
-      active: true, // Toujours true car endpoint /actives filtre déjà
-      obligatoire: t.obligatoire ?? (t.code?.toUpperCase() === 'TVA' || t.code?.toUpperCase() === 'CSS'), // TVA et CSS obligatoires par défaut
+      active: true,
+      obligatoire: t.obligatoire ?? (t.code?.toUpperCase() === 'TVA' || t.code?.toUpperCase() === 'CSS'),
     }));
+    
+    // Comparer avec la ref pour éviter les updates inutiles
+    const isSame = newTaxes.length === taxesRef.current.length &&
+      newTaxes.every((t, i) => 
+        t.code === taxesRef.current[i]?.code &&
+        t.taux === taxesRef.current[i]?.taux &&
+        t.obligatoire === taxesRef.current[i]?.obligatoire
+      );
+    
+    if (!isSame) {
+      taxesRef.current = newTaxes;
+    }
+    
+    return taxesRef.current;
   }, [taxesList]);
 
   // Codes des taxes obligatoires
