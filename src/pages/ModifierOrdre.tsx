@@ -58,7 +58,8 @@ export default function ModifierOrdrePage() {
     availableTaxes, 
     isLoading: taxesLoading,
     getTaxesSelectionFromDocument,
-    calculateTaxes 
+    calculateTaxes,
+    toApiPayload 
   } = useDocumentTaxes();
 
   const clients = Array.isArray(clientsData?.data) ? clientsData.data : (Array.isArray(clientsData) ? clientsData : []);
@@ -81,13 +82,11 @@ export default function ModifierOrdrePage() {
   const [independantData, setIndependantData] = useState<OrdreIndependantData | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // État pour la sélection des taxes - initialisé avec les taxes par défaut
+  // État pour la sélection des taxes - nouvelle structure avec codes
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
-    taxesAppliquees: [
-      { code: 'TVA', nom: 'Taxe sur la Valeur Ajoutée', taux: 18, active: true, obligatoire: true },
-      { code: 'CSS', nom: 'Contribution Spéciale de Solidarité', taux: 1, active: true, obligatoire: true },
-    ],
-    exonere: false,
+    selectedTaxCodes: ['TVA', 'CSS'], // Taxes obligatoires par défaut
+    hasExoneration: false,
+    exoneratedTaxCodes: [],
     motifExoneration: "",
   });
   
@@ -394,12 +393,13 @@ export default function ModifierOrdrePage() {
     }
 
     // Validation exonération
-    const exonereTva = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA");
-    const exonereCss = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS");
+    const apiPayload = toApiPayload(taxesSelectionData);
     
-    if ((exonereTva || exonereCss) && taxesSelectionData.exonere && !taxesSelectionData.motifExoneration.trim()) {
-      toast.error("Le motif d'exonération est obligatoire");
-      return;
+    if (apiPayload.exonere_tva || apiPayload.exonere_css) {
+      if (taxesSelectionData.hasExoneration && !taxesSelectionData.motifExoneration.trim()) {
+        toast.error("Le motif d'exonération est obligatoire");
+        return;
+      }
     }
 
     // Ouvrir le modal de confirmation
@@ -408,16 +408,13 @@ export default function ModifierOrdrePage() {
 
   // Confirmation et envoi réel des données
   const handleConfirmSave = async () => {
-    const exonereTva = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA");
-    const exonereCss = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS");
+    const apiPayload = toApiPayload(taxesSelectionData);
 
     const data: any = {
       client_id: parseInt(clientId),
       notes: notes || null,
       // Données d'exonération
-      exonere_tva: exonereTva,
-      exonere_css: exonereCss,
-      motif_exoneration: taxesSelectionData.motifExoneration || null,
+      ...apiPayload,
     };
 
     if (categorie === "conteneurs" && conteneursData) {
@@ -704,7 +701,7 @@ export default function ModifierOrdrePage() {
                   {/* Sélection des taxes */}
                   {montantHT > 0 && (
                     <TaxesSelector
-                      taxes={availableTaxes.length > 0 ? availableTaxes : taxesSelectionData.taxesAppliquees}
+                      taxes={availableTaxes}
                       montantHT={montantHT}
                       onChange={handleTaxesChange}
                       value={taxesSelectionData}
@@ -718,9 +715,7 @@ export default function ModifierOrdrePage() {
                     montantTTC={montantTTC}
                     tauxTva={taxRates.TVA}
                     tauxCss={taxRates.CSS}
-                    exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
-                    exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
-                    motifExoneration={taxesSelectionData.motifExoneration}
+                    {...toApiPayload(taxesSelectionData)}
                   />
                 </motion.div>
               )}
@@ -802,9 +797,7 @@ export default function ModifierOrdrePage() {
           tva={tva}
           css={css}
           montantTTC={montantTTC}
-          exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
-          exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
-          motifExoneration={taxesSelectionData.motifExoneration}
+          {...toApiPayload(taxesSelectionData)}
           clientName={selectedClient?.nom}
           categorie={categorie || undefined}
         />
