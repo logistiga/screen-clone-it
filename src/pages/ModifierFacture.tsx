@@ -654,7 +654,7 @@ export default function ModifierFacturePage() {
                       taxes={availableTaxes}
                       montantHT={montantHT}
                       onChange={setTaxesSelectionData}
-                      initialData={taxesSelectionData}
+                      value={taxesSelectionData}
                     />
                   )}
 
