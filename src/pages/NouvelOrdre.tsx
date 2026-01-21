@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Ship, Save, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -108,39 +108,51 @@ export default function NouvelOrdrePage() {
     motifExoneration: "",
   }));
   
-  // Synchroniser les taxes quand elles sont chargées depuis l'API (une seule fois)
-  const [taxesInitialized, setTaxesInitialized] = useState(false);
-  useEffect(() => {
-    if (!taxesLoading && availableTaxes.length > 0 && !taxesInitialized) {
-      // Sélectionner toutes les taxes obligatoires par défaut (TVA, CSS)
-      const mandatoryCodes = availableTaxes
-        .filter(t => t.obligatoire)
-        .map(t => t.code.toUpperCase());
-      
-      // Si aucune taxe obligatoire, sélectionner TVA et CSS par défaut
-      const defaultCodes = mandatoryCodes.length > 0 
-        ? mandatoryCodes 
-        : availableTaxes.map(t => t.code.toUpperCase()).filter(c => c === 'TVA' || c === 'CSS');
-      
-      // S'assurer qu'on a au moins TVA et CSS
-      const finalCodes = defaultCodes.length > 0 ? defaultCodes : ['TVA', 'CSS'];
-      
-      setTaxesSelectionData(prev => ({
-        ...prev,
-        selectedTaxCodes: finalCodes,
-      }));
-      setTaxesInitialized(true);
-    }
-  }, [taxesLoading, availableTaxes, taxesInitialized]);
+  // Ref pour éviter les initialisations multiples
+  const taxesInitRef = useRef(false);
   
-  // Handler stable pour TaxesSelector avec comparaison profonde
-  const handleTaxesChange = useCallback((newData: TaxesSelectionData) => {
+  // Synchroniser les taxes quand elles sont chargées depuis l'API (une seule fois)
+  useEffect(() => {
+    // Guard: ne s'exécute qu'une seule fois
+    if (taxesInitRef.current) return;
+    if (taxesLoading || availableTaxes.length === 0) return;
+    
+    taxesInitRef.current = true;
+    
+    // Sélectionner toutes les taxes obligatoires par défaut (TVA, CSS)
+    const mandatoryCodes = availableTaxes
+      .filter(t => t.obligatoire)
+      .map(t => t.code.toUpperCase());
+    
+    // Si aucune taxe obligatoire, sélectionner TVA et CSS par défaut
+    const defaultCodes = mandatoryCodes.length > 0 
+      ? mandatoryCodes 
+      : availableTaxes.map(t => t.code.toUpperCase()).filter(c => c === 'TVA' || c === 'CSS');
+    
+    // S'assurer qu'on a au moins TVA et CSS
+    const finalCodes = defaultCodes.length > 0 ? defaultCodes : ['TVA', 'CSS'];
+    
     setTaxesSelectionData(prev => {
-      if (areTaxesSelectionDataEqual(prev, newData)) return prev;
-      return newData;
+      // Ne pas écraser si déjà configuré (ex: restauration draft)
+      if (prev.selectedTaxCodes.length > 0) return prev;
+      return { ...prev, selectedTaxCodes: finalCodes };
+    });
+  }, [taxesLoading, availableTaxes]);
+  
+  // Handler stable pour TaxesSelector avec comparaison profonde inline
+  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
+    setTaxesSelectionData(prev => {
+      // Comparaison stricte pour éviter les setState inutiles
+      const same =
+        prev.hasExoneration === next.hasExoneration &&
+        prev.motifExoneration === next.motifExoneration &&
+        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
+        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
+        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
+        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
+      return same ? prev : next;
     });
   }, []);
-
   // Auto-save
   const { save, clear, restore, hasDraft, lastSaved, isSaving } = useAutoSave<DraftData>({
     key: 'nouvel_ordre',
@@ -177,7 +189,7 @@ export default function NouvelOrdrePage() {
       setTaxesSelectionData(draft.taxesSelectionData || getInitialTaxesSelection());
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
-      setTaxesInitialized(true); // Évite la réinitialisation
+      taxesInitRef.current = true; // Évite la réinitialisation
       toast.success("Brouillon restauré avec succès");
     }
     setShowRestorePrompt(false);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Save, Ship, Loader2, Users, Container, Package, Truck, Warehouse, Calendar, RotateCcw, ArrowDownToLine, ArrowUpFromLine, ArrowRight } from "lucide-react";
@@ -91,10 +91,16 @@ export default function ModifierOrdrePage() {
   });
   
   // Handler stable pour TaxesSelector avec comparaison profonde
-  const handleTaxesChange = useCallback((newData: TaxesSelectionData) => {
+  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
     setTaxesSelectionData(prev => {
-      if (areTaxesSelectionDataEqual(prev, newData)) return prev;
-      return newData;
+      const same =
+        prev.hasExoneration === next.hasExoneration &&
+        prev.motifExoneration === next.motifExoneration &&
+        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
+        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
+        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
+        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
+      return same ? prev : next;
     });
   }, []);
   
