@@ -43,7 +43,7 @@ class OrdreTravailController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = OrdreTravail::with(['client:id,nom,email,telephone', 'facture:id,numero,ordre_travail_id']);
+        $query = OrdreTravail::with(['client:id,nom,email,telephone', 'facture:id,numero,ordre_id']);
 
         // Recherche sécurisée
         $search = $this->validateSearchParameter($request);
