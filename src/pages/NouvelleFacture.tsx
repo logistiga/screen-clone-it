@@ -35,6 +35,7 @@ import {
   validateFactureConventionnel,
   validateFactureIndependant,
 } from "@/lib/validations/facture-schemas";
+import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 
 interface DraftData {
   categorie: CategorieDocument | "";
@@ -79,6 +80,7 @@ export default function NouvelleFacturePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [showRestorePrompt, setShowRestorePrompt] = useState(true);
   const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
   const [clientId, setClientId] = useState("");
@@ -256,6 +258,11 @@ export default function NouvelleFacturePage() {
       }
     }
 
+    // Ouvrir le modal de confirmation
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSave = async () => {
     let lignesData: any[] = [];
     let conteneursDataForApi: any[] = [];
     let lotsData: any[] = [];
@@ -333,6 +340,7 @@ export default function NouvelleFacturePage() {
     try {
       await createFactureMutation.mutateAsync(data);
       clear();
+      setShowConfirmModal(false);
       toast.success("Facture créée avec succès");
       navigate("/factures");
     } catch (error: any) {
@@ -355,6 +363,7 @@ export default function NouvelleFacturePage() {
       } else {
         toast.error(message);
       }
+      setShowConfirmModal(false);
     }
   };
 
@@ -627,6 +636,25 @@ export default function NouvelleFacturePage() {
           </div>
         </div>
       </form>
+
+      {/* Modal de confirmation */}
+      <ConfirmationSaveModal
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        onConfirm={handleConfirmSave}
+        isLoading={createFactureMutation.isPending}
+        type="facture"
+        montantHT={montantHTApresRemise}
+        tva={tva}
+        css={css}
+        montantTTC={montantTTC}
+        remise={remiseData.montantCalcule}
+        exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
+        exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
+        motifExoneration={taxesSelectionData.motifExoneration}
+        clientName={selectedClient?.nom}
+        categorie={categorie || undefined}
+      />
     </MainLayout>
   );
 }

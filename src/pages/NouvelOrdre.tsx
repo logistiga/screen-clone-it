@@ -35,6 +35,7 @@ import {
   validateOrdreConventionnel,
   validateOrdreIndependant,
 } from "@/lib/validations/ordre-schemas";
+import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 
 interface DraftData {
   categorie: CategorieDocument | "";
@@ -80,6 +81,7 @@ export default function NouvelOrdrePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [showRestorePrompt, setShowRestorePrompt] = useState(true);
   const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // État global
   const [categorie, setCategorie] = useState<CategorieDocument | "">("");
@@ -261,6 +263,11 @@ export default function NouvelOrdrePage() {
       }
     }
 
+    // Ouvrir le modal de confirmation
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSave = async () => {
     // Préparer les données selon la catégorie
     let lignesData: any[] = [];
     let conteneursDataApi: any[] = [];
@@ -336,6 +343,7 @@ export default function NouvelOrdrePage() {
     try {
       await createOrdreMutation.mutateAsync(data);
       clear(); // Clear draft on success
+      setShowConfirmModal(false);
       toast.success("Ordre de travail créé avec succès");
       // Retourner à la liste des ordres
       navigate("/ordres");
@@ -362,6 +370,7 @@ export default function NouvelOrdrePage() {
       } else {
         toast.error(apiMessage || "Erreur lors de la création de l'ordre");
       }
+      setShowConfirmModal(false);
     }
   };
 
@@ -637,6 +646,25 @@ export default function NouvelOrdrePage() {
           </div>
         </div>
       </form>
+
+      {/* Modal de confirmation */}
+      <ConfirmationSaveModal
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        onConfirm={handleConfirmSave}
+        isLoading={createOrdreMutation.isPending}
+        type="ordre"
+        montantHT={montantHTApresRemise}
+        tva={tva}
+        css={css}
+        montantTTC={montantTTC}
+        remise={remiseData.montantCalcule}
+        exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
+        exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
+        motifExoneration={taxesSelectionData.motifExoneration}
+        clientName={selectedClient?.nom}
+        categorie={categorie || undefined}
+      />
     </MainLayout>
   );
 }
