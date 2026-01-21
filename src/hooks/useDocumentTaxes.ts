@@ -146,8 +146,14 @@ export function useDocumentTaxes() {
     return { tva, css, totalTaxes, details };
   }, [availableTaxes]);
 
-  // Helper pour convertir TaxesSelectionData vers le format API actuel (exonere_tva, exonere_css)
+  // Helper pour convertir TaxesSelectionData vers le format API (taxes_selection JSON + legacy flags)
   const toApiPayload = useCallback((selection: TaxesSelectionData): {
+    taxes_selection: {
+      selected_tax_codes: string[];
+      has_exoneration: boolean;
+      exonerated_tax_codes: string[];
+      motif_exoneration: string | null;
+    };
     exonere_tva: boolean;
     exonere_css: boolean;
     motif_exoneration: string | null;
@@ -162,6 +168,14 @@ export function useDocumentTaxes() {
                        (hasExoneration && exoneratedTaxCodes.includes('CSS'));
     
     return {
+      // Nouvelle structure JSON pour le backend
+      taxes_selection: {
+        selected_tax_codes: selectedTaxCodes,
+        has_exoneration: hasExoneration,
+        exonerated_tax_codes: hasExoneration ? exoneratedTaxCodes : [],
+        motif_exoneration: hasExoneration && motifExoneration ? motifExoneration : null,
+      },
+      // Legacy flags pour rétrocompatibilité
       exonere_tva: exonereTva,
       exonere_css: exonereCss,
       motif_exoneration: hasExoneration && motifExoneration ? motifExoneration : null,
