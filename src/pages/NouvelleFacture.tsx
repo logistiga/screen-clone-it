@@ -24,7 +24,7 @@ import {
 } from "@/components/factures/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
 import { FactureStepper, FacturePreview } from "@/components/factures/shared";
-import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture, useConfiguration } from "@/hooks/use-commercial";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture, useTaxes } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
@@ -54,7 +54,7 @@ export default function NouvelleFacturePage() {
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
   const { data: representantsData } = useRepresentants({ per_page: 500 });
-  const { data: configData } = useConfiguration();
+  const { data: taxesData } = useTaxes();
   const createFactureMutation = useCreateFacture();
   
   const clients = clientsData?.data || [];
@@ -62,8 +62,8 @@ export default function NouvelleFacturePage() {
   const transitaires = transitairesData || [];
   const representants = representantsData || [];
   
-  const TAUX_TVA = configData?.tva_taux ? parseFloat(configData.tva_taux) / 100 : 0.18;
-  const TAUX_CSS = configData?.css_taux ? parseFloat(configData.css_taux) / 100 : 0.01;
+  const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
+  const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
 
