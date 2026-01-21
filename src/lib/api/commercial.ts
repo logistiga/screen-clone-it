@@ -100,6 +100,8 @@ export interface OrdreTravail {
   lots?: any[];
   lignes?: any[];
   primes?: Prime[];
+  // Relation vers la facture liée
+  facture?: { id: string; numero: string } | null;
 }
 
 export interface Facture {
@@ -144,6 +146,8 @@ export interface Facture {
   conteneurs?: any[];
   lots?: any[];
   lignes?: any[];
+  // Relation vers l'ordre de travail lié
+  ordre_travail?: { id: string; numero: string } | null;
 }
 
 export interface Armateur {

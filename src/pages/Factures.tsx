@@ -286,6 +286,7 @@ export default function FacturesPage() {
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Catégorie</TableHead>
+                  <TableHead>Ordre</TableHead>
                   <TableHead className="text-right">Total TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
@@ -317,6 +318,18 @@ export default function FacturesPage() {
                       </TableCell>
                       <TableCell>{formatDate(facture.date_facture || facture.date || facture.created_at)}</TableCell>
                       <TableCell>{getCategorieBadge(facture.categorie)}</TableCell>
+                      <TableCell>
+                        {facture.ordre_travail?.numero ? (
+                          <span 
+                            className="text-sm font-medium text-primary hover:underline cursor-pointer"
+                            onClick={() => navigate(`/ordres/${facture.ordre_travail.id}`)}
+                          >
+                            {facture.ordre_travail.numero}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-medium">{formatMontant(facture.montant_ttc)}</TableCell>
                       <TableCell className="text-right">
                         <span className={(facture.montant_paye || 0) > 0 ? "text-emerald-600 dark:text-emerald-400" : ""}>
