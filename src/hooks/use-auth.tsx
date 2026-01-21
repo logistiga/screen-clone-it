@@ -400,7 +400,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-    if (user.role === 'admin') return true;
+    // Super-users: accès total (le backend applique aussi ses propres règles)
+    if (user.role === 'admin' || user.role === 'administrateur' || user.role === 'directeur') return true;
+    // Compat: certains backends peuvent ne pas remplir le champ `role` mais remplir `roles`.
+    if (hasRole('administrateur') || hasRole('directeur')) return true;
     const perms = normalizeNames(user.permissions);
     return perms.includes(permission);
   };
