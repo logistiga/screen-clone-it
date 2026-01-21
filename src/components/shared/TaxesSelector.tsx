@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, Percent, Info, Shield } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -37,6 +35,53 @@ interface TaxesSelectorProps {
 
 function uniqSorted(arr: string[]): string[] {
   return Array.from(new Set(arr)).sort((a, b) => a.localeCompare(b));
+}
+
+function ToggleSwitch({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="relative inline-flex items-center cursor-pointer select-none">
+      <input
+        type="checkbox"
+        className="sr-only peer"
+        checked={checked}
+        onChange={(e) => onCheckedChange(e.target.checked)}
+      />
+      <span className="h-6 w-11 rounded-full bg-input peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background peer-checked:bg-primary transition-colors" />
+      <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-background shadow-sm transition-transform peer-checked:translate-x-5" />
+    </label>
+  );
+}
+
+function SmallCheckbox({
+  checked,
+  disabled,
+  onChange,
+  className,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: () => void;
+  className?: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      className={cn(
+        "mt-0.5 h-4 w-4 rounded border border-input bg-background accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+    />
+  );
 }
 
 function TaxesSelectorComponent({
@@ -187,11 +232,7 @@ function TaxesSelectorComponent({
           </span>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Exonération</span>
-            <Switch
-              checked={hasExoneration}
-              onCheckedChange={handleHasExonerationChange}
-              className="data-[state=checked]:bg-amber-600"
-            />
+            <ToggleSwitch checked={hasExoneration} onCheckedChange={handleHasExonerationChange} />
           </div>
         </CardTitle>
       </CardHeader>
@@ -226,14 +267,12 @@ function TaxesSelectorComponent({
                     if (!disabled) toggleSelectTax(taxe);
                   }}
                 >
-                  <Checkbox
+                  <SmallCheckbox
                     checked={selected}
                     disabled={disabled}
-                    onCheckedChange={(checked) => {
+                    onChange={() => {
                       if (!disabled) toggleSelectTax(taxe);
                     }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-0.5 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   />
 
                   <div className="flex-1 min-w-0">
@@ -323,12 +362,7 @@ function TaxesSelectorComponent({
                         }}
                         role="button"
                       >
-                        <Checkbox
-                          checked={exo}
-                          onCheckedChange={() => toggleExonerateTax(t.code)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
-                        />
+                        <SmallCheckbox checked={exo} onChange={() => toggleExonerateTax(t.code)} />
                         <span className={cn("text-sm font-medium", exo && "text-amber-700")}>
                           {t.code} ({t.taux}%)
                         </span>
