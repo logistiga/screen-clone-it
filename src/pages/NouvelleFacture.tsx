@@ -114,10 +114,22 @@ export default function NouvelleFacturePage() {
   const [taxesInitialized, setTaxesInitialized] = useState(false);
   useEffect(() => {
     if (!taxesLoading && availableTaxes.length > 0 && !taxesInitialized) {
-      const mandatoryCodes = availableTaxes.filter(t => t.obligatoire).map(t => t.code);
+      // Sélectionner toutes les taxes obligatoires par défaut (TVA, CSS)
+      const mandatoryCodes = availableTaxes
+        .filter(t => t.obligatoire)
+        .map(t => t.code.toUpperCase());
+      
+      // Si aucune taxe obligatoire, sélectionner TVA et CSS par défaut
+      const defaultCodes = mandatoryCodes.length > 0 
+        ? mandatoryCodes 
+        : availableTaxes.map(t => t.code.toUpperCase()).filter(c => c === 'TVA' || c === 'CSS');
+      
+      // S'assurer qu'on a au moins TVA et CSS
+      const finalCodes = defaultCodes.length > 0 ? defaultCodes : ['TVA', 'CSS'];
+      
       setTaxesSelectionData(prev => ({
         ...prev,
-        selectedTaxCodes: mandatoryCodes.length > 0 ? mandatoryCodes : ['TVA', 'CSS'],
+        selectedTaxCodes: finalCodes,
       }));
       setTaxesInitialized(true);
     }
