@@ -316,6 +316,12 @@ export default function FactureDetailPage() {
         documentNumero={facture.numero}
         montantRestant={resteAPayer}
         clientId={client?.id ? Number(client.id) : undefined}
+        montantHT={facture.montant_ht || 0}
+        montantDejaPaye={facture.montant_paye || 0}
+        exonereTva={facture.exonere_tva || false}
+        exonereCss={facture.exonere_css || false}
+        tauxTva={18}
+        tauxCss={1}
         onSuccess={() => refetch()}
       />
 

@@ -25,6 +25,10 @@ class StorePaiementRequest extends FormRequest
             'numero_cheque' => 'nullable|string|max:50',
             'date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
+            // Exonération de taxes
+            'exonere_tva' => 'nullable|boolean',
+            'exonere_css' => 'nullable|boolean',
+            'motif_exoneration' => 'nullable|string|max:255',
         ];
     }
 
@@ -34,9 +38,13 @@ class StorePaiementRequest extends FormRequest
             if (!$this->facture_id && !$this->ordre_id && !$this->note_debut_id) {
                 $validator->errors()->add('document', 'Vous devez spécifier une facture, un ordre de travail ou une note de début.');
             }
+            
+            // Motif obligatoire si exonération
+            if (($this->boolean('exonere_tva') || $this->boolean('exonere_css')) && empty($this->motif_exoneration)) {
+                $validator->errors()->add('motif_exoneration', 'Le motif d\'exonération est obligatoire.');
+            }
         });
     }
-
     public function messages(): array
     {
         return [

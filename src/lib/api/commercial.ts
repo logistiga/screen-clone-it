@@ -712,11 +712,16 @@ export const banquesApi = {
 export interface PaiementData {
   facture_id?: string | number;
   ordre_id?: string | number;
+  note_debut_id?: string | number;
   montant: number;
   mode_paiement: 'Espèces' | 'Chèque' | 'Virement' | 'Mobile Money';
   reference?: string;
   banque_id?: string | number;
   notes?: string;
+  // Exonération de taxes
+  exonere_tva?: boolean;
+  exonere_css?: boolean;
+  motif_exoneration?: string;
 }
 
 export interface Paiement {
