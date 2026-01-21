@@ -662,6 +662,7 @@ export default function NouvelOrdrePage() {
               lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite }))}
               prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
               notes={notes}
+              currentStep={currentStep}
             />
           </div>
         </div>

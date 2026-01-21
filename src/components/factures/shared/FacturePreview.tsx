@@ -25,6 +25,7 @@ interface FacturePreviewProps {
   prestations?: { description: string; quantite: number }[];
   notes?: string;
   remiseMontant?: number;
+  currentStep?: number; // Pour n'afficher les taxes qu'à l'étape 4
 }
 
 export function FacturePreview({
@@ -43,6 +44,7 @@ export function FacturePreview({
   prestations = [],
   notes,
   remiseMontant = 0,
+  currentStep = 4,
 }: FacturePreviewProps) {
   const categoriesLabels = getCategoriesLabels();
 
@@ -288,24 +290,32 @@ export function FacturePreview({
                   <span>-{formatMontant(remiseMontant)}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">TVA</span>
-                <span>{formatMontant(tva)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">CSS</span>
-                <span>{formatMontant(css)}</span>
-              </div>
-              <Separator />
-              <motion.div 
-                className="flex justify-between text-lg font-bold"
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <span>Total TTC</span>
-                <span className="text-primary">{formatMontant(montantTTC)}</span>
-              </motion.div>
+              {currentStep === 4 ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">TVA</span>
+                    <span>{formatMontant(tva)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">CSS</span>
+                    <span>{formatMontant(css)}</span>
+                  </div>
+                  <Separator />
+                  <motion.div 
+                    className="flex justify-between text-lg font-bold"
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <span>Total TTC</span>
+                    <span className="text-primary">{formatMontant(montantTTC)}</span>
+                  </motion.div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground italic pt-2">
+                  Taxes calculées à l'étape Récapitulatif
+                </p>
+              )}
             </div>
           </motion.div>
 

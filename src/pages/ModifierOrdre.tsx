@@ -778,6 +778,7 @@ export default function ModifierOrdrePage() {
                 lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || (Array.isArray(ordreData?.lots) ? ordreData.lots.map((l: any) => ({ description: l.designation, quantite: l.quantite })) : undefined)}
                 prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || (Array.isArray(ordreData?.lignes) ? ordreData.lignes.map((l: any) => ({ description: l.description, quantite: l.quantite })) : undefined)}
                 notes={notes}
+                currentStep={currentStep}
               />
             </div>
           </div>

@@ -653,6 +653,7 @@ export default function NouvelleFacturePage() {
               prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
               notes={notes}
               remiseMontant={remiseData.montantCalcule}
+              currentStep={currentStep}
             />
           </div>
         </div>

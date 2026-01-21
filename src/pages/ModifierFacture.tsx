@@ -737,6 +737,7 @@ export default function ModifierFacturePage() {
                 lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || factureData?.lots?.map((l: any) => ({ description: l.designation, quantite: l.quantite }))}
                 prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || factureData?.lignes?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
                 notes={notes}
+                currentStep={currentStep}
               />
             </div>
           </div>
