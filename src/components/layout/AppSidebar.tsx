@@ -11,6 +11,7 @@ import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { usePrefetch } from "@/hooks/use-prefetch";
+import { canAccessRoute } from "@/config/routePermissions";
 import {
   Sidebar,
   SidebarContent,
@@ -103,7 +104,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const { prefetchRoute } = usePrefetch();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, hasPermission } = useAuth();
   const isCollapsed = state === "collapsed";
   const isAdmin = hasRole('admin') || hasRole('administrateur') || hasRole('directeur');
   
@@ -176,6 +177,15 @@ export function AppSidebar() {
       
       <SidebarContent className={cn("py-4", isCollapsed ? "px-1" : "px-2")}>
         {Object.entries(menuItems).map(([key, group]) => {
+          const visibleItems = group.items.filter((item) =>
+            canAccessRoute(item.url, hasPermission, hasRole, isAdmin)
+          );
+
+          // Si aucun item visible dans ce groupe, ne pas l'afficher
+          if (visibleItems.length === 0) {
+            return null;
+          }
+
           // Masquer les groupes admin-only pour les non-admins
           if ((group as any).adminOnly && !isAdmin) {
             return null;
@@ -186,7 +196,7 @@ export function AppSidebar() {
               <SidebarGroup key={key}>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {group.items.map((item) => {
+                    {visibleItems.map((item) => {
                       const isActive = location.pathname === item.url || 
                         (item.url !== "/" && location.pathname.startsWith(item.url));
                       
@@ -209,7 +219,7 @@ export function AppSidebar() {
               <SidebarGroup key={key}>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {group.items.map((item) => {
+                    {visibleItems.map((item) => {
                       const isActive = location.pathname === item.url || 
                         (item.url !== "/" && location.pathname.startsWith(item.url));
                       
@@ -248,7 +258,7 @@ export function AppSidebar() {
                 <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {group.items.map((item) => {
+                        {visibleItems.map((item) => {
                         const isActive = location.pathname === item.url || 
                           (item.url !== "/" && location.pathname.startsWith(item.url));
                         
