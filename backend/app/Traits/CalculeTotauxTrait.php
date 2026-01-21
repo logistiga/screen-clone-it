@@ -19,16 +19,40 @@ trait CalculeTotauxTrait
      * Récupérer la configuration des taxes avec mise en cache (5 minutes).
      * Évite les requêtes répétées à la base de données.
      */
+    /**
+     * Récupérer la configuration des taxes depuis la table taxes.
+     * Lit les taux directement depuis Taxe::active() pour synchronisation avec la gestion des taxes.
+     */
     protected function getTaxesConfig(): array
     {
         return Cache::remember('taxes_config', 300, function () {
-            $config = Configuration::getOrCreate('taxes');
+            // Vérifier si la table taxes existe
+            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes')) {
+                Log::info("Table taxes non disponible, utilisation des valeurs par défaut");
+                return [
+                    'tva_taux' => 18,
+                    'css_taux' => 1,
+                    'tva_actif' => true,
+                    'css_actif' => true,
+                ];
+            }
             
+            // Récupérer les taxes actives depuis la table taxes
+            $taxesActives = \App\Models\Taxe::active()->get();
+            
+            $taxes = [];
+            foreach ($taxesActives as $taxe) {
+                $code = strtolower($taxe->code);
+                $taxes[$code . '_taux'] = $taxe->taux;
+                $taxes[$code . '_actif'] = $taxe->active;
+            }
+            
+            // Retourner les taux avec valeurs par défaut si non trouvées
             return [
-                'tva_taux' => $config->data['tva_taux'] ?? 18,
-                'css_taux' => $config->data['css_taux'] ?? 1,
-                'tva_actif' => $config->data['tva_actif'] ?? true,
-                'css_actif' => $config->data['css_actif'] ?? true,
+                'tva_taux' => $taxes['tva_taux'] ?? 18,
+                'css_taux' => $taxes['css_taux'] ?? 1,
+                'tva_actif' => $taxes['tva_actif'] ?? true,
+                'css_actif' => $taxes['css_actif'] ?? true,
             ];
         });
     }
