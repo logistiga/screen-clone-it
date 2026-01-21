@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\EmailAutomationController;
 use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
+use App\Http\Controllers\Api\TaxeController;
 
 
 /*
@@ -556,17 +557,36 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
-    // TAXES MENSUELLES (Angles de taxes)
+    // TAXES (CRUD dynamique)
     // ============================================
     Route::prefix('taxes')->middleware('audit')->group(function () {
-        // Accès public pour les commerciaux
-        Route::get('config', [TaxesMensuellesController::class, 'getTaxesConfig']);
+        // Liste et consultation pour tous les utilisateurs
+        Route::get('/', [TaxeController::class, 'index']);
+        Route::get('actives', [TaxeController::class, 'actives']); // Pour les formulaires
+        Route::get('{taxe}', [TaxeController::class, 'show']);
+        
+        // CRUD admin
+        Route::post('/', [TaxeController::class, 'store'])
+            ->middleware('permission:configuration.modifier');
+        Route::put('{taxe}', [TaxeController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::delete('{taxe}', [TaxeController::class, 'destroy'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('reorder', [TaxeController::class, 'reorder'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('{taxe}/toggle-active', [TaxeController::class, 'toggleActive'])
+            ->middleware('permission:configuration.modifier');
+    });
+
+    // ============================================
+    // TAXES MENSUELLES (Angles de taxes - agrégation)
+    // ============================================
+    Route::prefix('taxes-mensuelles')->middleware('audit')->group(function () {
+        // Accès lecture pour les commerciaux
         Route::get('mois-courant', [TaxesMensuellesController::class, 'getMoisCourant']);
         Route::get('historique', [TaxesMensuellesController::class, 'getHistorique']);
         
         // Actions admin
-        Route::put('config', [TaxesMensuellesController::class, 'updateTaxes'])
-            ->middleware('permission:configuration.modifier');
         Route::post('recalculer', [TaxesMensuellesController::class, 'recalculer'])
             ->middleware('permission:configuration.modifier');
         Route::post('cloturer-mois', [TaxesMensuellesController::class, 'cloturerMois'])
