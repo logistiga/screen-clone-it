@@ -572,7 +572,7 @@ export default function NouvelleFacturePage() {
                 {/* Sélection des taxes */}
                 {montantHTApresRemise > 0 && (
                   <TaxesSelector
-                    taxes={availableTaxes}
+                    taxes={availableTaxes.length > 0 ? availableTaxes : taxesSelectionData.taxesAppliquees}
                     montantHT={montantHTApresRemise}
                     onChange={handleTaxesChange}
                     value={taxesSelectionData}
