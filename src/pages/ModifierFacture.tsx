@@ -39,6 +39,7 @@ import { getCategoriesLabels, CategorieDocument, typesOperationConteneur, TypeOp
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
 import TaxesSelector, { TaxeItem, TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 
 export default function ModifierFacturePage() {
   const navigate = useNavigate();
@@ -88,6 +89,9 @@ export default function ModifierFacturePage() {
     exonere: false,
     motifExoneration: "",
   });
+  
+  // État pour le modal de confirmation
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Populate form when data loads
   useEffect(() => {
@@ -298,6 +302,7 @@ export default function ModifierFacturePage() {
     );
   };
 
+  // Pré-validation avant d'ouvrir le modal
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
 
@@ -321,6 +326,15 @@ export default function ModifierFacturePage() {
       toast.error("Le motif d'exonération est obligatoire");
       return;
     }
+
+    // Ouvrir le modal de confirmation
+    setShowConfirmModal(true);
+  };
+
+  // Confirmation et envoi réel des données
+  const handleConfirmSave = async () => {
+    const exonereTva = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA");
+    const exonereCss = taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS");
 
     const data: any = {
       client_id: parseInt(clientId),
@@ -384,6 +398,7 @@ export default function ModifierFacturePage() {
     try {
       await updateFactureMutation.mutateAsync({ id: id!, data });
       toast.success("Facture modifiée avec succès");
+      setShowConfirmModal(false);
       navigate("/factures");
     } catch (error) {
       // Error handled by mutation
@@ -708,6 +723,26 @@ export default function ModifierFacturePage() {
             </div>
           </div>
         </form>
+
+        {/* Modal de confirmation */}
+        <ConfirmationSaveModal
+          open={showConfirmModal}
+          onOpenChange={setShowConfirmModal}
+          onConfirm={handleConfirmSave}
+          isLoading={updateFactureMutation.isPending}
+          type="facture"
+          montantHT={montantHT}
+          tva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva}
+          css={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css}
+          montantTTC={montantHT + 
+            (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva) + 
+            (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css)}
+          exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
+          exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
+          motifExoneration={taxesSelectionData.motifExoneration}
+          clientName={selectedClient?.nom}
+          categorie={categorie || undefined}
+        />
       </motion.div>
     </MainLayout>
   );
