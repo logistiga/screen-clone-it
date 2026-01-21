@@ -6,6 +6,7 @@ use App\Models\OrdreTravail;
 use App\Models\Configuration;
 use App\Models\Prime;
 use App\Services\Facture\FactureServiceFactory;
+use App\Traits\CalculeTaxesTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
  */
 class OrdreServiceFactory
 {
+    use CalculeTaxesTrait;
     protected OrdreConteneursService $conteneursService;
     protected OrdreConventionnelService $conventionnelService;
     protected OrdreIndependantService $independantService;
@@ -128,6 +130,9 @@ class OrdreServiceFactory
             // Créer les primes si présentes
             $this->creerPrimes($ordre, $primeTransitaire, $primeRepresentant);
 
+            // Agréger les taxes pour les angles mensuels
+            $this->agregerTaxesDocument($ordre, 'ordre');
+
             Log::info('Ordre créé via Factory', [
                 'ordre_id' => $ordre->id,
                 'numero' => $ordre->numero,
@@ -187,6 +192,9 @@ class OrdreServiceFactory
             $categorie = $ordre->categorie;
             $service = $this->getService($categorie);
 
+            // Sauvegarder l'état avant modification pour recalcul des taxes
+            $ancienEtat = clone $ordre;
+
             // Extraire les primes avant l'update (elles ne sont pas des colonnes de la table)
             $primeTransitaire = $data['prime_transitaire'] ?? null;
             $primeRepresentant = $data['prime_representant'] ?? null;
@@ -222,6 +230,9 @@ class OrdreServiceFactory
             if ($primeTransitaire !== null || $primeRepresentant !== null) {
                 $this->mettreAJourPrimes($ordre, $primeTransitaire ?? 0, $primeRepresentant ?? 0);
             }
+
+            // Recalculer les taxes (retirer ancien état, ajouter nouveau)
+            $this->recalculerTaxesDocument($ancienEtat, $ordre->fresh(), 'ordre');
 
             // SYNCHRONISATION AUTOMATIQUE : Si l'ordre est facturé, mettre à jour la facture associée
             $ordre->load('facture');

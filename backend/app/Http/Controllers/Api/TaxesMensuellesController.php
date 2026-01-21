@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Audit;
 use App\Models\Configuration;
 use App\Models\Facture;
+use App\Models\Taxe;
 use App\Models\TaxeMensuelle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -82,63 +83,57 @@ class TaxesMensuellesController extends Controller
     }
 
     /**
-     * Récupérer les angles du mois courant
+     * Récupérer les angles du mois courant (dynamique selon les taxes configurées)
      */
     public function getMoisCourant(): JsonResponse
     {
         $annee = (int) date('Y');
         $mois = (int) date('n');
-
-        $tva = TaxeMensuelle::getOrCreateForPeriod($annee, $mois, 'TVA');
-        $css = TaxeMensuelle::getOrCreateForPeriod($annee, $mois, 'CSS');
-
-        // Calculer la progression par rapport au mois précédent
         $moisPrec = $mois === 1 ? 12 : $mois - 1;
         $anneePrec = $mois === 1 ? $annee - 1 : $annee;
 
-        $tvaPrecedent = TaxeMensuelle::where('annee', $anneePrec)
-            ->where('mois', $moisPrec)
-            ->where('type_taxe', 'TVA')
-            ->first();
-
-        $cssPrecedent = TaxeMensuelle::where('annee', $anneePrec)
-            ->where('mois', $moisPrec)
-            ->where('type_taxe', 'CSS')
-            ->first();
+        // Récupérer les taxes actives depuis la table taxes
+        $taxesActives = Taxe::active()->ordonne()->get();
+        
+        $angles = [];
+        $totalTaxesMois = 0;
+        
+        foreach ($taxesActives as $taxe) {
+            $code = strtoupper($taxe->code);
+            $codeLower = strtolower($taxe->code);
+            
+            // Obtenir ou créer l'angle pour ce mois et cette taxe
+            $angle = TaxeMensuelle::getOrCreateForPeriod($annee, $mois, $code);
+            
+            // Récupérer le mois précédent pour calcul de progression
+            $anglePrecedent = TaxeMensuelle::where('annee', $anneePrec)
+                ->where('mois', $moisPrec)
+                ->where('type_taxe', $code)
+                ->first();
+            
+            $angles[$codeLower] = [
+                'type_taxe' => $code,
+                'taux' => (float) $taxe->taux,
+                'montant_ht_total' => (float) $angle->montant_ht_total,
+                'montant_taxe_total' => (float) $angle->montant_taxe_total,
+                'montant_exonere' => (float) $angle->montant_exonere,
+                'nombre_documents' => $angle->nombre_documents,
+                'nombre_exonerations' => $angle->nombre_exonerations,
+                'cloture' => $angle->cloture,
+                'progression' => $anglePrecedent 
+                    ? $this->calculerProgression($angle->montant_taxe_total, $anglePrecedent->montant_taxe_total)
+                    : null,
+            ];
+            
+            $totalTaxesMois += (float) $angle->montant_taxe_total;
+        }
 
         return response()->json([
             'annee' => $annee,
             'mois' => $mois,
             'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
-            'angles' => [
-                'tva' => [
-                    'type_taxe' => 'TVA',
-                    'taux' => (float) $tva->taux_applique,
-                    'montant_ht_total' => (float) $tva->montant_ht_total,
-                    'montant_taxe_total' => (float) $tva->montant_taxe_total,
-                    'montant_exonere' => (float) $tva->montant_exonere,
-                    'nombre_documents' => $tva->nombre_documents,
-                    'nombre_exonerations' => $tva->nombre_exonerations,
-                    'cloture' => $tva->cloture,
-                    'progression' => $tvaPrecedent 
-                        ? $this->calculerProgression($tva->montant_taxe_total, $tvaPrecedent->montant_taxe_total)
-                        : null,
-                ],
-                'css' => [
-                    'type_taxe' => 'CSS',
-                    'taux' => (float) $css->taux_applique,
-                    'montant_ht_total' => (float) $css->montant_ht_total,
-                    'montant_taxe_total' => (float) $css->montant_taxe_total,
-                    'montant_exonere' => (float) $css->montant_exonere,
-                    'nombre_documents' => $css->nombre_documents,
-                    'nombre_exonerations' => $css->nombre_exonerations,
-                    'cloture' => $css->cloture,
-                    'progression' => $cssPrecedent 
-                        ? $this->calculerProgression($css->montant_taxe_total, $cssPrecedent->montant_taxe_total)
-                        : null,
-                ],
-            ],
-            'total_taxes_mois' => (float) $tva->montant_taxe_total + (float) $css->montant_taxe_total,
+            'angles' => $angles,
+            'total_taxes_mois' => $totalTaxesMois,
         ]);
     }
 

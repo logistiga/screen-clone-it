@@ -44,16 +44,15 @@ class TaxeMensuelle extends Model
      */
     public static function getOrCreateForPeriod(int $annee, int $mois, string $typeTaxe): self
     {
-        $config = Configuration::getValue('taxes') ?? [];
-        $taux = $typeTaxe === 'TVA' 
-            ? (float) ($config['tva_taux'] ?? 18)
-            : (float) ($config['css_taux'] ?? 1);
+        // Récupérer le taux depuis la table taxes
+        $taxe = Taxe::where('code', strtoupper($typeTaxe))->first();
+        $taux = $taxe ? (float) $taxe->taux : 0;
 
         return self::firstOrCreate(
             [
                 'annee' => $annee,
                 'mois' => $mois,
-                'type_taxe' => $typeTaxe,
+                'type_taxe' => strtoupper($typeTaxe),
             ],
             [
                 'taux_applique' => $taux,
