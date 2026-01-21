@@ -307,8 +307,8 @@ export default function ModifierFacturePage() {
     e.preventDefault();
 
     // Empêche la validation/soumission involontaire (ex: touche Entrée) avant le récapitulatif.
-    // On autorise toujours le bouton "Enregistrer" du header (event type = "click").
-    if (e.type === "submit" && currentStep !== 4) {
+    // Seul le bouton à l'étape 4 peut déclencher la validation.
+    if (currentStep !== 4) {
       toast.info("Cliquez sur « Suivant » pour aller au récapitulatif avant de valider.");
       return;
     }
@@ -470,16 +470,18 @@ export default function ModifierFacturePage() {
               </p>
             </div>
           </div>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button onClick={handleSubmit} disabled={updateFactureMutation.isPending} className="gap-2 shadow-md">
-              {updateFactureMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              Enregistrer
-            </Button>
-          </motion.div>
+          {currentStep === 4 && (
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button type="button" onClick={handleSubmit} disabled={updateFactureMutation.isPending} className="gap-2 shadow-md">
+                {updateFactureMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Enregistrer
+              </Button>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Stepper */}
