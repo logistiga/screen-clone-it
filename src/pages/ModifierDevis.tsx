@@ -13,7 +13,7 @@ import {
   useArmateurs, 
   useTransitaires, 
   useRepresentants, 
-  useConfiguration 
+  useTaxes 
 } from "@/hooks/use-commercial";
 import { 
   ClientInfoCard, 
@@ -43,7 +43,7 @@ export default function ModifierDevisPage() {
   const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
   const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants({ per_page: 500 });
-  const { data: config } = useConfiguration();
+  const { data: taxesData } = useTaxes();
   const updateDevisMutation = useUpdateDevis();
 
   const clients = clientsData?.data || [];
@@ -63,8 +63,8 @@ export default function ModifierDevisPage() {
       ? (representantsData as any).data
       : [];
   
-  const TAUX_TVA = config?.taux_tva ? parseFloat(config.taux_tva) / 100 : 0.18;
-  const TAUX_CSS = config?.taux_css ? parseFloat(config.taux_css) / 100 : 0.01;
+  const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
+  const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
 

@@ -23,7 +23,7 @@ import {
 } from "@/components/ordres/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
 import { OrdreStepper, OrdrePreview } from "@/components/ordres/shared";
-import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre, useConfiguration } from "@/hooks/use-commercial";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre, useTaxes } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 import { ClientCombobox } from "@/components/shared/ClientCombobox";
@@ -54,7 +54,7 @@ export default function NouvelOrdrePage() {
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
   const { data: representantsData } = useRepresentants();
-  const { data: configData } = useConfiguration();
+  const { data: taxesData } = useTaxes();
   const createOrdreMutation = useCreateOrdre();
   
   const clients = Array.isArray(clientsData?.data) ? clientsData.data : (Array.isArray(clientsData) ? clientsData : []);
@@ -63,8 +63,8 @@ export default function NouvelOrdrePage() {
   const representants = Array.isArray(representantsData) ? representantsData : [];
   
   // Taux depuis configuration
-  const TAUX_TVA = configData?.tva_taux ? parseFloat(configData.tva_taux) / 100 : 0.18;
-  const TAUX_CSS = configData?.css_taux ? parseFloat(configData.css_taux) / 100 : 0.01;
+  const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
+  const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
 
