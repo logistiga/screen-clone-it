@@ -313,34 +313,28 @@ export function PaiementModal({
           {/* Exonération de taxes - uniquement pour factures et ordres */}
           {documentType !== "note_debut" && montantHT > 0 && modePaiement !== "Avoir" && (
             <div className="space-y-3">
-              <div className="rounded-lg border border-amber-200/50 p-4 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-amber-800 dark:text-amber-400">Exonération de taxes</span>
-                </div>
-                <ExonerationTaxesSelector
-                  onChange={handleExonerationChange}
-                  tauxTva={tauxTva}
-                  tauxCss={tauxCss}
-                  montantHT={montantHT}
-                  initialData={{
-                    exonereTva: initialExonereTva,
-                    exonereCss: initialExonereCss,
-                    motif: "",
-                  }}
-                />
-                
-                {/* Afficher le nouveau reste à payer si exonération */}
-                {economieExoneration > 0 && (
-                  <Alert className="mt-3 bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800">
-                    <Percent className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-700 dark:text-green-400">
-                      <strong>Nouveau reste à payer:</strong> {formatMontant(resteAPayerEffectif)}
-                      <span className="text-sm ml-2">(économie: {formatMontant(economieExoneration)})</span>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
+              <ExonerationTaxesSelector
+                onChange={handleExonerationChange}
+                tauxTva={tauxTva}
+                tauxCss={tauxCss}
+                montantHT={montantHT}
+                initialData={{
+                  exonereTva: initialExonereTva,
+                  exonereCss: initialExonereCss,
+                  motif: "",
+                }}
+              />
+              
+              {/* Afficher le nouveau reste à payer si exonération */}
+              {economieExoneration > 0 && (
+                <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800">
+                  <Percent className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-700 dark:text-green-400">
+                    <strong>Nouveau reste à payer:</strong> {formatMontant(resteAPayerEffectif)}
+                    <span className="text-sm ml-2">(économie: {formatMontant(economieExoneration)})</span>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
 
