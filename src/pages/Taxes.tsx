@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -33,217 +33,97 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Trash2, Percent, Save, RefreshCw, CheckCircle2, XCircle, Calculator } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Edit, Percent, Save, RefreshCw, Lock, Calendar, Settings, History, Calculator, TrendingUp, FileText, Ban } from "lucide-react";
 import { toast } from "sonner";
-import { DocumentStatCard } from "@/components/shared/documents/DocumentStatCard";
-import { DocumentFilters } from "@/components/shared/documents/DocumentFilters";
-import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
-
-interface Taxe {
-  id: string;
-  code: string;
-  nom: string;
-  taux: number;
-  description: string;
-  obligatoire: boolean;
-  active: boolean;
-}
-
-const initialTaxes: Taxe[] = [
-  {
-    id: "1",
-    code: "TVA",
-    nom: "Taxe sur la Valeur Ajoutée",
-    taux: 18,
-    description: "Taxe applicable sur toutes les prestations de services",
-    obligatoire: true,
-    active: true,
-  },
-  {
-    id: "2",
-    code: "CSS",
-    nom: "Contribution Spéciale de Solidarité",
-    taux: 1,
-    description: "Contribution au titre de la solidarité nationale",
-    obligatoire: true,
-    active: true,
-  },
-];
-
-const statusOptions = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "active", label: "Actives" },
-  { value: "inactive", label: "Inactives" },
-];
-
-const typeOptions = [
-  { value: "all", label: "Tous les types" },
-  { value: "obligatoire", label: "Obligatoires" },
-  { value: "optionnel", label: "Optionnelles" },
-];
+import { formatMontant } from "@/data/mockData";
+import { 
+  useTaxesConfig, 
+  useUpdateTaxesConfig, 
+  useTaxesMoisCourant, 
+  useTaxesHistorique,
+  useRecalculerTaxes,
+  useCloturerMois 
+} from "@/hooks/use-taxes";
+import { AngleTaxeCard } from "@/components/taxes/AngleTaxeCard";
+import { HistoriqueTaxes } from "@/components/taxes/HistoriqueTaxes";
 
 export default function TaxesPage() {
-  const [taxes, setTaxes] = useState<Taxe[]>(initialTaxes);
-  const [showModal, setShowModal] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedTaxe, setSelectedTaxe] = useState<Taxe | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statutFilter, setStatutFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-
-  // Form state
-  const [formData, setFormData] = useState({
-    code: "",
-    nom: "",
-    taux: "",
-    description: "",
-    obligatoire: false,
-    active: true,
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCloturerModal, setShowCloturerModal] = useState(false);
+  const [historiqueAnnee, setHistoriqueAnnee] = useState(new Date().getFullYear());
+  const [editFormData, setEditFormData] = useState({
+    taux_tva: 18,
+    taux_css: 1,
   });
 
-  // Filtered taxes
-  const filteredTaxes = useMemo(() => {
-    return taxes.filter((taxe) => {
-      const matchesSearch = 
-        taxe.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        taxe.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        taxe.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatut = 
-        statutFilter === "all" ||
-        (statutFilter === "active" && taxe.active) ||
-        (statutFilter === "inactive" && !taxe.active);
-      
-      const matchesType = 
-        typeFilter === "all" ||
-        (typeFilter === "obligatoire" && taxe.obligatoire) ||
-        (typeFilter === "optionnel" && !taxe.obligatoire);
-      
-      return matchesSearch && matchesStatut && matchesType;
-    });
-  }, [taxes, searchTerm, statutFilter, typeFilter]);
+  // Hooks de données
+  const { data: taxesConfig, isLoading: isLoadingConfig, refetch: refetchConfig } = useTaxesConfig();
+  const { data: moisCourant, isLoading: isLoadingMois, refetch: refetchMois } = useTaxesMoisCourant();
+  const { data: historique, isLoading: isLoadingHistorique, refetch: refetchHistorique } = useTaxesHistorique(historiqueAnnee);
+  
+  // Mutations
+  const updateTaxesMutation = useUpdateTaxesConfig();
+  const recalculerMutation = useRecalculerTaxes();
+  const cloturerMutation = useCloturerMois();
 
-  // Stats
-  const totalTaxes = taxes.length;
-  const activeTaxes = taxes.filter((t) => t.active).length;
-  const inactiveTaxes = taxes.filter((t) => !t.active).length;
-  const tauxTotal = taxes.filter((t) => t.active).reduce((sum, t) => sum + t.taux, 0);
-
-  const resetForm = () => {
-    setFormData({
-      code: "",
-      nom: "",
-      taux: "",
-      description: "",
-      obligatoire: false,
-      active: true,
-    });
+  const handleOpenEdit = () => {
+    if (taxesConfig) {
+      setEditFormData({
+        taux_tva: taxesConfig.taux_tva,
+        taux_css: taxesConfig.taux_css,
+      });
+    }
+    setShowEditModal(true);
   };
 
-  const handleOpenAdd = () => {
-    resetForm();
-    setIsEditing(false);
-    setSelectedTaxe(null);
-    setShowModal(true);
-  };
-
-  const handleOpenEdit = (taxe: Taxe) => {
-    setFormData({
-      code: taxe.code,
-      nom: taxe.nom,
-      taux: taxe.taux.toString(),
-      description: taxe.description,
-      obligatoire: taxe.obligatoire,
-      active: taxe.active,
-    });
-    setSelectedTaxe(taxe);
-    setIsEditing(true);
-    setShowModal(true);
-  };
-
-  const handleOpenDelete = (taxe: Taxe) => {
-    setSelectedTaxe(taxe);
-    setShowDeleteDialog(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.code || !formData.nom || !formData.taux) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
+  const handleSaveTaxes = () => {
+    if (editFormData.taux_tva < 0 || editFormData.taux_tva > 100 || 
+        editFormData.taux_css < 0 || editFormData.taux_css > 100) {
+      toast.error("Les taux doivent être entre 0 et 100%");
       return;
     }
 
-    if (isEditing && selectedTaxe) {
-      setTaxes(
-        taxes.map((t) =>
-          t.id === selectedTaxe.id
-            ? {
-                ...t,
-                code: formData.code.toUpperCase(),
-                nom: formData.nom,
-                taux: parseFloat(formData.taux),
-                description: formData.description,
-                obligatoire: formData.obligatoire,
-                active: formData.active,
-              }
-            : t
-        )
-      );
-      toast.success(`Taxe ${formData.code} modifiée avec succès`);
-    } else {
-      const newTaxe: Taxe = {
-        id: String(Date.now()),
-        code: formData.code.toUpperCase(),
-        nom: formData.nom,
-        taux: parseFloat(formData.taux),
-        description: formData.description,
-        obligatoire: formData.obligatoire,
-        active: formData.active,
-      };
-      setTaxes([...taxes, newTaxe]);
-      toast.success(`Taxe ${formData.code} ajoutée avec succès`);
-    }
-
-    setShowModal(false);
-    resetForm();
-  };
-
-  const handleDelete = () => {
-    if (selectedTaxe) {
-      if (selectedTaxe.obligatoire) {
-        toast.error("Impossible de supprimer une taxe obligatoire");
-        setShowDeleteDialog(false);
-        return;
-      }
-      setTaxes(taxes.filter((t) => t.id !== selectedTaxe.id));
-      toast.success(`Taxe ${selectedTaxe.code} supprimée`);
-    }
-    setShowDeleteDialog(false);
-    setSelectedTaxe(null);
-  };
-
-  const handleToggleActive = (taxe: Taxe) => {
-    if (taxe.obligatoire) {
-      toast.error("Impossible de désactiver une taxe obligatoire");
-      return;
-    }
-    setTaxes(
-      taxes.map((t) =>
-        t.id === taxe.id ? { ...t, active: !t.active } : t
-      )
-    );
-    toast.success(
-      `Taxe ${taxe.code} ${!taxe.active ? "activée" : "désactivée"}`
-    );
+    updateTaxesMutation.mutate(editFormData, {
+      onSuccess: () => {
+        setShowEditModal(false);
+        refetchConfig();
+      },
+    });
   };
 
   const handleRefresh = () => {
+    refetchConfig();
+    refetchMois();
+    refetchHistorique();
     toast.success("Données actualisées");
   };
+
+  const handleRecalculer = (mois: number) => {
+    recalculerMutation.mutate({ annee: historiqueAnnee, mois }, {
+      onSuccess: () => {
+        refetchMois();
+        refetchHistorique();
+      },
+    });
+  };
+
+  const handleCloturer = () => {
+    if (!moisCourant) return;
+    
+    const moisPrec = moisCourant.mois === 1 ? 12 : moisCourant.mois - 1;
+    const anneePrec = moisCourant.mois === 1 ? moisCourant.annee - 1 : moisCourant.annee;
+
+    cloturerMutation.mutate({ annee: anneePrec, mois: moisPrec }, {
+      onSuccess: () => {
+        refetchMois();
+        refetchHistorique();
+        setShowCloturerModal(false);
+      },
+    });
+  };
+
+  const isLoading = isLoadingConfig || isLoadingMois;
 
   return (
     <MainLayout title="Taxes">
@@ -260,303 +140,320 @@ export default function TaxesPage() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Percent className="h-6 w-6 text-primary" />
               </div>
-              Configuration des Taxes
+              Gestion des Taxes
             </h1>
             <p className="text-muted-foreground mt-1">
-              Gérez les taxes applicables aux factures et ordres de travail
+              Suivez les taxes collectées et gérez les taux applicables
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button onClick={handleOpenAdd} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nouvelle taxe
+            <Button onClick={handleOpenEdit} className="gap-2">
+              <Settings className="h-4 w-4" />
+              Modifier les taux
             </Button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <DocumentStatCard
-            title="Total taxes"
-            value={totalTaxes}
-            icon={Percent}
-            variant="primary"
-            delay={0}
-          />
-          <DocumentStatCard
-            title="Taxes actives"
-            value={activeTaxes}
-            icon={CheckCircle2}
-            variant="success"
-            delay={0.1}
-          />
-          <DocumentStatCard
-            title="Taxes inactives"
-            value={inactiveTaxes}
-            icon={XCircle}
-            variant="warning"
-            delay={0.2}
-          />
-          <DocumentStatCard
-            title="Taux total cumulé"
-            value={`${tauxTotal}%`}
-            icon={Calculator}
-            variant="info"
-            delay={0.3}
-          />
-        </div>
+        {/* Tabs */}
+        <Tabs defaultValue="mois-courant" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="mois-courant" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Mois courant
+            </TabsTrigger>
+            <TabsTrigger value="historique" className="gap-2">
+              <History className="h-4 w-4" />
+              Historique
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Filters */}
-        <DocumentFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          searchPlaceholder="Rechercher une taxe..."
-          statutFilter={statutFilter}
-          onStatutChange={setStatutFilter}
-          statutOptions={statusOptions}
-          categorieFilter={typeFilter}
-          onCategorieChange={setTypeFilter}
-          categorieOptions={typeOptions}
-        />
+          {/* Tab: Mois courant */}
+          <TabsContent value="mois-courant" className="space-y-6">
+            {isLoadingMois || isLoadingConfig ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+              </div>
+            ) : moisCourant ? (
+              <>
+                {/* Titre du mois */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold capitalize">{moisCourant.nom_mois}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Taxes collectées ce mois-ci
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total à reverser</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {formatMontant(moisCourant.total_taxes_mois)}
+                    </p>
+                  </div>
+                </div>
 
-        {/* Table */}
-        {filteredTaxes.length === 0 ? (
-          <DocumentEmptyState
-            icon={Percent}
-            title={searchTerm || statutFilter !== "all" || typeFilter !== "all" 
-              ? "Aucune taxe trouvée" 
-              : "Aucune taxe configurée"}
-            description={searchTerm || statutFilter !== "all" || typeFilter !== "all"
-              ? "Essayez de modifier vos critères de recherche"
-              : "Commencez par ajouter votre première taxe"}
-            actionLabel={!searchTerm && statutFilter === "all" && typeFilter === "all" ? "Nouvelle taxe" : undefined}
-            onAction={!searchTerm && statutFilter === "all" && typeFilter === "all" ? handleOpenAdd : undefined}
-          />
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="border-border/50 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">Liste des taxes</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="font-semibold">Code</TableHead>
-                      <TableHead className="font-semibold">Nom</TableHead>
-                      <TableHead className="text-center font-semibold">Taux</TableHead>
-                      <TableHead className="font-semibold">Description</TableHead>
-                      <TableHead className="text-center font-semibold">Type</TableHead>
-                      <TableHead className="text-center font-semibold">Statut</TableHead>
-                      <TableHead className="text-right font-semibold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTaxes.map((taxe, index) => (
-                      <motion.tr
-                        key={taxe.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        <TableCell className="font-mono font-bold text-primary">
-                          {taxe.code}
-                        </TableCell>
-                        <TableCell className="font-medium">{taxe.nom}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge 
-                            variant="secondary" 
-                            className="text-sm font-semibold bg-primary/10 text-primary border-0"
+                {/* Angles TVA et CSS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <AngleTaxeCard
+                    typeTaxe="TVA"
+                    taux={moisCourant.angles.tva.taux}
+                    montantHT={moisCourant.angles.tva.montant_ht_total}
+                    montantTaxe={moisCourant.angles.tva.montant_taxe_total}
+                    montantExonere={moisCourant.angles.tva.montant_exonere}
+                    nombreDocuments={moisCourant.angles.tva.nombre_documents}
+                    nombreExonerations={moisCourant.angles.tva.nombre_exonerations}
+                    progression={moisCourant.angles.tva.progression}
+                    cloture={moisCourant.angles.tva.cloture}
+                    delay={0}
+                  />
+                  <AngleTaxeCard
+                    typeTaxe="CSS"
+                    taux={moisCourant.angles.css.taux}
+                    montantHT={moisCourant.angles.css.montant_ht_total}
+                    montantTaxe={moisCourant.angles.css.montant_taxe_total}
+                    montantExonere={moisCourant.angles.css.montant_exonere}
+                    nombreDocuments={moisCourant.angles.css.nombre_documents}
+                    nombreExonerations={moisCourant.angles.css.nombre_exonerations}
+                    progression={moisCourant.angles.css.progression}
+                    cloture={moisCourant.angles.css.cloture}
+                    delay={0.1}
+                  />
+                </div>
+
+                {/* Configuration des taux */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Calculator className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle className="text-lg">Taux configurés</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                          <TableHead className="font-semibold">Code</TableHead>
+                          <TableHead className="font-semibold">Nom</TableHead>
+                          <TableHead className="text-center font-semibold">Taux</TableHead>
+                          <TableHead className="font-semibold">Description</TableHead>
+                          <TableHead className="text-center font-semibold">Type</TableHead>
+                          <TableHead className="text-center font-semibold">Statut</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {taxesConfig?.data.map((taxe, index) => (
+                          <motion.tr
+                            key={taxe.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                           >
-                            {taxe.taux}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground max-w-xs truncate">
-                          {taxe.description}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {taxe.obligatoire ? (
-                            <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-                              Obligatoire
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Optionnelle
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={taxe.active}
-                            onCheckedChange={() => handleToggleActive(taxe)}
-                            disabled={taxe.obligatoire}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenEdit(taxe)}
-                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => handleOpenDelete(taxe)}
-                              disabled={taxe.obligatoire}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+                            <TableCell className="font-mono font-bold text-primary">
+                              {taxe.code}
+                            </TableCell>
+                            <TableCell className="font-medium">{taxe.nom}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge 
+                                variant="secondary" 
+                                className="text-sm font-semibold bg-primary/10 text-primary border-0"
+                              >
+                                {taxe.taux}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground max-w-xs truncate">
+                              {taxe.description}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {taxe.obligatoire ? (
+                                <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                  Obligatoire
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                  Optionnelle
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge 
+                                variant={taxe.active ? "default" : "secondary"}
+                                className={taxe.active ? "bg-emerald-500/10 text-emerald-600 border-0" : ""}
+                              >
+                                {taxe.active ? "Active" : "Inactive"}
+                              </Badge>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Action clôture */}
+                <Card className="border-border/50 bg-muted/30">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-amber-500/10">
+                          <Lock className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Clôture mensuelle</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Archiver les taxes du mois précédent et verrouiller les modifications
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowCloturerModal(true)}
+                        disabled={cloturerMutation.isPending}
+                        className="gap-2"
+                      >
+                        <Lock className="h-4 w-4" />
+                        Clôturer le mois précédent
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card className="p-8 text-center">
+                <p className="text-muted-foreground">Aucune donnée disponible</p>
+                <Button variant="outline" className="mt-4" onClick={handleRefresh}>
+                  Actualiser
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Tab: Historique */}
+          <TabsContent value="historique" className="space-y-6">
+            {isLoadingHistorique ? (
+              <Skeleton className="h-96" />
+            ) : historique ? (
+              <HistoriqueTaxes
+                historique={historique.historique}
+                cumul={historique.cumul}
+                annee={historiqueAnnee}
+                onAnneeChange={setHistoriqueAnnee}
+                onRecalculer={handleRecalculer}
+                isRecalculating={recalculerMutation.isPending}
+              />
+            ) : (
+              <Card className="p-8 text-center">
+                <p className="text-muted-foreground">Aucun historique disponible</p>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
-      {/* Add/Edit Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      {/* Modal édition des taux */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Percent className="h-5 w-5 text-primary" />
               </div>
-              {isEditing ? "Modifier la taxe" : "Nouvelle taxe"}
+              Modifier les taux de taxes
             </DialogTitle>
             <DialogDescription>
-              {isEditing
-                ? "Modifiez les informations de la taxe"
-                : "Ajoutez une nouvelle taxe au système"}
+              Modifiez les taux applicables aux factures et ordres de travail
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Code *</Label>
+                <Label htmlFor="taux_tva">Taux TVA (%)</Label>
                 <Input
-                  id="code"
-                  placeholder="Ex: TVA"
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value.toUpperCase() })
-                  }
-                  maxLength={10}
-                  className="font-mono"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="taux">Taux (%) *</Label>
-                <Input
-                  id="taux"
+                  id="taux_tva"
                   type="number"
                   step="0.01"
                   min="0"
                   max="100"
-                  placeholder="18"
-                  value={formData.taux}
+                  value={editFormData.taux_tva}
                   onChange={(e) =>
-                    setFormData({ ...formData, taux: e.target.value })
+                    setEditFormData({ ...editFormData, taux_tva: parseFloat(e.target.value) || 0 })
                   }
+                  className="font-mono"
                 />
+                <p className="text-xs text-muted-foreground">Taxe sur la Valeur Ajoutée</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="taux_css">Taux CSS (%)</Label>
+                <Input
+                  id="taux_css"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={editFormData.taux_css}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, taux_css: parseFloat(e.target.value) || 0 })
+                  }
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">Contribution Spéciale de Solidarité</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="nom">Nom complet *</Label>
-              <Input
-                id="nom"
-                placeholder="Taxe sur la Valeur Ajoutée"
-                value={formData.nom}
-                onChange={(e) =>
-                  setFormData({ ...formData, nom: e.target.value })
-                }
-              />
+            <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+              <p className="text-sm text-muted-foreground">
+                <strong>Taux total cumulé:</strong>{" "}
+                <span className="text-primary font-semibold">
+                  {(editFormData.taux_tva + editFormData.taux_css).toFixed(2)}%
+                </span>
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                placeholder="Description de la taxe..."
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="obligatoire"
-                  checked={formData.obligatoire}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, obligatoire: checked })
-                  }
-                />
-                <Label htmlFor="obligatoire" className="cursor-pointer">Taxe obligatoire</Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="active"
-                  checked={formData.active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, active: checked })
-                  }
-                />
-                <Label htmlFor="active" className="cursor-pointer">Active</Label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowModal(false)}
-              >
-                Annuler
-              </Button>
-              <Button type="submit" className="gap-2">
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSaveTaxes} 
+              disabled={updateTaxesMutation.isPending}
+              className="gap-2"
+            >
+              {updateTaxesMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
                 <Save className="h-4 w-4" />
-                {isEditing ? "Enregistrer" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
+              )}
+              Enregistrer
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Modal confirmation clôture */}
+      <AlertDialog open={showCloturerModal} onOpenChange={setShowCloturerModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer cette taxe ?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-amber-600" />
+              Confirmer la clôture
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer la taxe{" "}
-              <strong>{selectedTaxe?.code}</strong> ({selectedTaxe?.nom}) ?
-              Cette action est irréversible.
+              Cette action va clôturer les taxes du mois précédent. Une fois clôturé, 
+              les données ne pourront plus être modifiées. Voulez-vous continuer ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <AlertDialogAction 
+              onClick={handleCloturer}
+              disabled={cloturerMutation.isPending}
+              className="bg-amber-600 hover:bg-amber-700"
             >
-              Supprimer
+              {cloturerMutation.isPending ? "Clôture en cours..." : "Confirmer la clôture"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

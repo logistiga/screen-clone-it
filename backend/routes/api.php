@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\CategorieDepenseController;
 use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\EmailAutomationController;
 use App\Http\Controllers\Api\EmailConfigController;
+use App\Http\Controllers\Api\TaxesMensuellesController;
 
 
 /*
@@ -551,6 +552,24 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         
         Route::get('entreprise', [ConfigurationController::class, 'entreprise']);
         Route::put('entreprise', [ConfigurationController::class, 'updateEntreprise'])
+            ->middleware('permission:configuration.modifier');
+    });
+
+    // ============================================
+    // TAXES MENSUELLES (Angles de taxes)
+    // ============================================
+    Route::prefix('taxes')->middleware('audit')->group(function () {
+        // Accès public pour les commerciaux
+        Route::get('config', [TaxesMensuellesController::class, 'getTaxesConfig']);
+        Route::get('mois-courant', [TaxesMensuellesController::class, 'getMoisCourant']);
+        Route::get('historique', [TaxesMensuellesController::class, 'getHistorique']);
+        
+        // Actions admin
+        Route::put('config', [TaxesMensuellesController::class, 'updateTaxes'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('recalculer', [TaxesMensuellesController::class, 'recalculer'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('cloturer-mois', [TaxesMensuellesController::class, 'cloturerMois'])
             ->middleware('permission:configuration.modifier');
     });
 
