@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Ship, Save, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,12 @@ import {
 } from "@/components/ordres/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
 import { OrdreStepper, OrdrePreview } from "@/components/ordres/shared";
-import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre, useTaxes } from "@/hooks/use-commercial";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 import { ClientCombobox } from "@/components/shared/ClientCombobox";
-import TaxesSelector, { TaxesSelectionData, TaxeItem } from "@/components/shared/TaxesSelector";
+import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import { Users } from "lucide-react";
 import { FormError } from "@/components/ui/form-error";
 import {
@@ -57,23 +58,21 @@ export default function NouvelOrdrePage() {
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
   const { data: representantsData } = useRepresentants();
-  const { data: taxesData } = useTaxes();
   const createOrdreMutation = useCreateOrdre();
+  
+  // Hook unifié pour les taxes - stabilisé
+  const { 
+    taxRates, 
+    availableTaxes, 
+    isLoading: taxesLoading,
+    getInitialTaxesSelection,
+    calculateTaxes 
+  } = useDocumentTaxes();
   
   const clients = Array.isArray(clientsData?.data) ? clientsData.data : (Array.isArray(clientsData) ? clientsData : []);
   const armateurs = Array.isArray(armateursData) ? armateursData : [];
   const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
   const representants = Array.isArray(representantsData) ? representantsData : [];
-  
-  // Taux depuis configuration
-  const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
-  const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
-  
-  // Liste des taxes disponibles
-  const availableTaxes: TaxeItem[] = [
-    { code: "TVA", nom: "Taxe sur la Valeur Ajoutée", taux: Math.round(TAUX_TVA * 100), active: true, obligatoire: true },
-    { code: "CSS", nom: "Contribution Spéciale de Solidarité", taux: Math.round(TAUX_CSS * 100), active: true, obligatoire: true },
-  ];
   
   const categoriesLabels = getCategoriesLabels();
 
@@ -100,12 +99,33 @@ export default function NouvelOrdrePage() {
     montantCalcule: 0,
   });
 
-  // État de la sélection des taxes
-  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
-    taxesAppliquees: availableTaxes,
+  // État de la sélection des taxes - initialisé avec valeurs par défaut
+  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
+    taxesAppliquees: [],
     exonere: false,
     motifExoneration: "",
-  });
+  }));
+  
+  // Initialiser les taxes quand elles sont chargées (une seule fois)
+  const [taxesInitialized, setTaxesInitialized] = useState(false);
+  useEffect(() => {
+    if (!taxesLoading && availableTaxes.length > 0 && !taxesInitialized) {
+      setTaxesSelectionData({
+        taxesAppliquees: availableTaxes,
+        exonere: false,
+        motifExoneration: "",
+      });
+      setTaxesInitialized(true);
+    }
+  }, [taxesLoading, availableTaxes, taxesInitialized]);
+  
+  // Handler stable pour TaxesSelector avec comparaison profonde
+  const handleTaxesChange = useCallback((newData: TaxesSelectionData) => {
+    setTaxesSelectionData(prev => {
+      if (areTaxesSelectionDataEqual(prev, newData)) return prev;
+      return newData;
+    });
+  }, []);
 
   // Auto-save
   const { save, clear, restore, hasDraft, lastSaved, isSaving } = useAutoSave<DraftData>({
@@ -140,9 +160,10 @@ export default function NouvelOrdrePage() {
       setConventionnelData(draft.conventionnelData);
       setIndependantData(draft.independantData);
       setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
-      setTaxesSelectionData(draft.taxesSelectionData || { taxesAppliquees: availableTaxes, exonere: false, motifExoneration: "" });
+      setTaxesSelectionData(draft.taxesSelectionData || getInitialTaxesSelection());
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
+      setTaxesInitialized(true); // Évite la réinitialisation
       toast.success("Brouillon restauré avec succès");
     }
     setShowRestorePrompt(false);
@@ -159,12 +180,9 @@ export default function NouvelOrdrePage() {
   const montantHT = getMontantHT();
   const montantHTApresRemise = montantHT - remiseData.montantCalcule;
   
-  // Calculer les taxes à appliquer
-  const tvaAppliquee = taxesSelectionData.taxesAppliquees.find(t => t.code === "TVA");
-  const cssAppliquee = taxesSelectionData.taxesAppliquees.find(t => t.code === "CSS");
-  const tva = taxesSelectionData.exonere ? 0 : (tvaAppliquee ? Math.round(montantHTApresRemise * (tvaAppliquee.taux / 100)) : 0);
-  const css = taxesSelectionData.exonere ? 0 : (cssAppliquee ? Math.round(montantHTApresRemise * (cssAppliquee.taux / 100)) : 0);
-  const montantTTC = montantHTApresRemise + tva + css;
+  // Calculer les taxes à appliquer via le hook unifié
+  const { tva, css, totalTaxes } = calculateTaxes(montantHTApresRemise, taxesSelectionData);
+  const montantTTC = montantHTApresRemise + totalTaxes;
 
   // Reset catégorie
   const handleCategorieChange = (value: CategorieDocument) => {
@@ -173,7 +191,7 @@ export default function NouvelOrdrePage() {
     setConventionnelData(null);
     setIndependantData(null);
     setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
-    setTaxesSelectionData({ taxesAppliquees: availableTaxes, exonere: false, motifExoneration: "" });
+    setTaxesSelectionData(getInitialTaxesSelection());
     setCurrentStep(2);
   };
 
@@ -565,15 +583,15 @@ export default function NouvelOrdrePage() {
                   <TaxesSelector
                     taxes={availableTaxes}
                     montantHT={montantHTApresRemise}
-                    onChange={setTaxesSelectionData}
+                    onChange={handleTaxesChange}
                     value={taxesSelectionData}
                   />
                 )}
 
                 <RecapitulatifCard
                   montantHT={montantHT}
-                  tauxTva={Math.round(TAUX_TVA * 100)}
-                  tauxCss={Math.round(TAUX_CSS * 100)}
+                  tauxTva={taxRates.TVA}
+                  tauxCss={taxRates.CSS}
                   tva={tva}
                   css={css}
                   montantTTC={montantTTC}

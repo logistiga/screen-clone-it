@@ -22,8 +22,7 @@ import {
   useClients, 
   useArmateurs, 
   useTransitaires, 
-  useRepresentants, 
-  useTaxes 
+  useRepresentants 
 } from "@/hooks/use-commercial";
 import { RecapitulatifCard } from "@/components/devis/shared";
 import { FactureStepper, FacturePreview } from "@/components/factures/shared";
@@ -38,7 +37,8 @@ import type { FactureIndependantData } from "@/components/factures/forms/Facture
 import { getCategoriesLabels, CategorieDocument, typesOperationConteneur, TypeOperationIndep } from "@/types/documents";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
-import TaxesSelector, { TaxeItem, TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 
 export default function ModifierFacturePage() {
@@ -51,22 +51,21 @@ export default function ModifierFacturePage() {
   const { data: armateursData, isLoading: loadingArmateurs } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires } = useTransitaires();
   const { data: representantsData, isLoading: loadingRepresentants } = useRepresentants({ per_page: 500 });
-  const { data: taxesData } = useTaxes();
   const updateFactureMutation = useUpdateFacture();
+  
+  // Hook unifié pour les taxes - stabilisé
+  const { 
+    taxRates, 
+    availableTaxes, 
+    isLoading: taxesLoading,
+    getTaxesSelectionFromDocument,
+    calculateTaxes 
+  } = useDocumentTaxes();
 
   const clients = clientsData?.data || [];
   const armateurs = armateursData || [];
   const transitaires = transitairesData || [];
   const representants = representantsData || [];
-  
-  const TAUX_TVA = taxesData?.tva_taux ? parseFloat(taxesData.tva_taux) / 100 : 0.18;
-  const TAUX_CSS = taxesData?.css_taux ? parseFloat(taxesData.css_taux) / 100 : 0.01;
-  
-  // Préparer les taxes disponibles
-  const availableTaxes: TaxeItem[] = [
-    { code: "TVA", nom: "Taxe sur la Valeur Ajoutée", taux: Math.round(TAUX_TVA * 100), active: true },
-    { code: "CSS", nom: "Contribution Spéciale de Solidarité", taux: Math.round(TAUX_CSS * 100), active: true },
-  ];
   
   const categoriesLabels = getCategoriesLabels();
 
@@ -83,12 +82,20 @@ export default function ModifierFacturePage() {
   const [independantData, setIndependantData] = useState<FactureIndependantData | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // État pour la sélection des taxes
+  // État pour la sélection des taxes - initialisé vide
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
-    taxesAppliquees: availableTaxes,
+    taxesAppliquees: [],
     exonere: false,
     motifExoneration: "",
   });
+  
+  // Handler stable pour TaxesSelector avec comparaison profonde
+  const handleTaxesChange = useCallback((newData: TaxesSelectionData) => {
+    setTaxesSelectionData(prev => {
+      if (areTaxesSelectionDataEqual(prev, newData)) return prev;
+      return newData;
+    });
+  }, []);
   
   // État pour le modal de confirmation
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -110,24 +117,17 @@ export default function ModifierFacturePage() {
       }
       setCategorie(cat);
       
-      // Initialiser les données de taxes
-      const exonereTva = (factureData as any).exonere_tva || false;
-      const exonereCss = (factureData as any).exonere_css || false;
-      const motif = (factureData as any).motif_exoneration || "";
-      
-      // Si exonéré totalement, mettre exonere à true, sinon on garde les taxes sélectionnées
-      const isFullyExempt = exonereTva && exonereCss;
-      setTaxesSelectionData({
-        taxesAppliquees: isFullyExempt ? [] : availableTaxes.filter(t => 
-          (t.code === "TVA" && !exonereTva) || (t.code === "CSS" && !exonereCss)
-        ),
-        exonere: isFullyExempt,
-        motifExoneration: motif,
-      });
+      // Initialiser les données de taxes avec le helper du hook
+      if (!taxesLoading && availableTaxes.length > 0) {
+        const exonereTva = (factureData as any).exonere_tva || false;
+        const exonereCss = (factureData as any).exonere_css || false;
+        const motif = (factureData as any).motif_exoneration || "";
+        setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif));
+      }
       
       setIsInitialized(true);
     }
-  }, [factureData, isInitialized, availableTaxes]);
+  }, [factureData, isInitialized, availableTaxes, taxesLoading, getTaxesSelectionFromDocument]);
 
   // Initial data for forms
   const conteneursInitialData = useMemo(() => {
@@ -231,9 +231,10 @@ export default function ModifierFacturePage() {
   };
 
   const montantHT = getMontantHT();
-  const tva = Math.round(montantHT * TAUX_TVA);
-  const css = Math.round(montantHT * TAUX_CSS);
-  const montantTTC = montantHT + tva + css;
+  
+  // Calculer les taxes via le hook unifié
+  const { tva, css, totalTaxes } = calculateTaxes(montantHT, taxesSelectionData);
+  const montantTTC = montantHT + totalTaxes;
 
   // Stepper navigation - vérifie les prérequis avant de changer d'étape
   const handleStepClick = (step: number) => {
@@ -653,20 +654,18 @@ export default function ModifierFacturePage() {
                     <TaxesSelector
                       taxes={availableTaxes}
                       montantHT={montantHT}
-                      onChange={setTaxesSelectionData}
+                      onChange={handleTaxesChange}
                       value={taxesSelectionData}
                     />
                   )}
 
                   <RecapitulatifCard
                     montantHT={montantHT}
-                    tva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva}
-                    css={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css}
-                    montantTTC={montantHT + 
-                      (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva) + 
-                      (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css)}
-                    tauxTva={Math.round(TAUX_TVA * 100)}
-                    tauxCss={Math.round(TAUX_CSS * 100)}
+                    tva={tva}
+                    css={css}
+                    montantTTC={montantTTC}
+                    tauxTva={taxRates.TVA}
+                    tauxCss={taxRates.CSS}
                     exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
                     exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
                     motifExoneration={taxesSelectionData.motifExoneration}
@@ -748,11 +747,9 @@ export default function ModifierFacturePage() {
           isLoading={updateFactureMutation.isPending}
           type="facture"
           montantHT={montantHT}
-          tva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva}
-          css={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css}
-          montantTTC={montantHT + 
-            (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA") ? 0 : tva) + 
-            (taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS") ? 0 : css)}
+          tva={tva}
+          css={css}
+          montantTTC={montantTTC}
           exonereTva={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "TVA")}
           exonereCss={taxesSelectionData.exonere || !taxesSelectionData.taxesAppliquees.some(t => t.code === "CSS")}
           motifExoneration={taxesSelectionData.motifExoneration}
