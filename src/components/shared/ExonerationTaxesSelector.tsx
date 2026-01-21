@@ -38,13 +38,14 @@ export default function ExonerationTaxesSelector({
 
   // Sync initial data
   useEffect(() => {
-    if (initialData) {
-      setEnabled(initialData.exonereTva || initialData.exonereCss);
-      setExonereTva(initialData.exonereTva);
-      setExonereCss(initialData.exonereCss);
-      setMotif(initialData.motif);
-    }
-  }, [initialData]);
+    if (!initialData) return;
+    // IMPORTANT: dépendre des champs primitifs (pas de l'objet) pour éviter
+    // les resets à chaque render quand le parent passe un objet inline.
+    setEnabled(initialData.exonereTva || initialData.exonereCss);
+    setExonereTva(initialData.exonereTva);
+    setExonereCss(initialData.exonereCss);
+    setMotif(initialData.motif);
+  }, [initialData?.exonereTva, initialData?.exonereCss, initialData?.motif]);
 
   // Notify parent of changes
   useEffect(() => {
