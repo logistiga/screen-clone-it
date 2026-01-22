@@ -246,8 +246,9 @@ class OrdreTravailController extends Controller
             ]);
         }
 
-        // Rechercher le conteneur dans les ordres de travail
-        $conteneur = \App\Models\ConteneurOrdre::where('numero', $numero)
+        // Rechercher le conteneur dans les ordres de travail (case-insensitive)
+        $numeroUpper = strtoupper(trim($numero));
+        $conteneur = \App\Models\ConteneurOrdre::whereRaw('UPPER(numero) = ?', [$numeroUpper])
             ->with(['ordre:id,numero,date_creation,client_id', 'ordre.client:id,nom'])
             ->orderBy('created_at', 'desc')
             ->first();
