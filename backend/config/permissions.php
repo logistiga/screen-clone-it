@@ -154,6 +154,13 @@ return [
             'global_actions' => ['voir', 'creer', 'modifier', 'supprimer'],
             'specific_actions' => ['valider', 'approuver', 'rejeter', 'exporter', 'imprimer', 'envoyer', 'paiement', 'telecharger'],
         ],
+        'taxes' => [
+            'label' => 'Taxes',
+            'description' => 'Gestion des taxes TVA et CSS',
+            'category' => 'finance',
+            'global_actions' => ['voir', 'modifier'],
+            'specific_actions' => ['exporter', 'cloturer'],
+        ],
 
         // === STOCK & PRODUITS ===
         'produits' => [
@@ -270,6 +277,8 @@ return [
                 'credits.voir', 'credits.creer', 'credits.modifier', 'credits.exporter',
                 // Notes - toutes les actions sauf suppression
                 'notes.voir', 'notes.creer', 'notes.modifier', 'notes.valider', 'notes.exporter', 'notes.imprimer', 'notes.envoyer', 'notes.paiement', 'notes.telecharger',
+                // Taxes
+                'taxes.voir', 'taxes.modifier', 'taxes.exporter', 'taxes.cloturer',
                 // Reporting & Dashboard
                 'reporting.voir', 'reporting.exporter',
                 'dashboard.voir',
