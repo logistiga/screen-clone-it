@@ -78,6 +78,7 @@ class FactureResource extends JsonResource
             'exonere_css' => (bool) $this->exonere_css,
             'motif_exoneration' => $this->motif_exoneration,
             'montant_effectif' => round((float) $this->montant_effectif, 2),
+            'taxes_selection' => $this->taxes_selection,
             
             // Primes liées (calculées depuis la relation primes)
             'prime_transitaire' => round($primeTransitaire, 2),
