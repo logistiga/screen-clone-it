@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Percent, RefreshCw, Lock, Calendar, History, Settings } from "lucide-react";
+import { Percent, RefreshCw, Lock, Calendar, History, Settings, List } from "lucide-react";
 import { toast } from "sonner";
 import { formatMontant } from "@/data/mockData";
 import { 
@@ -28,6 +28,7 @@ import {
 import { AngleTaxeCard } from "@/components/taxes/AngleTaxeCard";
 import { HistoriqueTaxes } from "@/components/taxes/HistoriqueTaxes";
 import { GestionTaxes } from "@/components/taxes/GestionTaxes";
+import { DocumentsTaxesList } from "@/components/taxes/DocumentsTaxesList";
 
 export default function TaxesPage() {
   const [showCloturerModal, setShowCloturerModal] = useState(false);
@@ -101,7 +102,7 @@ export default function TaxesPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="configuration" className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="configuration" className="gap-2">
               <Settings className="h-4 w-4" />
               Configuration
@@ -109,6 +110,10 @@ export default function TaxesPage() {
             <TabsTrigger value="mois-courant" className="gap-2">
               <Calendar className="h-4 w-4" />
               Mois courant
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-2">
+              <List className="h-4 w-4" />
+              Documents
             </TabsTrigger>
             <TabsTrigger value="historique" className="gap-2">
               <History className="h-4 w-4" />
@@ -207,6 +212,11 @@ export default function TaxesPage() {
                 <p className="text-muted-foreground">Aucune donnée disponible</p>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Tab: Documents */}
+          <TabsContent value="documents" className="space-y-6">
+            <DocumentsTaxesList />
           </TabsContent>
 
           {/* Tab: Historique */}
