@@ -83,7 +83,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // === Configuration ===
   { path: '/tracabilite', permission: 'audit.voir' },
   { path: '/emails', permission: 'configuration.voir' },
-  { path: '/taxes', permission: 'configuration.voir' },
+  { path: '/taxes', permission: 'taxes.voir' },
   { path: '/banques', permission: 'banques.voir' },
   { path: '/numerotation', permission: 'configuration.voir' },
   { path: '/categories-depenses', permission: 'configuration.voir' },

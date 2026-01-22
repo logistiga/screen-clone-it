@@ -196,6 +196,17 @@ export const MODULES: ModuleDefinition[] = [
     },
   },
   {
+    key: 'taxes',
+    label: 'Taxes',
+    description: 'Gestion des taxes TVA et CSS',
+    icon: 'Percent',
+    category: 'finance',
+    actions: {
+      global: ['view', 'edit'],
+      specific: ['export', 'close'],
+    },
+  },
+  {
     key: 'notes',
     label: 'Notes de frais',
     description: 'Gestion des notes de frais',
@@ -494,6 +505,8 @@ export const PREDEFINED_ROLES = {
       'credits.voir', 'credits.creer', 'credits.modifier', 'credits.exporter',
       // Notes - toutes les actions sauf suppression
       'notes.voir', 'notes.creer', 'notes.modifier', 'notes.valider', 'notes.exporter', 'notes.imprimer', 'notes.envoyer', 'notes.paiement', 'notes.telecharger',
+      // Taxes
+      'taxes.voir', 'taxes.modifier', 'taxes.exporter', 'taxes.cloturer',
       // Reporting & Dashboard
       'reporting.voir', 'reporting.exporter',
       'dashboard.voir',
