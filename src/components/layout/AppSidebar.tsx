@@ -64,6 +64,7 @@ const menuItems = {
       { title: "Caisse", url: "/caisse", icon: Wallet },
       { title: "Banque", url: "/banque", icon: Building2 },
       { title: "Caisse Globale", url: "/caisse-globale", icon: PiggyBank },
+      { title: "Taxes", url: "/taxes", icon: Percent },
       { title: "Factures exonérées", url: "/factures-exonerees", icon: Percent },
     ]
   },
@@ -84,7 +85,6 @@ const menuItems = {
       { title: "Rôles", url: "/roles", icon: Shield },
       { title: "Traçabilité", url: "/tracabilite", icon: History },
       { title: "Emails", url: "/emails", icon: Mail },
-      { title: "Taxes", url: "/taxes", icon: Percent },
       { title: "Banques", url: "/banques", icon: Building },
       { title: "Catégories dépenses", url: "/categories-depenses", icon: Tag },
       { title: "Numérotation", url: "/numerotation", icon: Hash },
