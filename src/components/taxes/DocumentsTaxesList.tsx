@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,13 @@ import {
   AlertCircle,
   X,
   CheckCircle,
-  XCircle
+  XCircle,
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
 import { AnimatedTableBody, AnimatedTableRow } from "@/components/ui/animated-table";
+import { toast } from "sonner";
+import html2pdf from "html2pdf.js";
 
 type DocumentType = "factures" | "ordres" | "all";
 
@@ -168,6 +172,151 @@ export function DocumentsTaxesList() {
     );
   };
 
+  // Export Excel (CSV)
+  const handleExportExcel = () => {
+    if (documents.length === 0) {
+      toast.error("Aucun document à exporter");
+      return;
+    }
+
+    const headers = ["Type", "Numéro", "Date", "Client", "Montant HT", "TVA", "Exo TVA", "CSS", "Exo CSS", "Montant TTC"];
+    const rows = documents.map((doc) => [
+      doc.type === "facture" ? "Facture" : "Ordre",
+      doc.numero,
+      formatDate(doc.date),
+      doc.client,
+      doc.montantHT.toFixed(2),
+      doc.exonereTva ? "0" : doc.tva.toFixed(2),
+      doc.exonereTva ? "Oui" : "Non",
+      doc.exonereCss ? "0" : doc.css.toFixed(2),
+      doc.exonereCss ? "Oui" : "Non",
+      doc.ttc.toFixed(2),
+    ]);
+
+    // Add totals row
+    rows.push([]);
+    rows.push([
+      "TOTAUX",
+      "",
+      "",
+      `${documents.length} documents`,
+      documents.reduce((s, d) => s + d.montantHT, 0).toFixed(2),
+      totalTva.toFixed(2),
+      `${totalExoTva} exo.`,
+      totalCss.toFixed(2),
+      `${totalExoCss} exo.`,
+      documents.reduce((s, d) => s + d.ttc, 0).toFixed(2),
+    ]);
+
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map((row) => row.join(";")),
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `documents-taxes-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success("Export Excel téléchargé");
+  };
+
+  // Export PDF
+  const handleExportPdf = () => {
+    if (documents.length === 0) {
+      toast.error("Aucun document à exporter");
+      return;
+    }
+
+    const typeLabel = documentType === "factures" ? "Factures" : documentType === "ordres" ? "Ordres de Travail" : "Tous les documents";
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h1 style="color: #333; margin-bottom: 5px;">Récapitulatif des Taxes</h1>
+        <p style="color: #666; margin-bottom: 20px;">${typeLabel} - ${new Date().toLocaleDateString('fr-FR')}</p>
+        
+        <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+          <div style="background: #fff3cd; padding: 15px; border-radius: 8px; flex: 1;">
+            <div style="font-size: 12px; color: #856404;">TVA collectée</div>
+            <div style="font-size: 18px; font-weight: bold; color: #856404;">${formatMontant(totalTva)}</div>
+            <div style="font-size: 10px; color: #856404;">${totalExoTva} exonérations</div>
+          </div>
+          <div style="background: #cce5ff; padding: 15px; border-radius: 8px; flex: 1;">
+            <div style="font-size: 12px; color: #004085;">CSS collecté</div>
+            <div style="font-size: 18px; font-weight: bold; color: #004085;">${formatMontant(totalCss)}</div>
+            <div style="font-size: 10px; color: #004085;">${totalExoCss} exonérations</div>
+          </div>
+          <div style="background: #d4edda; padding: 15px; border-radius: 8px; flex: 1;">
+            <div style="font-size: 12px; color: #155724;">Total à reverser</div>
+            <div style="font-size: 18px; font-weight: bold; color: #155724;">${formatMontant(totalTva + totalCss)}</div>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+          <thead>
+            <tr style="background: #f8f9fa;">
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Type</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Numéro</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Date</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Client</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">HT</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">TVA</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">CSS</th>
+              <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">TTC</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${documents.map((doc) => `
+              <tr>
+                <td style="border: 1px solid #dee2e6; padding: 6px;">${doc.type === "facture" ? "Facture" : "OT"}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px; font-family: monospace;">${doc.numero}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px;">${formatDate(doc.date)}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px; max-width: 100px; overflow: hidden; text-overflow: ellipsis;">${doc.client}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px; text-align: right;">${formatMontant(doc.montantHT)}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px; text-align: right; ${doc.exonereTva ? 'color: #28a745; font-weight: bold;' : ''}">${doc.exonereTva ? 'Exonéré' : formatMontant(doc.tva)}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px; text-align: right; ${doc.exonereCss ? 'color: #28a745; font-weight: bold;' : ''}">${doc.exonereCss ? 'Exonéré' : formatMontant(doc.css)}</td>
+                <td style="border: 1px solid #dee2e6; padding: 6px; text-align: right; font-weight: bold;">${formatMontant(doc.ttc)}</td>
+              </tr>
+            `).join('')}
+            <tr style="background: #f8f9fa; font-weight: bold;">
+              <td colspan="4" style="border: 1px solid #dee2e6; padding: 8px;">TOTAUX (${documents.length} documents)</td>
+              <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMontant(documents.reduce((s, d) => s + d.montantHT, 0))}</td>
+              <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMontant(totalTva)}</td>
+              <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMontant(totalCss)}</td>
+              <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMontant(documents.reduce((s, d) => s + d.ttc, 0))}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top: 20px; font-size: 10px; color: #999;">
+          Généré le ${new Date().toLocaleString('fr-FR')}
+        </p>
+      </div>
+    `;
+
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.appendChild(container);
+
+    html2pdf()
+      .set({
+        margin: 10,
+        filename: `documents-taxes-${new Date().toISOString().split("T")[0]}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+      })
+      .from(container)
+      .save()
+      .then(() => {
+        document.body.removeChild(container);
+        toast.success("Export PDF téléchargé");
+      });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -216,57 +365,83 @@ export function DocumentsTaxesList() {
       {/* Filters */}
       <Card className="border-0 shadow-md">
         <CardContent className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Select 
-              value={documentType} 
-              onValueChange={(v: DocumentType) => { 
-                setDocumentType(v); 
-                setCurrentPage(1); 
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Type de document" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="factures">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    Factures uniquement
-                  </div>
-                </SelectItem>
-                <SelectItem value="ordres">
-                  <div className="flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-amber-600" />
-                    Ordres de travail
-                  </div>
-                </SelectItem>
-                <SelectItem value="all">
-                  <div className="flex items-center gap-2">
-                    Tous les documents
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par n°, client..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-1">
+              <Select 
+                value={documentType} 
+                onValueChange={(v: DocumentType) => { 
+                  setDocumentType(v); 
+                  setCurrentPage(1); 
                 }}
-                className="pl-9 pr-9"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+              >
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Type de document" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="factures">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      Factures uniquement
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="ordres">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-amber-600" />
+                      Ordres de travail
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      Tous les documents
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher par n°, client..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9 pr-9"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Export Buttons */}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportExcel}
+                disabled={documents.length === 0}
+                className="gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Excel
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportPdf}
+                disabled={documents.length === 0}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                PDF
+              </Button>
             </div>
           </div>
         </CardContent>
