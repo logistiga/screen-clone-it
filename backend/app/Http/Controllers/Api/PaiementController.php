@@ -156,14 +156,32 @@ class PaiementController extends Controller
 
             // Appliquer l'exonération si demandée (pour factures et ordres uniquement)
             if ($document && ($request->has('exonere_tva') || $request->has('exonere_css'))) {
+                $exonereTva = $request->boolean('exonere_tva');
+                $exonereCss = $request->boolean('exonere_css');
+                
+                // Recalculer les montants avec exonérations
+                $montantHT = (float) $document->montant_ht;
+                $remiseMontant = (float) ($document->remise_montant ?? 0);
+                $montantHTNet = $montantHT - $remiseMontant;
+                
+                // Récupérer les taux actuels depuis la config ou le document
+                $tauxTva = config('logistiga.taux_tva', 18);
+                $tauxCss = config('logistiga.taux_css', 1);
+                
+                // Calculer les taxes selon exonérations
+                $tva = $exonereTva ? 0 : $montantHTNet * ($tauxTva / 100);
+                $css = $exonereCss ? 0 : $montantHTNet * ($tauxCss / 100);
+                $montantTTC = $montantHTNet + $tva + $css;
+                
                 $document->update([
-                    'exonere_tva' => $request->boolean('exonere_tva'),
-                    'exonere_css' => $request->boolean('exonere_css'),
+                    'exonere_tva' => $exonereTva,
+                    'exonere_css' => $exonereCss,
                     'motif_exoneration' => $request->motif_exoneration,
+                    'tva' => $tva,
+                    'css' => $css,
+                    'montant_ttc' => $montantTTC,
                 ]);
                 
-                // Recalculer les totaux avec les nouvelles exonérations
-                $document->calculerTotaux();
                 $document->refresh();
             }
 
@@ -198,7 +216,7 @@ class PaiementController extends Controller
             return response()->json(new PaiementResource($paiement), 201);
 
         } catch (\Throwable $e) {
-            Log::error('Erreur création paiement', ['message' => $e->getMessage()]);
+            Log::error('Erreur création paiement', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'message' => 'Erreur lors de l\'enregistrement',
                 'error' => config('app.debug') ? $e->getMessage() : null,
