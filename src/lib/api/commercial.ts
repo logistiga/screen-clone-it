@@ -417,6 +417,19 @@ export const ordresApi = {
     const response = await api.post<{ data: Facture; message: string }>(`/ordres-travail/${id}/convert-facture`);
     return response.data;
   },
+  
+  checkConteneur: async (numero: string) => {
+    const response = await api.get<{
+      exists: boolean;
+      message: string;
+      details?: {
+        ordre_numero: string;
+        ordre_date: string;
+        client: string;
+      };
+    }>('/ordres-travail/check-conteneur', { params: { numero } });
+    return response.data;
+  },
 };
 
 // Factures API

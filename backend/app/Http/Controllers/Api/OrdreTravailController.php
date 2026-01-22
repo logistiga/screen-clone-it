@@ -231,4 +231,42 @@ class OrdreTravailController extends Controller
             return response()->json(['message' => 'Erreur lors de la conversion', 'error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Vérifier si un numéro de conteneur existe déjà dans la base de données
+     */
+    public function checkConteneur(Request $request): JsonResponse
+    {
+        $numero = $this->validateSearchParameter($request, 'numero');
+        
+        if (!$numero || strlen($numero) < 4) {
+            return response()->json([
+                'exists' => false,
+                'message' => 'Numéro de conteneur invalide ou trop court',
+            ]);
+        }
+
+        // Rechercher le conteneur dans les ordres de travail
+        $conteneur = \App\Models\ConteneurOrdre::where('numero', $numero)
+            ->with(['ordre:id,numero,date_creation,client_id', 'ordre.client:id,nom'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($conteneur) {
+            return response()->json([
+                'exists' => true,
+                'message' => 'Ce conteneur existe déjà',
+                'details' => [
+                    'ordre_numero' => $conteneur->ordre?->numero,
+                    'ordre_date' => $conteneur->ordre?->date_creation?->format('d/m/Y'),
+                    'client' => $conteneur->ordre?->client?->nom,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'exists' => false,
+            'message' => 'Conteneur non trouvé',
+        ]);
+    }
 }

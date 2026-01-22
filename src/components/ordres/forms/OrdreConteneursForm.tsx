@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Container, FileText, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Container, FileText, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,8 @@ import {
 } from "@/types/documents";
 import { ordreConteneursSchema } from "@/lib/validations/ordre-schemas";
 import { cn } from "@/lib/utils";
+import { useCheckConteneur } from "@/hooks/use-commercial";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Armateur {
   id: string | number;
@@ -83,6 +85,11 @@ export default function OrdreConteneursForm({
   // Validation errors state
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  
+  // Conteneur existence check
+  const checkConteneurMutation = useCheckConteneur();
+  const [conteneurWarnings, setConteneurWarnings] = useState<Record<string, { exists: boolean; details?: { ordre_numero: string; ordre_date: string; client: string } }>>({});
+  const checkTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Initialisation depuis initialData
   useEffect(() => {
@@ -184,6 +191,49 @@ export default function OrdreConteneursForm({
     const newConteneurs = conteneurs.map(c => c.id === id ? { ...c, [field]: value } : c);
     setConteneurs(newConteneurs);
     updateParent(newConteneurs);
+    
+    // Vérification de l'existence du conteneur lors de la saisie du numéro
+    if (field === 'numero' && typeof value === 'string') {
+      const numero = value.toUpperCase().trim();
+      
+      // Annuler le timeout précédent pour ce conteneur
+      if (checkTimeoutRef.current[id]) {
+        clearTimeout(checkTimeoutRef.current[id]);
+      }
+      
+      // Effacer l'avertissement si le champ est vide ou trop court
+      if (numero.length < 4) {
+        setConteneurWarnings(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        return;
+      }
+      
+      // Debounce de 500ms pour éviter trop d'appels API
+      checkTimeoutRef.current[id] = setTimeout(() => {
+        checkConteneurMutation.mutate(numero, {
+          onSuccess: (result) => {
+            if (result.exists) {
+              setConteneurWarnings(prev => ({
+                ...prev,
+                [id]: { exists: true, details: result.details }
+              }));
+            } else {
+              setConteneurWarnings(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+              });
+            }
+          },
+          onError: () => {
+            // Ignorer les erreurs silencieusement
+          }
+        });
+      }, 500);
+    }
   };
 
   const handleAddOperationConteneur = (conteneurId: string) => {
@@ -393,9 +443,30 @@ export default function OrdreConteneursForm({
                       value={conteneur.numero}
                       onChange={(e) => handleConteneurChange(conteneur.id, 'numero', e.target.value.toUpperCase())}
                       onBlur={() => handleBlur(`conteneurs.${index}.numero`)}
-                      className={cn("font-mono", getFieldError(`conteneurs.${index}.numero`) && "border-destructive")}
+                      className={cn(
+                        "font-mono", 
+                        getFieldError(`conteneurs.${index}.numero`) && "border-destructive",
+                        conteneurWarnings[conteneur.id]?.exists && "border-amber-500"
+                      )}
                     />
                     <FormError message={getFieldError(`conteneurs.${index}.numero`)} />
+                    {conteneurWarnings[conteneur.id]?.exists && (
+                      <Alert variant="default" className="py-2 px-3 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <AlertDescription className="text-xs text-amber-700 dark:text-amber-400">
+                            <span className="font-medium">Ce conteneur existe déjà !</span>
+                            {conteneurWarnings[conteneur.id].details && (
+                              <span className="block mt-0.5">
+                                OT: {conteneurWarnings[conteneur.id].details!.ordre_numero} 
+                                {conteneurWarnings[conteneur.id].details!.ordre_date && ` du ${conteneurWarnings[conteneur.id].details!.ordre_date}`}
+                                {conteneurWarnings[conteneur.id].details!.client && ` - ${conteneurWarnings[conteneur.id].details!.client}`}
+                              </span>
+                            )}
+                          </AlertDescription>
+                        </div>
+                      </Alert>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Description</Label>

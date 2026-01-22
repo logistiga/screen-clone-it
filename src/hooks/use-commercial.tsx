@@ -392,6 +392,12 @@ export function useConvertOrdreToFacture() {
   });
 }
 
+export function useCheckConteneur() {
+  return useMutation({
+    mutationFn: ordresApi.checkConteneur,
+  });
+}
+
 // Factures hooks avec préchargement
 export function useFactures(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
   const queryClient = useQueryClient();
