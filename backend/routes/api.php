@@ -163,6 +163,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:ordres.voir');
         Route::get('stats', [OrdreTravailController::class, 'stats'])
             ->middleware(['permission:ordres.voir', 'throttle:stats']);
+        Route::get('check-conteneur', [OrdreTravailController::class, 'checkConteneur'])
+            ->middleware('permission:ordres.voir');
         Route::post('/', [OrdreTravailController::class, 'store'])
             ->middleware('permission:ordres.creer');
         Route::get('{ordreTravail}', [OrdreTravailController::class, 'show'])
@@ -173,8 +175,6 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:ordres.supprimer');
         Route::post('{ordreTravail}/convert-facture', [OrdreTravailController::class, 'convertToFacture'])
             ->middleware('permission:factures.creer');
-        Route::get('check-conteneur', [OrdreTravailController::class, 'checkConteneur'])
-            ->middleware('permission:ordres.voir');
     });
 
     // ============================================
