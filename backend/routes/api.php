@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\EmailAutomationController;
 use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
+use App\Http\Controllers\Api\LogistigaSyncController;
 
 
 /*
@@ -175,6 +176,16 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:ordres.supprimer');
         Route::post('{ordreTravail}/convert-facture', [OrdreTravailController::class, 'convertToFacture'])
             ->middleware('permission:factures.creer');
+        Route::post('{ordreTravail}/send-logistiga', [LogistigaSyncController::class, 'sendOrdreById'])
+            ->middleware('permission:ordres.modifier');
+    });
+
+    // ============================================
+    // SYNC LOGISTIGA (envoi manuel si nécessaire)
+    // ============================================
+    Route::prefix('sync')->middleware('audit')->group(function () {
+        Route::post('logistiga', [LogistigaSyncController::class, 'sendToLogistiga'])
+            ->middleware('permission:ordres.creer');
     });
 
     // ============================================

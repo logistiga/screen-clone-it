@@ -17,12 +17,10 @@ import {
   Trash2,
   Calendar,
   User,
-  Send,
 } from "lucide-react";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { useDeleteOrdre } from "@/hooks/use-commercial";
-import { useSendToLogistiga, canSendToLogistiga } from "@/hooks/use-logistiga";
 import { openWhatsAppShare } from "@/lib/whatsapp";
 import { toast } from "sonner";
 import {
@@ -78,24 +76,11 @@ export function OrdreHeader({
   const statutConfig = getStatutConfig(ordre.statut);
   const { downloadPdf } = usePdfDownload({ filename: `ordre-${ordre.numero}.pdf` });
   const deleteOrdreMutation = useDeleteOrdre();
-  const sendToLogistigaMutation = useSendToLogistiga();
   
   // Modales
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [annulationModalOpen, setAnnulationModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-
-  // Préparer les données pour Logistiga
-  const ordreForLogistiga = {
-    id: ordre.id,
-    numero: ordre.numero,
-    numero_bl: ordre.numero_bl,
-    client: ordre.client ? { nom: ordre.client.raison_sociale || ordre.client.nom_complet || ordre.client.nom } : null,
-    transitaire: ordre.transitaire ? { nom: ordre.transitaire.nom } : null,
-    conteneurs: ordre.conteneurs?.map((c: any) => ({ numero: c.numero })) || [],
-  };
-  
-  const canSendLogistiga = ordre.categorie === 'conteneurs' && canSendToLogistiga(ordreForLogistiga);
 
   // Nom du créateur - chercher dans plusieurs champs possibles
   const creatorName = ordre.created_by?.name || ordre.user?.name || ordre.createur?.name || ordre.createur_nom || ordre.user_name;
@@ -129,10 +114,6 @@ Cordialement,
 L'équipe LOGISTIGA`;
 
     openWhatsAppShare(message);
-  };
-
-  const handleSendToLogistiga = () => {
-    sendToLogistigaMutation.mutate(ordreForLogistiga);
   };
 
   const handleDelete = async () => {
@@ -347,24 +328,6 @@ L'équipe LOGISTIGA`;
               >
                 <Edit className="h-3.5 w-3.5" />
                 Modifier
-              </Button>
-            )}
-
-            {/* Bouton Logistiga - uniquement pour les ordres conteneurs avec BL et conteneurs */}
-            {canSendLogistiga && ordre.statut !== 'annule' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                onClick={handleSendToLogistiga}
-                disabled={sendToLogistigaMutation.isPending}
-              >
-                {sendToLogistigaMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-                Envoyer Logistiga
               </Button>
             )}
 

@@ -6,6 +6,7 @@ use App\Models\OrdreTravail;
 use App\Models\Configuration;
 use App\Models\Prime;
 use App\Services\Facture\FactureServiceFactory;
+use App\Services\LogistigaApiService;
 use App\Traits\CalculeTaxesTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,15 +21,18 @@ class OrdreServiceFactory
     protected OrdreConteneursService $conteneursService;
     protected OrdreConventionnelService $conventionnelService;
     protected OrdreIndependantService $independantService;
+    protected LogistigaApiService $logistigaService;
 
     public function __construct(
         OrdreConteneursService $conteneursService,
         OrdreConventionnelService $conventionnelService,
-        OrdreIndependantService $independantService
+        OrdreIndependantService $independantService,
+        LogistigaApiService $logistigaService
     ) {
         $this->conteneursService = $conteneursService;
         $this->conventionnelService = $conventionnelService;
         $this->independantService = $independantService;
+        $this->logistigaService = $logistigaService;
     }
 
     /**
@@ -139,8 +143,53 @@ class OrdreServiceFactory
                 'categorie' => $categorie,
             ]);
 
-            return $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'primes']);
+            $ordreFrais = $ordre->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'primes']);
+
+            // ENVOI AUTOMATIQUE VERS LOGISTIGA pour les ordres conteneurs
+            if ($categorie === 'conteneurs') {
+                $this->envoyerVersLogistiga($ordreFrais);
+            }
+
+            return $ordreFrais;
         });
+    }
+
+    /**
+     * Envoyer automatiquement un ordre conteneur vers Logistiga
+     */
+    protected function envoyerVersLogistiga(OrdreTravail $ordre): void
+    {
+        try {
+            $data = $this->logistigaService->prepareOrdreData($ordre);
+            
+            if ($data) {
+                $result = $this->logistigaService->sendOrdreTravail($data);
+                
+                if ($result['success'] ?? false) {
+                    Log::info('[Logistiga] Ordre envoyé automatiquement', [
+                        'ordre_id' => $ordre->id,
+                        'numero' => $ordre->numero,
+                        'logistiga_numero' => $result['data']['numero'] ?? null,
+                    ]);
+                } else {
+                    Log::warning('[Logistiga] Échec envoi automatique', [
+                        'ordre_id' => $ordre->id,
+                        'numero' => $ordre->numero,
+                        'message' => $result['message'] ?? 'Erreur inconnue',
+                    ]);
+                }
+            } else {
+                Log::info('[Logistiga] Ordre non éligible (pas de BL ou conteneurs)', [
+                    'ordre_id' => $ordre->id,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Ne pas bloquer la création de l'ordre si Logistiga échoue
+            Log::error('[Logistiga] Exception lors de l\'envoi automatique', [
+                'ordre_id' => $ordre->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
