@@ -53,7 +53,8 @@ class FactureController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
                   ->orWhere('numero_bl', 'like', "%{$search}%")
-                  ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"));
+                  ->orWhereHas('client', fn($q) => $q->where('nom', 'like', "%{$search}%"))
+                  ->orWhereHas('conteneurs', fn($q) => $q->where('numero', 'like', "%{$search}%"));
             });
         }
 

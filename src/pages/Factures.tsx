@@ -249,7 +249,7 @@ export default function FacturesPage() {
         <DocumentFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          searchPlaceholder="Rechercher par numéro, client..."
+          searchPlaceholder="Rechercher par numéro, client, conteneur..."
           statutFilter={statutFilter}
           onStatutChange={setStatutFilter}
           statutOptions={statutOptions}
