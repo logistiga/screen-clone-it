@@ -63,6 +63,9 @@ class OrdreTravailResource extends JsonResource
             // Envoi
             'date_envoi' => $this->date_envoi?->toISOString(),
             
+            // Synchronisation Logistiga
+            'logistiga_synced_at' => $this->logistiga_synced_at?->toISOString(),
+            
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

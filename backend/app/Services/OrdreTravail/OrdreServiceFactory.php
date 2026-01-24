@@ -166,6 +166,9 @@ class OrdreServiceFactory
                 $result = $this->logistigaService->sendOrdreTravail($data);
                 
                 if ($result['success'] ?? false) {
+                    // Enregistrer la date de synchronisation
+                    $ordre->update(['logistiga_synced_at' => now()]);
+                    
                     Log::info('[Logistiga] Ordre envoyé automatiquement', [
                         'ordre_id' => $ordre->id,
                         'numero' => $ordre->numero,

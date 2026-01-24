@@ -45,6 +45,8 @@ class OrdreTravail extends Model
         'motif_exoneration',
         // Nouvelle sélection dynamique des taxes
         'taxes_selection',
+        // Synchronisation Logistiga
+        'logistiga_synced_at',
     ];
 
     protected $casts = [
@@ -62,6 +64,7 @@ class OrdreTravail extends Model
         'exonere_tva' => 'boolean',
         'exonere_css' => 'boolean',
         'taxes_selection' => 'array',
+        'logistiga_synced_at' => 'datetime',
     ];
 
     // Relations
