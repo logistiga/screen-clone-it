@@ -57,25 +57,73 @@ import {
 
 import { conteneursTraitesApi, ConteneurTraite, ConteneursTraitesStats } from "@/lib/api/conteneurs-traites";
 import { ordresApi } from "@/lib/api/commercial";
+import { DebugPanel } from "@/components/debug/DebugPanel";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ConteneursEnAttentePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin') || hasRole('administrateur') || hasRole('directeur');
   
   const [searchQuery, setSearchQuery] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("en_attente");
   const [selectedConteneur, setSelectedConteneur] = useState<ConteneurTraite | null>(null);
   const [isAffecterDialogOpen, setIsAffecterDialogOpen] = useState(false);
   const [selectedOrdreId, setSelectedOrdreId] = useState<string>("");
+  
+  // Debug info state
+  const [debugInfo, setDebugInfo] = useState<{
+    lastRequest: any;
+    lastResponse: any;
+    lastError: any;
+    apiUrl: string;
+    timestamp: string | null;
+    duration: number | null;
+  }>({
+    lastRequest: null,
+    lastResponse: null,
+    lastError: null,
+    apiUrl: '/conteneurs-en-attente',
+    timestamp: null,
+    duration: null,
+  });
 
-  // Récupérer les conteneurs
-  const { data: conteneursData, isLoading, refetch, isRefetching } = useQuery({
+  // Récupérer les conteneurs avec debug
+  const { data: conteneursData, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['conteneurs-traites', statutFilter, searchQuery],
-    queryFn: () => conteneursTraitesApi.getAll({ 
-      statut: statutFilter || undefined,
-      search: searchQuery || undefined,
-      per_page: 50,
-    }),
+    queryFn: async () => {
+      const startTime = Date.now();
+      const requestParams = { 
+        statut: statutFilter || undefined,
+        search: searchQuery || undefined,
+        per_page: 50,
+      };
+      
+      try {
+        const result = await conteneursTraitesApi.getAll(requestParams);
+        
+        setDebugInfo({
+          lastRequest: requestParams,
+          lastResponse: result,
+          lastError: null,
+          apiUrl: '/conteneurs-en-attente',
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime,
+        });
+        
+        return result;
+      } catch (err: any) {
+        setDebugInfo(prev => ({
+          ...prev,
+          lastRequest: requestParams,
+          lastError: err?.response?.data || err?.message || err,
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime,
+        }));
+        throw err;
+      }
+    },
   });
 
   // Récupérer les stats
@@ -187,7 +235,25 @@ export default function ConteneursEnAttentePage() {
           <p className="text-muted-foreground mt-1">
             Conteneurs traités par Logistiga OPS, prêts à être facturés
           </p>
-        </div>
+      </div>
+
+      {/* Debug Panel - visible en dev ou pour admins */}
+      {(import.meta.env.DEV || isAdmin) && (
+        <DebugPanel 
+          title="Debug Communication API"
+          data={{
+            apiUrl: debugInfo.apiUrl,
+            request: debugInfo.lastRequest,
+            response: debugInfo.lastResponse,
+            error: debugInfo.lastError || error,
+            queryStatus: { isLoading, isError: !!error, isRefetching },
+            stats: stats,
+            timestamp: debugInfo.timestamp,
+            duration: debugInfo.duration,
+          }}
+          onRefresh={() => refetch()}
+        />
+      )}
         <Button onClick={() => refetch()} disabled={isRefetching} variant="outline">
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
           Actualiser
