@@ -26,7 +26,7 @@ import {
   Plus, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, 
   Download, CreditCard, ClipboardList, Container, Package, 
   Truck, Ship, ArrowUpFromLine, ArrowDownToLine, Clock, RotateCcw, 
-  Warehouse, Calendar, TrendingUp, Mail, MessageCircle
+  Warehouse, Calendar, TrendingUp, Mail, MessageCircle, Check
 } from "lucide-react";
 import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { PaiementModal } from "@/components/PaiementModal";
@@ -445,6 +445,7 @@ L'équipe LOGISTIGA`;
                   <TableHead className="text-right">Total TTC</TableHead>
                   <TableHead className="text-right">Payé</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Logistiga</TableHead>
                   <TableHead>Facture</TableHead>
                   <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
@@ -486,6 +487,22 @@ L'équipe LOGISTIGA`;
                         )}
                       </TableCell>
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
+                      <TableCell>
+                        {ordre.categorie === 'conteneurs' ? (
+                          ordre.logistiga_synced_at ? (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
+                              <Check className="h-3 w-3 mr-1" />
+                              Envoyé
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                              En attente
+                            </Badge>
+                          )
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {ordre.facture?.numero ? (
                           <span 

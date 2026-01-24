@@ -102,6 +102,8 @@ export interface OrdreTravail {
   primes?: Prime[];
   // Relation vers la facture liée
   facture?: { id: string; numero: string } | null;
+  // Synchronisation Logistiga
+  logistiga_synced_at?: string;
 }
 
 export interface Facture {
