@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use App\Http\Controllers\Api\LogistigaSyncController;
+use App\Http\Controllers\Api\ConteneurTraiteController;
 
 
 /*
@@ -76,6 +77,11 @@ Route::prefix('security')->group(function () {
     Route::get('suspicious-login/{id}/status', [SuspiciousLoginController::class, 'checkStatus'])
         ->name('security.suspicious-login.status');
 });
+
+// Webhook public pour recevoir les conteneurs traités depuis Logistiga OPS
+// Protégé par API Key (pas par Sanctum)
+Route::post('conteneurs-traites', [ConteneurTraiteController::class, 'receiveFromOps'])
+    ->name('conteneurs-traites.webhook');
 
 // Routes protégées par authentification
 Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
@@ -740,4 +746,20 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // NOTIFICATIONS IN-APP (ALERTS)
     // ============================================
     require __DIR__.'/api_notifications.php';
+
+    // ============================================
+    // CONTENEURS TRAITÉS (reçus de Logistiga OPS)
+    // ============================================
+    Route::prefix('conteneurs-en-attente')->middleware('audit')->group(function () {
+        Route::get('/', [ConteneurTraiteController::class, 'index'])
+            ->middleware('permission:ordres.voir');
+        Route::get('stats', [ConteneurTraiteController::class, 'stats'])
+            ->middleware('permission:ordres.voir');
+        Route::post('{conteneur}/affecter', [ConteneurTraiteController::class, 'affecterAOrdre'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('{conteneur}/creer-ordre', [ConteneurTraiteController::class, 'creerOrdre'])
+            ->middleware('permission:ordres.creer');
+        Route::post('{conteneur}/ignorer', [ConteneurTraiteController::class, 'ignorer'])
+            ->middleware('permission:ordres.modifier');
+    });
 });
