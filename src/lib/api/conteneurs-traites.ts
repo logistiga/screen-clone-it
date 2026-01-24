@@ -54,14 +54,15 @@ export const conteneursTraitesApi = {
    */
   getAll: async (filters: ConteneursTraitesFilters = {}) => {
     const params = new URLSearchParams();
-    if (filters.statut) params.append('statut', filters.statut);
+    if (filters.statut && filters.statut !== 'all') params.append('statut', filters.statut);
     if (filters.search) params.append('search', filters.search);
     if (filters.date_from) params.append('date_from', filters.date_from);
     if (filters.date_to) params.append('date_to', filters.date_to);
     if (filters.per_page) params.append('per_page', String(filters.per_page));
     if (filters.page) params.append('page', String(filters.page));
 
-    const response = await api.get(`/conteneurs-en-attente?${params.toString()}`);
+    const queryString = params.toString();
+    const response = await api.get(`/conteneurs-en-attente${queryString ? `?${queryString}` : ''}`);
     return response.data;
   },
 
