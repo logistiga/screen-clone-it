@@ -187,6 +187,22 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
+    // CONTENEURS EN ATTENTE (reçus depuis Logistiga OPS)
+    // ============================================
+    Route::prefix('conteneurs-en-attente')->middleware('audit')->group(function () {
+        Route::get('/', [ConteneurTraiteController::class, 'index'])
+            ->middleware('permission:ordres.voir');
+        Route::get('stats', [ConteneurTraiteController::class, 'stats'])
+            ->middleware('permission:ordres.voir');
+        Route::post('{conteneur}/affecter', [ConteneurTraiteController::class, 'affecterAOrdre'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('{conteneur}/creer-ordre', [ConteneurTraiteController::class, 'creerOrdre'])
+            ->middleware('permission:ordres.creer');
+        Route::post('{conteneur}/ignorer', [ConteneurTraiteController::class, 'ignorer'])
+            ->middleware('permission:ordres.modifier');
+    });
+
+    // ============================================
     // SYNC LOGISTIGA (envoi manuel si nécessaire)
     // ============================================
     Route::prefix('sync')->middleware('audit')->group(function () {
