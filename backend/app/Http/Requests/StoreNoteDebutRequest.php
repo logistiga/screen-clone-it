@@ -33,6 +33,16 @@ class StoreNoteDebutRequest extends FormRequest
             'montant_ht' => 'nullable|numeric|min:0',
             'description' => 'nullable|string|max:1000',
             'notes' => 'nullable|string|max:2000',
+            
+            // Lignes multiples (pour création groupée)
+            'lignes' => 'nullable|array',
+            'lignes.*.ordre_id' => 'nullable|exists:ordres_travail,id',
+            'lignes.*.conteneur_numero' => 'nullable|string|max:50',
+            'lignes.*.bl_numero' => 'nullable|string|max:100',
+            'lignes.*.date_debut' => 'required_with:lignes|date',
+            'lignes.*.date_fin' => 'required_with:lignes|date|after_or_equal:lignes.*.date_debut',
+            'lignes.*.tarif_journalier' => 'required_with:lignes|numeric|min:0',
+            'lignes.*.observations' => 'nullable|string|max:500',
         ];
     }
 

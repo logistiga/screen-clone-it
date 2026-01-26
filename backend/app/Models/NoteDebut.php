@@ -117,6 +117,32 @@ class NoteDebut extends Model
         return $this->belongsTo(Transitaire::class);
     }
 
+    /**
+     * Lignes de la note (pour notes groupées multi-conteneurs)
+     */
+    public function lignes()
+    {
+        return $this->hasMany(LigneNoteDebut::class, 'note_debut_id');
+    }
+
+    /**
+     * Calculer le montant total à partir des lignes
+     */
+    public function recalculerDepuisLignes(): void
+    {
+        $montantHT = $this->lignes()->sum('montant_ht');
+        
+        $this->update([
+            'montant_ht' => round($montantHT, 2),
+            'montant_tva' => 0,
+            'montant_css' => 0,
+            'montant_ttc' => round($montantHT, 2),
+            'montant_total' => round($montantHT, 2),
+            'taux_tva' => 0,
+            'taux_css' => 0,
+        ]);
+    }
+
     // =========================================
     // SCOPES
     // =========================================
@@ -237,6 +263,11 @@ class NoteDebut extends Model
     /**
      * Calculer tous les montants et sauvegarder
      */
+    /**
+     * Calculer tous les montants et sauvegarder
+     * NOTE: Les notes de début n'ont AUCUNE taxe (TVA=0, CSS=0)
+     * Les taxes ne s'appliquent qu'aux factures finales
+     */
     public function calculerTotaux(): void
     {
         // Calculer jours stockage si dates présentes
@@ -248,16 +279,17 @@ class NoteDebut extends Model
         // Montant HT = jours * tarif (ou valeur manuelle)
         $montantHT = $this->montant_ht ?? $this->calculerMontantHT();
 
-        // Récupérer config taxes (cache)
-        $config = self::getTaxesConfig();
+        // Notes de début : AUCUNE taxe appliquée
+        // Les taxes ne s'appliquent qu'aux factures finales
+        $montantTVA = 0;
+        $montantCSS = 0;
+        $montantTTC = $montantHT; // TTC = HT (pas de taxes)
 
-        // Calculer taxes
-        $montantTVA = $config['tva_actif'] ? $montantHT * ($config['tva_taux'] / 100) : 0;
-        $montantCSS = $config['css_actif'] ? $montantHT * ($config['css_taux'] / 100) : 0;
-        $montantTTC = $montantHT + $montantTVA + $montantCSS;
-
-        // Montant total = stockage + manutention
+        // Montant total = stockage + manutention (si applicable)
         $montantTotal = ($this->montant_stockage ?? 0) + ($this->montant_manutention ?? 0);
+        if ($montantTotal == 0) {
+            $montantTotal = $montantHT;
+        }
 
         $this->update([
             'montant_ht' => round($montantHT, 2),
@@ -265,8 +297,8 @@ class NoteDebut extends Model
             'montant_css' => round($montantCSS, 2),
             'montant_ttc' => round($montantTTC, 2),
             'montant_total' => round($montantTotal, 2),
-            'taux_tva' => $config['tva_taux'],
-            'taux_css' => $config['css_taux'],
+            'taux_tva' => 0,
+            'taux_css' => 0,
         ]);
     }
 

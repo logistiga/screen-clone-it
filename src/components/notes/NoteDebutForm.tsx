@@ -271,29 +271,29 @@ export function NoteDebutForm({ noteType, title, subtitle }: NoteDebutFormProps)
       'reparation': 'Reparation',
     };
     const backendType = typeMapping[noteType] || noteType;
-    const dateCreation = new Date().toISOString().slice(0, 10);
 
-    // Create notes for each valid ligne
+    // Créer UNE SEULE note avec TOUTES les lignes (création groupée)
     try {
-      for (const ligne of lignesValides) {
-        const jours = calculerJours(ligne.dateDebut, ligne.dateFin);
-        const montantHt = jours * ligne.tarifJournalier;
-        
-        await createNote.mutateAsync({
-          type: backendType,
-          client_id: clientId,
-          ordre_id: ligne.ordreTravail || undefined,
-          conteneur_numero: ligne.containerNumber || undefined,
-          bl_numero: ligne.blNumber || undefined,
-          date_creation: dateCreation,
-          date_debut: ligne.dateDebut,
-          date_fin: ligne.dateFin,
-          nombre_jours: jours,
-          tarif_journalier: ligne.tarifJournalier,
-          montant_ht: montantHt,
-          description: description || undefined,
-        });
-      }
+      const lignesPayload = lignesValides.map(ligne => ({
+        ordre_id: ligne.ordreTravail || undefined,
+        conteneur_numero: ligne.containerNumber || undefined,
+        bl_numero: ligne.blNumber || undefined,
+        date_debut: ligne.dateDebut,
+        date_fin: ligne.dateFin,
+        tarif_journalier: ligne.tarifJournalier,
+      }));
+
+      await createNote.mutateAsync({
+        type: backendType,
+        client_id: clientId,
+        description: description || undefined,
+        lignes: lignesPayload,
+      });
+      
+      toast({
+        title: "Succès",
+        description: `Note créée avec ${lignesValides.length} ligne(s)`,
+      });
       
       navigate("/notes-debut");
     } catch (error) {

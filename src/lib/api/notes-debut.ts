@@ -1,6 +1,21 @@
 import api from '@/lib/api';
 import { Client, Transitaire, Armateur } from './commercial';
 
+export interface LigneNoteDebut {
+  id?: string;
+  note_debut_id?: string;
+  ordre_id?: string;
+  conteneur_numero?: string;
+  bl_numero?: string;
+  date_debut?: string;
+  date_fin?: string;
+  nombre_jours?: number;
+  tarif_journalier?: number;
+  montant_ht?: number;
+  observations?: string;
+  created_at?: string;
+}
+
 export interface NoteDebut {
   id: string;
   numero: string;
@@ -12,7 +27,7 @@ export interface NoteDebut {
   client_id: string;
   client?: Client;
   
-  // Conteneur
+  // Conteneur (pour notes simples)
   bl_numero?: string;
   conteneur_numero?: string;
   conteneur_type?: string;
@@ -30,16 +45,16 @@ export interface NoteDebut {
   jours_franchise?: number;
   tarif_journalier?: number;
   
-  // Montants
+  // Montants (AUCUNE taxe sur les notes de début)
   montant_ht?: number;
-  montant_tva?: number;
-  montant_css?: number;
-  montant_ttc?: number;
+  montant_tva?: number; // Toujours 0
+  montant_css?: number; // Toujours 0
+  montant_ttc?: number; // = montant_ht
   montant_stockage?: number;
   montant_manutention?: number;
   montant_total?: number;
-  taux_tva?: number;
-  taux_css?: number;
+  taux_tva?: number; // Toujours 0
+  taux_css?: number; // Toujours 0
   
   // Paiement
   montant_paye?: number;
@@ -59,8 +74,39 @@ export interface NoteDebut {
   ordre_id?: string;
   facture_id?: string;
   
+  // Lignes multiples (pour notes groupées)
+  lignes?: LigneNoteDebut[];
+  nb_lignes?: number;
+  
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CreateNoteDebutPayload {
+  type: string;
+  client_id: string;
+  description?: string;
+  transitaire_id?: string;
+  armateur_id?: string;
+  // Pour création simple (1 conteneur)
+  ordre_id?: string;
+  conteneur_numero?: string;
+  bl_numero?: string;
+  date_debut?: string;
+  date_fin?: string;
+  nombre_jours?: number;
+  tarif_journalier?: number;
+  montant_ht?: number;
+  // Pour création groupée (plusieurs conteneurs)
+  lignes?: {
+    ordre_id?: string;
+    conteneur_numero?: string;
+    bl_numero?: string;
+    date_debut: string;
+    date_fin: string;
+    tarif_journalier: number;
+    observations?: string;
+  }[];
 }
 
 export interface NoteDebutParams {
