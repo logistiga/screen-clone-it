@@ -746,6 +746,9 @@ export default function ModifierFacturePage() {
                 prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || factureData?.lignes?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
                 notes={notes}
                 currentStep={currentStep}
+                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+                tauxTva={taxRates.TVA}
+                tauxCss={taxRates.CSS}
               />
             </div>
           </div>
