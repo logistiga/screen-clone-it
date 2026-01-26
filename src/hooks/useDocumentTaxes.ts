@@ -106,10 +106,9 @@ export function useDocumentTaxes() {
        : [];
      
      const hasExo = taxesSelectionJson.has_exoneration === true || exoneratedCodes.length > 0;
-     const finalSelectedCodes = selectedCodes.length > 0 ? selectedCodes : ['TVA', 'CSS'];
      
      return {
-       selectedTaxCodes: finalSelectedCodes,
+       selectedTaxCodes: selectedCodes,
        hasExoneration: hasExo,
        exoneratedTaxCodes: exoneratedCodes,
        motifExoneration: hasExo ? (taxesSelectionJson.motif_exoneration || motifExoneration || '') : '',
