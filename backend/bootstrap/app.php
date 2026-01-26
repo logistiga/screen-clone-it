@@ -36,14 +36,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Middlewares globaux sur TOUTES les routes API
         $middleware->api([
-            // 1. Sanctum Stateful - DOIT être en premier pour l'auth SPA avec cookies
+            // 1. CORS - DOIT être en PREMIER pour traiter les OPTIONS preflight avant tout
+            \Illuminate\Http\Middleware\HandleCors::class,
+            
+            // 2. Sanctum Stateful - auth SPA avec cookies
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             
-            // 2. Security Headers
+            // 3. Security Headers
             \App\Http\Middleware\SecurityHeaders::class,
-            
-            // 3. CORS - gestion des origines autorisées
-            \Illuminate\Http\Middleware\HandleCors::class,
             
             // 4. Rate Limiting global (60 req/min par défaut)
             'throttle:api',
