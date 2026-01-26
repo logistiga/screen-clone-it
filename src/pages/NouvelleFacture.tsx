@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Receipt, Save, Loader2, Users, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -212,6 +212,38 @@ export default function NouvelleFacturePage() {
   // Calculer les taxes via le hook unifié
   const { tva, css, totalTaxes } = calculateTaxes(montantHTApresRemise, taxesSelectionData);
   const montantTTC = montantHTApresRemise + totalTaxes;
+
+  // Calculer l'état de validation pour chaque étape du stepper
+  const stepsValidation = useMemo(() => {
+    const isStep1Valid = !!categorie;
+    const isStep2Valid = !!clientId;
+    
+    let isStep3Valid = false;
+    if (categorie === "conteneurs") {
+      isStep3Valid = !!(
+        conteneursData?.typeOperation &&
+        conteneursData?.numeroBL?.trim() &&
+        conteneursData?.conteneurs?.some(c => c.numero?.trim())
+      );
+    } else if (categorie === "conventionnel") {
+      isStep3Valid = !!(
+        conventionnelData?.numeroBL?.trim() &&
+        conventionnelData?.lots?.some(l => l.description?.trim())
+      );
+    } else if (categorie === "operations_independantes") {
+      isStep3Valid = !!(
+        independantData?.typeOperationIndep &&
+        independantData?.prestations?.some(p => p.description?.trim())
+      );
+    }
+
+    return {
+      1: { isValid: isStep1Valid, hasError: currentStep > 1 && !isStep1Valid },
+      2: { isValid: isStep2Valid, hasError: currentStep > 2 && !isStep2Valid },
+      3: { isValid: isStep3Valid, hasError: currentStep > 3 && !isStep3Valid },
+      4: { isValid: true, hasError: false },
+    };
+  }, [categorie, clientId, conteneursData, conventionnelData, independantData, currentStep]);
 
   const handleCategorieChange = (value: CategorieDocument) => {
     setCategorie(value);
@@ -518,6 +550,7 @@ export default function NouvelleFacturePage() {
         currentStep={currentStep} 
         categorie={categorie || undefined}
         onStepClick={handleStepClick}
+        stepsValidation={stepsValidation}
       />
 
       <div 

@@ -244,6 +244,37 @@ export default function ModifierFacturePage() {
   const { tva, css, totalTaxes } = calculateTaxes(montantHT, taxesSelectionData);
   const montantTTC = montantHT + totalTaxes;
 
+  // Calculer l'état de validation pour chaque étape du stepper (modification commence à l'étape 2)
+  const stepsValidation = useMemo(() => {
+    const isStep2Valid = !!clientId;
+    
+    let isStep3Valid = false;
+    if (categorie === "conteneurs") {
+      isStep3Valid = !!(
+        conteneursData?.typeOperation &&
+        conteneursData?.numeroBL?.trim() &&
+        conteneursData?.conteneurs?.some(c => c.numero?.trim())
+      );
+    } else if (categorie === "conventionnel") {
+      isStep3Valid = !!(
+        conventionnelData?.numeroBL?.trim() &&
+        conventionnelData?.lots?.some(l => l.description?.trim())
+      );
+    } else if (categorie === "operations_independantes") {
+      isStep3Valid = !!(
+        independantData?.typeOperationIndep &&
+        independantData?.prestations?.some(p => p.description?.trim())
+      );
+    }
+
+    return {
+      1: { isValid: true, hasError: false }, // Catégorie non modifiable
+      2: { isValid: isStep2Valid, hasError: currentStep > 2 && !isStep2Valid },
+      3: { isValid: isStep3Valid, hasError: currentStep > 3 && !isStep3Valid },
+      4: { isValid: true, hasError: false },
+    };
+  }, [categorie, clientId, conteneursData, conventionnelData, independantData, currentStep]);
+
   // Stepper navigation - vérifie les prérequis avant de changer d'étape
   const handleStepClick = (step: number) => {
     if (step < 2 || step > 4) return;
@@ -571,6 +602,7 @@ export default function ModifierFacturePage() {
           currentStep={currentStep} 
           categorie={categorie || undefined}
           onStepClick={handleStepClick}
+          stepsValidation={stepsValidation}
         />
 
         <form 
