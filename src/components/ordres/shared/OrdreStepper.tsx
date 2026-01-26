@@ -1,11 +1,18 @@
 import { motion } from "framer-motion";
-import { Check, Container, Users, FileText, Eye, Ship, Package, Truck } from "lucide-react";
+import { Check, Container, Users, FileText, Eye, Ship, Package, Truck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export interface StepValidationStatus {
+  isValid: boolean;
+  hasError: boolean;
+}
 
 interface OrdreStepperProps {
   currentStep: number;
   categorie?: string;
   onStepClick?: (step: number) => void;
+  // Nouveau: état de validation par étape (clé = id de l'étape)
+  stepsValidation?: Record<number, StepValidationStatus>;
 }
 
 const steps = [
@@ -15,7 +22,7 @@ const steps = [
   { id: 4, name: "Récapitulatif", icon: Eye, description: "Vérification" },
 ];
 
-export function OrdreStepper({ currentStep, categorie, onStepClick }: OrdreStepperProps) {
+export function OrdreStepper({ currentStep, categorie, onStepClick, stepsValidation = {} }: OrdreStepperProps) {
   const getCategorieIcon = () => {
     switch (categorie) {
       case "conteneurs":
@@ -29,12 +36,35 @@ export function OrdreStepper({ currentStep, categorie, onStepClick }: OrdreStepp
     }
   };
 
+  const getStepStatus = (stepId: number) => {
+    const validation = stepsValidation[stepId];
+    const isCompleted = currentStep > stepId;
+    const isCurrent = currentStep === stepId;
+    
+    // Si l'étape a été visitée et a une erreur
+    if (validation?.hasError && !isCurrent) {
+      return 'error';
+    }
+    // Si l'étape est complétée et valide
+    if (isCompleted && (validation?.isValid !== false)) {
+      return 'completed';
+    }
+    // Étape en cours
+    if (isCurrent) {
+      return 'current';
+    }
+    // Étape pas encore visitée
+    return 'pending';
+  };
+
   return (
     <nav aria-label="Progress" className="mb-8">
       <ol className="flex items-center justify-between">
         {steps.map((step, stepIdx) => {
-          const isCompleted = currentStep > step.id;
-          const isCurrent = currentStep === step.id;
+          const status = getStepStatus(step.id);
+          const isCompleted = status === 'completed';
+          const isCurrent = status === 'current';
+          const hasError = status === 'error';
           const StepIcon = step.icon;
 
           return (
@@ -45,9 +75,12 @@ export function OrdreStepper({ currentStep, categorie, onStepClick }: OrdreStepp
                   aria-hidden="true"
                 >
                   <motion.div
-                    className="h-full bg-primary"
+                    className={cn(
+                      "h-full",
+                      hasError ? "bg-destructive" : "bg-primary"
+                    )}
                     initial={{ width: 0 }}
-                    animate={{ width: isCompleted ? "100%" : "0%" }}
+                    animate={{ width: isCompleted || hasError ? "100%" : "0%" }}
                     transition={{ duration: 0.3 }}
                   />
                 </div>
@@ -64,7 +97,9 @@ export function OrdreStepper({ currentStep, categorie, onStepClick }: OrdreStepp
                 <motion.span
                   className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors duration-200",
-                    isCompleted
+                    hasError
+                      ? "border-destructive bg-destructive/10 text-destructive"
+                      : isCompleted
                       ? "border-primary bg-primary text-primary-foreground"
                       : isCurrent
                       ? "border-primary bg-primary/10 text-primary"
@@ -73,7 +108,9 @@ export function OrdreStepper({ currentStep, categorie, onStepClick }: OrdreStepp
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {isCompleted ? (
+                  {hasError ? (
+                    <AlertCircle className="h-5 w-5" />
+                  ) : isCompleted ? (
                     <Check className="h-5 w-5" />
                   ) : step.id === 1 && categorie ? (
                     getCategorieIcon()
@@ -84,13 +121,20 @@ export function OrdreStepper({ currentStep, categorie, onStepClick }: OrdreStepp
                 <span
                   className={cn(
                     "mt-2 text-sm font-medium transition-colors duration-200",
-                    isCurrent ? "text-primary" : "text-muted-foreground"
+                    hasError
+                      ? "text-destructive"
+                      : isCurrent
+                      ? "text-primary"
+                      : "text-muted-foreground"
                   )}
                 >
                   {step.name}
                 </span>
-                <span className="text-xs text-muted-foreground hidden sm:block">
-                  {step.description}
+                <span className={cn(
+                  "text-xs hidden sm:block",
+                  hasError ? "text-destructive/80" : "text-muted-foreground"
+                )}>
+                  {hasError ? "À compléter" : step.description}
                 </span>
               </button>
             </li>
