@@ -51,9 +51,19 @@ class SecurityAuditLog
         $response = $next($request);
         
         $duration = round((microtime(true) - $startTime) * 1000, 2);
-        
-        if ($this->shouldLog($request)) {
-            $this->logSecurityEvent($request, $response, $duration);
+
+        // IMPORTANT: le logging ne doit JAMAIS casser une requête API.
+        // (ex: fichier de log non inscriptible, table security_logs absente, etc.)
+        try {
+            if ($this->shouldLog($request)) {
+                $this->logSecurityEvent($request, $response, $duration);
+            }
+        } catch (\Throwable $e) {
+            Log::error('SecurityAuditLog middleware failed', [
+                'error' => $e->getMessage(),
+                'path' => $request->path(),
+                'method' => $request->method(),
+            ]);
         }
 
         return $response;
@@ -101,7 +111,16 @@ class SecurityAuditLog
         $logData['context'] = $this->getEventContext($request, $response, $eventType);
 
         // Log dans le fichier security.log
-        Log::channel('security')->info($eventType, $logData);
+        // Peut échouer si storage/logs n'est pas inscriptible => on protège.
+        try {
+            Log::channel('security')->info($eventType, $logData);
+        } catch (\Throwable $e) {
+            Log::error('Failed to write security channel log', [
+                'error' => $e->getMessage(),
+                'event_type' => $eventType,
+                'path' => $request->path(),
+            ]);
+        }
 
         // Également stocker en base pour les événements critiques
         if ($this->isCriticalEvent($eventType, $response)) {
@@ -221,7 +240,7 @@ class SecurityAuditLog
                 'duration_ms' => $data['duration_ms'],
                 'context' => $data['context'] ?? [],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to store security log', ['error' => $e->getMessage()]);
         }
     }
