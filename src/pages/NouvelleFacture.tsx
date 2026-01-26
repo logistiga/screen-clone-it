@@ -103,8 +103,9 @@ export default function NouvelleFacturePage() {
   });
 
   // État de la sélection des taxes - nouvelle structure avec codes
+  // Initialisé vide, sera peuplé par l'effet ci-dessous (ou par draft)
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
-    selectedTaxCodes: ['TVA', 'CSS'], // Taxes obligatoires par défaut
+    selectedTaxCodes: [], // Vide initialement, peuplé par l'effet
     hasExoneration: false,
     exoneratedTaxCodes: [],
     motifExoneration: "",
@@ -113,7 +114,8 @@ export default function NouvelleFacturePage() {
   // Ref pour éviter les initialisations multiples
   const taxesInitRef = useRef(false);
   
-  // Synchroniser les taxes quand elles sont chargées depuis l'API (une seule fois)
+  // Synchroniser les taxes recommandées quand elles sont chargées depuis l'API (une seule fois)
+  // L'utilisateur peut ensuite les décocher librement pour créer un document "sans taxes"
   useEffect(() => {
     // Guard: ne s'exécute qu'une seule fois
     if (taxesInitRef.current) return;
@@ -121,23 +123,17 @@ export default function NouvelleFacturePage() {
     
     taxesInitRef.current = true;
     
-    // Sélectionner toutes les taxes obligatoires par défaut (TVA, CSS)
-    const mandatoryCodes = availableTaxes
+    // Sélectionner les taxes recommandées par défaut (obligatoire=true)
+    const recommendedCodes = availableTaxes
       .filter(t => t.obligatoire)
       .map(t => t.code.toUpperCase());
     
-    // Si aucune taxe obligatoire, sélectionner TVA et CSS par défaut
-    const defaultCodes = mandatoryCodes.length > 0 
-      ? mandatoryCodes 
-      : availableTaxes.map(t => t.code.toUpperCase()).filter(c => c === 'TVA' || c === 'CSS');
-    
-    // S'assurer qu'on a au moins TVA et CSS
-    const finalCodes = defaultCodes.length > 0 ? defaultCodes : ['TVA', 'CSS'];
-    
     setTaxesSelectionData(prev => {
       // Ne pas écraser si déjà configuré (ex: restauration draft)
+      // IMPORTANT: on vérifie avec une ref si c'est une restauration de draft
       if (prev.selectedTaxCodes.length > 0) return prev;
-      return { ...prev, selectedTaxCodes: finalCodes };
+      // Pré-sélectionner les taxes recommandées (l'utilisateur peut les décocher)
+      return { ...prev, selectedTaxCodes: recommendedCodes };
     });
   }, [taxesLoading, availableTaxes]);
   
