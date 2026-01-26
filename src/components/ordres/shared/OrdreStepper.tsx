@@ -107,6 +107,19 @@ export function OrdreStepper({ currentStep, categorie, onStepClick, stepsValidat
                   )}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
+                  animate={hasError ? {
+                    scale: [1, 1.1, 1],
+                    boxShadow: [
+                      "0 0 0 0 hsl(var(--destructive) / 0)",
+                      "0 0 0 8px hsl(var(--destructive) / 0.3)",
+                      "0 0 0 0 hsl(var(--destructive) / 0)"
+                    ]
+                  } : {}}
+                  transition={hasError ? {
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  } : { duration: 0.2 }}
                 >
                   {hasError ? (
                     <AlertCircle className="h-5 w-5" />
