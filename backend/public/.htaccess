@@ -5,6 +5,15 @@
 
     RewriteEngine On
 
+    # ------------------------------------------------------------
+    # CORS Preflight (OPTIONS)
+    # ------------------------------------------------------------
+    # IMPORTANT: Certains setups (middleware, auth, erreurs PHP) peuvent
+    # renvoyer un status non-2xx sur OPTIONS, ce qui casse le CORS côté navigateur.
+    # On répond donc immédiatement en 204 avant d'atteindre Laravel.
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^ - [R=204,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
