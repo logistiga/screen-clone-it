@@ -49,6 +49,30 @@ use App\Http\Controllers\Api\ConteneurTraiteController;
 Route::get('ping', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()->toIso8601String()]);
 });
+Route::head('ping', function () {
+    return response()->noContent();
+});
+
+// DEBUG TEMPORAIRE: Vérifier taxes_selection d'un ordre
+Route::get('debug/ordre/{id}/taxes', function ($id) {
+    $ordre = \App\Models\OrdreTravail::find($id);
+    if (!$ordre) {
+        return response()->json(['error' => 'Ordre non trouvé'], 404);
+    }
+    return response()->json([
+        'id' => $ordre->id,
+        'numero' => $ordre->numero,
+        'taxes_selection_raw' => $ordre->getRawOriginal('taxes_selection'),
+        'taxes_selection_cast' => $ordre->taxes_selection,
+        'taxes_selection_type' => gettype($ordre->taxes_selection),
+        'exonere_tva' => $ordre->exonere_tva,
+        'exonere_css' => $ordre->exonere_css,
+        'tva' => $ordre->tva,
+        'css' => $ordre->css,
+        'montant_ht' => $ordre->montant_ht,
+        'montant_ttc' => $ordre->montant_ttc,
+    ]);
+});
 
 // Routes publiques avec rate limiting anti brute-force
 Route::prefix('auth')->group(function () {
