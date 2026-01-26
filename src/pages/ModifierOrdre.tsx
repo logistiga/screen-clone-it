@@ -721,6 +721,7 @@ export default function ModifierOrdrePage() {
                     montantTTC={montantTTC}
                     tauxTva={taxRates.TVA}
                     tauxCss={taxRates.CSS}
+                    selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
                     {...toApiPayload(taxesSelectionData)}
                   />
                 </motion.div>
@@ -787,6 +788,7 @@ export default function ModifierOrdrePage() {
                 prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || (Array.isArray(ordreData?.lignes) ? ordreData.lignes.map((l: any) => ({ description: l.description, quantite: l.quantite })) : undefined)}
                 notes={notes}
                 currentStep={currentStep}
+                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
               />
             </div>
           </div>
@@ -803,6 +805,9 @@ export default function ModifierOrdrePage() {
           tva={tva}
           css={css}
           montantTTC={montantTTC}
+          selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+          tauxTva={taxRates.TVA}
+          tauxCss={taxRates.CSS}
           {...toApiPayload(taxesSelectionData)}
           clientName={selectedClient?.nom}
           categorie={categorie || undefined}

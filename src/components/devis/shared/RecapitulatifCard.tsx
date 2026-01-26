@@ -3,6 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface TaxeDetail {
+  code: string;
+  label: string;
+  taux: number;
+  montant: number;
+  exonere?: boolean;
+}
+
 interface RecapitulatifCardProps {
   montantHT: number;
   tva: number;
@@ -16,6 +24,9 @@ interface RecapitulatifCardProps {
   exonereTva?: boolean;
   exonereCss?: boolean;
   motifExoneration?: string;
+  // Nouvelles props pour affichage dynamique
+  selectedTaxCodes?: string[];
+  taxesDetails?: TaxeDetail[];
 }
 
 const formatMontant = (montant: number) => {
@@ -35,14 +46,26 @@ export default function RecapitulatifCard({
   exonereTva = false,
   exonereCss = false,
   motifExoneration,
+  selectedTaxCodes = [],
+  taxesDetails = [],
 }: RecapitulatifCardProps) {
   const montantHTApresRemise = montantHT - remiseMontant;
   const hasExoneration = exonereTva || exonereCss;
+
+  // Déterminer quelles taxes afficher
+  const showTva = selectedTaxCodes.length === 0 || selectedTaxCodes.includes('TVA');
+  const showCss = selectedTaxCodes.length === 0 || selectedTaxCodes.includes('CSS');
+  
+  // Si selectedTaxCodes est fourni et vide, aucune taxe n'est sélectionnée
+  const noTaxesSelected = selectedTaxCodes.length === 0 && taxesDetails.length === 0;
 
   // Calcul des montants exonérés
   const tvaExoneree = exonereTva ? Math.round(montantHTApresRemise * (tauxTva / 100)) : 0;
   const cssExoneree = exonereCss ? Math.round(montantHTApresRemise * (tauxCss / 100)) : 0;
   const totalEconomie = tvaExoneree + cssExoneree;
+
+  // Si on a des détails de taxes, les utiliser
+  const useDynamicTaxes = taxesDetails.length > 0 || selectedTaxCodes.length > 0;
 
   return (
     <Card>
@@ -80,37 +103,74 @@ export default function RecapitulatifCard({
             </>
           )}
 
-          {/* TVA */}
-          <div className={cn(
-            "flex justify-between",
-            exonereTva && "text-muted-foreground line-through"
-          )}>
-            <span className="text-muted-foreground flex items-center gap-2">
-              TVA ({tauxTva}%)
-              {exonereTva && (
-                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
-                  Exonéré
-                </Badge>
+          {/* Affichage dynamique des taxes basé sur taxesDetails */}
+          {taxesDetails.length > 0 ? (
+            taxesDetails.map((taxe) => (
+              <div 
+                key={taxe.code}
+                className={cn(
+                  "flex justify-between",
+                  taxe.exonere && "text-muted-foreground line-through"
+                )}
+              >
+                <span className="text-muted-foreground flex items-center gap-2">
+                  {taxe.label} ({taxe.taux}%)
+                  {taxe.exonere && (
+                    <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                      Exonéré
+                    </Badge>
+                  )}
+                </span>
+                <span>{taxe.exonere ? formatMontant(0) : formatMontant(taxe.montant)}</span>
+              </div>
+            ))
+          ) : (
+            <>
+              {/* Affichage classique basé sur selectedTaxCodes */}
+              {/* TVA - n'afficher que si sélectionnée ou si mode legacy */}
+              {(showTva && (tva > 0 || !useDynamicTaxes)) && selectedTaxCodes.includes('TVA') && (
+                <div className={cn(
+                  "flex justify-between",
+                  exonereTva && "text-muted-foreground line-through"
+                )}>
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    TVA ({tauxTva}%)
+                    {exonereTva && (
+                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                        Exonéré
+                      </Badge>
+                    )}
+                  </span>
+                  <span>{exonereTva ? formatMontant(0) : formatMontant(tva)}</span>
+                </div>
               )}
-            </span>
-            <span>{exonereTva ? formatMontant(0) : formatMontant(tva)}</span>
-          </div>
 
-          {/* CSS */}
-          <div className={cn(
-            "flex justify-between",
-            exonereCss && "text-muted-foreground line-through"
-          )}>
-            <span className="text-muted-foreground flex items-center gap-2">
-              CSS ({tauxCss}%)
-              {exonereCss && (
-                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
-                  Exonéré
-                </Badge>
+              {/* CSS - n'afficher que si sélectionnée ou si mode legacy */}
+              {(showCss && (css > 0 || !useDynamicTaxes)) && selectedTaxCodes.includes('CSS') && (
+                <div className={cn(
+                  "flex justify-between",
+                  exonereCss && "text-muted-foreground line-through"
+                )}>
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    CSS ({tauxCss}%)
+                    {exonereCss && (
+                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                        Exonéré
+                      </Badge>
+                    )}
+                  </span>
+                  <span>{exonereCss ? formatMontant(0) : formatMontant(css)}</span>
+                </div>
               )}
-            </span>
-            <span>{exonereCss ? formatMontant(0) : formatMontant(css)}</span>
-          </div>
+
+              {/* Message si aucune taxe sélectionnée */}
+              {selectedTaxCodes.length === 0 && useDynamicTaxes && (
+                <div className="py-2 text-sm text-muted-foreground italic bg-muted/50 rounded-md px-3">
+                  Aucune taxe appliquée (document hors taxes)
+                </div>
+              )}
+            </>
+          )}
 
           {/* Économie si exonération */}
           {hasExoneration && totalEconomie > 0 && (
