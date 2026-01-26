@@ -92,8 +92,30 @@ export function useDocumentTaxes() {
   const getTaxesSelectionFromDocument = useCallback((
     exonereTva: boolean,
     exonereCss: boolean,
-    motifExoneration: string
+   motifExoneration: string,
+   taxesSelectionJson?: any
   ): TaxesSelectionData => {
+   // Si le JSON taxes_selection existe, l'utiliser en priorité
+   if (taxesSelectionJson && typeof taxesSelectionJson === 'object') {
+     const selectedCodes = Array.isArray(taxesSelectionJson.selected_tax_codes)
+       ? taxesSelectionJson.selected_tax_codes.map((c: string) => c.toUpperCase())
+       : [];
+     
+     const exoneratedCodes = Array.isArray(taxesSelectionJson.exonerated_tax_codes)
+       ? taxesSelectionJson.exonerated_tax_codes.map((c: string) => c.toUpperCase())
+       : [];
+     
+     const hasExo = taxesSelectionJson.has_exoneration === true || exoneratedCodes.length > 0;
+     const finalSelectedCodes = selectedCodes.length > 0 ? selectedCodes : ['TVA', 'CSS'];
+     
+     return {
+       selectedTaxCodes: finalSelectedCodes,
+       hasExoneration: hasExo,
+       exoneratedTaxCodes: exoneratedCodes,
+       motifExoneration: hasExo ? (taxesSelectionJson.motif_exoneration || motifExoneration || '') : '',
+     };
+   }
+   
     // Taxes sélectionnées par défaut (toutes les obligatoires + celles qui ne sont pas exonérées)
     const selectedCodes = availableTaxes.map(t => t.code);
     

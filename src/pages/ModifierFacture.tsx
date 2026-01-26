@@ -130,7 +130,8 @@ export default function ModifierFacturePage() {
         const exonereTva = (factureData as any).exonere_tva || false;
         const exonereCss = (factureData as any).exonere_css || false;
         const motif = (factureData as any).motif_exoneration || "";
-        setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif));
+       const taxesSelectionJson = (factureData as any).taxes_selection;
+       setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif, taxesSelectionJson));
       }
       
       setIsInitialized(true);

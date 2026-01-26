@@ -129,7 +129,8 @@ export default function ModifierOrdrePage() {
         const exonereTva = (ordreData as any).exonere_tva || false;
         const exonereCss = (ordreData as any).exonere_css || false;
         const motif = (ordreData as any).motif_exoneration || "";
-        setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif));
+       const taxesSelectionJson = (ordreData as any).taxes_selection;
+       setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif, taxesSelectionJson));
       }
       
       setIsInitialized(true);
