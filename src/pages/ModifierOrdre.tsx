@@ -542,7 +542,14 @@ export default function ModifierOrdrePage() {
 
   // Confirmation et envoi réel des données
   const handleConfirmSave = async () => {
-    const apiPayload = toApiPayload(taxesSelectionData);
+    // S'assurer que les taxes sont toujours définies avant l'envoi
+    const safeTaxesSelection = {
+      ...taxesSelectionData,
+      selectedTaxCodes: taxesSelectionData.selectedTaxCodes?.length > 0 
+        ? taxesSelectionData.selectedTaxCodes 
+        : ['TVA', 'CSS'],
+    };
+    const apiPayload = toApiPayload(safeTaxesSelection);
 
     const data: any = {
       client_id: parseInt(clientId),
