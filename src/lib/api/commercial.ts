@@ -141,6 +141,13 @@ export interface Facture {
   exonere_css?: boolean;
   motif_exoneration?: string;
   montant_effectif?: number;
+  // Sélection des taxes (nouvelle structure dynamique)
+  taxes_selection?: {
+    selected_tax_codes: string[];
+    has_exoneration: boolean;
+    exonerated_tax_codes: string[];
+    motif_exoneration: string;
+  } | null;
   statut: string;
   notes?: string;
   created_at?: string;
