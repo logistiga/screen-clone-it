@@ -97,29 +97,94 @@ class NoteDebutService
     public function modifier(NoteDebut $note, array $data): NoteDebut
     {
         return DB::transaction(function () use ($note, $data) {
-            // Recalculer montant_ht si paramètres changent
-            $recalculer = false;
-            
-            if (isset($data['nombre_jours']) || isset($data['tarif_journalier'])) {
-                if (!isset($data['montant_ht'])) {
-                    $nombreJours = $data['nombre_jours'] ?? $note->nombre_jours;
-                    $tarifJournalier = $data['tarif_journalier'] ?? $note->tarif_journalier;
-                    $data['montant_ht'] = $nombreJours * $tarifJournalier;
+            // Extraire les lignes si présentes
+            $lignesData = $data['lignes'] ?? null;
+            unset($data['lignes']);
+
+            // Si des lignes sont fournies, on les gère
+            if ($lignesData && is_array($lignesData) && count($lignesData) > 0) {
+                $this->syncLignes($note, $lignesData);
+                
+                // Mettre à jour les infos générales de la note
+                $note->update($data);
+                
+                // Recalculer depuis les lignes
+                $note->recalculerDepuisLignes();
+            } else {
+                // Modification simple (sans lignes)
+                // Recalculer montant_ht si paramètres changent
+                if (isset($data['nombre_jours']) || isset($data['tarif_journalier'])) {
+                    if (!isset($data['montant_ht'])) {
+                        $nombreJours = $data['nombre_jours'] ?? $note->nombre_jours;
+                        $tarifJournalier = $data['tarif_journalier'] ?? $note->tarif_journalier;
+                        $data['montant_ht'] = $nombreJours * $tarifJournalier;
+                    }
                 }
-                $recalculer = true;
+
+                $note->update($data);
+
+                // Recalculer totaux si nécessaire
+                if (isset($data['nombre_jours']) || isset($data['tarif_journalier']) || isset($data['montant_ht'])) {
+                    $note->calculerTotaux();
+                }
             }
 
-            $note->update($data);
+            Log::info('Note de débit modifiée', [
+                'note_id' => $note->id,
+                'nb_lignes' => $lignesData ? count($lignesData) : 0,
+            ]);
 
-            // Recalculer totaux si nécessaire
-            if ($recalculer || isset($data['montant_ht'])) {
-                $note->calculerTotaux();
-            }
-
-            Log::info('Note de débit modifiée', ['note_id' => $note->id]);
-
-            return $note->fresh(['client', 'transitaire', 'armateur']);
+            return $note->fresh(['client', 'transitaire', 'armateur', 'lignes']);
         });
+    }
+
+    /**
+     * Synchroniser les lignes d'une note (ajouter, modifier, supprimer)
+     */
+    protected function syncLignes(NoteDebut $note, array $lignesData): void
+    {
+        $lignesExistantes = $note->lignes()->pluck('id')->toArray();
+        $lignesAGarder = [];
+
+        foreach ($lignesData as $ligneData) {
+            if (!empty($ligneData['id'])) {
+                // Modifier une ligne existante
+                $ligne = LigneNoteDebut::find($ligneData['id']);
+                if ($ligne && $ligne->note_debut_id == $note->id) {
+                    $ligne->update([
+                        'ordre_id' => $ligneData['ordre_id'] ?? null,
+                        'conteneur_numero' => $ligneData['conteneur_numero'] ?? null,
+                        'bl_numero' => $ligneData['bl_numero'] ?? null,
+                        'date_debut' => $ligneData['date_debut'] ?? null,
+                        'date_fin' => $ligneData['date_fin'] ?? null,
+                        'tarif_journalier' => $ligneData['tarif_journalier'] ?? 0,
+                        'observations' => $ligneData['observations'] ?? null,
+                    ]);
+                    $ligne->calculerTotaux();
+                    $lignesAGarder[] = $ligne->id;
+                }
+            } else {
+                // Créer une nouvelle ligne
+                $ligne = new LigneNoteDebut([
+                    'note_debut_id' => $note->id,
+                    'ordre_id' => $ligneData['ordre_id'] ?? null,
+                    'conteneur_numero' => $ligneData['conteneur_numero'] ?? null,
+                    'bl_numero' => $ligneData['bl_numero'] ?? null,
+                    'date_debut' => $ligneData['date_debut'] ?? null,
+                    'date_fin' => $ligneData['date_fin'] ?? null,
+                    'tarif_journalier' => $ligneData['tarif_journalier'] ?? 0,
+                    'observations' => $ligneData['observations'] ?? null,
+                ]);
+                $ligne->calculerTotaux();
+                $lignesAGarder[] = $ligne->id;
+            }
+        }
+
+        // Supprimer les lignes qui ne sont plus dans la liste
+        $lignesASupprimer = array_diff($lignesExistantes, $lignesAGarder);
+        if (!empty($lignesASupprimer)) {
+            LigneNoteDebut::whereIn('id', $lignesASupprimer)->delete();
+        }
     }
 
     /**

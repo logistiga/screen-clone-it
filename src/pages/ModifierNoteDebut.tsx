@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { ArrowLeft, Save, Anchor, Container, Wrench, PackageOpen, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowLeft, Save, Anchor, Container, Wrench, PackageOpen, Loader2, Plus, Trash2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,44 +16,19 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useNoteDebut, useUpdateNoteDebut } from "@/hooks/use-notes-debut";
-import { useClients } from "@/hooks/use-commercial";
+import { useClients, useOrdres } from "@/hooks/use-commercial";
 
 const typeConfig: Record<string, { label: string; icon: typeof Anchor }> = {
-  ouverture_port: {
-    label: "Ouverture de port",
-    icon: Anchor,
-  },
-  "Ouverture Port": {
-    label: "Ouverture de port",
-    icon: Anchor,
-  },
-  detention: {
-    label: "Détention",
-    icon: Container,
-  },
-  Detention: {
-    label: "Détention",
-    icon: Container,
-  },
-  reparation: {
-    label: "Réparation conteneur",
-    icon: Wrench,
-  },
-  Reparation: {
-    label: "Réparation conteneur",
-    icon: Wrench,
-  },
-  relache: {
-    label: "Relâche",
-    icon: PackageOpen,
-  },
-  Relache: {
-    label: "Relâche",
-    icon: PackageOpen,
-  },
+  ouverture_port: { label: "Ouverture de port", icon: Anchor },
+  "Ouverture Port": { label: "Ouverture de port", icon: Anchor },
+  detention: { label: "Détention", icon: Container },
+  Detention: { label: "Détention", icon: Container },
+  reparation: { label: "Réparation conteneur", icon: Wrench },
+  Reparation: { label: "Réparation conteneur", icon: Wrench },
+  relache: { label: "Relâche", icon: PackageOpen },
+  Relache: { label: "Relâche", icon: PackageOpen },
 };
 
-// Normalize type to backend format
 const normalizeType = (type: string): string => {
   const mapping: Record<string, string> = {
     'ouverture_port': 'Ouverture Port',
@@ -64,68 +39,148 @@ const normalizeType = (type: string): string => {
   return mapping[type] || type;
 };
 
+interface LigneNote {
+  id?: string;
+  ordreTravail: string;
+  containerNumber: string;
+  blNumber: string;
+  dateDebut: string;
+  dateFin: string;
+  tarifJournalier: number;
+}
+
 export default function ModifierNoteDebut() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Fetch note data
   const { data: note, isLoading, error } = useNoteDebut(id);
-  
-  // Fetch clients
   const { data: clientsResponse } = useClients({ per_page: 1000 });
   const clients = clientsResponse?.data || [];
-
   const updateMutation = useUpdateNoteDebut();
 
-  const [formData, setFormData] = useState({
-    clientId: "",
-    type: "",
-    blNumber: "",
-    containerNumber: "",
-    dateDebut: "",
-    dateFin: "",
-    tarifJournalier: "",
-    description: "",
-    navire: "",
-  });
+  const [clientId, setClientId] = useState("");
+  const [type, setType] = useState("");
+  const [description, setDescription] = useState("");
+  const [navire, setNavire] = useState("");
+  const [lignes, setLignes] = useState<LigneNote[]>([]);
+
+  // Fetch ordres for selected client
+  const { data: ordresResponse, isLoading: isLoadingOrdres } = useOrdres(
+    clientId ? { client_id: clientId, per_page: 1000 } : { per_page: 1000 }
+  );
+  
+  const ordresForClient = useMemo(() => {
+    if (!ordresResponse?.data) return [];
+    if (!clientId) return ordresResponse.data;
+    return ordresResponse.data.filter((o: any) => String(o.client_id) === String(clientId));
+  }, [ordresResponse?.data, clientId]);
+
+  const getOrdreById = (ordreId: string) => {
+    if (!ordreId || !ordresResponse?.data) return null;
+    return ordresResponse.data.find((o: any) => String(o.id) === String(ordreId));
+  };
 
   // Populate form when note data is loaded
   useEffect(() => {
     if (note) {
-      setFormData({
-        clientId: note.client_id || "",
-        type: note.type || "",
-        blNumber: note.bl_numero || "",
-        containerNumber: note.conteneur_numero || "",
-        dateDebut: note.date_debut || note.date_debut_stockage || "",
-        dateFin: note.date_fin || note.date_fin_stockage || "",
-        tarifJournalier: String(note.tarif_journalier || ""),
-        description: note.description || note.observations || note.notes || "",
-        navire: note.navire || "",
-      });
+      setClientId(String(note.client_id || ""));
+      setType(note.type || "");
+      setDescription(note.description || note.notes || "");
+      setNavire(note.navire || "");
+
+      // Si la note a des lignes, les charger
+      if (note.lignes && note.lignes.length > 0) {
+        setLignes(note.lignes.map((l: any) => ({
+          id: String(l.id),
+          ordreTravail: l.ordre_id ? String(l.ordre_id) : "",
+          containerNumber: l.conteneur_numero || "",
+          blNumber: l.bl_numero || "",
+          dateDebut: l.date_debut || "",
+          dateFin: l.date_fin || "",
+          tarifJournalier: l.tarif_journalier || 0,
+        })));
+      } else {
+        // Note simple sans lignes - créer une ligne à partir des données de la note
+        setLignes([{
+          id: undefined,
+          ordreTravail: note.ordre_id ? String(note.ordre_id) : "",
+          containerNumber: note.conteneur_numero || "",
+          blNumber: note.bl_numero || "",
+          dateDebut: note.date_debut || note.date_debut_stockage || "",
+          dateFin: note.date_fin || note.date_fin_stockage || "",
+          tarifJournalier: note.tarif_journalier || 0,
+        }]);
+      }
     }
   }, [note]);
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const ajouterLigne = () => {
+    setLignes([
+      ...lignes,
+      {
+        ordreTravail: "",
+        containerNumber: "",
+        blNumber: "",
+        dateDebut: "",
+        dateFin: "",
+        tarifJournalier: 0,
+      },
+    ]);
   };
 
-  const calculateDays = () => {
-    if (formData.dateDebut && formData.dateFin) {
-      const start = new Date(formData.dateDebut);
-      const end = new Date(formData.dateFin);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      return diffDays > 0 ? diffDays : 0;
+  const supprimerLigne = (index: number) => {
+    if (lignes.length > 1) {
+      setLignes(lignes.filter((_, i) => i !== index));
     }
-    return 0;
   };
 
-  const calculateTotal = () => {
-    const days = calculateDays();
-    const tarif = parseFloat(formData.tarifJournalier) || 0;
-    return days * tarif;
+  const updateLigne = (index: number, field: keyof LigneNote, value: string | number) => {
+    setLignes(lignes.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   };
+
+  const handleOrdreChange = (index: number, ordreId: string) => {
+    const ordre = getOrdreById(ordreId);
+    const blNumero = ordre?.bl_numero || ordre?.numero_bl || "";
+    
+    // Get containers if any
+    const conteneurs = ordre?.conteneurs || [];
+    const lots = ordre?.lots || [];
+    
+    if (conteneurs.length === 1) {
+      setLignes(lignes.map((l, i) => 
+        i === index 
+          ? { ...l, ordreTravail: ordreId, containerNumber: conteneurs[0].numero || "", blNumber: blNumero }
+          : l
+      ));
+    } else if (lots.length === 1) {
+      setLignes(lignes.map((l, i) => 
+        i === index 
+          ? { ...l, ordreTravail: ordreId, containerNumber: lots[0].numero || "", blNumber: blNumero }
+          : l
+      ));
+    } else {
+      setLignes(lignes.map((l, i) => 
+        i === index 
+          ? { ...l, ordreTravail: ordreId, blNumber: blNumero }
+          : l
+      ));
+    }
+  };
+
+  const calculerJours = (dateDebut: string, dateFin: string) => {
+    if (!dateDebut || !dateFin) return 0;
+    const debut = new Date(dateDebut);
+    const fin = new Date(dateFin);
+    const diff = Math.ceil((fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 0;
+  };
+
+  const calculerMontantLigne = (ligne: LigneNote) => {
+    const jours = calculerJours(ligne.dateDebut, ligne.dateFin);
+    return jours * ligne.tarifJournalier;
+  };
+
+  const montantTotal = lignes.reduce((acc, l) => acc + calculerMontantLigne(l), 0);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("fr-GA", {
@@ -139,34 +194,39 @@ export default function ModifierNoteDebut() {
     
     if (!id) return;
 
-    if (!formData.clientId) {
+    if (!clientId) {
       toast.error("Veuillez sélectionner un client");
       return;
     }
 
-    if (!formData.dateDebut || !formData.dateFin) {
-      toast.error("Veuillez remplir les dates de début et de fin");
+    const lignesValides = lignes.filter(
+      (l) => l.dateDebut && l.dateFin && l.tarifJournalier > 0
+    );
+
+    if (lignesValides.length === 0) {
+      toast.error("Veuillez remplir au moins une ligne valide (dates et tarif)");
       return;
     }
 
-    const jours = calculateDays();
-    const montantHt = calculateTotal();
-
     try {
+      const lignesPayload = lignesValides.map(ligne => ({
+        id: ligne.id ? String(ligne.id) : undefined,
+        ordre_id: ligne.ordreTravail || undefined,
+        conteneur_numero: ligne.containerNumber || undefined,
+        bl_numero: ligne.blNumber || undefined,
+        date_debut: ligne.dateDebut,
+        date_fin: ligne.dateFin,
+        tarif_journalier: ligne.tarifJournalier,
+      }));
+
       await updateMutation.mutateAsync({
         id,
         data: {
-          client_id: formData.clientId,
-          type: normalizeType(formData.type),
-          bl_numero: formData.blNumber || undefined,
-          conteneur_numero: formData.containerNumber || undefined,
-          date_debut: formData.dateDebut,
-          date_fin: formData.dateFin,
-          nombre_jours: jours,
-          tarif_journalier: parseFloat(formData.tarifJournalier) || 0,
-          montant_ht: montantHt,
-          description: formData.description || undefined,
-          navire: formData.navire || undefined,
+          client_id: clientId,
+          type: normalizeType(type),
+          description: description || undefined,
+          navire: navire || undefined,
+          lignes: lignesPayload,
         },
       });
 
@@ -200,7 +260,7 @@ export default function ModifierNoteDebut() {
     );
   }
 
-  const typeInfo = typeConfig[formData.type] || typeConfig[note.type] || { label: "Note", icon: Anchor };
+  const typeInfo = typeConfig[type] || typeConfig[note.type] || { label: "Note", icon: Anchor };
 
   return (
     <MainLayout title={`Modifier ${note.numero}`}>
@@ -233,153 +293,207 @@ export default function ModifierNoteDebut() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Informations principales */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Informations principales</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="client">Client *</Label>
-                  <Select
-                    value={formData.clientId}
-                    onValueChange={(v) => handleChange("clientId", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client: any) => (
-                        <SelectItem key={client.id} value={String(client.id)}>
-                          {client.nom}
+        {/* Informations générales */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations générales</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Client *</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client: any) => (
+                      <SelectItem key={client.id} value={String(client.id)}>
+                        {client.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Type de note</Label>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(typeConfig)
+                      .filter(([key]) => !key.includes(' '))
+                      .map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex items-center gap-2">
+                            <config.icon className="h-4 w-4" />
+                            {config.label}
+                          </div>
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type de note</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(v) => handleChange("type", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(typeConfig)
-                        .filter(([key]) => !key.includes(' ')) // Filter out duplicates
-                        .map(([key, config]) => (
-                          <SelectItem key={key} value={key}>
-                            <div className="flex items-center gap-2">
-                              <config.icon className="h-4 w-4" />
-                              {config.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="blNumber">N° BL</Label>
-                  <Input
-                    id="blNumber"
-                    value={formData.blNumber}
-                    onChange={(e) => handleChange("blNumber", e.target.value)}
-                    placeholder="BL-2024-XXX"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="containerNumber">N° Conteneur</Label>
-                  <Input
-                    id="containerNumber"
-                    value={formData.containerNumber}
-                    onChange={(e) => handleChange("containerNumber", e.target.value.toUpperCase())}
-                    placeholder="MSKU1234567"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="navire">Navire</Label>
-                  <Input
-                    id="navire"
-                    value={formData.navire}
-                    onChange={(e) => handleChange("navire", e.target.value)}
-                    placeholder="Nom du navire"
-                  />
-                </div>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label>Navire</Label>
+                <Input
+                  value={navire}
+                  onChange={(e) => setNavire(e.target.value)}
+                  placeholder="Nom du navire"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description</Label>
                 <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleChange("description", e.target.value)}
-                  placeholder="Description de la note..."
-                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Description..."
+                  rows={2}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Période et tarification */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Période et tarification</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="dateDebut">Date de début *</Label>
-                <Input
-                  id="dateDebut"
-                  type="date"
-                  value={formData.dateDebut}
-                  onChange={(e) => handleChange("dateDebut", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dateFin">Date de fin *</Label>
-                <Input
-                  id="dateFin"
-                  type="date"
-                  value={formData.dateFin}
-                  onChange={(e) => handleChange("dateFin", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tarifJournalier">Tarif journalier (FCFA)</Label>
-                <Input
-                  id="tarifJournalier"
-                  type="number"
-                  value={formData.tarifJournalier}
-                  onChange={(e) => handleChange("tarifJournalier", e.target.value)}
-                  placeholder="25000"
-                />
-              </div>
-
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Nombre de jours</span>
-                  <span className="font-medium">{calculateDays()}</span>
+        {/* Lignes de note */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Lignes de note</CardTitle>
+            <Button type="button" onClick={ajouterLigne} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter une ligne
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {lignes.map((ligne, index) => (
+              <div
+                key={ligne.id || index}
+                className="border rounded-lg p-4 space-y-4 bg-muted/30"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Ligne {index + 1}</span>
+                  {lignes.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => supprimerLigne(index)}
+                      className="text-destructive hover:text-destructive/80"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Montant total</span>
-                  <span className="font-bold text-lg">
-                    {formatCurrency(calculateTotal())} FCFA
-                  </span>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ordre de travail</Label>
+                    <Select
+                      value={ligne.ordreTravail}
+                      onValueChange={(v) => handleOrdreChange(index, v)}
+                      disabled={!clientId || isLoadingOrdres}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          !clientId 
+                            ? "Sélectionnez d'abord un client" 
+                            : isLoadingOrdres 
+                              ? "Chargement..." 
+                              : "Sélectionner un OT"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ordresForClient.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Aucun ordre de travail
+                          </SelectItem>
+                        ) : (
+                          ordresForClient.map((ot: any) => (
+                            <SelectItem key={ot.id} value={String(ot.id)}>
+                              {ot.numero} {ot.categorie && `(${ot.categorie})`}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>N° Conteneur / Lot</Label>
+                    <Input
+                      placeholder="MSKU1234567 ou LOT-001"
+                      value={ligne.containerNumber}
+                      onChange={(e) =>
+                        updateLigne(index, "containerNumber", e.target.value.toUpperCase())
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>N° BL</Label>
+                    <Input
+                      placeholder="BL-2024-001"
+                      value={ligne.blNumber}
+                      onChange={(e) => updateLigne(index, "blNumber", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>Date début *</Label>
+                    <Input
+                      type="date"
+                      value={ligne.dateDebut}
+                      onChange={(e) => updateLigne(index, "dateDebut", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date fin *</Label>
+                    <Input
+                      type="date"
+                      value={ligne.dateFin}
+                      onChange={(e) => updateLigne(index, "dateFin", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tarif journalier (FCFA) *</Label>
+                    <Input
+                      type="number"
+                      placeholder="25000"
+                      value={ligne.tarifJournalier || ""}
+                      onChange={(e) =>
+                        updateLigne(index, "tarifJournalier", Number(e.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Montant</Label>
+                    <div className="h-10 px-3 py-2 bg-muted rounded-md flex items-center font-semibold">
+                      {formatCurrency(calculerMontantLigne(ligne))} FCFA
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({calculerJours(ligne.dateDebut, ligne.dateFin)} jours)
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ))}
+
+            {/* Total */}
+            <div className="flex justify-end pt-4 border-t">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Montant total HT</p>
+                <p className="text-2xl font-bold">{formatCurrency(montantTotal)} FCFA</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  (Aucune taxe appliquée sur les notes de début)
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     </MainLayout>
   );
