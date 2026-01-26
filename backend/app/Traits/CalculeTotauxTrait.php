@@ -194,7 +194,9 @@ trait CalculeTotauxTrait
         // Utiliser taxes_selection si disponible, sinon fallback sur exonere_tva/exonere_css
         $taxesSelection = $document->taxes_selection;
         
-        if (empty($taxesSelection)) {
+        // Fallback uniquement si taxes_selection est NULL ou n'existe pas
+        // Un tableau vide [] ou {"selected_tax_codes": []} est un choix intentionnel
+        if ($taxesSelection === null || !is_array($taxesSelection)) {
             // Fallback: construire taxes_selection depuis les anciennes colonnes
             $taxesSelection = $this->buildTaxesSelectionFromLegacy($document);
         }
