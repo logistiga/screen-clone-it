@@ -681,6 +681,9 @@ export default function NouvelleFacturePage() {
               notes={notes}
               remiseMontant={remiseData.montantCalcule}
               currentStep={currentStep}
+              selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+              tauxTva={taxRates.TVA}
+              tauxCss={taxRates.CSS}
             />
           </div>
         </div>

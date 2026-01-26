@@ -9,6 +9,14 @@ import {
 import { formatMontant } from "@/data/mockData";
 import { getCategoriesLabels, CategorieDocument } from "@/types/documents";
 
+interface TaxeDetail {
+  code: string;
+  label: string;
+  taux: number;
+  montant: number;
+  exonere?: boolean;
+}
+
 interface FacturePreviewProps {
   categorie: CategorieDocument | "";
   client?: { id: number; nom: string } | null;
@@ -26,6 +34,11 @@ interface FacturePreviewProps {
   notes?: string;
   remiseMontant?: number;
   currentStep?: number; // Pour n'afficher les taxes qu'à l'étape 4
+  // Props dynamiques pour les taxes
+  selectedTaxCodes?: string[];
+  taxesDetails?: TaxeDetail[];
+  tauxTva?: number;
+  tauxCss?: number;
 }
 
 export function FacturePreview({
@@ -45,6 +58,10 @@ export function FacturePreview({
   notes,
   remiseMontant = 0,
   currentStep = 4,
+  selectedTaxCodes = [],
+  taxesDetails = [],
+  tauxTva = 18,
+  tauxCss = 1,
 }: FacturePreviewProps) {
   const categoriesLabels = getCategoriesLabels();
 
@@ -292,14 +309,42 @@ export function FacturePreview({
               )}
               {currentStep === 4 ? (
                 <>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">TVA</span>
-                    <span>{formatMontant(tva)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CSS</span>
-                    <span>{formatMontant(css)}</span>
-                  </div>
+                  {/* Affichage dynamique des taxes basé sur selectedTaxCodes */}
+                  {taxesDetails.length > 0 ? (
+                    // Utiliser taxesDetails si fourni
+                    taxesDetails.map((taxe) => (
+                      <div key={taxe.code} className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {taxe.label} ({taxe.taux}%)
+                        </span>
+                        <span>{formatMontant(taxe.exonere ? 0 : taxe.montant)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    // Fallback: afficher TVA/CSS seulement si sélectionnées
+                    <>
+                      {selectedTaxCodes.includes('TVA') && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">TVA ({tauxTva}%)</span>
+                          <span>{formatMontant(tva)}</span>
+                        </div>
+                      )}
+                      {selectedTaxCodes.includes('CSS') && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">CSS ({tauxCss}%)</span>
+                          <span>{formatMontant(css)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Message si aucune taxe sélectionnée */}
+                  {selectedTaxCodes.length === 0 && taxesDetails.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic py-2 bg-muted/50 rounded-md px-3">
+                      Aucune taxe appliquée
+                    </p>
+                  )}
+
                   <Separator />
                   <motion.div 
                     className="flex justify-between text-lg font-bold"
