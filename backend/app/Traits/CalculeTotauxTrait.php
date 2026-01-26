@@ -119,10 +119,31 @@ trait CalculeTotauxTrait
         $details = [];
         $total = 0;
         
+        // DEBUG: Log pour comprendre la structure reçue
+        Log::debug('[CalculeTaxes] taxesSelection reçu', [
+            'taxesSelection' => $taxesSelection,
+            'type' => gettype($taxesSelection),
+            'has_key' => is_array($taxesSelection) && array_key_exists('selected_tax_codes', $taxesSelection),
+        ]);
+        
         // Extraire les données de taxes_selection
-        $selectedCodes = $taxesSelection['selected_tax_codes'] ?? array_keys($allTaxes);
+        // IMPORTANT: Vérifier explicitement si la clé existe avant d'utiliser le fallback
+        $selectedCodes = (is_array($taxesSelection) && array_key_exists('selected_tax_codes', $taxesSelection))
+            ? $taxesSelection['selected_tax_codes']
+            : array_keys($allTaxes);
+        
+        // Si selectedCodes est null (cas improbable), utiliser un tableau vide
+        if (!is_array($selectedCodes)) {
+            $selectedCodes = [];
+        }
+        
         $hasExoneration = $taxesSelection['has_exoneration'] ?? false;
         $exoneratedCodes = $taxesSelection['exonerated_tax_codes'] ?? [];
+        
+        Log::debug('[CalculeTaxes] Codes extraits', [
+            'selectedCodes' => $selectedCodes,
+            'count' => count($selectedCodes),
+        ]);
         
         // Calculer chaque taxe sélectionnée
         foreach ($allTaxes as $code => $taxe) {
