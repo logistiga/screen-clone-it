@@ -128,13 +128,16 @@ trait CalculeTotauxTrait
         
         // Extraire les données de taxes_selection
         // IMPORTANT: Vérifier explicitement si la clé existe avant d'utiliser le fallback
-        $selectedCodes = (is_array($taxesSelection) && array_key_exists('selected_tax_codes', $taxesSelection))
-            ? $taxesSelection['selected_tax_codes']
-            : array_keys($allTaxes);
-        
-        // Si selectedCodes est null (cas improbable), utiliser un tableau vide
-        if (!is_array($selectedCodes)) {
-            $selectedCodes = [];
+        // Un tableau vide [] est un choix intentionnel = "sans taxes"
+        if (is_array($taxesSelection) && array_key_exists('selected_tax_codes', $taxesSelection)) {
+            // Clé présente: utiliser la valeur (même si vide)
+            $selectedCodes = $taxesSelection['selected_tax_codes'];
+            if (!is_array($selectedCodes)) {
+                $selectedCodes = [];
+            }
+        } else {
+            // Clé absente: fallback aux taxes par défaut (rétrocompatibilité)
+            $selectedCodes = array_keys($allTaxes);
         }
         
         $hasExoneration = $taxesSelection['has_exoneration'] ?? false;
