@@ -14,6 +14,10 @@ interface FactureFinancialCardProps {
   remiseType?: string | null;
   remiseValeur?: number;
   remiseMontant?: number;
+  // Props dynamiques pour les taxes
+  selectedTaxCodes?: string[];
+  tauxTva?: number;
+  tauxCss?: number;
 }
 
 export function FactureFinancialCard({
@@ -26,11 +30,19 @@ export function FactureFinancialCard({
   remiseType,
   remiseValeur = 0,
   remiseMontant = 0,
+  selectedTaxCodes = [],
+  tauxTva = 18,
+  tauxCss = 1,
 }: FactureFinancialCardProps) {
   const hasRemise = remiseMontant > 0 && remiseType && remiseType !== 'none';
   const montantHTBrut = hasRemise ? montantHT + remiseMontant : montantHT;
   const paymentProgress = montantTTC > 0 ? (montantPaye / montantTTC) * 100 : 0;
   const isPaid = resteAPayer <= 0;
+  
+  // Déterminer quelles taxes afficher
+  const showTva = selectedTaxCodes.length === 0 || selectedTaxCodes.includes('TVA');
+  const showCss = selectedTaxCodes.length === 0 || selectedTaxCodes.includes('CSS');
+  const hasTaxes = showTva || showCss || selectedTaxCodes.length > 0;
   
   return (
     <motion.div
@@ -71,15 +83,28 @@ export function FactureFinancialCard({
               <span className="font-semibold">{formatMontant(montantHT)}</span>
             </div>
             
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">TVA</span>
-              <span>{formatMontant(montantTVA)}</span>
-            </div>
+            {/* TVA - afficher seulement si sélectionnée ou mode legacy */}
+            {showTva && montantTVA > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">TVA ({tauxTva}%)</span>
+                <span>{formatMontant(montantTVA)}</span>
+              </div>
+            )}
             
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">CSS</span>
-              <span>{formatMontant(montantCSS)}</span>
-            </div>
+            {/* CSS - afficher seulement si sélectionnée ou mode legacy */}
+            {showCss && montantCSS > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">CSS ({tauxCss}%)</span>
+                <span>{formatMontant(montantCSS)}</span>
+              </div>
+            )}
+
+            {/* Message si aucune taxe */}
+            {!hasTaxes && montantTVA === 0 && montantCSS === 0 && (
+              <div className="text-xs text-muted-foreground italic py-1 bg-muted/50 rounded-md px-2">
+                Aucune taxe appliquée
+              </div>
+            )}
           </div>
 
           {/* Total TTC - Highlighted */}

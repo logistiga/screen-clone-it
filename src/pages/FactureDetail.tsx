@@ -160,6 +160,9 @@ export default function FactureDetailPage() {
                       remiseType={facture.remise_type}
                       remiseValeur={facture.remise_valeur}
                       remiseMontant={facture.remise_montant}
+                      selectedTaxCodes={facture.taxes_selection?.selected_tax_codes || []}
+                      tauxTva={facture.taux_tva || 18}
+                      tauxCss={facture.taux_css || 1}
                     />
                   </div>
 
