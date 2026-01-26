@@ -30,6 +30,10 @@ interface ConfirmationSaveModalProps {
   motifExoneration?: string;
   clientName?: string;
   categorie?: string;
+  // Nouvelles props pour affichage dynamique
+  selectedTaxCodes?: string[];
+  tauxTva?: number;
+  tauxCss?: number;
 }
 
 export default function ConfirmationSaveModal({
@@ -48,6 +52,9 @@ export default function ConfirmationSaveModal({
   motifExoneration,
   clientName,
   categorie,
+  selectedTaxCodes = [],
+  tauxTva = 18,
+  tauxCss = 1,
 }: ConfirmationSaveModalProps) {
   const formatMontant = (value: number) => {
     return new Intl.NumberFormat("fr-FR", {
@@ -64,6 +71,11 @@ export default function ConfirmationSaveModal({
     : "Vérifiez les informations avant d'enregistrer cet ordre de travail.";
 
   const hasExoneration = exonereTva || exonereCss;
+  
+  // Déterminer quelles taxes afficher
+  const showTva = selectedTaxCodes.length === 0 || selectedTaxCodes.includes('TVA');
+  const showCss = selectedTaxCodes.length === 0 || selectedTaxCodes.includes('CSS');
+  const hasTaxes = selectedTaxCodes.length > 0;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -115,33 +127,46 @@ export default function ConfirmationSaveModal({
                 </div>
               )}
 
-              <div className="flex justify-between">
-                <span className="flex items-center gap-1">
-                  TVA (18%)
-                  {exonereTva && (
-                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 ml-1">
-                      Exonéré
-                    </Badge>
-                  )}
-                </span>
-                <span className={exonereTva ? "line-through text-muted-foreground" : ""}>
-                  {formatMontant(exonereTva ? 0 : tva)}
-                </span>
-              </div>
+              {/* TVA - afficher seulement si sélectionnée */}
+              {showTva && selectedTaxCodes.includes('TVA') && (
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1">
+                    TVA ({tauxTva}%)
+                    {exonereTva && (
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 ml-1">
+                        Exonéré
+                      </Badge>
+                    )}
+                  </span>
+                  <span className={exonereTva ? "line-through text-muted-foreground" : ""}>
+                    {formatMontant(exonereTva ? 0 : tva)}
+                  </span>
+                </div>
+              )}
 
-              <div className="flex justify-between">
-                <span className="flex items-center gap-1">
-                  CSS (1%)
-                  {exonereCss && (
-                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 ml-1">
-                      Exonéré
-                    </Badge>
-                  )}
-                </span>
-                <span className={exonereCss ? "line-through text-muted-foreground" : ""}>
-                  {formatMontant(exonereCss ? 0 : css)}
-                </span>
-              </div>
+              {/* CSS - afficher seulement si sélectionnée */}
+              {showCss && selectedTaxCodes.includes('CSS') && (
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1">
+                    CSS ({tauxCss}%)
+                    {exonereCss && (
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 ml-1">
+                        Exonéré
+                      </Badge>
+                    )}
+                  </span>
+                  <span className={exonereCss ? "line-through text-muted-foreground" : ""}>
+                    {formatMontant(exonereCss ? 0 : css)}
+                  </span>
+                </div>
+              )}
+
+              {/* Message si aucune taxe */}
+              {selectedTaxCodes.length === 0 && hasTaxes === false && (
+                <div className="text-sm text-muted-foreground italic py-1">
+                  Aucune taxe appliquée
+                </div>
+              )}
 
               <Separator className="my-2" />
 

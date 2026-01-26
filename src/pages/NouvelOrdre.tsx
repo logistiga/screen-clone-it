@@ -629,6 +629,7 @@ export default function NouvelOrdrePage() {
                   remiseMontant={remiseData.montantCalcule}
                   remiseType={remiseData.type}
                   remiseValeur={remiseData.valeur}
+                  selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
                   {...toApiPayload(taxesSelectionData)}
                 />
               </div>
@@ -691,6 +692,7 @@ export default function NouvelOrdrePage() {
               prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
               notes={notes}
               currentStep={currentStep}
+              selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
             />
           </div>
         </div>
@@ -708,6 +710,9 @@ export default function NouvelOrdrePage() {
         css={css}
         montantTTC={montantTTC}
         remise={remiseData.montantCalcule}
+        selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+        tauxTva={taxRates.TVA}
+        tauxCss={taxRates.CSS}
         {...toApiPayload(taxesSelectionData)}
         clientName={selectedClient?.nom}
         categorie={categorie || undefined}

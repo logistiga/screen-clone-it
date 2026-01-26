@@ -9,6 +9,13 @@ import {
 import { formatMontant } from "@/data/mockData";
 import { getCategoriesLabels, CategorieDocument } from "@/types/documents";
 
+interface TaxeInfo {
+  code: string;
+  label: string;
+  taux: number;
+  montant: number;
+}
+
 interface OrdrePreviewProps {
   categorie: CategorieDocument | "";
   client?: { id: number; nom: string } | null;
@@ -23,7 +30,10 @@ interface OrdrePreviewProps {
   lots?: { description: string; quantite: number }[];
   prestations?: { description: string; quantite: number }[];
   notes?: string;
-  currentStep?: number; // Pour n'afficher les taxes qu'à l'étape 4
+  currentStep?: number;
+  // Nouvelles props pour affichage dynamique des taxes
+  selectedTaxCodes?: string[];
+  taxesDetails?: TaxeInfo[];
 }
 
 export function OrdrePreview({
@@ -41,6 +51,8 @@ export function OrdrePreview({
   prestations = [],
   notes,
   currentStep = 4,
+  selectedTaxCodes = [],
+  taxesDetails = [],
 }: OrdrePreviewProps) {
   const categoriesLabels = getCategoriesLabels();
 
@@ -78,6 +90,11 @@ export function OrdrePreview({
   };
 
   const config = getCategorieConfig();
+
+  // Déterminer si des taxes sont sélectionnées
+  const hasTaxes = selectedTaxCodes.length > 0;
+  const showTva = selectedTaxCodes.includes('TVA');
+  const showCss = selectedTaxCodes.includes('CSS');
 
   return (
     <motion.div
@@ -264,14 +281,54 @@ export function OrdrePreview({
               </div>
               {currentStep === 4 ? (
                 <>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">TVA</span>
-                    <span>{formatMontant(tva)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CSS</span>
-                    <span>{formatMontant(css)}</span>
-                  </div>
+                  {/* Afficher les taxes dynamiquement si des détails sont fournis */}
+                  {taxesDetails.length > 0 ? (
+                    taxesDetails.map((taxe) => (
+                      <div key={taxe.code} className="flex justify-between">
+                        <span className="text-muted-foreground">{taxe.label} ({taxe.taux}%)</span>
+                        <span>{formatMontant(taxe.montant)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      {/* Fallback: utiliser les anciennes props si aucune taxe sélectionnée explicitement */}
+                      {showTva && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">TVA</span>
+                          <span>{formatMontant(tva)}</span>
+                        </div>
+                      )}
+                      {showCss && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">CSS</span>
+                          <span>{formatMontant(css)}</span>
+                        </div>
+                      )}
+                      {/* Si aucune taxe sélectionnée et pas de fallback */}
+                      {!hasTaxes && selectedTaxCodes.length === 0 && (tva > 0 || css > 0) && (
+                        <>
+                          {tva > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">TVA</span>
+                              <span>{formatMontant(tva)}</span>
+                            </div>
+                          )}
+                          {css > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">CSS</span>
+                              <span>{formatMontant(css)}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                  {/* Message si aucune taxe */}
+                  {!hasTaxes && taxesDetails.length === 0 && tva === 0 && css === 0 && (
+                    <p className="text-xs text-muted-foreground italic">
+                      Aucune taxe appliquée
+                    </p>
+                  )}
                   <Separator />
                   <motion.div 
                     className="flex justify-between text-lg font-bold"
