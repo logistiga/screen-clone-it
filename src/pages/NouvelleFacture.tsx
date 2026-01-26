@@ -216,34 +216,70 @@ export default function NouvelleFacturePage() {
   // Calculer l'état de validation pour chaque étape du stepper
   const stepsValidation = useMemo(() => {
     const isStep1Valid = !!categorie;
+    const step1Details = categorie 
+      ? [`Catégorie : ${categoriesLabels[categorie as CategorieDocument]}`]
+      : ["Catégorie non sélectionnée"];
+
     const isStep2Valid = !!clientId;
+    const selectedClient = clients.find(c => String(c.id) === String(clientId));
+    const step2Details = selectedClient
+      ? [`Client : ${selectedClient.nom}`]
+      : ["Client non sélectionné"];
     
     let isStep3Valid = false;
+    let step3Details: string[] = [];
+    
     if (categorie === "conteneurs") {
-      isStep3Valid = !!(
-        conteneursData?.typeOperation &&
-        conteneursData?.numeroBL?.trim() &&
-        conteneursData?.conteneurs?.some(c => c.numero?.trim())
-      );
+      const missing: string[] = [];
+      const completed: string[] = [];
+      
+      if (!conteneursData?.typeOperation) missing.push("Type d'opération");
+      else completed.push(`Type : ${conteneursData.typeOperation}`);
+      
+      if (!conteneursData?.numeroBL?.trim()) missing.push("Numéro BL");
+      else completed.push(`BL : ${conteneursData.numeroBL}`);
+      
+      const validConteneurs = conteneursData?.conteneurs?.filter(c => c.numero?.trim()).length || 0;
+      if (validConteneurs === 0) missing.push("Au moins un conteneur");
+      else completed.push(`${validConteneurs} conteneur(s)`);
+      
+      isStep3Valid = missing.length === 0;
+      step3Details = isStep3Valid ? completed : missing;
     } else if (categorie === "conventionnel") {
-      isStep3Valid = !!(
-        conventionnelData?.numeroBL?.trim() &&
-        conventionnelData?.lots?.some(l => l.description?.trim())
-      );
+      const missing: string[] = [];
+      const completed: string[] = [];
+      
+      if (!conventionnelData?.numeroBL?.trim()) missing.push("Numéro BL");
+      else completed.push(`BL : ${conventionnelData.numeroBL}`);
+      
+      const validLots = conventionnelData?.lots?.filter(l => l.description?.trim()).length || 0;
+      if (validLots === 0) missing.push("Au moins un lot");
+      else completed.push(`${validLots} lot(s)`);
+      
+      isStep3Valid = missing.length === 0;
+      step3Details = isStep3Valid ? completed : missing;
     } else if (categorie === "operations_independantes") {
-      isStep3Valid = !!(
-        independantData?.typeOperationIndep &&
-        independantData?.prestations?.some(p => p.description?.trim())
-      );
+      const missing: string[] = [];
+      const completed: string[] = [];
+      
+      if (!independantData?.typeOperationIndep) missing.push("Type d'opération");
+      else completed.push(`Type : ${independantData.typeOperationIndep}`);
+      
+      const validPrestations = independantData?.prestations?.filter(p => p.description?.trim()).length || 0;
+      if (validPrestations === 0) missing.push("Au moins une prestation");
+      else completed.push(`${validPrestations} prestation(s)`);
+      
+      isStep3Valid = missing.length === 0;
+      step3Details = isStep3Valid ? completed : missing;
     }
 
     return {
-      1: { isValid: isStep1Valid, hasError: currentStep > 1 && !isStep1Valid },
-      2: { isValid: isStep2Valid, hasError: currentStep > 2 && !isStep2Valid },
-      3: { isValid: isStep3Valid, hasError: currentStep > 3 && !isStep3Valid },
-      4: { isValid: true, hasError: false },
+      1: { isValid: isStep1Valid, hasError: currentStep > 1 && !isStep1Valid, details: step1Details },
+      2: { isValid: isStep2Valid, hasError: currentStep > 2 && !isStep2Valid, details: step2Details },
+      3: { isValid: isStep3Valid, hasError: currentStep > 3 && !isStep3Valid, details: step3Details },
+      4: { isValid: true, hasError: false, details: ["Vérification finale"] },
     };
-  }, [categorie, clientId, conteneursData, conventionnelData, independantData, currentStep]);
+  }, [categorie, clientId, clients, conteneursData, conventionnelData, independantData, currentStep, categoriesLabels]);
 
   const handleCategorieChange = (value: CategorieDocument) => {
     setCategorie(value);
