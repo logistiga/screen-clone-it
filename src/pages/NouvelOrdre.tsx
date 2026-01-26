@@ -183,15 +183,20 @@ export default function NouvelOrdrePage() {
       setIndependantData(draft.independantData);
       setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
       
-      // S'assurer que les taxes ont toujours au moins TVA et CSS sélectionnés
-      const restoredTaxes = draft.taxesSelectionData || getInitialTaxesSelection();
-      const validTaxes = {
-        ...restoredTaxes,
-        selectedTaxCodes: restoredTaxes.selectedTaxCodes?.length > 0 
-          ? restoredTaxes.selectedTaxCodes 
-          : ['TVA', 'CSS'],
-      };
-      setTaxesSelectionData(validTaxes);
+      // Restaurer les taxes telles quelles.
+      // IMPORTANT: un tableau vide [] est un choix intentionnel = "sans taxes".
+      // On ne doit PAS réinjecter TVA/CSS automatiquement lors de la restauration.
+      const restoredTaxes = draft.taxesSelectionData ?? getInitialTaxesSelection();
+      setTaxesSelectionData({
+        selectedTaxCodes: Array.isArray(restoredTaxes.selectedTaxCodes)
+          ? restoredTaxes.selectedTaxCodes
+          : [],
+        hasExoneration: restoredTaxes.hasExoneration === true,
+        exoneratedTaxCodes: Array.isArray(restoredTaxes.exoneratedTaxCodes)
+          ? restoredTaxes.exoneratedTaxCodes
+          : [],
+        motifExoneration: restoredTaxes.motifExoneration ?? "",
+      });
       
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
