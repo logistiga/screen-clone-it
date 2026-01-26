@@ -186,7 +186,17 @@ export default function NouvelOrdrePage() {
       setConventionnelData(draft.conventionnelData);
       setIndependantData(draft.independantData);
       setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
-      setTaxesSelectionData(draft.taxesSelectionData || getInitialTaxesSelection());
+      
+      // S'assurer que les taxes ont toujours au moins TVA et CSS sélectionnés
+      const restoredTaxes = draft.taxesSelectionData || getInitialTaxesSelection();
+      const validTaxes = {
+        ...restoredTaxes,
+        selectedTaxCodes: restoredTaxes.selectedTaxCodes?.length > 0 
+          ? restoredTaxes.selectedTaxCodes 
+          : ['TVA', 'CSS'],
+      };
+      setTaxesSelectionData(validTaxes);
+      
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
       taxesInitRef.current = true; // Évite la réinitialisation
@@ -487,6 +497,14 @@ export default function NouvelOrdrePage() {
       }));
     }
 
+    // S'assurer que les taxes sont toujours définies avant l'envoi
+    const safeTaxesSelection = {
+      ...taxesSelectionData,
+      selectedTaxCodes: taxesSelectionData.selectedTaxCodes?.length > 0 
+        ? taxesSelectionData.selectedTaxCodes 
+        : ['TVA', 'CSS'],
+    };
+
     const data = {
       client_id: clientId,
       type_document: categorie === "conteneurs" ? "Conteneur" : categorie === "conventionnel" ? "Lot" : "Independant",
@@ -504,7 +522,7 @@ export default function NouvelOrdrePage() {
       remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
       remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
       // Exonérations - basées sur la nouvelle structure
-      ...toApiPayload(taxesSelectionData),
+      ...toApiPayload(safeTaxesSelection),
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataApi,
