@@ -1,17 +1,18 @@
 import { motion } from "framer-motion";
 import { Check, Container, Users, FileText, Eye, Ship, Truck, Receipt, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface StepValidationStatus {
   isValid: boolean;
   hasError: boolean;
+  details?: string[]; // Liste des champs manquants ou complétés
 }
 
 interface FactureStepperProps {
   currentStep: number;
   categorie?: string;
   onStepClick?: (step: number) => void;
-  // Nouveau: état de validation par étape (clé = id de l'étape)
   stepsValidation?: Record<number, StepValidationStatus>;
 }
 
@@ -41,20 +42,56 @@ export function FactureStepper({ currentStep, categorie, onStepClick, stepsValid
     const isCompleted = currentStep > stepId;
     const isCurrent = currentStep === stepId;
     
-    // Si l'étape a été visitée et a une erreur
     if (validation?.hasError && !isCurrent) {
       return 'error';
     }
-    // Si l'étape est complétée et valide
     if (isCompleted && (validation?.isValid !== false)) {
       return 'completed';
     }
-    // Étape en cours
     if (isCurrent) {
       return 'current';
     }
-    // Étape pas encore visitée
     return 'pending';
+  };
+
+  const getTooltipContent = (stepId: number, status: string) => {
+    const validation = stepsValidation[stepId];
+    const step = steps.find(s => s.id === stepId);
+    
+    if (status === 'error' && validation?.details?.length) {
+      return (
+        <div className="space-y-1">
+          <p className="font-medium text-destructive">Champs manquants :</p>
+          <ul className="list-disc list-inside text-xs space-y-0.5">
+            {validation.details.map((detail, idx) => (
+              <li key={idx}>{detail}</li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+    
+    if (status === 'completed') {
+      if (validation?.details?.length) {
+        return (
+          <div className="space-y-1">
+            <p className="font-medium text-green-600">✓ Complété</p>
+            <ul className="text-xs space-y-0.5">
+              {validation.details.map((detail, idx) => (
+                <li key={idx} className="text-muted-foreground">{detail}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      return <p className="font-medium text-green-600">✓ Étape complétée</p>;
+    }
+    
+    if (status === 'current') {
+      return <p>Étape en cours : {step?.description}</p>;
+    }
+    
+    return <p>{step?.description}</p>;
   };
 
   return (
@@ -85,71 +122,78 @@ export function FactureStepper({ currentStep, categorie, onStepClick, stepsValid
                   />
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => onStepClick?.(step.id)}
-                disabled={step.id > currentStep + 1}
-                className={cn(
-                  "group flex flex-col items-center relative z-10",
-                  step.id > currentStep + 1 && "cursor-not-allowed opacity-50"
-                )}
-              >
-                <motion.span
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors duration-200",
-                    hasError
-                      ? "border-destructive bg-destructive/10 text-destructive"
-                      : isCompleted
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : isCurrent
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-muted bg-background text-muted-foreground"
-                  )}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  animate={hasError ? {
-                    scale: [1, 1.1, 1],
-                    boxShadow: [
-                      "0 0 0 0 hsl(var(--destructive) / 0)",
-                      "0 0 0 8px hsl(var(--destructive) / 0.3)",
-                      "0 0 0 0 hsl(var(--destructive) / 0)"
-                    ]
-                  } : {}}
-                  transition={hasError ? {
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  } : { duration: 0.2 }}
-                >
-                  {hasError ? (
-                    <AlertCircle className="h-5 w-5" />
-                  ) : isCompleted ? (
-                    <Check className="h-5 w-5" />
-                  ) : step.id === 1 && categorie ? (
-                    getCategorieIcon()
-                  ) : (
-                    <StepIcon className="h-5 w-5" />
-                  )}
-                </motion.span>
-                <span
-                  className={cn(
-                    "mt-2 text-sm font-medium transition-colors duration-200",
-                    hasError
-                      ? "text-destructive"
-                      : isCurrent
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {step.name}
-                </span>
-                <span className={cn(
-                  "text-xs hidden sm:block",
-                  hasError ? "text-destructive/80" : "text-muted-foreground"
-                )}>
-                  {hasError ? "À compléter" : step.description}
-                </span>
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onStepClick?.(step.id)}
+                    disabled={step.id > currentStep + 1}
+                    className={cn(
+                      "group flex flex-col items-center relative z-10",
+                      step.id > currentStep + 1 && "cursor-not-allowed opacity-50"
+                    )}
+                  >
+                    <motion.span
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors duration-200",
+                        hasError
+                          ? "border-destructive bg-destructive/10 text-destructive"
+                          : isCompleted
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : isCurrent
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-muted bg-background text-muted-foreground"
+                      )}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      animate={hasError ? {
+                        scale: [1, 1.1, 1],
+                        boxShadow: [
+                          "0 0 0 0 hsl(var(--destructive) / 0)",
+                          "0 0 0 8px hsl(var(--destructive) / 0.3)",
+                          "0 0 0 0 hsl(var(--destructive) / 0)"
+                        ]
+                      } : {}}
+                      transition={hasError ? {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      } : { duration: 0.2 }}
+                    >
+                      {hasError ? (
+                        <AlertCircle className="h-5 w-5" />
+                      ) : isCompleted ? (
+                        <Check className="h-5 w-5" />
+                      ) : step.id === 1 && categorie ? (
+                        getCategorieIcon()
+                      ) : (
+                        <StepIcon className="h-5 w-5" />
+                      )}
+                    </motion.span>
+                    <span
+                      className={cn(
+                        "mt-2 text-sm font-medium transition-colors duration-200",
+                        hasError
+                          ? "text-destructive"
+                          : isCurrent
+                          ? "text-primary"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {step.name}
+                    </span>
+                    <span className={cn(
+                      "text-xs hidden sm:block",
+                      hasError ? "text-destructive/80" : "text-muted-foreground"
+                    )}>
+                      {hasError ? "À compléter" : step.description}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  {getTooltipContent(step.id, status)}
+                </TooltipContent>
+              </Tooltip>
             </li>
           );
         })}
