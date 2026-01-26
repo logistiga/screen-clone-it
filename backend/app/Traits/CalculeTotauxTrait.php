@@ -129,6 +129,19 @@ trait CalculeTotauxTrait
         // Extraire les données de taxes_selection
         // IMPORTANT: Vérifier explicitement si la clé existe avant d'utiliser le fallback
         // Un tableau vide [] est un choix intentionnel = "sans taxes"
+        // Un objet vide {} (tableau sans clés) est aussi considéré comme "sans taxes"
+        
+        // Protection: si taxes_selection est un tableau vide {} (pas de clés), retourner zéro taxes
+        if (is_array($taxesSelection) && empty($taxesSelection)) {
+            Log::debug('[CalculeTaxes] taxes_selection est un tableau vide {}, retour zéro taxes');
+            return [
+                'details' => [],
+                'tva' => 0,
+                'css' => 0,
+                'total' => 0,
+            ];
+        }
+        
         if (is_array($taxesSelection) && array_key_exists('selected_tax_codes', $taxesSelection)) {
             // Clé présente: utiliser la valeur (même si vide)
             $selectedCodes = $taxesSelection['selected_tax_codes'];
