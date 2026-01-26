@@ -49,7 +49,7 @@ use App\Http\Controllers\Api\ConteneurTraiteController;
 Route::get('ping', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()->toIso8601String()]);
 });
-Route::head('ping', function () {
+Route::match(['HEAD'], 'ping', function () {
     return response()->noContent();
 });
 
