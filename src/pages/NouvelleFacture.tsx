@@ -480,14 +480,6 @@ export default function NouvelleFacturePage() {
     const blNumero =
       (categorie === "conteneurs" ? conteneursData?.numeroBL : conventionnelData?.numeroBL) || null;
 
-    // S'assurer que les taxes sont toujours définies avant l'envoi
-    const safeTaxesSelection = {
-      ...taxesSelectionData,
-      selectedTaxCodes: taxesSelectionData.selectedTaxCodes?.length > 0 
-        ? taxesSelectionData.selectedTaxCodes 
-        : ['TVA', 'CSS'],
-    };
-
     const data = {
       client_id: Number(clientId),
       type_document:
@@ -510,7 +502,7 @@ export default function NouvelleFacturePage() {
       remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
       remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
       // Exonérations - basées sur la nouvelle structure
-      ...toApiPayload(safeTaxesSelection),
+     ...toApiPayload(taxesSelectionData),
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataForApi,

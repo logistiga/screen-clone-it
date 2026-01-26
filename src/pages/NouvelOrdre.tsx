@@ -497,14 +497,6 @@ export default function NouvelOrdrePage() {
       }));
     }
 
-    // S'assurer que les taxes sont toujours définies avant l'envoi
-    const safeTaxesSelection = {
-      ...taxesSelectionData,
-      selectedTaxCodes: taxesSelectionData.selectedTaxCodes?.length > 0 
-        ? taxesSelectionData.selectedTaxCodes 
-        : ['TVA', 'CSS'],
-    };
-
     const data = {
       client_id: clientId,
       type_document: categorie === "conteneurs" ? "Conteneur" : categorie === "conventionnel" ? "Lot" : "Independant",
@@ -522,7 +514,7 @@ export default function NouvelOrdrePage() {
       remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
       remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
       // Exonérations - basées sur la nouvelle structure
-      ...toApiPayload(safeTaxesSelection),
+     ...toApiPayload(taxesSelectionData),
       notes,
       lignes: lignesData,
       conteneurs: conteneursDataApi,
@@ -530,6 +522,7 @@ export default function NouvelOrdrePage() {
     };
 
     try {
+     console.log('📤 Envoi ordre avec taxes_selection:', data.taxes_selection);
       await createOrdreMutation.mutateAsync(data);
       clear(); // Clear draft on success
       setShowConfirmModal(false);
