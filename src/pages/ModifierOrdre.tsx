@@ -543,14 +543,7 @@ export default function ModifierOrdrePage() {
 
   // Confirmation et envoi réel des données
   const handleConfirmSave = async () => {
-    // S'assurer que les taxes sont toujours définies avant l'envoi
-    const safeTaxesSelection = {
-      ...taxesSelectionData,
-      selectedTaxCodes: taxesSelectionData.selectedTaxCodes?.length > 0 
-        ? taxesSelectionData.selectedTaxCodes 
-        : ['TVA', 'CSS'],
-    };
-    const apiPayload = toApiPayload(safeTaxesSelection);
+   const apiPayload = toApiPayload(taxesSelectionData);
 
     const data: any = {
       client_id: parseInt(clientId),
@@ -610,6 +603,7 @@ export default function ModifierOrdrePage() {
     }
 
     try {
+     console.log('📤 Modification ordre avec taxes_selection:', data.taxes_selection);
       await updateOrdreMutation.mutateAsync({ id: id!, data });
       toast.success("Ordre modifié avec succès");
       setShowConfirmModal(false);
