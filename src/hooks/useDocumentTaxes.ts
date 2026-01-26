@@ -92,36 +92,66 @@ export function useDocumentTaxes() {
   const getTaxesSelectionFromDocument = useCallback((
     exonereTva: boolean,
     exonereCss: boolean,
-   motifExoneration: string,
-   taxesSelectionJson?: any
+    motifExoneration: string,
+    taxesSelectionJson?: any
   ): TaxesSelectionData => {
-   // Si le JSON taxes_selection existe, l'utiliser en priorité
-   if (taxesSelectionJson && typeof taxesSelectionJson === 'object') {
-     const selectedCodes = Array.isArray(taxesSelectionJson.selected_tax_codes)
-       ? taxesSelectionJson.selected_tax_codes.map((c: string) => c.toUpperCase())
-       : [];
-     
-     const exoneratedCodes = Array.isArray(taxesSelectionJson.exonerated_tax_codes)
-       ? taxesSelectionJson.exonerated_tax_codes.map((c: string) => c.toUpperCase())
-       : [];
-     
-     const hasExo = taxesSelectionJson.has_exoneration === true || exoneratedCodes.length > 0;
-     
-     return {
-       selectedTaxCodes: selectedCodes,
-       hasExoneration: hasExo,
-       exoneratedTaxCodes: exoneratedCodes,
-       motifExoneration: hasExo ? (taxesSelectionJson.motif_exoneration || motifExoneration || '') : '',
-     };
-   }
-   
-    // Taxes sélectionnées par défaut (toutes les obligatoires + celles qui ne sont pas exonérées)
-    const selectedCodes = availableTaxes.map(t => t.code);
+    // Si le JSON taxes_selection existe et contient des données, l'utiliser en priorité
+    if (taxesSelectionJson && typeof taxesSelectionJson === 'object') {
+      // Vérifier si c'est un objet vide {} - signifie "sans taxes"
+      const hasSelectedTaxCodesKey = 'selected_tax_codes' in taxesSelectionJson;
+      
+      if (hasSelectedTaxCodesKey) {
+        // La clé existe - utiliser sa valeur (même si c'est un tableau vide)
+        const selectedCodes = Array.isArray(taxesSelectionJson.selected_tax_codes)
+          ? taxesSelectionJson.selected_tax_codes.map((c: string) => c.toUpperCase())
+          : [];
+        
+        const exoneratedCodes = Array.isArray(taxesSelectionJson.exonerated_tax_codes)
+          ? taxesSelectionJson.exonerated_tax_codes.map((c: string) => c.toUpperCase())
+          : [];
+        
+        const hasExo = taxesSelectionJson.has_exoneration === true || exoneratedCodes.length > 0;
+        
+        return {
+          selectedTaxCodes: selectedCodes,
+          hasExoneration: hasExo,
+          exoneratedTaxCodes: exoneratedCodes,
+          motifExoneration: hasExo ? (taxesSelectionJson.motif_exoneration || motifExoneration || '') : '',
+        };
+      }
+      
+      // Objet non-vide mais sans selected_tax_codes = probablement objet vide {} = sans taxes
+      if (Object.keys(taxesSelectionJson).length === 0) {
+        return {
+          selectedTaxCodes: [],
+          hasExoneration: false,
+          exoneratedTaxCodes: [],
+          motifExoneration: '',
+        };
+      }
+    }
     
-    // Déterminer les taxes exonérées
+    // Fallback pour anciens documents sans taxes_selection JSON
+    // Utiliser les flags legacy exonere_tva/exonere_css
+    const selectedCodes: string[] = [];
     const exoneratedCodes: string[] = [];
-    if (exonereTva) exoneratedCodes.push('TVA');
-    if (exonereCss) exoneratedCodes.push('CSS');
+    
+    // Si TVA n'est pas exonérée, elle est sélectionnée
+    if (!exonereTva) {
+      selectedCodes.push('TVA');
+    } else {
+      // TVA exonérée = sélectionnée mais exonérée
+      selectedCodes.push('TVA');
+      exoneratedCodes.push('TVA');
+    }
+    
+    // Même logique pour CSS
+    if (!exonereCss) {
+      selectedCodes.push('CSS');
+    } else {
+      selectedCodes.push('CSS');
+      exoneratedCodes.push('CSS');
+    }
     
     const hasExo = exoneratedCodes.length > 0;
     
@@ -131,7 +161,7 @@ export function useDocumentTaxes() {
       exoneratedTaxCodes: exoneratedCodes,
       motifExoneration: hasExo ? (motifExoneration || '') : '',
     };
-  }, [availableTaxes]);
+  }, []);
 
   // Helper pour calculer les montants de taxes
   const calculateTaxes = useCallback((
