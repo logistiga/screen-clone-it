@@ -3,17 +3,19 @@
 namespace App\Services;
 
 use App\Models\NoteDebut;
+use App\Models\LigneNoteDebut;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Service pour la gestion des Notes de Débit.
  * Optimisé avec délégation au modèle pour les calculs.
+ * NOTE: Les notes de début n'ont AUCUNE taxe (TVA=0, CSS=0)
  */
 class NoteDebutService
 {
     /**
-     * Créer une nouvelle note de débit
+     * Créer une nouvelle note de débit avec possibilité de lignes multiples
      */
     public function creer(array $data): NoteDebut
     {
@@ -24,25 +26,69 @@ class NoteDebutService
             $data['statut'] = $data['statut'] ?? 'brouillon';
             $data['date_creation'] = $data['date_creation'] ?? now()->toDateString();
 
-            // Calculer montant_ht si non fourni
-            if (!isset($data['montant_ht']) && isset($data['nombre_jours'], $data['tarif_journalier'])) {
+            // Extraire les lignes si présentes
+            $lignesData = $data['lignes'] ?? null;
+            unset($data['lignes']);
+
+            // Si pas de lignes mais montant_ht fourni via paramètres classiques
+            if (!$lignesData && !isset($data['montant_ht']) && isset($data['nombre_jours'], $data['tarif_journalier'])) {
                 $data['montant_ht'] = $data['nombre_jours'] * $data['tarif_journalier'];
+            }
+
+            // Notes de début : AUCUNE taxe
+            $data['montant_tva'] = 0;
+            $data['montant_css'] = 0;
+            $data['taux_tva'] = 0;
+            $data['taux_css'] = 0;
+            
+            if (isset($data['montant_ht'])) {
+                $data['montant_ttc'] = $data['montant_ht'];
+                $data['montant_total'] = $data['montant_ht'];
             }
 
             // Créer la note
             $note = NoteDebut::create($data);
 
-            // Calculer les totaux (TVA, CSS, TTC) via le modèle
-            $note->calculerTotaux();
+            // Si lignes fournies, les créer et recalculer le total
+            if ($lignesData && is_array($lignesData) && count($lignesData) > 0) {
+                $this->creerLignes($note, $lignesData);
+                $note->recalculerDepuisLignes();
+            } else {
+                // Calculer les totaux via le modèle (sans taxes)
+                $note->calculerTotaux();
+            }
 
             Log::info('Note de débit créée', [
                 'note_id' => $note->id,
                 'numero' => $note->numero,
                 'type' => $typeNormalise,
+                'nb_lignes' => $lignesData ? count($lignesData) : 0,
             ]);
 
-            return $note->fresh(['client', 'transitaire', 'armateur']);
+            return $note->fresh(['client', 'transitaire', 'armateur', 'lignes']);
         });
+    }
+
+    /**
+     * Créer les lignes d'une note
+     */
+    protected function creerLignes(NoteDebut $note, array $lignesData): void
+    {
+        foreach ($lignesData as $ligneData) {
+            $ligne = new LigneNoteDebut([
+                'note_debut_id' => $note->id,
+                'ordre_id' => $ligneData['ordre_id'] ?? null,
+                'conteneur_numero' => $ligneData['conteneur_numero'] ?? null,
+                'bl_numero' => $ligneData['bl_numero'] ?? null,
+                'date_debut' => $ligneData['date_debut'] ?? null,
+                'date_fin' => $ligneData['date_fin'] ?? null,
+                'tarif_journalier' => $ligneData['tarif_journalier'] ?? 0,
+                'observations' => $ligneData['observations'] ?? null,
+            ]);
+            
+            // Calculer nombre de jours et montant
+            $ligne->calculerTotaux();
+        }
     }
 
     /**
