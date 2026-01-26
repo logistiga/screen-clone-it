@@ -276,6 +276,67 @@ export default function ModifierFacturePage() {
   };
 
   const handleNextStep = () => {
+    // Validation stricte avant de passer à l'étape suivante
+    if (currentStep === 2) {
+      if (!clientId) {
+        toast.error("Veuillez sélectionner un client", {
+          description: "Le client est obligatoire pour continuer"
+        });
+        return;
+      }
+    }
+    
+    if (currentStep === 3) {
+      // Validation détaillée selon la catégorie
+      if (categorie === "conteneurs") {
+        if (!conteneursData?.typeOperation) {
+          toast.error("Veuillez sélectionner un type d'opération", {
+            description: "Le type d'opération (import/export) est obligatoire"
+          });
+          return;
+        }
+        if (!conteneursData.numeroBL?.trim()) {
+          toast.error("Veuillez saisir le numéro BL", {
+            description: "Le numéro de connaissement est obligatoire"
+          });
+          return;
+        }
+        if (!conteneursData.conteneurs?.length || conteneursData.conteneurs.every(c => !c.numero?.trim())) {
+          toast.error("Veuillez ajouter au moins un conteneur", {
+            description: "Saisissez le numéro d'au moins un conteneur"
+          });
+          return;
+        }
+      } else if (categorie === "conventionnel") {
+        if (!conventionnelData?.numeroBL?.trim()) {
+          toast.error("Veuillez saisir le numéro BL", {
+            description: "Le numéro de connaissement est obligatoire"
+          });
+          return;
+        }
+        if (!conventionnelData.lots?.length || conventionnelData.lots.every(l => !l.description?.trim())) {
+          toast.error("Veuillez ajouter au moins un lot", {
+            description: "Saisissez la description d'au moins un lot"
+          });
+          return;
+        }
+      } else if (categorie === "operations_independantes") {
+        if (!independantData?.typeOperationIndep) {
+          toast.error("Veuillez sélectionner un type d'opération", {
+            description: "Le type d'opération indépendante est obligatoire"
+          });
+          return;
+        }
+        if (!independantData.prestations?.length || independantData.prestations.every(p => !p.description?.trim())) {
+          toast.error("Veuillez ajouter au moins une prestation", {
+            description: "Saisissez la description d'au moins une prestation"
+          });
+          return;
+        }
+      }
+    }
+
+    // Si la validation passe, avancer à l'étape suivante
     if (currentStep < 4 && canProceedToStep(currentStep + 1)) {
       setCurrentStep(currentStep + 1);
     }
@@ -596,7 +657,7 @@ export default function ModifierFacturePage() {
                         transitaires={transitaires}
                         representants={representants}
                         onDataChange={setConteneursData}
-                        initialData={conteneursInitialData}
+                        initialData={conteneursData || conteneursInitialData || undefined}
                       />
                     </motion.div>
                   )}
@@ -610,7 +671,7 @@ export default function ModifierFacturePage() {
                     >
                       <FactureConventionnelForm 
                         onDataChange={setConventionnelData} 
-                        initialData={conventionnelInitialData}
+                        initialData={conventionnelData || conventionnelInitialData || undefined}
                       />
                     </motion.div>
                   )}
@@ -624,7 +685,7 @@ export default function ModifierFacturePage() {
                     >
                       <FactureIndependantForm 
                         onDataChange={setIndependantData} 
-                        initialData={independantInitialData}
+                        initialData={independantData || independantInitialData || undefined}
                       />
                     </motion.div>
                   )}
