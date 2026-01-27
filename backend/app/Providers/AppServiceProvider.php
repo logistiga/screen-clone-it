@@ -115,8 +115,9 @@ class AppServiceProvider extends ServiceProvider
         // =============================================
         // OBSERVERS - Synchronisation automatique OPS
         // =============================================
-        Client::observe(ClientObserver::class);
-        Transitaire::observe(TransitaireObserver::class);
+        // Utiliser make() pour résoudre les dépendances des observers
+        Client::observe($this->app->make(ClientObserver::class));
+        Transitaire::observe($this->app->make(TransitaireObserver::class));
 
         // =============================================
         // RATE LIMITERS - Configuration centralisée
