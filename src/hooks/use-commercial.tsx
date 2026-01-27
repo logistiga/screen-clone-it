@@ -288,6 +288,11 @@ export function useOrdres(params?: { search?: string; statut?: string; categorie
   const query = useQuery({
     queryKey: ['ordres', params],
     queryFn: () => ordresApi.getAll(params),
+    // IMPORTANT: éviter de marteler le backend quand il répond 500
+    // (React Query retry par défaut + préfetch peuvent provoquer des rafales de requêtes)
+    retry: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });
@@ -315,6 +320,9 @@ export function useOrdresStats(params?: { search?: string; statut?: string; cate
   return useQuery({
     queryKey: ['ordres', 'stats', params],
     queryFn: () => ordresApi.getStats(params),
+    retry: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
   });

@@ -166,30 +166,41 @@ class OrdreServiceFactory
     {
         try {
             $data = $this->logistigaService->prepareOrdreData($ordre);
-            
-            if ($data) {
-                $result = $this->logistigaService->sendOrdreTravail($data);
-                
-                if ($result['success'] ?? false) {
-                    // Enregistrer la date de synchronisation
-                    $ordre->update(['logistiga_synced_at' => now()]);
-                    
-                    Log::info('[Logistiga] Ordre envoyé automatiquement', [
-                        'ordre_id' => $ordre->id,
-                        'numero' => $ordre->numero,
-                        'logistiga_numero' => $result['data']['numero'] ?? null,
-                    ]);
-                } else {
-                    Log::warning('[Logistiga] Échec envoi automatique', [
-                        'ordre_id' => $ordre->id,
-                        'numero' => $ordre->numero,
-                        'message' => $result['message'] ?? 'Erreur inconnue',
-                    ]);
-                }
-            } else {
+
+            if (!$data) {
                 Log::info('[Logistiga] Ordre non éligible (pas de BL ou conteneurs)', [
                     'ordre_id' => $ordre->id,
+                    'numero' => $ordre->numero,
                 ]);
+                return;
+            }
+
+            $result = $this->logistigaService->sendOrdreTravail($data);
+
+            if ($result['success'] ?? false) {
+                $ordre->update(['logistiga_synced_at' => now()]);
+
+                Log::info('[Logistiga] Ordre envoyé automatiquement', [
+                    'ordre_id' => $ordre->id,
+                    'numero' => $ordre->numero,
+                    'logistiga_numero' => $result['data']['numero'] ?? null,
+                ]);
+                return;
+            }
+
+            Log::warning('[Logistiga] Échec envoi automatique', [
+                'ordre_id' => $ordre->id,
+                'numero' => $ordre->numero,
+                'message' => $result['message'] ?? 'Erreur inconnue',
+            ]);
+        } catch (\Throwable $e) {
+            // Ne pas bloquer la création de l'ordre si Logistiga échoue
+            Log::error('[Logistiga] Exception lors de l\'envoi automatique', [
+                'ordre_id' => $ordre->id,
+                'numero' => $ordre->numero,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -199,35 +210,28 @@ class OrdreServiceFactory
     {
         try {
             $result = $this->logistigaService->sendLotsConventionnels($ordre);
-            
+
             if ($result['success'] ?? false) {
-                // Enregistrer la date de synchronisation
                 $ordre->update(['logistiga_synced_at' => now()]);
-                
+
                 Log::info('[Logistiga] Lots conventionnels envoyés', [
                     'ordre_id' => $ordre->id,
                     'numero' => $ordre->numero,
                     'nb_lots' => $ordre->lots->count(),
                 ]);
-            } else {
-                Log::warning('[Logistiga] Échec envoi lots conventionnels', [
-                    'ordre_id' => $ordre->id,
-                    'numero' => $ordre->numero,
-                    'message' => $result['message'] ?? 'Erreur inconnue',
-                ]);
+                return;
             }
-        } catch (\Exception $e) {
+
+            Log::warning('[Logistiga] Échec envoi lots conventionnels', [
+                'ordre_id' => $ordre->id,
+                'numero' => $ordre->numero,
+                'message' => $result['message'] ?? 'Erreur inconnue',
+            ]);
+        } catch (\Throwable $e) {
             // Ne pas bloquer la création de l'ordre si Logistiga échoue
             Log::error('[Logistiga] Exception lors de l\'envoi des lots', [
                 'ordre_id' => $ordre->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-        } catch (\Exception $e) {
-            // Ne pas bloquer la création de l'ordre si Logistiga échoue
-            Log::error('[Logistiga] Exception lors de l\'envoi automatique', [
-                'ordre_id' => $ordre->id,
+                'numero' => $ordre->numero,
                 'error' => $e->getMessage(),
             ]);
         }
