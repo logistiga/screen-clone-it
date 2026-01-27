@@ -11,12 +11,13 @@ class LotOrdreResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'designation' => $this->designation,
+            'numero_lot' => $this->numero_lot,
+            'designation' => $this->description,
+            'description' => $this->description,
             'quantite' => $this->quantite,
-            'poids' => $this->poids,
-            'volume' => $this->volume,
             'prix_unitaire' => round($this->prix_unitaire, 2),
-            'montant_ht' => round($this->montant_ht, 2),
+            'prix_total' => round($this->prix_total, 2),
+            'montant_ht' => round($this->prix_total, 2),
         ];
     }
 }
