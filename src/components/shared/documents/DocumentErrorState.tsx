@@ -9,10 +9,7 @@ interface DocumentErrorStateProps {
 }
 
 export const DocumentErrorState = forwardRef<HTMLDivElement, DocumentErrorStateProps>(
-  function DocumentErrorState({ 
-    message = "Erreur lors du chargement des données",
-    onRetry 
-  }, ref) {
+  ({ message = "Erreur lors du chargement des données", onRetry }, ref) => {
     return (
       <motion.div 
         ref={ref}
@@ -34,3 +31,5 @@ export const DocumentErrorState = forwardRef<HTMLDivElement, DocumentErrorStateP
     );
   }
 );
+
+DocumentErrorState.displayName = "DocumentErrorState";
