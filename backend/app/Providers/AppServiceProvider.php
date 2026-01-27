@@ -14,6 +14,7 @@ use App\Services\AnnulationService;
 use App\Services\ReportingService;
 use App\Services\ExportService;
 use App\Services\NotificationService;
+use App\Services\LogistigaApiService;
 
 // Models & Observers pour sync OPS
 use App\Models\Client;
@@ -83,6 +84,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AnnulationService::class);
         $this->app->singleton(ReportingService::class);
         $this->app->singleton(NotificationService::class);
+        
+        // === Service Logistiga OPS (pour observers) ===
+        $this->app->singleton(LogistigaApiService::class);
 
         // PaiementService utilise les Factories
         $this->app->singleton(PaiementService::class, function ($app) {
