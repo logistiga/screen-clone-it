@@ -15,6 +15,12 @@ use App\Services\ReportingService;
 use App\Services\ExportService;
 use App\Services\NotificationService;
 
+// Models & Observers pour sync OPS
+use App\Models\Client;
+use App\Models\Transitaire;
+use App\Observers\ClientObserver;
+use App\Observers\TransitaireObserver;
+
 // Services spécialisés par type - Devis
 use App\Services\Devis\DevisConteneursService;
 use App\Services\Devis\DevisConventionnelService;
@@ -101,6 +107,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // Fix pour MySQL < 5.7.7 / MariaDB avec utf8mb4
         Schema::defaultStringLength(191);
+
+        // =============================================
+        // OBSERVERS - Synchronisation automatique OPS
+        // =============================================
+        Client::observe(ClientObserver::class);
+        Transitaire::observe(TransitaireObserver::class);
 
         // =============================================
         // RATE LIMITERS - Configuration centralisée

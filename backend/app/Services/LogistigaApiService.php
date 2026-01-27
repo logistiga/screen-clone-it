@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Client;
+use App\Models\OrdreTravail;
+use App\Models\Transitaire;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -29,45 +32,36 @@ class LogistigaApiService
     }
 
     /**
-     * Envoie un ordre de travail vers Logistiga OPS
+     * Méthode générique pour envoyer une requête HTTP vers OPS
      */
-    public function sendOrdreTravail(array $data): array
+    protected function sendRequest(string $method, string $endpoint, array $data = []): array
     {
         if (!$this->isSyncEnabled()) {
-            Log::info('[LogistigaAPI] Synchronisation désactivée ou API Key manquante');
+            Log::info('[LogistigaAPI] Sync désactivée ou API Key manquante');
             return ['success' => false, 'message' => 'Synchronisation désactivée'];
         }
 
         try {
+            $url = "{$this->baseUrl}{$endpoint}";
+            
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getHeaders())
-                ->post("{$this->baseUrl}/ordres-externes", [
-                    'booking_number' => $data['booking_number'],
-                    'client_nom' => $data['client_nom'],
-                    'transitaire_nom' => $data['transitaire_nom'] ?? null,
-                    'armateur_nom' => $data['armateur_nom'] ?? null,
-                    'external_id' => $data['external_id'] ?? null,
-                    'containers' => collect($data['containers'])->map(fn($c) => [
-                        'numero_conteneur' => $c['numero_conteneur'],
-                        'type' => $c['type'] ?? null,
-                    ])->toArray(),
-                ]);
+                ->$method($url, $data);
 
             if ($response->failed()) {
-                Log::error('[LogistigaAPI] Erreur envoi OT', [
+                Log::error("[LogistigaAPI] Erreur {$endpoint}", [
                     'status' => $response->status(),
                     'response' => $response->json(),
-                    'booking_number' => $data['booking_number'],
+                    'data' => $data,
                 ]);
                 return [
-                    'success' => false, 
+                    'success' => false,
                     'message' => $response->json('message') ?? 'Erreur de communication',
                     'status' => $response->status(),
                 ];
             }
 
-            Log::info('[LogistigaAPI] Ordre envoyé avec succès', [
-                'booking_number' => $data['booking_number'],
+            Log::info("[LogistigaAPI] Succès {$endpoint}", [
                 'response' => $response->json(),
             ]);
 
@@ -77,16 +71,37 @@ class LogistigaApiService
             ];
 
         } catch (\Exception $e) {
-            Log::error('[LogistigaAPI] Exception', [
+            Log::error("[LogistigaAPI] Exception {$endpoint}", [
                 'error' => $e->getMessage(),
-                'booking_number' => $data['booking_number'] ?? null,
+                'data' => $data,
             ]);
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 
     /**
-     * Prépare les données d'un ordre de travail pour l'envoi
+     * Envoie un ordre de travail conteneurs vers Logistiga OPS
+     */
+    public function sendOrdreTravail(array $data): array
+    {
+        return $this->sendRequest('post', '/webhook/sorties-attente', [
+            'external_ordre_id' => (int) ($data['external_id'] ?? 0),
+            'numero_ot' => $data['numero_ot'] ?? '',
+            'numero_bl' => $data['booking_number'],
+            'client_id' => (int) ($data['client_id'] ?? 0),
+            'client_nom' => $data['client_nom'],
+            'transitaire_nom' => $data['transitaire_nom'] ?? null,
+            'armateur_code' => $data['armateur_code'] ?? null,
+            'containers' => collect($data['containers'])->map(fn($c) => [
+                'numero_conteneur' => $c['numero_conteneur'],
+                'taille' => $c['taille'] ?? '20',
+                'destination' => $c['destination'] ?? null,
+            ])->toArray(),
+        ]);
+    }
+
+    /**
+     * Prépare les données d'un ordre de travail conteneurs pour l'envoi
      */
     public function prepareOrdreData($ordre): ?array
     {
@@ -102,15 +117,85 @@ class LogistigaApiService
 
         return [
             'external_id' => (string) $ordre->id,
+            'numero_ot' => $ordre->numero,
             'booking_number' => $ordre->numero_bl,
+            'client_id' => $ordre->client_id,
             'client_nom' => $ordre->client->nom ?? '',
             'transitaire_nom' => $ordre->transitaire->nom ?? null,
-            'armateur_nom' => $ordre->armateur->nom ?? null,
+            'armateur_code' => $ordre->armateur->code ?? null,
             'containers' => $conteneurs->map(fn($c) => [
                 'numero_conteneur' => $c->numero,
-                'type' => $c->type ?? null,
+                'taille' => $c->taille ?? '20',
+                'destination' => $c->destination ?? null,
             ])->toArray(),
         ];
+    }
+
+    /**
+     * Synchronise un client vers Logistiga OPS
+     */
+    public function syncClient(Client $client): array
+    {
+        return $this->sendRequest('post', '/webhook/clients', [
+            'external_id' => $client->id,
+            'code' => 'CLI-' . str_pad($client->id, 5, '0', STR_PAD_LEFT),
+            'nom' => $client->nom,
+            'telephone' => $client->telephone,
+            'email' => $client->email,
+            'adresse' => $client->adresse,
+            'actif' => true,
+        ]);
+    }
+
+    /**
+     * Synchronise un transitaire vers Logistiga OPS
+     */
+    public function syncTransitaire(Transitaire $transitaire): array
+    {
+        return $this->sendRequest('post', '/webhook/transitaires', [
+            'external_id' => $transitaire->id,
+            'code' => 'TRA-' . str_pad($transitaire->id, 5, '0', STR_PAD_LEFT),
+            'nom' => $transitaire->nom,
+            'contact_nom' => $transitaire->contact_principal,
+            'telephone' => $transitaire->telephone,
+            'email' => $transitaire->email,
+            'adresse' => $transitaire->adresse,
+            'actif' => $transitaire->actif ?? true,
+        ]);
+    }
+
+    /**
+     * Envoie les lots conventionnels d'un ordre vers Logistiga OPS
+     */
+    public function sendLotsConventionnels(OrdreTravail $ordre): array
+    {
+        $ordre->load(['client', 'lots']);
+        
+        $lots = $ordre->lots ?? collect();
+        if ($lots->isEmpty()) {
+            return ['success' => false, 'message' => 'Aucun lot à envoyer'];
+        }
+
+        return $this->sendRequest('post', '/webhook/lots-attente', [
+            'external_ordre_id' => $ordre->id,
+            'numero_ot' => $ordre->numero,
+            'numero_bl' => $ordre->numero_bl,
+            'client_id' => $ordre->client_id,
+            'client_nom' => $ordre->client->nom ?? '',
+            'lots' => $lots->map(fn($l) => [
+                'description' => $l->description,
+                'quantite' => (float) $l->quantite,
+                'unite' => 'unites',
+            ])->toArray(),
+        ]);
+    }
+
+    /**
+     * Récupère les options d'armateurs depuis Logistiga OPS
+     */
+    public function getArmateursOptions(): array
+    {
+        return $this->sendRequest('get', '/armateurs-options');
     }
 
     /**

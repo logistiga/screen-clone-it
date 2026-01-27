@@ -150,6 +150,11 @@ class OrdreServiceFactory
                 $this->envoyerVersLogistiga($ordreFrais);
             }
 
+            // ENVOI AUTOMATIQUE VERS LOGISTIGA pour les ordres conventionnels
+            if ($categorie === 'conventionnel') {
+                $this->envoyerLotsVersLogistiga($ordreFrais);
+            }
+
             return $ordreFrais;
         });
     }
@@ -185,7 +190,40 @@ class OrdreServiceFactory
                 Log::info('[Logistiga] Ordre non éligible (pas de BL ou conteneurs)', [
                     'ordre_id' => $ordre->id,
                 ]);
+    }
+
+    /**
+     * Envoyer automatiquement les lots conventionnels vers Logistiga
+     */
+    protected function envoyerLotsVersLogistiga(OrdreTravail $ordre): void
+    {
+        try {
+            $result = $this->logistigaService->sendLotsConventionnels($ordre);
+            
+            if ($result['success'] ?? false) {
+                // Enregistrer la date de synchronisation
+                $ordre->update(['logistiga_synced_at' => now()]);
+                
+                Log::info('[Logistiga] Lots conventionnels envoyés', [
+                    'ordre_id' => $ordre->id,
+                    'numero' => $ordre->numero,
+                    'nb_lots' => $ordre->lots->count(),
+                ]);
+            } else {
+                Log::warning('[Logistiga] Échec envoi lots conventionnels', [
+                    'ordre_id' => $ordre->id,
+                    'numero' => $ordre->numero,
+                    'message' => $result['message'] ?? 'Erreur inconnue',
+                ]);
             }
+        } catch (\Exception $e) {
+            // Ne pas bloquer la création de l'ordre si Logistiga échoue
+            Log::error('[Logistiga] Exception lors de l\'envoi des lots', [
+                'ordre_id' => $ordre->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
         } catch (\Exception $e) {
             // Ne pas bloquer la création de l'ordre si Logistiga échoue
             Log::error('[Logistiga] Exception lors de l\'envoi automatique', [
