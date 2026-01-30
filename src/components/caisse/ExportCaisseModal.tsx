@@ -2,7 +2,8 @@ import { useState } from "react";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarIcon, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
-import html2pdf from "html2pdf.js";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useConfiguration } from "@/hooks/use-commercial";
-import logoImage from "@/assets/logistiga-logo-new.png";
 
 interface ExportCaisseModalProps {
   open: boolean;
@@ -132,73 +132,77 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
       ? format(range.from, "d MMMM yyyy", { locale: fr })
       : `Du ${format(range.from, "d MMM yyyy", { locale: fr })} au ${format(range.to, "d MMM yyyy", { locale: fr })}`;
 
-    // Generate HTML
+    // Generate HTML with table-based layout for better PDF rendering
     const html = `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; color: #1a1a1a;">
-        <!-- Header with logo -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #3b82f6; padding-bottom: 20px;">
-          <div style="flex: 1;">
-            <img src="${logoImage}" alt="Logo" style="height: 60px; object-fit: contain;" />
-            <div style="margin-top: 10px; font-size: 11px; color: #666;">
-              ${entreprise?.adresse || ''}<br/>
-              ${entreprise?.telephone ? `Tél: ${entreprise.telephone}` : ''}
-              ${entreprise?.email ? ` | ${entreprise.email}` : ''}
-            </div>
-          </div>
-          <div style="text-align: right;">
-            <h1 style="margin: 0; font-size: 24px; color: #1e40af; font-weight: 700;">JOURNAL DE CAISSE</h1>
-            <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">${periodLabel}</p>
-            <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Édité le ${format(new Date(), "d MMMM yyyy 'à' HH:mm", { locale: fr })}</p>
-          </div>
-        </div>
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a; background: white; width: 750px;">
+        <!-- Header -->
+        <table style="width: 100%; margin-bottom: 20px; border-bottom: 3px solid #3b82f6; padding-bottom: 15px;">
+          <tr>
+            <td style="vertical-align: top; width: 50%;">
+              <div style="font-size: 18px; font-weight: bold; color: #1e40af;">${entreprise?.nom || 'LOGISTIGA'}</div>
+              <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                ${entreprise?.adresse || ''}<br/>
+                ${entreprise?.telephone ? `Tél: ${entreprise.telephone}` : ''}
+                ${entreprise?.email ? ` | ${entreprise.email}` : ''}
+              </div>
+            </td>
+            <td style="text-align: right; vertical-align: top;">
+              <div style="font-size: 22px; font-weight: bold; color: #1e40af;">JOURNAL DE CAISSE</div>
+              <div style="font-size: 13px; color: #666; margin-top: 5px;">${periodLabel}</div>
+              <div style="font-size: 11px; color: #888; margin-top: 3px;">Édité le ${format(new Date(), "d MMMM yyyy 'à' HH:mm", { locale: fr })}</div>
+            </td>
+          </tr>
+        </table>
 
         <!-- Summary Cards -->
-        <div style="display: flex; gap: 15px; margin-bottom: 25px;">
-          <div style="flex: 1; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 15px 20px; border-radius: 10px; border-left: 4px solid #22c55e;">
-            <p style="margin: 0; font-size: 12px; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Entrées</p>
-            <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: 700; color: #15803d;">+${formatMontant(totalEntrees)}</p>
-          </div>
-          <div style="flex: 1; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 15px 20px; border-radius: 10px; border-left: 4px solid #ef4444;">
-            <p style="margin: 0; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Sorties</p>
-            <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: 700; color: #dc2626;">-${formatMontant(totalSorties)}</p>
-          </div>
-          <div style="flex: 1; background: linear-gradient(135deg, ${solde >= 0 ? '#dbeafe' : '#fee2e2'} 0%, ${solde >= 0 ? '#bfdbfe' : '#fecaca'} 100%); padding: 15px 20px; border-radius: 10px; border-left: 4px solid ${solde >= 0 ? '#3b82f6' : '#ef4444'};">
-            <p style="margin: 0; font-size: 12px; color: ${solde >= 0 ? '#1e40af' : '#991b1b'}; text-transform: uppercase; letter-spacing: 0.5px;">Solde période</p>
-            <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: 700; color: ${solde >= 0 ? '#2563eb' : '#dc2626'};">${solde >= 0 ? '+' : ''}${formatMontant(solde)}</p>
-          </div>
-        </div>
+        <table style="width: 100%; margin-bottom: 20px; border-spacing: 10px; border-collapse: separate;">
+          <tr>
+            <td style="width: 33%; background: #dcfce7; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #22c55e;">
+              <div style="font-size: 11px; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Entrées</div>
+              <div style="font-size: 18px; font-weight: bold; color: #15803d; margin-top: 5px;">+${formatMontant(totalEntrees)}</div>
+            </td>
+            <td style="width: 33%; background: #fee2e2; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+              <div style="font-size: 11px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Sorties</div>
+              <div style="font-size: 18px; font-weight: bold; color: #dc2626; margin-top: 5px;">-${formatMontant(totalSorties)}</div>
+            </td>
+            <td style="width: 33%; background: ${solde >= 0 ? '#dbeafe' : '#fee2e2'}; padding: 12px 15px; border-radius: 8px; border-left: 4px solid ${solde >= 0 ? '#3b82f6' : '#ef4444'};">
+              <div style="font-size: 11px; color: ${solde >= 0 ? '#1e40af' : '#991b1b'}; text-transform: uppercase; letter-spacing: 0.5px;">Solde période</div>
+              <div style="font-size: 18px; font-weight: bold; color: ${solde >= 0 ? '#2563eb' : '#dc2626'}; margin-top: 5px;">${solde >= 0 ? '+' : ''}${formatMontant(solde)}</div>
+            </td>
+          </tr>
+        </table>
 
-        <!-- Table -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+        <!-- Data Table -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
           <thead>
-            <tr style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);">
-              <th style="padding: 12px 10px; text-align: left; color: white; font-weight: 600; border-radius: 6px 0 0 0;">Date</th>
-              <th style="padding: 12px 10px; text-align: left; color: white; font-weight: 600;">Type</th>
-              <th style="padding: 12px 10px; text-align: left; color: white; font-weight: 600;">Description</th>
-              <th style="padding: 12px 10px; text-align: left; color: white; font-weight: 600;">Catégorie</th>
-              <th style="padding: 12px 10px; text-align: left; color: white; font-weight: 600;">Bénéficiaire/Client</th>
-              <th style="padding: 12px 10px; text-align: right; color: white; font-weight: 600; border-radius: 0 6px 0 0;">Montant</th>
+            <tr style="background: #1e40af;">
+              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Date</th>
+              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Type</th>
+              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Description</th>
+              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Catégorie</th>
+              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Bénéficiaire</th>
+              <th style="padding: 10px 8px; text-align: right; color: white; font-weight: 600;">Montant</th>
             </tr>
           </thead>
           <tbody>
             ${mouvements.length === 0 ? `
               <tr>
-                <td colspan="6" style="padding: 40px; text-align: center; color: #666; font-style: italic;">
+                <td colspan="6" style="padding: 30px; text-align: center; color: #666; font-style: italic;">
                   Aucun mouvement pour cette période
                 </td>
               </tr>
             ` : mouvements.map((m, index) => `
               <tr style="background: ${index % 2 === 0 ? '#f8fafc' : '#ffffff'};">
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${format(new Date(m.date), 'dd/MM/yyyy')}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
-                  <span style="display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: ${m.type === 'entree' ? '#dcfce7' : '#fee2e2'}; color: ${m.type === 'entree' ? '#166534' : '#991b1b'};">
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${format(new Date(m.date), 'dd/MM/yyyy')}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">
+                  <span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: 600; background: ${m.type === 'entree' ? '#dcfce7' : '#fee2e2'}; color: ${m.type === 'entree' ? '#166534' : '#991b1b'};">
                     ${m.type === 'entree' ? 'ENTRÉE' : 'SORTIE'}
                   </span>
                 </td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; max-width: 180px; overflow: hidden; text-overflow: ellipsis;">${m.description || '-'}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${m.categorie || '-'}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${m.client_nom || m.beneficiaire || '-'}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: ${m.type === 'entree' ? '#16a34a' : '#dc2626'};">
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.description || '-'}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${m.categorie || '-'}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${m.client_nom || m.beneficiaire || '-'}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: ${m.type === 'entree' ? '#16a34a' : '#dc2626'};">
                   ${m.type === 'entree' ? '+' : '-'}${formatMontant(Number(m.montant))}
                 </td>
               </tr>
@@ -206,9 +210,9 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
           </tbody>
           ${mouvements.length > 0 ? `
           <tfoot>
-            <tr style="background: #f1f5f9; font-weight: 700;">
-              <td colspan="5" style="padding: 12px 10px; border-top: 2px solid #1e40af;">TOTAL DE LA PÉRIODE</td>
-              <td style="padding: 12px 10px; text-align: right; border-top: 2px solid #1e40af; color: ${solde >= 0 ? '#16a34a' : '#dc2626'}; font-size: 13px;">
+            <tr style="background: #e2e8f0; font-weight: bold;">
+              <td colspan="5" style="padding: 10px 8px; border-top: 2px solid #1e40af;">TOTAL DE LA PÉRIODE</td>
+              <td style="padding: 10px 8px; text-align: right; border-top: 2px solid #1e40af; color: ${solde >= 0 ? '#16a34a' : '#dc2626'}; font-size: 12px;">
                 ${solde >= 0 ? '+' : ''}${formatMontant(solde)}
               </td>
             </tr>
@@ -217,18 +221,18 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
         </table>
 
         <!-- Footer -->
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 10px; color: #666;">
-              <p style="margin: 0;">Document généré automatiquement par le système de gestion</p>
-              <p style="margin: 3px 0 0 0;">${entreprise?.nom || 'LOGISTIGA'} - Gestion de caisse</p>
-            </div>
-            <div style="text-align: right; font-size: 10px; color: #666;">
-              <p style="margin: 0;">Page 1/1</p>
-              <p style="margin: 3px 0 0 0;">${mouvements.length} mouvement${mouvements.length > 1 ? 's' : ''}</p>
-            </div>
-          </div>
-        </div>
+        <table style="width: 100%; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+          <tr>
+            <td style="font-size: 9px; color: #666;">
+              Document généré automatiquement<br/>
+              ${entreprise?.nom || 'LOGISTIGA'} - Gestion de caisse
+            </td>
+            <td style="text-align: right; font-size: 9px; color: #666;">
+              Page 1/1<br/>
+              ${mouvements.length} mouvement${mouvements.length > 1 ? 's' : ''}
+            </td>
+          </tr>
+        </table>
       </div>
     `;
 
@@ -237,7 +241,8 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
     container.innerHTML = html;
     container.style.position = 'absolute';
     container.style.left = '-9999px';
-    container.style.width = '210mm';
+    container.style.top = '0';
+    container.style.background = 'white';
     document.body.appendChild(container);
 
     try {
@@ -245,13 +250,37 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
         ? format(range.from, 'dd-MM-yyyy')
         : `${format(range.from, 'dd-MM-yyyy')}_${format(range.to, 'dd-MM-yyyy')}`;
 
-      await html2pdf().set({
-        margin: [10, 10, 15, 10],
-        filename: `journal-caisse-${periodFilename}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(container).save();
+      // Use html2canvas + jsPDF for better rendering
+      const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      // Calculate PDF dimensions
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+
+      // Handle multi-page if needed
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`journal-caisse-${periodFilename}.pdf`);
     } finally {
       document.body.removeChild(container);
     }
