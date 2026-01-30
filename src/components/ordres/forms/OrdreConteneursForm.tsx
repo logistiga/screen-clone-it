@@ -363,16 +363,19 @@ export default function OrdreConteneursForm({
                   }
                   
                   blCheckTimeoutRef.current = setTimeout(() => {
+                    console.log('[BL Check] Checking:', value);
                     checkBLMutation.mutate(value, {
                       onSuccess: (result) => {
+                        console.log('[BL Check] Result:', result);
                         if (result.exists) {
                           setBLWarning({ exists: true, details: result.details });
                         } else {
                           setBLWarning(null);
                         }
                       },
-                      onError: () => {
-                        // Ignorer les erreurs silencieusement
+                      onError: (error) => {
+                        console.error('[BL Check] Error:', error);
+                        // Ne pas bloquer l'utilisateur en cas d'erreur
                       }
                     });
                   }, 500);
