@@ -406,6 +406,22 @@ export function useCheckConteneur() {
   });
 }
 
+export function useCheckBL() {
+  return useMutation({
+    mutationFn: ordresApi.checkBL,
+  });
+}
+
+export function useDescriptionSuggestions(search?: string) {
+  return useQuery({
+    queryKey: ['description-suggestions', search],
+    queryFn: () => ordresApi.getDescriptionSuggestions(search),
+    enabled: true,
+    staleTime: 60000, // Cache 1 minute
+    gcTime: 300000,
+  });
+}
+
 // Factures hooks avec préchargement
 export function useFactures(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
   const queryClient = useQueryClient();

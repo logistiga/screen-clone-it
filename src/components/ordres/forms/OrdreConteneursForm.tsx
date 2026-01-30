@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Container, FileText, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Container, FileText, Plus, Trash2, AlertTriangle, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { PartenaireCombobox } from "@/components/shared/PartenaireCombobox";
 import { FormError } from "@/components/ui/form-error";
 import {
@@ -23,8 +28,9 @@ import {
 } from "@/types/documents";
 import { ordreConteneursSchema } from "@/lib/validations/ordre-schemas";
 import { cn } from "@/lib/utils";
-import { useCheckConteneur } from "@/hooks/use-commercial";
+import { useCheckConteneur, useCheckBL, useDescriptionSuggestions } from "@/hooks/use-commercial";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Armateur {
   id: string | number;
@@ -90,6 +96,14 @@ export default function OrdreConteneursForm({
   const checkConteneurMutation = useCheckConteneur();
   const [conteneurWarnings, setConteneurWarnings] = useState<Record<string, { exists: boolean; details?: { ordre_numero: string; ordre_date: string; client: string } }>>({});
   const checkTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+  
+  // BL duplicate check
+  const checkBLMutation = useCheckBL();
+  const [blWarning, setBLWarning] = useState<{ exists: boolean; details?: { ordre_numero: string; ordre_date: string; client: string } } | null>(null);
+  const blCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Description suggestions
+  const { data: descriptionSuggestions = [] } = useDescriptionSuggestions();
 
   // Initialisation depuis initialData
   useEffect(() => {
@@ -334,11 +348,60 @@ export default function OrdreConteneursForm({
               <Input
                 placeholder="Ex: MSCUAB123456"
                 value={numeroBL}
-                onChange={(e) => setNumeroBL(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  setNumeroBL(value);
+                  
+                  // Vérification doublon BL
+                  if (blCheckTimeoutRef.current) {
+                    clearTimeout(blCheckTimeoutRef.current);
+                  }
+                  
+                  if (value.length < 3) {
+                    setBLWarning(null);
+                    return;
+                  }
+                  
+                  blCheckTimeoutRef.current = setTimeout(() => {
+                    checkBLMutation.mutate(value, {
+                      onSuccess: (result) => {
+                        if (result.exists) {
+                          setBLWarning({ exists: true, details: result.details });
+                        } else {
+                          setBLWarning(null);
+                        }
+                      },
+                      onError: () => {
+                        // Ignorer les erreurs silencieusement
+                      }
+                    });
+                  }, 500);
+                }}
                 onBlur={() => handleBlur('numeroBL')}
-                className={cn("font-mono", getFieldError('numeroBL') && "border-destructive")}
+                className={cn(
+                  "font-mono", 
+                  getFieldError('numeroBL') && "border-destructive",
+                  blWarning?.exists && "border-amber-500"
+                )}
               />
               <FormError message={getFieldError('numeroBL')} />
+              {blWarning?.exists && (
+                <Alert variant="default" className="py-2 px-3 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <AlertDescription className="text-xs text-amber-700 dark:text-amber-400">
+                      <span className="font-medium">Ce numéro BL existe déjà !</span>
+                      {blWarning.details && (
+                        <span className="block mt-0.5">
+                          OT: {blWarning.details.ordre_numero}
+                          {blWarning.details.ordre_date && ` du ${blWarning.details.ordre_date}`}
+                          {blWarning.details.client && ` - ${blWarning.details.client}`}
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Armateur</Label>
@@ -469,7 +532,45 @@ export default function OrdreConteneursForm({
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Description</Label>
+                    <Label className="flex items-center gap-2">
+                      Description
+                      {descriptionSuggestions.length > 0 && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-5 px-1.5 text-xs text-muted-foreground hover:text-primary"
+                            >
+                              <History className="h-3 w-3 mr-1" />
+                              Historique
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-0" align="start">
+                            <div className="p-2 border-b">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Descriptions précédentes
+                              </p>
+                            </div>
+                            <ScrollArea className="h-48">
+                              <div className="p-1">
+                                {descriptionSuggestions.map((suggestion, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors"
+                                    onClick={() => handleConteneurChange(conteneur.id, 'description', suggestion)}
+                                  >
+                                    {suggestion}
+                                  </button>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </Label>
                     <Input
                       placeholder="Description de la marchandise"
                       value={conteneur.description}

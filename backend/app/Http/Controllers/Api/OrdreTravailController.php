@@ -271,4 +271,72 @@ class OrdreTravailController extends Controller
             'message' => 'Conteneur non trouvé',
         ]);
     }
+
+    /**
+     * Vérifier si un numéro BL existe déjà dans la base de données
+     */
+    public function checkBL(Request $request): JsonResponse
+    {
+        $numero = $this->validateSearchParameter($request, 'numero');
+        
+        if (!$numero || strlen($numero) < 3) {
+            return response()->json([
+                'exists' => false,
+                'message' => 'Numéro BL invalide ou trop court',
+            ]);
+        }
+
+        // Rechercher le BL dans les ordres de travail (case-insensitive)
+        $numeroUpper = strtoupper(trim($numero));
+        $ordre = OrdreTravail::whereRaw('UPPER(numero_bl) = ?', [$numeroUpper])
+            ->with(['client:id,nom'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($ordre) {
+            return response()->json([
+                'exists' => true,
+                'message' => 'Ce numéro BL existe déjà',
+                'details' => [
+                    'ordre_numero' => $ordre->numero,
+                    'ordre_date' => $ordre->date_creation?->format('d/m/Y'),
+                    'client' => $ordre->client?->nom,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'exists' => false,
+            'message' => 'Numéro BL non trouvé',
+        ]);
+    }
+
+    /**
+     * Récupérer les suggestions de descriptions basées sur l'historique
+     */
+    public function descriptionSuggestions(Request $request): JsonResponse
+    {
+        $search = $this->validateSearchParameter($request, 'search');
+        
+        // Récupérer les descriptions uniques des conteneurs
+        $query = \App\Models\ConteneurOrdre::whereNotNull('description')
+            ->where('description', '!=', '')
+            ->select('description')
+            ->distinct();
+        
+        if ($search && strlen($search) >= 2) {
+            $query->where('description', 'like', "%{$search}%");
+        }
+        
+        $suggestions = $query->orderBy('description')
+            ->limit(20)
+            ->pluck('description')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            'suggestions' => $suggestions,
+        ]);
+    }
 }
