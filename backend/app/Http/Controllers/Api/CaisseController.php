@@ -235,6 +235,27 @@ class CaisseController extends Controller
         ]);
     }
 
+    public function soldeJour(Request $request): JsonResponse
+    {
+        $date = $request->get('date', now()->toDateString());
+
+        $entrees = MouvementCaisse::where('source', 'caisse')
+            ->where('type', 'entree')
+            ->whereDate('date', $date)
+            ->sum('montant');
+
+        $sorties = MouvementCaisse::where('source', 'caisse')
+            ->where('type', 'sortie')
+            ->whereDate('date', $date)
+            ->sum('montant');
+
+        return response()->json([
+            'entrees' => round((float) $entrees, 2),
+            'sorties' => round((float) $sorties, 2),
+            'solde' => round((float) ($entrees - $sorties), 2),
+        ]);
+    }
+
     public function stats(Request $request): JsonResponse
     {
         $stats = $this->caisseService->getStatistiques([

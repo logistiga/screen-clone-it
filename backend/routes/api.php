@@ -288,6 +288,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:caisse.creer');
         Route::get('solde', [CaisseController::class, 'solde'])
             ->middleware('permission:caisse.voir');
+        Route::get('solde-jour', [CaisseController::class, 'soldeJour'])
+            ->middleware('permission:caisse.voir');
         Route::get('stats', [CaisseController::class, 'stats'])
             ->middleware(['permission:caisse.voir', 'throttle:stats']);
         Route::get('categories', [CaisseController::class, 'categories'])
