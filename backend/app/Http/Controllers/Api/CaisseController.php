@@ -134,12 +134,85 @@ class CaisseController extends Controller
         return response()->json(new MouvementCaisseResource($mouvement));
     }
 
+    public function update(Request $request, MouvementCaisse $mouvement): JsonResponse
+    {
+        // Vérifier que ce n'est pas un mouvement lié à un paiement
+        if ($mouvement->paiement_id) {
+            return response()->json([
+                'message' => 'Ce mouvement est lié à un paiement et ne peut pas être modifié'
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'montant' => 'sometimes|numeric|min:0.01|max:999999999.99',
+            'description' => 'sometimes|string|max:500',
+            'categorie' => 'sometimes|string|max:100',
+            'beneficiaire' => 'nullable|string|max:255',
+        ]);
+
+        // Si le montant change sur une sortie, vérifier le solde
+        if (isset($validated['montant']) && $mouvement->type === 'sortie') {
+            $difference = $validated['montant'] - $mouvement->montant;
+            if ($difference > 0) {
+                if ($mouvement->source === 'caisse') {
+                    $solde = $this->caisseService->getSoldeCaisse();
+                    if ($difference > $solde) {
+                        return response()->json([
+                            'message' => 'Solde caisse insuffisant pour cette modification',
+                            'solde_actuel' => $solde
+                        ], 422);
+                    }
+                } elseif ($mouvement->source === 'banque' && $mouvement->banque_id) {
+                    $banque = \App\Models\Banque::find($mouvement->banque_id);
+                    if ($banque && $difference > $banque->solde) {
+                        return response()->json([
+                            'message' => 'Solde bancaire insuffisant pour cette modification',
+                            'solde_actuel' => $banque->solde
+                        ], 422);
+                    }
+                }
+            }
+        }
+
+        // Mettre à jour le solde bancaire si le montant change
+        $oldMontant = $mouvement->montant;
+        $mouvement->update($validated);
+
+        if (isset($validated['montant']) && $mouvement->banque_id) {
+            $difference = $validated['montant'] - $oldMontant;
+            $banque = \App\Models\Banque::find($mouvement->banque_id);
+            if ($banque) {
+                if ($mouvement->type === 'entree') {
+                    $banque->increment('solde', $difference);
+                } else {
+                    $banque->decrement('solde', $difference);
+                }
+            }
+        }
+
+        Audit::log('update', 'caisse', "Mouvement modifié: {$mouvement->type} - {$mouvement->montant}", $mouvement->id);
+
+        return response()->json(new MouvementCaisseResource($mouvement->fresh()));
+    }
+
     public function destroy(MouvementCaisse $mouvement): JsonResponse
     {
-        if ($mouvement->categorie === 'Paiement facture' && $mouvement->reference) {
+        if ($mouvement->paiement_id) {
             return response()->json([
                 'message' => 'Ce mouvement est lié à un paiement et ne peut pas être supprimé directement'
             ], 422);
+        }
+
+        // Restaurer le solde bancaire si applicable
+        if ($mouvement->banque_id) {
+            $banque = \App\Models\Banque::find($mouvement->banque_id);
+            if ($banque) {
+                if ($mouvement->type === 'entree') {
+                    $banque->decrement('solde', $mouvement->montant);
+                } else {
+                    $banque->increment('solde', $mouvement->montant);
+                }
+            }
         }
 
         Audit::log('delete', 'caisse', "Mouvement supprimé: {$mouvement->type} - {$mouvement->montant}", $mouvement->id);
