@@ -67,7 +67,7 @@ export function ExonerationStatusCard({
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Économie réalisée:</span>
               <span className="font-semibold text-green-600 dark:text-green-400">
-                {economie.toLocaleString('fr-FR')} FCFA
+                {Math.round(economie).toLocaleString('fr-FR')} FCFA
               </span>
             </div>
           )}

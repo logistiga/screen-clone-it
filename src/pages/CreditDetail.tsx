@@ -148,7 +148,7 @@ export default function CreditDetailPage() {
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Montant emprunté</span>
-                <p className="font-semibold">{credit.montantEmprunte.toLocaleString('fr-FR')} FCFA</p>
+                <p className="font-semibold">{Math.round(credit.montantEmprunte).toLocaleString('fr-FR')} FCFA</p>
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Taux d'intérêt</span>
@@ -171,11 +171,11 @@ export default function CreditDetailPage() {
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Mensualité</span>
-                <p className="font-semibold text-primary">{credit.mensualite.toLocaleString('fr-FR')} FCFA</p>
+                <p className="font-semibold text-primary">{Math.round(credit.mensualite).toLocaleString('fr-FR')} FCFA</p>
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Total des intérêts</span>
-                <p className="font-semibold text-orange-600">{credit.totalInterets.toLocaleString('fr-FR')} FCFA</p>
+                <p className="font-semibold text-orange-600">{Math.round(credit.totalInterets).toLocaleString('fr-FR')} FCFA</p>
               </div>
             </div>
           </CardContent>
@@ -205,15 +205,15 @@ export default function CreditDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Capital remboursé</span>
-                <span className="font-semibold">{(credit.montantEmprunte - capitalRestant).toLocaleString('fr-FR')} FCFA</span>
+                <span className="font-semibold">{Math.round(credit.montantEmprunte - capitalRestant).toLocaleString('fr-FR')} FCFA</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Capital restant</span>
-                <span className="font-semibold text-orange-600">{capitalRestant.toLocaleString('fr-FR')} FCFA</span>
+                <span className="font-semibold text-orange-600">{Math.round(capitalRestant).toLocaleString('fr-FR')} FCFA</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Intérêts payés</span>
-                <span className="font-semibold">{interetsPayes.toLocaleString('fr-FR')} FCFA</span>
+                <span className="font-semibold">{Math.round(interetsPayes).toLocaleString('fr-FR')} FCFA</span>
               </div>
             </div>
 
@@ -226,7 +226,7 @@ export default function CreditDetailPage() {
                     Prochaine échéance
                   </p>
                   <p className="text-lg font-bold text-primary mt-1">
-                    {prochaineEcheance.montantTotal.toLocaleString('fr-FR')} FCFA
+                    {Math.round(prochaineEcheance.montantTotal).toLocaleString('fr-FR')} FCFA
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(prochaineEcheance.dateEcheance), 'dd MMMM yyyy', { locale: fr })}
@@ -334,7 +334,7 @@ export default function CreditDetailPage() {
                         <TableRow key={remb.id}>
                           <TableCell>{format(new Date(remb.date), 'dd/MM/yyyy')}</TableCell>
                           <TableCell>Échéance n°{echeance?.numero}</TableCell>
-                          <TableCell className="text-right font-semibold">{remb.montant.toLocaleString('fr-FR')} FCFA</TableCell>
+                          <TableCell className="text-right font-semibold">{Math.round(remb.montant).toLocaleString('fr-FR')} FCFA</TableCell>
                           <TableCell>{banqueRemb?.nom}</TableCell>
                           <TableCell>{remb.reference || '-'}</TableCell>
                         </TableRow>

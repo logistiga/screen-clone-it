@@ -15,7 +15,7 @@ interface ReleveClientPdfProps {
 }
 
 const formatMontant = (montant: number) => {
-  return new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(montant)) + ' FCFA';
 };
 
 export const ReleveClientPdf = forwardRef<HTMLDivElement, ReleveClientPdfProps>(

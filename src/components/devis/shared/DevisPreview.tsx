@@ -34,7 +34,7 @@ interface DevisPreviewProps {
 }
 
 const formatMontant = (montant: number) => {
-  return montant.toLocaleString("fr-FR") + " XAF";
+  return Math.round(montant).toLocaleString("fr-FR") + " XAF";
 };
 
 export default function DevisPreview({

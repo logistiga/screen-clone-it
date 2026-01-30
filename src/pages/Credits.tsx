@@ -68,7 +68,7 @@ export default function CreditsPage() {
       style: 'decimal',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(montant) + ' FCFA';
+    }).format(Math.round(montant)) + ' FCFA';
   };
 
   const formatMontantCompact = (montant: number) => {
