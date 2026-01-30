@@ -286,7 +286,7 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
                 <span className="font-medium text-primary">
                   {mode === "mensualite" 
                     ? `Taux calculé: ${calculs.tauxCalcule}% annuel`
-                    : `Mensualité calculée: ${calculs.mensualiteCalculee?.toLocaleString('fr-FR')} FCFA`
+                    : `Mensualité calculée: ${Math.round(calculs.mensualiteCalculee || 0).toLocaleString('fr-FR')} FCFA`
                   }
                 </span>
               </div>
@@ -333,19 +333,19 @@ export function NouveauCreditModal({ open, onOpenChange }: NouveauCreditModalPro
                   <span className="text-muted-foreground text-xs">Mensualité</span>
                   <p className="font-semibold text-primary">
                     {mode === "mensualite" 
-                      ? parseFloat(formData.mensualite || "0").toLocaleString('fr-FR')
-                      : calculs.mensualiteCalculee?.toLocaleString('fr-FR')
+                      ? Math.round(parseFloat(formData.mensualite || "0")).toLocaleString('fr-FR')
+                      : Math.round(calculs.mensualiteCalculee || 0).toLocaleString('fr-FR')
                     } FCFA
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs">Total intérêts</span>
-                  <p className="font-semibold text-orange-600">{totalInterets.toLocaleString('fr-FR')} FCFA</p>
+                  <p className="font-semibold text-orange-600">{Math.round(totalInterets).toLocaleString('fr-FR')} FCFA</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs">Coût total</span>
                   <p className="font-semibold">
-                    {(parseFloat(formData.montantEmprunte || "0") + totalInterets).toLocaleString('fr-FR')} FCFA
+                    {Math.round(parseFloat(formData.montantEmprunte || "0") + totalInterets).toLocaleString('fr-FR')} FCFA
                   </p>
                 </div>
               </div>

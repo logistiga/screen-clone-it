@@ -194,7 +194,7 @@ export function EmailModalWithTemplate({
   // Formater les montants
   const formatMontant = (montant?: number) => {
     if (montant === undefined || montant === null) return "-";
-    return new Intl.NumberFormat('fr-FR').format(montant) + ' XAF';
+    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(montant)) + ' XAF';
   };
 
   // Formater les dates

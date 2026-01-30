@@ -117,7 +117,7 @@ export default function ExonerationTaxesSelector({
                     </Label>
                     {exonereTva && montantHT > 0 && (
                       <p className="text-xs text-green-600 font-medium mt-0.5">
-                        Économie: {economieTva.toLocaleString('fr-FR')} XAF
+                        Économie: {Math.round(economieTva).toLocaleString('fr-FR')} XAF
                       </p>
                     )}
                   </div>
@@ -143,7 +143,7 @@ export default function ExonerationTaxesSelector({
                     </Label>
                     {exonereCss && montantHT > 0 && (
                       <p className="text-xs text-green-600 font-medium mt-0.5">
-                        Économie: {economieCss.toLocaleString('fr-FR')} XAF
+                        Économie: {Math.round(economieCss).toLocaleString('fr-FR')} XAF
                       </p>
                     )}
                   </div>
@@ -183,7 +183,7 @@ export default function ExonerationTaxesSelector({
                     <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800">
                       <Percent className="h-4 w-4 text-green-600" />
                       <AlertDescription className="text-green-700 dark:text-green-400">
-                        Économie totale: <strong>{economieTotal.toLocaleString('fr-FR')} XAF</strong>
+                        Économie totale: <strong>{Math.round(economieTotal).toLocaleString('fr-FR')} XAF</strong>
                       </AlertDescription>
                     </Alert>
                   )}

@@ -7,7 +7,7 @@ const moisNoms = [
 ];
 
 const formatMontant = (montant: number) => 
-  montant.toLocaleString('fr-FR') + ' FCFA';
+  Math.round(montant).toLocaleString('fr-FR') + ' FCFA';
 
 // Couleurs pour le camembert
 const pieColors = [

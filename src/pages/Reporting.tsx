@@ -57,7 +57,7 @@ const formatMontant = (montant: number | null | undefined): string => {
   if (isNaN(value) || montant === null || montant === undefined) {
     return '0 FCFA';
   }
-  return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(value) + ' FCFA';
+  return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(value)) + ' FCFA';
 };
 
 const moisLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
