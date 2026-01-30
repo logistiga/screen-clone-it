@@ -290,6 +290,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:caisse.voir');
         Route::get('{mouvement}', [CaisseController::class, 'show'])
             ->middleware('permission:caisse.voir');
+        Route::put('{mouvement}', [CaisseController::class, 'update'])
+            ->middleware('permission:caisse.modifier');
         Route::delete('{mouvement}', [CaisseController::class, 'destroy'])
             ->middleware('permission:caisse.supprimer');
     });

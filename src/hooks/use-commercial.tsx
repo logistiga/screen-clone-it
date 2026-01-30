@@ -845,12 +845,32 @@ export function useCreateMouvementCaisse() {
   });
 }
 
+export function useUpdateMouvementCaisse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<MouvementCaisseData> }) => 
+      mouvementsCaisseApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      toast.success('Mouvement modifié avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification du mouvement');
+    },
+  });
+}
+
 export function useDeleteMouvementCaisse() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: mouvementsCaisseApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse'] });
       queryClient.invalidateQueries({ queryKey: ['banques'] });
       toast.success('Mouvement supprimé avec succès');
     },

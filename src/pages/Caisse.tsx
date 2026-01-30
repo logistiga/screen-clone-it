@@ -15,6 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt, ClipboardList, Download } from "lucide-react";
 import { SortieCaisseModal } from "@/components/SortieCaisseModal";
+import { EntreeCaisseModal } from "@/components/caisse/EntreeCaisseModal";
+import { MouvementCaisseActions } from "@/components/caisse/MouvementCaisseActions";
 import { ExportCaisseModal } from "@/components/caisse/ExportCaisseModal";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
@@ -77,6 +79,7 @@ export default function CaissePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortieModalOpen, setSortieModalOpen] = useState(false);
+  const [entreeModalOpen, setEntreeModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Fetch mouvements from API
@@ -167,6 +170,10 @@ export default function CaissePage() {
               <Download className="h-4 w-4" />
               Exporter
             </Button>
+            <Button variant="outline" className="gap-2 text-success border-success hover:bg-success/10" onClick={() => setEntreeModalOpen(true)}>
+              <ArrowDownCircle className="h-4 w-4" />
+              Nouvelle entrée
+            </Button>
             <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10" onClick={() => setSortieModalOpen(true)}>
               <ArrowUpCircle className="h-4 w-4" />
               Nouvelle sortie
@@ -238,12 +245,13 @@ export default function CaissePage() {
                     <TableHead>N° Ordre</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead className="text-right">Montant</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {mouvements.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-16 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-16 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Receipt className="h-8 w-8 opacity-50" />
                           <p>Aucun mouvement trouvé</p>
@@ -298,6 +306,9 @@ export default function CaissePage() {
                         <TableCell className={`text-right font-semibold ${mouvement.type === 'entree' ? 'text-success' : 'text-destructive'}`}>
                           {mouvement.type === 'entree' ? '+' : '-'}{formatMontant(mouvement.montant)}
                         </TableCell>
+                        <TableCell>
+                          <MouvementCaisseActions mouvement={mouvement} onSuccess={() => refetch()} />
+                        </TableCell>
                       </motion.tr>
                     ))
                   )}
@@ -324,6 +335,7 @@ export default function CaissePage() {
       </div>
 
       <SortieCaisseModal open={sortieModalOpen} onOpenChange={setSortieModalOpen} type="caisse" onSuccess={handleSortieSuccess} />
+      <EntreeCaisseModal open={entreeModalOpen} onOpenChange={setEntreeModalOpen} onSuccess={handleSortieSuccess} />
       <ExportCaisseModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
     </MainLayout>
   );

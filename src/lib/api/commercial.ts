@@ -885,6 +885,11 @@ export const mouvementsCaisseApi = {
     return response.data;
   },
 
+  update: async (id: string, data: Partial<MouvementCaisseData>) => {
+    const response = await api.put(`/caisse/${id}`, data);
+    return response.data;
+  },
+
   delete: async (id: string) => {
     await api.delete(`/caisse/${id}`);
   },
