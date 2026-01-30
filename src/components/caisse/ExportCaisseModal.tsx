@@ -77,7 +77,7 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
     return new Intl.NumberFormat("fr-FR", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(montant) + " FCFA";
+    }).format(Math.round(montant)) + " FCFA";
   };
 
   const handleExportCSV = async (range: { from: Date; to: Date }) => {
