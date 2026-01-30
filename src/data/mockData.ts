@@ -417,7 +417,11 @@ export const configurationTaxes = {
 // Fonctions utilitaires
 export const formatMontant = (montant: number | undefined | null): string => {
   if (montant === undefined || montant === null) return '0 FCFA';
-  return montant.toLocaleString('fr-FR') + ' FCFA';
+  // Arrondir pour supprimer les décimales et formater sans virgule
+  return Math.round(montant).toLocaleString('fr-FR', { 
+    minimumFractionDigits: 0, 
+    maximumFractionDigits: 0 
+  }) + ' FCFA';
 };
 
 export const formatDate = (date: string): string => {
