@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt, ClipboardList, Download } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Receipt, ClipboardList, Download, Calendar } from "lucide-react";
 import { SortieCaisseModal } from "@/components/SortieCaisseModal";
 import { EntreeCaisseModal } from "@/components/caisse/EntreeCaisseModal";
 import { MouvementCaisseActions } from "@/components/caisse/MouvementCaisseActions";
@@ -108,6 +108,18 @@ export default function CaissePage() {
     },
   });
 
+  // Fetch solde du jour
+  const { data: soldeJourData } = useQuery({
+    queryKey: ['caisse-solde-jour'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await api.get<{ entrees: number; sorties: number; solde: number }>('/caisse/solde-jour', {
+        params: { date: today }
+      });
+      return response.data;
+    },
+  });
+
   const mouvements = mouvementsData?.data || [];
   const totalPages = mouvementsData?.meta?.last_page || 1;
   const totalItems = mouvementsData?.meta?.total || 0;
@@ -115,6 +127,9 @@ export default function CaissePage() {
   const soldeCaisse = soldeData?.solde || 0;
   const totalEntrees = soldeData?.total_entrees || 0;
   const totalSorties = soldeData?.total_sorties || 0;
+  const soldeJour = soldeJourData?.solde ?? 0;
+  const entreesJour = soldeJourData?.entrees ?? 0;
+  const sortiesJour = soldeJourData?.sorties ?? 0;
 
   // Count by type in current page
   const entreesCount = mouvements.filter(m => m.type === 'entree').length;
@@ -180,6 +195,35 @@ export default function CaissePage() {
             </Button>
           </div>
         </div>
+
+        {/* Solde du jour */}
+        <Card className={`border-2 ${soldeJour >= 0 ? 'border-success/50 bg-success/5' : 'border-destructive/50 bg-destructive/5'}`}>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-full ${soldeJour >= 0 ? 'bg-success/20' : 'bg-destructive/20'}`}>
+                  <Calendar className={`h-6 w-6 ${soldeJour >= 0 ? 'text-success' : 'text-destructive'}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Solde du jour</p>
+                  <p className={`text-2xl font-bold ${soldeJour >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {soldeJour >= 0 ? '+' : ''}{formatMontant(soldeJour)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-muted-foreground">Entrées</p>
+                  <p className="font-semibold text-success">+{formatMontant(entreesJour)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-muted-foreground">Sorties</p>
+                  <p className="font-semibold text-destructive">-{formatMontant(sortiesJour)}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
