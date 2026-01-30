@@ -439,6 +439,26 @@ export const ordresApi = {
     }>('/ordres-travail/check-conteneur', { params: { numero } });
     return response.data;
   },
+  
+  checkBL: async (numero: string) => {
+    const response = await api.get<{
+      exists: boolean;
+      message: string;
+      details?: {
+        ordre_numero: string;
+        ordre_date: string;
+        client: string;
+      };
+    }>('/ordres-travail/check-bl', { params: { numero } });
+    return response.data;
+  },
+  
+  getDescriptionSuggestions: async (search?: string) => {
+    const response = await api.get<{
+      suggestions: string[];
+    }>('/ordres-travail/description-suggestions', { params: { search } });
+    return response.data.suggestions;
+  },
 };
 
 // Factures API

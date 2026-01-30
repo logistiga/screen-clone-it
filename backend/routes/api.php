@@ -176,6 +176,10 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware(['permission:ordres.voir', 'throttle:stats']);
         Route::get('check-conteneur', [OrdreTravailController::class, 'checkConteneur'])
             ->middleware('permission:ordres.voir');
+        Route::get('check-bl', [OrdreTravailController::class, 'checkBL'])
+            ->middleware('permission:ordres.voir');
+        Route::get('description-suggestions', [OrdreTravailController::class, 'descriptionSuggestions'])
+            ->middleware('permission:ordres.voir');
         Route::post('/', [OrdreTravailController::class, 'store'])
             ->middleware('permission:ordres.creer');
         Route::get('{ordreTravail}', [OrdreTravailController::class, 'show'])
