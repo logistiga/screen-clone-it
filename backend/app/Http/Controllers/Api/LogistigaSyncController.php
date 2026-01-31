@@ -88,10 +88,21 @@ class LogistigaSyncController extends Controller
 
             $result = $this->logistigaService->fetchConteneursTraites($filters);
 
+            Log::info('[SyncOPS] Réponse API OPS', [
+                'success' => $result['success'] ?? false,
+                'message' => $result['message'] ?? null,
+                'status' => $result['status'] ?? null,
+                'data_count' => isset($result['data']) ? (is_array($result['data']) ? count($result['data']) : 'not_array') : 'no_data',
+            ]);
+
             if (!$result['success']) {
                 return response()->json([
                     'success' => false,
                     'message' => $result['message'] ?? 'Erreur lors de la récupération des conteneurs',
+                    'debug' => [
+                        'status' => $result['status'] ?? null,
+                        'api_response' => $result['data'] ?? null,
+                    ],
                 ], 400);
             }
 
