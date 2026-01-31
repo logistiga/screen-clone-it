@@ -219,6 +219,14 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
+    // SYNC DIAGNOSTIC (état de la connexion OPS)
+    // ============================================
+    Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
+        Route::get('health-ops', [LogistigaSyncController::class, 'healthOps'])
+            ->middleware('permission:configuration.voir');
+    });
+
+    // ============================================
     // FACTURES
     // ============================================
     Route::prefix('factures')->middleware('audit')->group(function () {

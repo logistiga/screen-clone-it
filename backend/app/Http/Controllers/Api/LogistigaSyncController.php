@@ -55,4 +55,20 @@ class LogistigaSyncController extends Controller
 
         return response()->json($result, $result['success'] ? 201 : 400);
     }
+
+    /**
+     * Vérifie la connectivité avec Logistiga OPS
+     */
+    public function healthOps(): JsonResponse
+    {
+        $health = $this->logistigaService->checkHealth();
+
+        return response()->json([
+            'success' => $health['connected'] ?? false,
+            'connected' => $health['connected'] ?? false,
+            'status' => $health['status'] ?? 0,
+            'message' => $health['message'] ?? 'Statut inconnu',
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
 }
