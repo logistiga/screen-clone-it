@@ -224,6 +224,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
         Route::get('health-ops', [LogistigaSyncController::class, 'healthOps'])
             ->middleware('permission:configuration.voir');
+        Route::post('sync-conteneurs', [LogistigaSyncController::class, 'syncConteneursFromOps'])
+            ->middleware('permission:ordres.modifier');
     });
 
     // ============================================

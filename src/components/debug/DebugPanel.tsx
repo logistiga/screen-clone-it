@@ -9,7 +9,8 @@ import {
   Wifi,
   WifiOff,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +47,10 @@ export function DebugPanel({ title = "Debug API", data, onRefresh }: DebugPanelP
     testing: boolean;
     result: any;
   }>({ testing: false, result: null });
+  const [syncStatus, setSyncStatus] = useState<{
+    syncing: boolean;
+    result: any;
+  }>({ syncing: false, result: null });
 
   const copyToClipboard = async () => {
     try {
@@ -71,6 +76,28 @@ export function DebugPanel({ title = "Debug API", data, onRefresh }: DebugPanelP
           error: error.response?.data?.message || error.message || 'Erreur de connexion'
         } 
       });
+    }
+  };
+
+  const syncFromOps = async () => {
+    setSyncStatus({ syncing: true, result: null });
+    try {
+      const response = await api.post('/sync-diagnostic/sync-conteneurs');
+      setSyncStatus({ syncing: false, result: response.data });
+      if (response.data.success) {
+        toast.success(response.data.message || 'Synchronisation réussie');
+        // Rafraîchir les données après sync
+        onRefresh?.();
+      }
+    } catch (error: any) {
+      setSyncStatus({ 
+        syncing: false, 
+        result: { 
+          success: false, 
+          error: error.response?.data?.message || error.message || 'Erreur de synchronisation'
+        } 
+      });
+      toast.error('Erreur lors de la synchronisation');
     }
   };
 
@@ -210,6 +237,38 @@ export function DebugPanel({ title = "Debug API", data, onRefresh }: DebugPanelP
                   </div>
                   <pre className="overflow-x-auto">
                     {formatJson(opsStatus.result)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* Sync from OPS */}
+            <div className="border-t pt-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground">Importer depuis OPS</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={syncFromOps}
+                  disabled={syncStatus.syncing}
+                  className="h-7 text-xs"
+                >
+                  {syncStatus.syncing ? (
+                    <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Synchronisation...</>
+                  ) : (
+                    <><Download className="h-3 w-3 mr-1" /> Récupérer conteneurs OPS</>
+                  )}
+                </Button>
+              </div>
+              
+              {syncStatus.result && (
+                <div className={`p-2 rounded border text-xs ${
+                  syncStatus.result.success 
+                    ? 'bg-green-50 border-green-200 text-green-800' 
+                    : 'bg-red-50 border-red-200 text-red-800'
+                }`}>
+                  <pre className="overflow-x-auto">
+                    {formatJson(syncStatus.result)}
                   </pre>
                 </div>
               )}
