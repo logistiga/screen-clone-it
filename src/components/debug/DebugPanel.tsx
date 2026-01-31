@@ -90,14 +90,23 @@ export function DebugPanel({ title = "Debug API", data, onRefresh }: DebugPanelP
         onRefresh?.();
       }
     } catch (error: any) {
+      const errorData = error.response?.data;
+      console.error('[DebugPanel] Erreur sync OPS:', {
+        status: error.response?.status,
+        message: errorData?.message,
+        debug: errorData?.debug,
+        fullResponse: errorData,
+      });
       setSyncStatus({ 
         syncing: false, 
         result: { 
           success: false, 
-          error: error.response?.data?.message || error.message || 'Erreur de synchronisation'
+          error: errorData?.message || error.message || 'Erreur de synchronisation',
+          debug: errorData?.debug,
+          status: error.response?.status,
         } 
       });
-      toast.error('Erreur lors de la synchronisation');
+      toast.error(errorData?.message || 'Erreur lors de la synchronisation');
     }
   };
 
