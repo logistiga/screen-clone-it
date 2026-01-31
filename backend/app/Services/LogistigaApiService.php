@@ -224,16 +224,27 @@ class LogistigaApiService
 
     /**
      * Récupère les conteneurs traités depuis Logistiga OPS
-     * Ces conteneurs sont ceux qui ont été sortis/livrés côté OPS
+     * Ces conteneurs sont ceux qui ont été retournés au port côté OPS
      */
     public function fetchConteneursTraites(array $filters = []): array
     {
-        $endpoint = '/sorties-traitees';
-        
-        // Ajouter les filtres en query string
-        if (!empty($filters)) {
-            $endpoint .= '?' . http_build_query($filters);
+        // Utiliser GET /sorties avec filtre statut=retourne_port
+        $params = array_merge([
+            'statut' => 'retourne_port',
+            'per_page' => 100,
+        ], $filters);
+
+        // Convertir date_from/date_to vers date_debut/date_fin pour l'API OPS
+        if (isset($params['date_from'])) {
+            $params['date_debut'] = $params['date_from'];
+            unset($params['date_from']);
         }
+        if (isset($params['date_to'])) {
+            $params['date_fin'] = $params['date_to'];
+            unset($params['date_to']);
+        }
+
+        $endpoint = '/sorties?' . http_build_query($params);
 
         return $this->sendRequest('get', $endpoint);
     }

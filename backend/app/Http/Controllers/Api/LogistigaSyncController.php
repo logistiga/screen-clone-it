@@ -100,30 +100,31 @@ class LogistigaSyncController extends Controller
             $updated = 0;
 
             foreach ($conteneurs as $data) {
-                $sortieId = $data['id'] ?? $data['sortie_id'] ?? null;
+                $sortieId = $data['id'] ?? null;
                 
                 $existing = $sortieId 
                     ? ConteneurTraite::where('sortie_id_externe', (string) $sortieId)->first()
                     : null;
 
+                // Mapping adapté à la structure SortieConteneurResource de OPS
                 $mappedData = [
                     'sortie_id_externe' => $sortieId ? (string) $sortieId : null,
-                    'numero_conteneur' => $data['numero_conteneur'] ?? $data['conteneur'] ?? '',
-                    'numero_bl' => $data['numero_bl'] ?? $data['bl'] ?? null,
-                    'armateur_code' => $data['armateur']['code'] ?? $data['armateur_code'] ?? null,
-                    'armateur_nom' => $data['armateur']['nom'] ?? $data['armateur_nom'] ?? null,
-                    'client_nom' => $data['client']['nom'] ?? $data['client_nom'] ?? null,
-                    'client_adresse' => $data['client']['adresse'] ?? $data['client_adresse'] ?? null,
-                    'transitaire_nom' => $data['transitaire']['nom'] ?? $data['transitaire_nom'] ?? null,
-                    'date_sortie' => $data['date_sortie'] ?? $data['dates']['sortie'] ?? null,
-                    'date_retour' => $data['date_retour'] ?? $data['dates']['retour'] ?? null,
-                    'camion_plaque' => $data['vehicule']['camion']['plaque'] ?? $data['camion_plaque'] ?? null,
-                    'remorque_plaque' => $data['vehicule']['remorque']['plaque'] ?? $data['remorque_plaque'] ?? null,
-                    'chauffeur_nom' => $data['chauffeur']['nom'] ?? $data['chauffeur_nom'] ?? null,
-                    'prime_chauffeur' => $data['chauffeur']['prime'] ?? $data['prime_chauffeur'] ?? null,
-                    'destination_type' => $data['destination']['type'] ?? $data['destination_type'] ?? null,
-                    'destination_adresse' => $data['destination']['adresse'] ?? $data['destination_adresse'] ?? null,
-                    'statut_ops' => $data['statut'] ?? 'traite',
+                    'numero_conteneur' => $data['numero_conteneur'] ?? '',
+                    'numero_bl' => $data['numero_bl'] ?? null,
+                    'armateur_code' => $data['code_armateur'] ?? $data['armateur']['code'] ?? null,
+                    'armateur_nom' => $data['armateur']['nom'] ?? null,
+                    'client_nom' => $data['nom_client'] ?? $data['client']['nom'] ?? null,
+                    'client_adresse' => $data['client']['adresse'] ?? null,
+                    'transitaire_nom' => $data['transitaire']['nom'] ?? null,
+                    'date_sortie' => $data['date_sortie'] ?? null,
+                    'date_retour' => $data['date_retour'] ?? null,
+                    'camion_plaque' => $data['camion']['plaque'] ?? null,
+                    'remorque_plaque' => $data['remorque']['plaque'] ?? null,
+                    'chauffeur_nom' => $data['chauffeur']['nom'] ?? null,
+                    'prime_chauffeur' => $data['prime']['montant'] ?? null,
+                    'destination_type' => $data['destination_type'] ?? null,
+                    'destination_adresse' => $data['destination_adresse'] ?? null,
+                    'statut_ops' => $data['statut'] ?? 'retourne_port',
                     'source_system' => 'logistiga_ops',
                     'synced_at' => now(),
                 ];
