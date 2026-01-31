@@ -223,6 +223,22 @@ class LogistigaApiService
     }
 
     /**
+     * Récupère les conteneurs traités depuis Logistiga OPS
+     * Ces conteneurs sont ceux qui ont été sortis/livrés côté OPS
+     */
+    public function fetchConteneursTraites(array $filters = []): array
+    {
+        $endpoint = '/sorties-traitees';
+        
+        // Ajouter les filtres en query string
+        if (!empty($filters)) {
+            $endpoint .= '?' . http_build_query($filters);
+        }
+
+        return $this->sendRequest('get', $endpoint);
+    }
+
+    /**
      * Headers pour les requêtes vers Logistiga OPS
      */
     protected function getHeaders(): array

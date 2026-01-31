@@ -99,4 +99,16 @@ export const conteneursTraitesApi = {
     const response = await api.post(`/conteneurs-en-attente/${conteneurId}/ignorer`);
     return response.data;
   },
+
+  /**
+   * Synchroniser les conteneurs depuis Logistiga OPS
+   */
+  syncFromOps: async (dateFrom?: string, dateTo?: string) => {
+    const params: Record<string, string> = {};
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+
+    const response = await api.post('/sync-diagnostic/sync-conteneurs', params);
+    return response.data;
+  },
 };
