@@ -1,79 +1,80 @@
 
+## Correction de la Synchronisation OPS
 
-## Correction de l'endpoint `/sync-diagnostic/health-ops`
+### Problème
+L'endpoint `/sorties-traitees` n'existe pas sur `opt.logistiga.com`. L'API utilise `GET /sorties` avec des filtres.
 
-### Problème Identifié
-Le `DebugPanel.tsx` appelle `/api/sync-diagnostic/health-ops` pour tester la connexion avec Logistiga OPS, mais **cette route n'existe pas** dans le backend Laravel.
+### Solution
+Modifier le service `LogistigaApiService` pour appeler le bon endpoint avec le filtre de statut approprié.
 
-La méthode `checkHealth()` existe déjà dans `LogistigaApiService`, mais elle n'est pas exposée via une route API.
+### Modifications
 
-### Solution Proposée
+#### 1. `backend/app/Services/LogistigaApiService.php`
 
-#### 1. Ajouter la méthode `healthOps()` au `LogistigaSyncController`
-Ajouter une nouvelle méthode dans `backend/app/Http/Controllers/Api/LogistigaSyncController.php` pour exposer la vérification de santé OPS :
+Remplacer l'appel à `/sorties-traitees` par `/sorties` avec le filtre `statut=retourne_port` :
 
 ```php
-/**
- * Vérifie la connectivité avec Logistiga OPS
- */
-public function healthOps(): JsonResponse
+public function fetchConteneursTraites(array $filters = []): array
 {
-    $health = $this->logistigaService->checkHealth();
+    // Utiliser GET /sorties avec filtre statut=retourne_port
+    $params = array_merge([
+        'statut' => 'retourne_port',  // Conteneurs retournés au port
+        'per_page' => 100,
+    ], $filters);
     
-    return response()->json([
-        'success' => $health['connected'] ?? false,
-        'connected' => $health['connected'] ?? false,
-        'status' => $health['status'] ?? 0,
-        'message' => $health['message'] ?? 'Statut inconnu',
-        'timestamp' => now()->toIso8601String(),
-    ]);
+    return $this->sendRequest('GET', '/sorties', $params);
 }
 ```
 
-#### 2. Créer la route dans `backend/routes/api.php`
-Ajouter un groupe de routes pour le diagnostic de synchronisation :
+#### 2. `backend/app/Http/Controllers/Api/LogistigaSyncController.php`
 
-```php
-// ============================================
-// SYNC DIAGNOSTIC (état de la connexion OPS)
-// ============================================
-Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
-    Route::get('health-ops', [LogistigaSyncController::class, 'healthOps'])
-        ->middleware('permission:configuration.voir');
-});
+Adapter le mapping des champs selon la structure retournée par `SortieConteneurResource` :
+
+| Champ OPS | Champ Facturation |
+|-----------|-------------------|
+| `numero_conteneur` | `numero_conteneur` |
+| `numero_bl` | `numero_bl` |
+| `nom_client` | `client_nom` |
+| `code_armateur` | `armateur_code` |
+| `date_sortie` | `date_sortie` |
+| `date_retour` | `date_retour` |
+| `camion.plaque` | `camion_plaque` |
+| `remorque.plaque` | `remorque_plaque` |
+| `statut` | `statut_ops` |
+
+### Partie Technique
+
+**Flux de synchronisation corrigé :**
+```text
+DebugPanel → "Récupérer conteneurs OPS"
+    │
+    ▼
+POST /sync-diagnostic/sync-conteneurs
+    │
+    ▼
+LogistigaSyncController::syncConteneursFromOps()
+    │
+    ▼
+LogistigaApiService::fetchConteneursTraites()
+    │
+    ▼
+GET https://opt.logistiga.com/backend/api/sorties?statut=retourne_port&per_page=100
+    │
+    ▼
+Mapping + Upsert dans conteneurs_traites
+    │
+    ▼
+Réponse { success: true, imported: X, updated: Y }
 ```
 
 ### Fichiers à Modifier
 
-| Fichier | Modification |
-|---------|-------------|
-| `backend/app/Http/Controllers/Api/LogistigaSyncController.php` | Ajouter méthode `healthOps()` |
-| `backend/routes/api.php` | Ajouter route `GET /sync-diagnostic/health-ops` |
+| Fichier | Action |
+|---------|--------|
+| `backend/app/Services/LogistigaApiService.php` | Changer endpoint `/sorties-traitees` → `/sorties` avec filtre |
+| `backend/app/Http/Controllers/Api/LogistigaSyncController.php` | Adapter mapping des champs |
 
-### Partie Technique
-
-**Flux de la requête :**
-```text
-DebugPanel.tsx
-    │
-    ▼
-GET /api/sync-diagnostic/health-ops
-    │
-    ▼
-LogistigaSyncController::healthOps()
-    │
-    ▼
-LogistigaApiService::checkHealth()
-    │
-    ▼
-HTTP GET → https://suivitc.logistiga.com/backend/api/health
-    │
-    ▼
-Réponse JSON { success, connected, status, message, timestamp }
-```
-
-**Permissions :** L'endpoint sera protégé par `permission:configuration.voir` pour limiter l'accès aux utilisateurs ayant les droits de configuration.
-
-### Instructions de Déploiement
-Après approbation, les fichiers backend modifiés devront être déployés sur le serveur de production pour que l'endpoint soit accessible.
-
+### Instructions Post-Déploiement
+1. Déployer les fichiers backend modifiés
+2. Cliquer sur "Récupérer conteneurs OPS" dans le DebugPanel
+3. Vérifier que les conteneurs avec statut `retourne_port` apparaissent dans la liste
