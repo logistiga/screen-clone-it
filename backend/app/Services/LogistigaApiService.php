@@ -17,7 +17,7 @@ class LogistigaApiService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('services.logistiga_ops.url', 'https://suivitc.logistiga.com/backend/api'), '/');
+        $this->baseUrl = rtrim(config('services.logistiga_ops.url', 'https://opt.logistiga.com/backend/api'), '/');
         $this->apiKey = config('services.logistiga_ops.api_key');
         $this->timeout = (int) config('services.logistiga_ops.timeout', 30);
         $this->syncEnabled = (bool) config('services.logistiga_ops.sync_enabled', true);
