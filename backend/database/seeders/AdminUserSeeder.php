@@ -10,6 +10,12 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Protection contre l'exécution en production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  AdminUserSeeder bloqué en production.');
+            return;
+        }
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@logistiga.com'],
             [

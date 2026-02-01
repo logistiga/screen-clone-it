@@ -10,6 +10,12 @@ class UsersSeeder extends Seeder
 {
     public function run(): void
     {
+        // Protection contre l'exécution en production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  UsersSeeder bloqué en production.');
+            return;
+        }
+
         $users = [
             [
                 'nom' => 'Jean Directeur',

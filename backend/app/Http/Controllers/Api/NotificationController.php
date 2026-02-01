@@ -52,7 +52,6 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de la facture',
-                'error' => config('app.debug') ? 'NotificationService::envoyerFacture a retourné false' : null,
             ], 500);
         } catch (\Throwable $e) {
             Log::error("Controller: Erreur envoi facture {$facture->numero}", [
@@ -67,7 +66,6 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de la facture',
-                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -102,7 +100,6 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi du devis',
-                'error' => config('app.debug') ? 'NotificationService::envoyerDevis a retourné false' : null,
             ], 500);
         } catch (\Throwable $e) {
             Log::error("Controller: Erreur envoi devis {$devis->numero}", [
@@ -117,7 +114,6 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi du devis',
-                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -152,11 +148,9 @@ class NotificationController extends Controller
 
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de l\'ordre de travail',
-                'error' => config('app.debug') ? 'NotificationService::envoyerOrdreTravail a retourné false' : null,
             ], 500);
         } catch (\Throwable $e) {
             $errorId = (string) Str::uuid();
-            $debug = (bool) (config('app.debug') || $request->boolean('debug'));
 
             Log::error("Controller: Erreur envoi ordre {$ordre->numero}", [
                 'error_id' => $errorId,
@@ -172,8 +166,6 @@ class NotificationController extends Controller
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de l\'ordre de travail',
                 'error_id' => $errorId,
-                'error' => $debug ? $e->getMessage() : null,
-                'exception' => $debug ? get_class($e) : null,
             ], 500);
         }
     }
