@@ -74,11 +74,14 @@ class ConteneurTraiteController extends Controller
      */
     public function receiveFromOps(Request $request): JsonResponse
     {
-        // Vérifier l'API Key
-        $apiKey = $request->header('Authorization') ?? $request->header('X-API-Key');
+        // Vérifier l'API Key (timing-safe avec hash_equals)
+        $rawApiKey = $request->header('X-API-Key') ?? '';
+        $authHeader = $request->header('Authorization') ?? '';
+        $bearerKey = str_starts_with($authHeader, 'Bearer ') ? substr($authHeader, 7) : '';
+        $providedKey = !empty($rawApiKey) ? $rawApiKey : $bearerKey;
         $expectedKey = config('services.logistiga_ops.webhook_key');
-        
-        if ($expectedKey && $apiKey !== $expectedKey && $apiKey !== "Bearer {$expectedKey}") {
+
+        if (empty($expectedKey) || empty($providedKey) || !hash_equals($expectedKey, $providedKey)) {
             Log::warning('[ConteneurTraite] API Key invalide', [
                 'ip' => $request->ip(),
             ]);
