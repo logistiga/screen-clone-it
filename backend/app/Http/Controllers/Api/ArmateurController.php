@@ -15,38 +15,63 @@ class ArmateurController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Optimisation: calcul SQL des statistiques
-        $query = Armateur::query()
-            ->withCount(['devis', 'ordres', 'factures'])
-            ->select('armateurs.*')
-            ->selectSub(function ($q) {
-                $q->from('factures')
-                    ->selectRaw('COALESCE(SUM(montant_ttc), 0)')
-                    ->whereColumn('factures.armateur_id', 'armateurs.id')
-                    ->whereNotIn('statut', ['annulee', 'Annulée']);
-            }, 'chiffre_affaires')
-            ->selectSub(function ($q) {
-                $q->from('ordres_travail')
-                    ->selectRaw('COALESCE(SUM(montant_ttc), 0)')
-                    ->whereColumn('ordres_travail.armateur_id', 'armateurs.id');
-            }, 'montant_ordres');
+        try {
+            // Optimisation: calcul SQL des statistiques
+            $query = Armateur::query()
+                ->withCount(['devis', 'ordres', 'factures'])
+                ->select('armateurs.*')
+                ->selectSub(function ($q) {
+                    $q->from('factures')
+                        ->selectRaw('COALESCE(SUM(montant_ttc), 0)')
+                        ->whereColumn('factures.armateur_id', 'armateurs.id')
+                        ->whereNotIn('statut', ['annulee', 'Annulée']);
+                }, 'chiffre_affaires')
+                ->selectSub(function ($q) {
+                    $q->from('ordres_travail')
+                        ->selectRaw('COALESCE(SUM(montant_ttc), 0)')
+                        ->whereColumn('ordres_travail.armateur_id', 'armateurs.id');
+                }, 'montant_ordres');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('nom', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
+            if ($request->has('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('code', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->has('actif')) {
+                $query->where('actif', $request->boolean('actif'));
+            }
+
+            $armateurs = $query->orderBy('nom')->paginate($request->get('per_page', 15));
+
+            return response()->json(ArmateurResource::collection($armateurs)->response()->getData(true));
+
+        } catch (\Exception $e) {
+            // Fallback sans les calculs stats pour éviter erreur 500
+            \Log::warning('ArmateurController@index fallback: ' . $e->getMessage());
+
+            $query = Armateur::query()->withCount(['devis', 'ordres', 'factures']);
+
+            if ($request->has('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('code', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->has('actif')) {
+                $query->where('actif', $request->boolean('actif'));
+            }
+
+            $armateurs = $query->orderBy('nom')->paginate($request->get('per_page', 15));
+
+            return response()->json(ArmateurResource::collection($armateurs)->response()->getData(true));
         }
-
-        if ($request->has('actif')) {
-            $query->where('actif', $request->boolean('actif'));
-        }
-
-        $armateurs = $query->orderBy('nom')->paginate($request->get('per_page', 15));
-
-        return response()->json(ArmateurResource::collection($armateurs)->response()->getData(true));
     }
 
     public function store(StoreArmateurRequest $request): JsonResponse
