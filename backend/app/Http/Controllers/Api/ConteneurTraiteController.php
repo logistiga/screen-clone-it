@@ -14,7 +14,14 @@ use Illuminate\Support\Facades\Log;
 class ConteneurTraiteController extends Controller
 {
     /**
-     * Liste des conteneurs traités
+     * Liste des conteneurs traités en attente de facturation.
+     * 
+     * LOGIQUE MÉTIER:
+     * Un conteneur s'affiche dans "en attente" UNIQUEMENT s'il n'existe pas 
+     * dans un ordre de travail avec la même combinaison:
+     * - Nom client (client_nom ↔ client.nom)
+     * - Numéro BL (numero_bl)
+     * - Numéro conteneur (numero_conteneur ↔ conteneur_ordres.numero)
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,9 +31,51 @@ class ConteneurTraiteController extends Controller
         if ($request->filled('statut')) {
             if ($request->statut === 'non_traites') {
                 $query->nonTraites();
+            } elseif ($request->statut === 'en_attente') {
+                // Statut en_attente = exclure ceux déjà existants dans OT
+                $query->where('statut', 'en_attente')
+                      ->whereNotExists(function ($subquery) {
+                          $subquery->select(DB::raw(1))
+                              ->from('ordres_travail as ot')
+                              ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
+                              ->join('clients as c', 'c.id', '=', 'ot.client_id')
+                              ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
+                              ->where(function ($q) {
+                                  // BL identique OU les deux sont null
+                                  $q->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
+                                    ->orWhere(function ($q2) {
+                                        $q2->whereNull('ot.numero_bl')
+                                           ->whereNull('conteneurs_traites.numero_bl');
+                                    });
+                              })
+                              ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
+                      });
             } else {
                 $query->where('statut', $request->statut);
             }
+        } else {
+            // Par défaut, appliquer aussi le filtre d'exclusion pour les "en_attente"
+            $query->where(function ($q) {
+                $q->where('statut', '!=', 'en_attente')
+                  ->orWhere(function ($subQ) {
+                      $subQ->where('statut', 'en_attente')
+                           ->whereNotExists(function ($existsQ) {
+                               $existsQ->select(DB::raw(1))
+                                   ->from('ordres_travail as ot')
+                                   ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
+                                   ->join('clients as c', 'c.id', '=', 'ot.client_id')
+                                   ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
+                                   ->where(function ($blQ) {
+                                       $blQ->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
+                                           ->orWhere(function ($nullQ) {
+                                               $nullQ->whereNull('ot.numero_bl')
+                                                     ->whereNull('conteneurs_traites.numero_bl');
+                                           });
+                                   })
+                                   ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
+                           });
+                  });
+            });
         }
 
         // Recherche
@@ -200,12 +249,32 @@ class ConteneurTraiteController extends Controller
 
     /**
      * Statistiques des conteneurs traités
+     * Le compteur "en_attente" exclut les conteneurs déjà dans un OT
      */
     public function stats(): JsonResponse
     {
+        // Sous-requête pour exclure les conteneurs déjà facturés via OT
+        $enAttenteReels = ConteneurTraite::where('statut', 'en_attente')
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('ordres_travail as ot')
+                    ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
+                    ->join('clients as c', 'c.id', '=', 'ot.client_id')
+                    ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
+                    ->where(function ($blQ) {
+                        $blQ->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
+                            ->orWhere(function ($nullQ) {
+                                $nullQ->whereNull('ot.numero_bl')
+                                      ->whereNull('conteneurs_traites.numero_bl');
+                            });
+                    })
+                    ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
+            })
+            ->count();
+
         $stats = [
             'total' => ConteneurTraite::count(),
-            'en_attente' => ConteneurTraite::enAttente()->count(),
+            'en_attente' => $enAttenteReels,
             'affectes' => ConteneurTraite::affectes()->count(),
             'factures' => ConteneurTraite::factures()->count(),
             'derniere_sync' => ConteneurTraite::max('synced_at'),
