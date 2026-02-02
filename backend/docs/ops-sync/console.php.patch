@@ -1,0 +1,30 @@
+<?php
+/**
+ * PATCH pour routes/console.php d'OPS
+ * 
+ * Ajouter ce schedule pour la synchronisation automatique
+ */
+
+use Illuminate\Support\Facades\Schedule;
+
+// ============================================================
+// SYNCHRONISATION FACTURATION → OPS
+// ============================================================
+
+// Synchronisation automatique toutes les 5 minutes
+Schedule::command('sync:from-facturation')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/sync-facturation.log'))
+    ->onFailure(function () {
+        // Optionnel: notification en cas d'échec
+        Log::channel('slack')->error('Échec synchronisation Facturation → OPS');
+    });
+
+// Alternative: synchronisation toutes les minutes (si données très critiques)
+// Schedule::command('sync:from-facturation')
+//     ->everyMinute()
+//     ->withoutOverlapping()
+//     ->runInBackground()
+//     ->appendOutputTo(storage_path('logs/sync-facturation.log'));
