@@ -1,3 +1,4 @@
+import * as React from "react";
 import { motion } from "framer-motion";
 import loadingGif from "@/assets/loading-transition.gif";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,12 +10,15 @@ interface DocumentLoadingStateProps {
   columns?: number;
 }
 
-export function DocumentLoadingState({ 
+export const DocumentLoadingState = React.forwardRef<
+  HTMLDivElement,
+  DocumentLoadingStateProps
+>(({ 
   message = "Chargement...",
   showTableSkeleton = true,
   rows = 5,
   columns = 6
-}: DocumentLoadingStateProps) {
+}, ref) => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header avec GIF animé */}
@@ -115,4 +119,5 @@ export function DocumentLoadingState({
       )}
     </div>
   );
-}
+});
+DocumentLoadingState.displayName = "DocumentLoadingState";
