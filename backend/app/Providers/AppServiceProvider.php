@@ -14,13 +14,6 @@ use App\Services\AnnulationService;
 use App\Services\ReportingService;
 use App\Services\ExportService;
 use App\Services\NotificationService;
-use App\Services\LogistigaApiService;
-
-// Models & Observers pour sync OPS
-use App\Models\Client;
-use App\Models\Transitaire;
-use App\Observers\ClientObserver;
-use App\Observers\TransitaireObserver;
 
 // Services spécialisés par type - Devis
 use App\Services\Devis\DevisConteneursService;
@@ -84,9 +77,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AnnulationService::class);
         $this->app->singleton(ReportingService::class);
         $this->app->singleton(NotificationService::class);
-        
-        // === Service Logistiga OPS (pour observers) ===
-        $this->app->singleton(LogistigaApiService::class);
 
         // PaiementService utilise les Factories
         $this->app->singleton(PaiementService::class, function ($app) {
@@ -111,13 +101,6 @@ class AppServiceProvider extends ServiceProvider
     {
         // Fix pour MySQL < 5.7.7 / MariaDB avec utf8mb4
         Schema::defaultStringLength(191);
-
-        // =============================================
-        // OBSERVERS - Synchronisation automatique OPS
-        // =============================================
-        // Utiliser make() pour résoudre les dépendances des observers
-        Client::observe($this->app->make(ClientObserver::class));
-        Transitaire::observe($this->app->make(TransitaireObserver::class));
 
         // =============================================
         // RATE LIMITERS - Configuration centralisée

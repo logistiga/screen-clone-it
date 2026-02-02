@@ -10,12 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 
 class ConteneurTraiteController extends Controller
 {
     /**
-     * Liste des conteneurs traités (reçus de Logistiga OPS)
+     * Liste des conteneurs traités
      */
     public function index(Request $request): JsonResponse
     {
@@ -69,137 +68,6 @@ class ConteneurTraiteController extends Controller
     }
 
     /**
-     * Webhook pour recevoir les conteneurs traités depuis Logistiga OPS
-     * Route publique protégée par API Key
-     */
-    public function receiveFromOps(Request $request): JsonResponse
-    {
-        // Vérifier l'API Key (timing-safe avec hash_equals)
-        $rawApiKey = $request->header('X-API-Key') ?? '';
-        $authHeader = $request->header('Authorization') ?? '';
-        $bearerKey = str_starts_with($authHeader, 'Bearer ') ? substr($authHeader, 7) : '';
-        $providedKey = !empty($rawApiKey) ? $rawApiKey : $bearerKey;
-        $expectedKey = config('services.logistiga_ops.webhook_key');
-
-        if (empty($expectedKey) || empty($providedKey) || !hash_equals($expectedKey, $providedKey)) {
-            Log::warning('[ConteneurTraite] API Key invalide', [
-                'ip' => $request->ip(),
-            ]);
-            return response()->json(['success' => false, 'message' => 'API Key invalide'], 401);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'numero_conteneur' => 'required|string|max:20',
-            'numero_bl' => 'nullable|string|max:100',
-            'armateur' => 'nullable|array',
-            'armateur.code' => 'nullable|string|max:20',
-            'armateur.nom' => 'nullable|string|max:255',
-            'client' => 'nullable|array',
-            'client.nom' => 'nullable|string|max:255',
-            'client.adresse' => 'nullable|string',
-            'transitaire' => 'nullable|array',
-            'transitaire.nom' => 'nullable|string|max:255',
-            'dates' => 'nullable|array',
-            'dates.sortie' => 'nullable|date',
-            'dates.retour' => 'nullable|date',
-            'vehicule' => 'nullable|array',
-            'chauffeur' => 'nullable|array',
-            'destination' => 'nullable|array',
-            'statut' => 'nullable|string|max:50',
-            'sortie_id' => 'nullable|integer',
-            'source_system' => 'nullable|string|max:50',
-        ]);
-
-        if ($validator->fails()) {
-            Log::warning('[ConteneurTraite] Validation échouée', [
-                'errors' => $validator->errors()->toArray(),
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            $data = $request->all();
-            
-            // Vérifier si le conteneur existe déjà (par sortie_id_externe)
-            $sortieId = $data['sortie_id'] ?? null;
-            if ($sortieId) {
-                $existing = ConteneurTraite::where('sortie_id_externe', (string)$sortieId)->first();
-                if ($existing) {
-                    // Mettre à jour les données
-                    $existing->update($this->mapOpsData($data));
-                    Log::info('[ConteneurTraite] Conteneur mis à jour', [
-                        'id' => $existing->id,
-                        'numero' => $existing->numero_conteneur,
-                    ]);
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Conteneur mis à jour',
-                        'id' => $existing->id,
-                    ]);
-                }
-            }
-
-            // Créer le nouveau conteneur
-            $conteneur = ConteneurTraite::create($this->mapOpsData($data));
-
-            Log::info('[ConteneurTraite] Conteneur reçu depuis OPS', [
-                'id' => $conteneur->id,
-                'numero' => $conteneur->numero_conteneur,
-                'bl' => $conteneur->numero_bl,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Conteneur reçu avec succès',
-                'id' => $conteneur->id,
-            ], 201);
-
-        } catch (\Exception $e) {
-            Log::error('[ConteneurTraite] Erreur réception', [
-                'error' => $e->getMessage(),
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur interne',
-            ], 500);
-        }
-    }
-
-    /**
-     * Mapper les données reçues de OPS vers le format de la table
-     */
-    private function mapOpsData(array $data): array
-    {
-        return [
-            'sortie_id_externe' => isset($data['sortie_id']) ? (string)$data['sortie_id'] : null,
-            'numero_conteneur' => $data['numero_conteneur'],
-            'numero_bl' => $data['numero_bl'] ?? null,
-            'armateur_code' => $data['armateur']['code'] ?? null,
-            'armateur_nom' => $data['armateur']['nom'] ?? null,
-            'client_nom' => $data['client']['nom'] ?? null,
-            'client_adresse' => $data['client']['adresse'] ?? null,
-            'transitaire_nom' => $data['transitaire']['nom'] ?? null,
-            'date_sortie' => $data['dates']['sortie'] ?? null,
-            'date_retour' => $data['dates']['retour'] ?? null,
-            'camion_id_externe' => $data['vehicule']['camion']['id'] ?? null,
-            'camion_plaque' => $data['vehicule']['camion']['plaque'] ?? null,
-            'remorque_id_externe' => $data['vehicule']['remorque']['id'] ?? null,
-            'remorque_plaque' => $data['vehicule']['remorque']['plaque'] ?? null,
-            'chauffeur_nom' => $data['chauffeur']['nom'] ?? null,
-            'prime_chauffeur' => $data['chauffeur']['prime'] ?? null,
-            'destination_type' => $data['destination']['type'] ?? null,
-            'destination_adresse' => $data['destination']['adresse'] ?? null,
-            'statut_ops' => $data['statut'] ?? null,
-            'source_system' => $data['source_system'] ?? 'logistiga_ops',
-            'synced_at' => now(),
-        ];
-    }
-
-    /**
      * Affecter un conteneur traité à un ordre de travail existant
      */
     public function affecterAOrdre(Request $request, ConteneurTraite $conteneur): JsonResponse
@@ -221,7 +89,6 @@ class ConteneurTraiteController extends Controller
                 // Ajouter via la relation
                 $ordre->conteneurs()->create([
                     'numero' => $conteneur->numero_conteneur,
-                    // Ajouter d'autres champs si nécessaire
                 ]);
             }
 
@@ -278,8 +145,8 @@ class ConteneurTraiteController extends Controller
                 'categorie' => 'conteneurs',
                 'statut' => 'brouillon',
                 'numero_bl' => $conteneur->numero_bl,
-                'armateur_id' => null, // À mapper si nécessaire
-                'transitaire_id' => null, // À mapper si nécessaire
+                'armateur_id' => null,
+                'transitaire_id' => null,
             ]);
 
             // Ajouter le conteneur
