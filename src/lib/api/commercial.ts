@@ -627,13 +627,24 @@ export const transitairesApi = {
 // Representants API
 export const representantsApi = {
   getAll: async (params?: { per_page?: number }) => {
+    console.log('[representantsApi.getAll] Appel avec params:', params);
     const response = await api.get('/representants', { params });
+    console.log('[representantsApi.getAll] Réponse brute:', response.data);
     const payload: any = response.data;
     // Support multiples formats de réponse API
-    if (Array.isArray(payload)) return payload as Representant[];
+    if (Array.isArray(payload)) {
+      console.log('[representantsApi.getAll] Format tableau direct, count:', payload.length);
+      return payload as Representant[];
+    }
     const data = payload?.data;
-    if (Array.isArray(data)) return data as Representant[];
-    if (Array.isArray(data?.data)) return data.data as Representant[];
+    if (Array.isArray(data)) {
+      console.log('[representantsApi.getAll] Format {data: []}, count:', data.length);
+      return data as Representant[];
+    }
+    if (Array.isArray(data?.data)) {
+      console.log('[representantsApi.getAll] Format {data: {data: []}}, count:', data.data.length);
+      return data.data as Representant[];
+    }
     console.warn('[representantsApi.getAll] Format inattendu:', payload);
     return [] as Representant[];
   },
