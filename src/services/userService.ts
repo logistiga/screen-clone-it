@@ -178,13 +178,13 @@ export const userService = {
 
   // Profil de l'utilisateur connecté
   async getProfile(): Promise<UserDetail> {
-    const response = await api.get('/profile');
+    const response = await api.get('/auth/user');
     return response.data;
   },
 
   // Mettre à jour le profil
   async updateProfile(data: { nom?: string; email?: string }): Promise<User> {
-    const response = await api.put('/profile', data);
+    const response = await api.put('/auth/profile', data);
     return response.data;
   },
 
@@ -194,7 +194,7 @@ export const userService = {
     password: string;
     password_confirmation: string;
   }): Promise<{ message: string }> {
-    const response = await api.put('/password', data);
+    const response = await api.put('/auth/password', data);
     return response.data;
   },
 

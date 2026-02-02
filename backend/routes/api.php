@@ -625,4 +625,9 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('throttle:stats');
         Route::get('{auditLog}', [AuditController::class, 'show']);
     });
+
+    // ============================================
+    // NOTIFICATIONS IN-APP (ALERTES)
+    // ============================================
+    require __DIR__.'/api_notifications.php';
 });
