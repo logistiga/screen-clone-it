@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use App\Http\Controllers\Api\ConteneurTraiteController;
+use App\Http\Controllers\Api\SyncDiagnosticController;
 
 
 /*
@@ -200,6 +201,20 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:ordres.creer');
         Route::post('{conteneur}/ignorer', [ConteneurTraiteController::class, 'ignorer'])
             ->middleware('permission:ordres.modifier');
+    });
+
+    // ============================================
+    // SYNC DIAGNOSTIC (OPS)
+    // ============================================
+    Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
+        Route::get('health-ops', [SyncDiagnosticController::class, 'healthOps'])
+            ->middleware('permission:configuration.voir');
+        Route::post('sync-conteneurs', [SyncDiagnosticController::class, 'syncConteneurs'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('sync-armateurs', [SyncDiagnosticController::class, 'syncArmateurs'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('sync-all', [SyncDiagnosticController::class, 'syncAll'])
+            ->middleware('permission:configuration.modifier');
     });
 
     // ============================================
