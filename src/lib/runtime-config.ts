@@ -2,6 +2,17 @@
 const DEFAULT_BACKEND_BASE_URL = "https://facturation.logistiga.pro/backend/public";
 const DEFAULT_API_URL = `${DEFAULT_BACKEND_BASE_URL}/api`;
 
+/**
+ * Normalise les URLs historiques encore en .com → .pro.
+ * Utile si un ancien build / env injecte encore logistiga.com.
+ */
+const normalizeLogistigaDomain = (url: string): string => {
+  // Remplacement ciblé pour éviter des surprises
+  return url
+    .replace(/facturation\.logistiga\.com/g, "facturation.logistiga.pro")
+    .replace(/logistiga\.com/g, "logistiga.pro");
+};
+
 const isTryCloudflareUrl = (url: string): boolean => url.includes("trycloudflare.com");
 
 /**
@@ -10,9 +21,11 @@ const isTryCloudflareUrl = (url: string): boolean => url.includes("trycloudflare
  */
 export const getBackendBaseUrl = (): string => {
   const mode = import.meta.env.MODE;
-  const envUrl = (import.meta.env.VITE_BACKEND_BASE_URL as string | undefined)?.trim();
+  const envUrlRaw = (import.meta.env.VITE_BACKEND_BASE_URL as string | undefined)?.trim();
 
-  if (!envUrl) return DEFAULT_BACKEND_BASE_URL;
+  if (!envUrlRaw) return DEFAULT_BACKEND_BASE_URL;
+
+  const envUrl = normalizeLogistigaDomain(envUrlRaw);
 
   // Les tunnels Cloudflare sont pratiques en dev, mais souvent expirés en preview/prod.
   if (mode !== "development" && isTryCloudflareUrl(envUrl)) {
@@ -28,9 +41,11 @@ export const getBackendBaseUrl = (): string => {
  */
 export const getApiUrl = (): string => {
   const mode = import.meta.env.MODE;
-  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  const envUrlRaw = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 
-  if (!envUrl) return DEFAULT_API_URL;
+  if (!envUrlRaw) return DEFAULT_API_URL;
+
+  const envUrl = normalizeLogistigaDomain(envUrlRaw);
 
   // Les tunnels Cloudflare sont pratiques en dev, mais souvent expirés en preview/prod.
   if (mode !== "development" && isTryCloudflareUrl(envUrl)) {
