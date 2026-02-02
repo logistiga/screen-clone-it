@@ -134,16 +134,18 @@ class SyncFromOps extends Command
 
     /**
      * Synchronise les armateurs depuis OPS
+     * 
+     * La table OPS `armateurs` a les colonnes: id, nom, code, actif, created_at, updated_at
+     * (pas de colonnes email, telephone, adresse)
      */
     private function syncArmateurs(): void
     {
         $this->info('📦 Synchronisation des armateurs...');
 
-        // Lire les armateurs depuis OPS
-        // Note: Adapter le nom de table selon la structure OPS
+        // Lire les armateurs depuis OPS (colonnes réelles de la table OPS)
         $opsArmateurs = DB::connection('ops')
             ->table('armateurs')
-            ->select(['id', 'nom', 'code', 'email', 'telephone', 'adresse', 'actif', 'created_at', 'updated_at'])
+            ->select(['id', 'nom', 'code', 'actif', 'created_at', 'updated_at'])
             ->get();
 
         $bar = $this->output->createProgressBar($opsArmateurs->count());
@@ -164,9 +166,6 @@ class SyncFromOps extends Command
                 if ($opsArmateur->updated_at > $existing->updated_at) {
                     $existing->update([
                         'nom' => $opsArmateur->nom,
-                        'email' => $opsArmateur->email,
-                        'telephone' => $opsArmateur->telephone,
-                        'adresse' => $opsArmateur->adresse,
                         'actif' => $opsArmateur->actif ?? true,
                     ]);
                     $this->armateursUpdated++;
@@ -176,9 +175,6 @@ class SyncFromOps extends Command
                 Armateur::create([
                     'nom' => $opsArmateur->nom,
                     'code' => $opsArmateur->code,
-                    'email' => $opsArmateur->email,
-                    'telephone' => $opsArmateur->telephone,
-                    'adresse' => $opsArmateur->adresse,
                     'actif' => $opsArmateur->actif ?? true,
                 ]);
                 $this->armateursImported++;
