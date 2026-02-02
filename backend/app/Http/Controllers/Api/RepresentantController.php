@@ -16,47 +16,74 @@ class RepresentantController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
-        $query = Representant::query()
-            ->withCount('primes')
-            ->select('representants.*')
-            ->selectSub(function ($q) {
-                $q->from('primes')
-                    ->selectRaw('COALESCE(SUM(montant), 0)')
-                    ->whereColumn('primes.representant_id', 'representants.id')
-                    ->whereIn('statut', ['En attente', 'Partiellement payée']);
-            }, 'primes_dues')
-            ->selectSub(function ($q) {
-                $q->from('primes')
-                    ->selectRaw('COALESCE(SUM(montant), 0)')
-                    ->whereColumn('primes.representant_id', 'representants.id')
-                    ->where('statut', 'Payée');
-            }, 'primes_payees')
-            ->selectSub(function ($q) {
-                $q->from('primes')
-                    ->selectRaw('COALESCE(SUM(montant), 0)')
-                    ->whereColumn('primes.representant_id', 'representants.id');
-            }, 'primes_total');
+        try {
+            // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
+            // Utilise selectRaw pour éviter les problèmes de syntaxe avec whereIn dans les sous-requêtes
+            $query = Representant::query()
+                ->withCount('primes')
+                ->select('representants.*')
+                ->selectRaw("
+                    (SELECT COALESCE(SUM(montant), 0) FROM primes 
+                     WHERE primes.representant_id = representants.id 
+                     AND primes.statut IN ('En attente', 'Partiellement payée')
+                     AND primes.deleted_at IS NULL) as primes_dues
+                ")
+                ->selectRaw("
+                    (SELECT COALESCE(SUM(montant), 0) FROM primes 
+                     WHERE primes.representant_id = representants.id 
+                     AND primes.statut = 'Payée'
+                     AND primes.deleted_at IS NULL) as primes_payees
+                ")
+                ->selectRaw("
+                    (SELECT COALESCE(SUM(montant), 0) FROM primes 
+                     WHERE primes.representant_id = representants.id 
+                     AND primes.deleted_at IS NULL) as primes_total
+                ");
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('nom', 'like', "%{$search}%")
-                  ->orWhere('prenom', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('telephone', 'like', "%{$search}%");
-            });
+            if ($request->has('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('prenom', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('telephone', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->has('actif')) {
+                $query->where('actif', $request->boolean('actif'));
+            }
+
+            // Limite augmentée pour les sélecteurs/combobox (max 500)
+            $perPage = min((int) $request->get('per_page', 15), 500);
+            $representants = $query->orderBy('nom')->paginate($perPage);
+
+            return response()->json(RepresentantResource::collection($representants)->response()->getData(true));
+        } catch (\Exception $e) {
+            // Fallback sans les calculs de primes en cas d'erreur SQL
+            \Log::warning('RepresentantController@index fallback: ' . $e->getMessage());
+            
+            $query = Representant::query()->withCount('primes');
+
+            if ($request->has('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('prenom', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('telephone', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->has('actif')) {
+                $query->where('actif', $request->boolean('actif'));
+            }
+
+            $perPage = min((int) $request->get('per_page', 15), 500);
+            $representants = $query->orderBy('nom')->paginate($perPage);
+
+            return response()->json(RepresentantResource::collection($representants)->response()->getData(true));
         }
-
-        if ($request->has('actif')) {
-            $query->where('actif', $request->boolean('actif'));
-        }
-
-        // Limite augmentée pour les sélecteurs/combobox (max 500)
-        $perPage = min((int) $request->get('per_page', 15), 500);
-        $representants = $query->orderBy('nom')->paginate($perPage);
-
-        return response()->json(RepresentantResource::collection($representants)->response()->getData(true));
     }
 
     public function store(StoreRepresentantRequest $request): JsonResponse
