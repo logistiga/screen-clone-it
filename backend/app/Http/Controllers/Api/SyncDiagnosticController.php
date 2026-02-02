@@ -14,11 +14,40 @@ use Illuminate\Support\Facades\Log;
 class SyncDiagnosticController extends Controller
 {
     /**
+     * Rafraîchit dynamiquement la config OPS depuis les variables d'environnement.
+     * Utile si la config est en cache côté Laravel (config:cache) alors que .env a été mis à jour.
+     */
+    private function refreshOpsConfigFromEnv(): void
+    {
+        $host = env('OPS_DB_HOST');
+        $database = env('OPS_DB_DATABASE');
+
+        // Si l'env n'est pas configuré, on ne touche à rien.
+        if (empty($host) || empty($database)) {
+            return;
+        }
+
+        config([
+            'database.connections.ops.host' => $host,
+            'database.connections.ops.port' => env('OPS_DB_PORT', '3306'),
+            'database.connections.ops.database' => $database,
+            'database.connections.ops.username' => env('OPS_DB_USERNAME'),
+            'database.connections.ops.password' => env('OPS_DB_PASSWORD'),
+            'database.connections.ops.unix_socket' => env('OPS_DB_SOCKET', ''),
+        ]);
+
+        // Forcer Laravel à recréer la connexion avec la config à jour
+        DB::purge('ops');
+    }
+
+    /**
      * Teste la connexion à la base de données OPS
      */
     public function healthOps()
     {
         try {
+            $this->refreshOpsConfigFromEnv();
+
             // Vérifier si la connexion OPS est configurée
             $opsConfig = config('database.connections.ops');
             
@@ -77,6 +106,7 @@ class SyncDiagnosticController extends Controller
     public function syncConteneurs()
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             Log::info('[SyncDiagnostic] Déclenchement manuel sync conteneurs');
 
             // Vérifier d'abord la connexion OPS
@@ -149,6 +179,7 @@ class SyncDiagnosticController extends Controller
     public function syncArmateurs()
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             Log::info('[SyncDiagnostic] Déclenchement manuel sync armateurs');
 
             // Vérifier d'abord la connexion OPS
@@ -211,6 +242,7 @@ class SyncDiagnosticController extends Controller
     public function syncAll()
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             Log::info('[SyncDiagnostic] Déclenchement manuel sync complète');
 
             // Vérifier d'abord la connexion OPS

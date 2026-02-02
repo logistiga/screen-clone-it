@@ -65,7 +65,8 @@ return [
             'database' => env('OPS_DB_DATABASE', 'logistiga_ops'),
             'username' => env('OPS_DB_USERNAME', 'root'),
             'password' => env('OPS_DB_PASSWORD', ''),
-            'unix_socket' => env('DB_SOCKET', ''),
+             // Ne pas réutiliser DB_SOCKET (connexion principale) : OPS peut avoir un socket différent
+             'unix_socket' => env('OPS_DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
