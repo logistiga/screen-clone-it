@@ -25,12 +25,12 @@ const prefetchMap: Record<string, () => Promise<any>> = {
   '/devis': () => devisApi.getAll({ page: 1, per_page: 20 }),
   '/ordres': () => ordresApi.getAll({ page: 1, per_page: 20 }),
   '/factures': () => facturesApi.getAll({ page: 1, per_page: 20 }),
+  // IMPORTANT: on évite de précharger /representants au survol, car un 500 backend
+  // ne doit pas spammer la console ni dégrader l'UX. La page /partenaires chargera
+  // les représentants quand l'utilisateur y navigue réellement.
   '/partenaires': async () => {
-    const [transitaires, representants] = await Promise.all([
-      transitairesApi.getAll(),
-      representantsApi.getAll(),
-    ]);
-    return { transitaires, representants };
+    const transitaires = await transitairesApi.getAll();
+    return { transitaires };
   },
   '/caisse': () => mouvementsCaisseApi.getAll({ page: 1, per_page: 20 }),
   '/reporting': () => reportingApi.getTableauDeBord(),
@@ -90,6 +90,7 @@ export function usePrefetch() {
           queryKey,
           queryFn: () => clientsApi.getById(clientId),
           staleTime: PREFETCH_STALE_TIME,
+          retry: 0,
         });
       } catch (error) {
         console.debug('Prefetch error for client', clientId, error);
@@ -120,6 +121,7 @@ export function usePrefetch() {
         queryKey,
         queryFn: prefetchFn,
         staleTime: PREFETCH_STALE_TIME,
+        retry: 0,
       });
     } catch (error) {
       // Ignorer les erreurs de préchargement silencieusement
@@ -146,6 +148,7 @@ export function usePrefetch() {
         queryKey,
         queryFn: () => clientsApi.getById(String(clientId)),
         staleTime: PREFETCH_STALE_TIME,
+        retry: 0,
       });
     } catch (error) {
       console.debug('Prefetch error for client', clientId, error);

@@ -641,6 +641,10 @@ export function useRepresentants(params?: { per_page?: number }) {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     refetchOnMount: true,
+    // Évite de spammer le backend en cas de 500 (par défaut React Query retry plusieurs fois)
+    retry: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
