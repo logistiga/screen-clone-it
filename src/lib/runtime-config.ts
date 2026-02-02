@@ -1,5 +1,5 @@
 // URLs de production avec /backend/public (point d'entrée Laravel)
-const DEFAULT_BACKEND_BASE_URL = "https://facturation.logistiga.com/backend/public";
+const DEFAULT_BACKEND_BASE_URL = "https://facturation.logistiga.pro/backend/public";
 const DEFAULT_API_URL = `${DEFAULT_BACKEND_BASE_URL}/api`;
 
 const isTryCloudflareUrl = (url: string): boolean => url.includes("trycloudflare.com");
