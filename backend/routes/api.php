@@ -35,7 +35,6 @@ use App\Http\Controllers\Api\EmailAutomationController;
 use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
-use App\Http\Controllers\Api\LogistigaSyncController;
 use App\Http\Controllers\Api\ConteneurTraiteController;
 
 
@@ -81,11 +80,6 @@ Route::prefix('security')->group(function () {
     Route::get('suspicious-login/{id}/status', [SuspiciousLoginController::class, 'checkStatus'])
         ->name('security.suspicious-login.status');
 });
-
-// Webhook public pour recevoir les conteneurs traités depuis Logistiga OPS
-// Protégé par API Key (pas par Sanctum)
-Route::post('conteneurs-traites', [ConteneurTraiteController::class, 'receiveFromOps'])
-    ->name('conteneurs-traites.webhook');
 
 // Routes protégées par authentification
 Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
@@ -190,12 +184,10 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:ordres.supprimer');
         Route::post('{ordreTravail}/convert-facture', [OrdreTravailController::class, 'convertToFacture'])
             ->middleware('permission:factures.creer');
-        Route::post('{ordreTravail}/send-logistiga', [LogistigaSyncController::class, 'sendOrdreById'])
-            ->middleware('permission:ordres.modifier');
     });
 
     // ============================================
-    // CONTENEURS EN ATTENTE (reçus depuis Logistiga OPS)
+    // CONTENEURS EN ATTENTE
     // ============================================
     Route::prefix('conteneurs-en-attente')->middleware('audit')->group(function () {
         Route::get('/', [ConteneurTraiteController::class, 'index'])
@@ -207,24 +199,6 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('{conteneur}/creer-ordre', [ConteneurTraiteController::class, 'creerOrdre'])
             ->middleware('permission:ordres.creer');
         Route::post('{conteneur}/ignorer', [ConteneurTraiteController::class, 'ignorer'])
-            ->middleware('permission:ordres.modifier');
-    });
-
-    // ============================================
-    // SYNC LOGISTIGA (envoi manuel si nécessaire)
-    // ============================================
-    Route::prefix('sync')->middleware('audit')->group(function () {
-        Route::post('logistiga', [LogistigaSyncController::class, 'sendToLogistiga'])
-            ->middleware('permission:ordres.creer');
-    });
-
-    // ============================================
-    // SYNC DIAGNOSTIC (état de la connexion OPS)
-    // ============================================
-    Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
-        Route::get('health-ops', [LogistigaSyncController::class, 'healthOps'])
-            ->middleware('permission:configuration.voir');
-        Route::post('sync-conteneurs', [LogistigaSyncController::class, 'syncConteneursFromOps'])
             ->middleware('permission:ordres.modifier');
     });
 
@@ -345,15 +319,15 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     Route::prefix('transitaires')->middleware('audit')->group(function () {
         Route::get('/', [TransitaireController::class, 'index'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:transitaires.voir');
         Route::post('/', [TransitaireController::class, 'store'])
-            ->middleware('permission:partenaires.creer');
+            ->middleware('permission:transitaires.creer');
         Route::get('{transitaire}', [TransitaireController::class, 'show'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:transitaires.voir');
         Route::put('{transitaire}', [TransitaireController::class, 'update'])
-            ->middleware('permission:partenaires.modifier');
+            ->middleware('permission:transitaires.modifier');
         Route::delete('{transitaire}', [TransitaireController::class, 'destroy'])
-            ->middleware('permission:partenaires.supprimer');
+            ->middleware('permission:transitaires.supprimer');
     });
 
     // ============================================
@@ -361,37 +335,31 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     Route::prefix('representants')->middleware('audit')->group(function () {
         Route::get('/', [RepresentantController::class, 'index'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:representants.voir');
         Route::post('/', [RepresentantController::class, 'store'])
-            ->middleware('permission:partenaires.creer');
+            ->middleware('permission:representants.creer');
         Route::get('{representant}', [RepresentantController::class, 'show'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:representants.voir');
         Route::put('{representant}', [RepresentantController::class, 'update'])
-            ->middleware('permission:partenaires.modifier');
+            ->middleware('permission:representants.modifier');
         Route::delete('{representant}', [RepresentantController::class, 'destroy'])
-            ->middleware('permission:partenaires.supprimer');
-        Route::get('{representant}/primes', [RepresentantController::class, 'primes'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:representants.supprimer');
     });
 
     // ============================================
-    // PARTENAIRES - ARMATEURS
+    // ARMATEURS
     // ============================================
     Route::prefix('armateurs')->middleware('audit')->group(function () {
         Route::get('/', [ArmateurController::class, 'index'])
-            ->middleware('permission:partenaires.voir');
-        Route::get('stats', [ArmateurController::class, 'globalStats'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:armateurs.voir');
         Route::post('/', [ArmateurController::class, 'store'])
-            ->middleware('permission:partenaires.creer');
+            ->middleware('permission:armateurs.creer');
         Route::get('{armateur}', [ArmateurController::class, 'show'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:armateurs.voir');
         Route::put('{armateur}', [ArmateurController::class, 'update'])
-            ->middleware('permission:partenaires.modifier');
+            ->middleware('permission:armateurs.modifier');
         Route::delete('{armateur}', [ArmateurController::class, 'destroy'])
-            ->middleware('permission:partenaires.supprimer');
-        Route::get('{armateur}/stats', [ArmateurController::class, 'stats'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:armateurs.supprimer');
     });
 
     // ============================================
@@ -399,75 +367,57 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     Route::prefix('primes')->middleware('audit')->group(function () {
         Route::get('/', [PrimeController::class, 'index'])
-            ->middleware('permission:partenaires.voir');
-        Route::post('/', [PrimeController::class, 'store'])
-            ->middleware('permission:partenaires.creer');
+            ->middleware('permission:primes.voir');
         Route::get('stats', [PrimeController::class, 'stats'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware(['permission:primes.voir', 'throttle:stats']);
         Route::get('{prime}', [PrimeController::class, 'show'])
-            ->middleware('permission:partenaires.voir');
+            ->middleware('permission:primes.voir');
         Route::put('{prime}', [PrimeController::class, 'update'])
-            ->middleware('permission:partenaires.modifier');
-        Route::delete('{prime}', [PrimeController::class, 'destroy'])
-            ->middleware('permission:partenaires.supprimer');
+            ->middleware('permission:primes.modifier');
         Route::post('{prime}/payer', [PrimeController::class, 'payer'])
-            ->middleware('permission:caisse.creer');
+            ->middleware('permission:primes.payer');
+        Route::delete('{prime}', [PrimeController::class, 'destroy'])
+            ->middleware('permission:primes.supprimer');
     });
 
     // ============================================
-    // PREVISIONS BUDGETAIRES
+    // NOTE DE DÉBIT
+    // ============================================
+    Route::prefix('notes-debit')->middleware('audit')->group(function () {
+        Route::get('/', [NoteDebutController::class, 'index'])
+            ->middleware('permission:notes_debit.voir');
+        Route::post('/', [NoteDebutController::class, 'store'])
+            ->middleware('permission:notes_debit.creer');
+        Route::get('{noteDebit}', [NoteDebutController::class, 'show'])
+            ->middleware('permission:notes_debit.voir');
+        Route::put('{noteDebit}', [NoteDebutController::class, 'update'])
+            ->middleware('permission:notes_debit.modifier');
+        Route::delete('{noteDebit}', [NoteDebutController::class, 'destroy'])
+            ->middleware('permission:notes_debit.supprimer');
+        Route::post('{noteDebit}/valider', [NoteDebutController::class, 'valider'])
+            ->middleware('permission:notes_debit.valider');
+    });
+
+    // ============================================
+    // PRÉVISIONS
     // ============================================
     Route::prefix('previsions')->middleware('audit')->group(function () {
         Route::get('/', [PrevisionController::class, 'index'])
-            ->middleware('permission:reporting.voir');
+            ->middleware('permission:previsions.voir');
         Route::post('/', [PrevisionController::class, 'store'])
-            ->middleware('permission:reporting.creer');
-        
-        // Stats mensuelles détaillées (nouvel endpoint principal)
-        Route::get('stats-mensuelles', [PrevisionController::class, 'statsMensuelles'])
-            ->middleware('permission:reporting.voir');
-        Route::get('historique', [PrevisionController::class, 'historique'])
-            ->middleware('permission:reporting.voir');
-        Route::get('export-mois', [PrevisionController::class, 'exportMois'])
-            ->middleware('permission:reporting.voir');
-        
-        // Legacy stats endpoint
+            ->middleware('permission:previsions.creer');
         Route::get('stats', [PrevisionController::class, 'stats'])
-            ->middleware('permission:reporting.voir');
-        Route::get('categories', [PrevisionController::class, 'categories'])
-            ->middleware('permission:reporting.voir');
-        Route::post('sync-realise', [PrevisionController::class, 'syncRealise'])
-            ->middleware('permission:reporting.modifier');
+            ->middleware(['permission:previsions.voir', 'throttle:stats']);
+        Route::get('dashboard', [PrevisionController::class, 'dashboard'])
+            ->middleware(['permission:previsions.voir', 'throttle:stats']);
         Route::get('{prevision}', [PrevisionController::class, 'show'])
-            ->middleware('permission:reporting.voir');
+            ->middleware('permission:previsions.voir');
         Route::put('{prevision}', [PrevisionController::class, 'update'])
-            ->middleware('permission:reporting.modifier');
+            ->middleware('permission:previsions.modifier');
         Route::delete('{prevision}', [PrevisionController::class, 'destroy'])
-            ->middleware('permission:reporting.supprimer');
-    });
-
-    // ============================================
-    // NOTES DE DEBIT
-    // ============================================
-    Route::prefix('notes-debut')->middleware('audit')->group(function () {
-        Route::get('/', [NoteDebutController::class, 'index'])
-            ->middleware('permission:notes.voir');
-        Route::get('stats', [NoteDebutController::class, 'stats'])
-            ->middleware(['permission:notes.voir', 'throttle:stats']);
-        Route::post('/', [NoteDebutController::class, 'store'])
-            ->middleware('permission:notes.creer');
-        Route::get('{noteDebut}', [NoteDebutController::class, 'show'])
-            ->middleware('permission:notes.voir');
-        Route::put('{noteDebut}', [NoteDebutController::class, 'update'])
-            ->middleware('permission:notes.modifier');
-        Route::delete('{noteDebut}', [NoteDebutController::class, 'destroy'])
-            ->middleware('permission:notes.supprimer');
-        Route::post('{noteDebut}/duplicate', [NoteDebutController::class, 'duplicate'])
-            ->middleware('permission:notes.creer');
-        Route::post('{noteDebut}/send-email', [NoteDebutController::class, 'sendEmail'])
-            ->middleware('permission:notes.voir');
-        Route::get('{noteDebut}/pdf', [NoteDebutController::class, 'downloadPdf'])
-            ->middleware('permission:notes.voir');
+            ->middleware('permission:previsions.supprimer');
+        Route::post('{prevision}/realiser', [PrevisionController::class, 'realiser'])
+            ->middleware('permission:previsions.realiser');
     });
 
     // ============================================
@@ -475,299 +425,96 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     Route::prefix('annulations')->middleware('audit')->group(function () {
         Route::get('/', [AnnulationController::class, 'index'])
-            ->middleware('permission:factures.voir');
+            ->middleware('permission:annulations.voir');
+        Route::post('/', [AnnulationController::class, 'store'])
+            ->middleware('permission:annulations.creer');
         Route::get('stats', [AnnulationController::class, 'stats'])
-            ->middleware(['permission:factures.voir', 'throttle:stats']);
-        Route::get('client/{clientId}', [AnnulationController::class, 'historiqueClient'])
-            ->middleware('permission:clients.voir');
-        
-        // Routes d'annulation de documents
-        Route::post('facture/{facture}', [AnnulationController::class, 'annulerFacture'])
-            ->middleware('permission:factures.modifier');
-        Route::post('ordre/{ordre}', [AnnulationController::class, 'annulerOrdre'])
-            ->middleware('permission:ordres.modifier');
-        Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
-            ->middleware('permission:devis.modifier');
-        
-        // Actions sur les annulations existantes (AVANT la route générique {annulation})
-        // Utiliser whereNumber pour s'assurer que {id} est un entier
-        Route::post('{id}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
-            ->whereNumber('id')
-            ->middleware('permission:factures.modifier');
-        Route::post('{id}/rembourser', [AnnulationController::class, 'rembourser'])
-            ->whereNumber('id')
-            ->middleware('permission:caisse.creer');
-        Route::post('{id}/utiliser-avoir', [AnnulationController::class, 'utiliserAvoir'])
-            ->whereNumber('id')
-            ->middleware('permission:paiements.creer');
-        
-        // Avoirs d'un client
-        Route::get('avoirs/client/{clientId}', [AnnulationController::class, 'avoirsClient'])
-            ->middleware('permission:clients.voir');
-        
-        // Route générique en DERNIER
+            ->middleware(['permission:annulations.voir', 'throttle:stats']);
         Route::get('{annulation}', [AnnulationController::class, 'show'])
-            ->middleware('permission:factures.voir');
+            ->middleware('permission:annulations.voir');
+        Route::put('{annulation}', [AnnulationController::class, 'update'])
+            ->middleware('permission:annulations.modifier');
+        Route::post('{annulation}/valider', [AnnulationController::class, 'valider'])
+            ->middleware('permission:annulations.valider');
+        Route::post('{annulation}/rejeter', [AnnulationController::class, 'rejeter'])
+            ->middleware('permission:annulations.valider');
     });
 
     // ============================================
-    // UTILISATEURS (Admin uniquement)
-    // ============================================
-    Route::prefix('utilisateurs')->middleware(['audit', 'role:administrateur,directeur'])->group(function () {
-        Route::get('/', [UserController::class, 'index'])
-            ->middleware('permission:utilisateurs.voir');
-        Route::post('/', [UserController::class, 'store'])
-            ->middleware('permission:utilisateurs.creer');
-        Route::get('roles', [UserController::class, 'roles'])
-            ->middleware('permission:utilisateurs.voir');
-        Route::get('{user}', [UserController::class, 'show'])
-            ->middleware('permission:utilisateurs.voir');
-        Route::put('{user}', [UserController::class, 'update'])
-            ->middleware('permission:utilisateurs.modifier');
-        Route::delete('{user}', [UserController::class, 'destroy'])
-            ->middleware(['permission:utilisateurs.supprimer', 'role:administrateur']);
-        Route::patch('{user}/toggle-actif', [UserController::class, 'toggleActif'])
-            ->middleware(['permission:utilisateurs.modifier', 'role:administrateur']);
-    });
-
-    // Profil utilisateur (accessible par tous)
-    Route::get('profile', [UserController::class, 'profile']);
-    Route::put('profile', [UserController::class, 'updateProfile']);
-    Route::put('password', [UserController::class, 'updatePassword']);
-
-    // ============================================
-    // ROLES & PERMISSIONS (Admin uniquement)
-    // ============================================
-    Route::prefix('roles')->middleware(['audit', 'role:administrateur'])->group(function () {
-        Route::get('/', [RoleController::class, 'index']);
-        Route::get('stats', [RoleController::class, 'stats'])
-            ->middleware('throttle:stats');
-        Route::get('permissions', [RoleController::class, 'permissions']);
-        Route::post('/', [RoleController::class, 'store']);
-        Route::get('{role}', [RoleController::class, 'show']);
-        Route::put('{role}', [RoleController::class, 'update']);
-        Route::delete('{role}', [RoleController::class, 'destroy']);
-        Route::post('{role}/duplicate', [RoleController::class, 'duplicate']);
-        
-        // Gestion des utilisateurs du rôle
-        Route::get('{role}/available-users', [RoleController::class, 'availableUsers']);
-        Route::post('{role}/assign-users', [RoleController::class, 'assignUsers']);
-        Route::delete('{role}/users/{user}', [RoleController::class, 'unassignUser']);
-    });
-
-    // ============================================
-    // ACCOUNT LOCKOUTS (Admin - Sécurité)
-    // ============================================
-    Route::prefix('lockouts')->middleware(['role:administrateur'])->group(function () {
-        Route::get('/', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'index']);
-        Route::get('stats', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'stats']);
-        Route::post('attempts', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'attempts']);
-        Route::post('unlock', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'unlock']);
-        Route::post('cleanup', [\App\Http\Controllers\Api\Admin\LockoutController::class, 'cleanup']);
-    });
-
-    // ============================================
-    // SUSPICIOUS LOGINS (Admin - Sécurité)
-    // ============================================
-    Route::prefix('suspicious-logins')->middleware(['role:administrateur'])->group(function () {
-        Route::get('/', [SuspiciousLoginController::class, 'index']);
-        Route::get('stats', [SuspiciousLoginController::class, 'stats']);
-    });
-
-    // ============================================
-    // AUDIT & TRACABILITE
-    // ============================================
-    Route::prefix('audit')->middleware(['role:administrateur'])->group(function () {
-        Route::get('/', [AuditController::class, 'index']);
-        Route::get('actions', [AuditController::class, 'actions']);
-        Route::get('tables', [AuditController::class, 'tables']);
-        Route::get('stats', [AuditController::class, 'stats'])
-            ->middleware('throttle:stats');
-        Route::get('export', [AuditController::class, 'export'])
-            ->middleware('throttle:exports');
-        Route::get('{audit}', [AuditController::class, 'show']);
-    });
-
-    // ============================================
-    // CONFIGURATION (Admin uniquement)
-    // ============================================
-    Route::prefix('configuration')->middleware(['role:administrateur,directeur'])->group(function () {
-        Route::get('/', [ConfigurationController::class, 'index'])
-            ->middleware('permission:configuration.voir');
-        Route::put('/', [ConfigurationController::class, 'update'])
-            ->middleware(['permission:configuration.modifier', 'role:administrateur']);
-        
-        Route::get('taxes', [ConfigurationController::class, 'taxes'])
-            ->middleware('permission:configuration.voir');
-        Route::put('taxes', [ConfigurationController::class, 'updateTaxes'])
-            ->middleware(['permission:configuration.modifier', 'role:administrateur']);
-        
-        Route::get('numerotation', [ConfigurationController::class, 'numerotation']);
-        Route::put('numerotation', [ConfigurationController::class, 'updateNumerotation'])
-            ->middleware('permission:configuration.modifier');
-        Route::post('numerotation/sync', [ConfigurationController::class, 'syncCompteurs'])
-            ->middleware('permission:configuration.modifier');
-        
-        Route::get('entreprise', [ConfigurationController::class, 'entreprise']);
-        Route::put('entreprise', [ConfigurationController::class, 'updateEntreprise'])
-            ->middleware('permission:configuration.modifier');
-    });
-
-    // ============================================
-    // TAXES (CRUD dynamique)
-    // ============================================
-    Route::prefix('taxes')->middleware('audit')->group(function () {
-        // Liste et consultation pour tous les utilisateurs
-        Route::get('/', [TaxeController::class, 'index']);
-        Route::get('actives', [TaxeController::class, 'actives']); // Pour les formulaires
-        Route::get('{taxe}', [TaxeController::class, 'show']);
-        
-        // CRUD admin
-        Route::post('/', [TaxeController::class, 'store'])
-            ->middleware('permission:configuration.modifier');
-        Route::put('{taxe}', [TaxeController::class, 'update'])
-            ->middleware('permission:configuration.modifier');
-        Route::delete('{taxe}', [TaxeController::class, 'destroy'])
-            ->middleware('permission:configuration.modifier');
-        Route::post('reorder', [TaxeController::class, 'reorder'])
-            ->middleware('permission:configuration.modifier');
-        Route::post('{taxe}/toggle-active', [TaxeController::class, 'toggleActive'])
-            ->middleware('permission:configuration.modifier');
-    });
-
-    // ============================================
-    // TAXES MENSUELLES (Angles de taxes - agrégation)
-    // ============================================
-    Route::prefix('taxes-mensuelles')->middleware('audit')->group(function () {
-        // Accès lecture pour les commerciaux
-        Route::get('mois-courant', [TaxesMensuellesController::class, 'getMoisCourant']);
-        Route::get('historique', [TaxesMensuellesController::class, 'getHistorique']);
-        
-        // Actions admin
-        Route::post('recalculer', [TaxesMensuellesController::class, 'recalculer'])
-            ->middleware('permission:configuration.modifier');
-        Route::post('cloturer-mois', [TaxesMensuellesController::class, 'cloturerMois'])
-            ->middleware('permission:configuration.modifier');
-    });
-
-    // ============================================
-    // CATEGORIES DE DEPENSES
+    // CATÉGORIES DE DÉPENSES
     // ============================================
     Route::prefix('categories-depenses')->middleware('audit')->group(function () {
         Route::get('/', [CategorieDepenseController::class, 'index'])
-            ->middleware('permission:configuration.voir');
+            ->middleware('permission:caisse.voir');
         Route::post('/', [CategorieDepenseController::class, 'store'])
             ->middleware('permission:configuration.modifier');
-        Route::get('stats', [CategorieDepenseController::class, 'stats'])
-            ->middleware('permission:configuration.voir');
-        Route::get('{categoriesDepense}', [CategorieDepenseController::class, 'show'])
-            ->middleware('permission:configuration.voir');
-        Route::put('{categoriesDepense}', [CategorieDepenseController::class, 'update'])
+        Route::put('{categorieDepense}', [CategorieDepenseController::class, 'update'])
             ->middleware('permission:configuration.modifier');
-        Route::delete('{categoriesDepense}', [CategorieDepenseController::class, 'destroy'])
-            ->middleware('permission:configuration.supprimer');
-        Route::get('{categoriesDepense}/mouvements', [CategorieDepenseController::class, 'mouvements'])
-            ->middleware('permission:caisse.voir');
+        Route::delete('{categorieDepense}', [CategorieDepenseController::class, 'destroy'])
+            ->middleware('permission:configuration.modifier');
     });
 
     // ============================================
-    // REPORTING
+    // TAXES MENSUELLES
     // ============================================
-    Route::prefix('reporting')->middleware(['permission:reporting.voir', 'throttle:reporting'])->group(function () {
-        Route::get('/', [ReportingController::class, 'dashboard']);
-        Route::get('chiffre-affaires', [ReportingController::class, 'chiffreAffaires']);
-        Route::get('creances', [ReportingController::class, 'creances']);
-        Route::get('tresorerie', [ReportingController::class, 'tresorerie']);
-        Route::get('rentabilite', [ReportingController::class, 'rentabilite']);
-        Route::get('activite-clients', [ReportingController::class, 'activiteClients']);
-        Route::get('comparatif', [ReportingController::class, 'comparatif']);
-        Route::get('statistiques-documents', [ReportingController::class, 'statistiquesDocuments']);
+    Route::prefix('taxes-mensuelles')->middleware('audit')->group(function () {
+        Route::get('/', [TaxesMensuellesController::class, 'index'])
+            ->middleware('permission:taxes.voir');
+        Route::get('stats', [TaxesMensuellesController::class, 'stats'])
+            ->middleware(['permission:taxes.voir', 'throttle:stats']);
+        Route::get('{taxeMensuelle}', [TaxesMensuellesController::class, 'show'])
+            ->middleware('permission:taxes.voir');
+        Route::put('{taxeMensuelle}', [TaxesMensuellesController::class, 'update'])
+            ->middleware('permission:taxes.modifier');
+        Route::post('{taxeMensuelle}/payer', [TaxesMensuellesController::class, 'payer'])
+            ->middleware('permission:taxes.payer');
+        Route::post('recalculer/{annee}/{mois}', [TaxesMensuellesController::class, 'recalculer'])
+            ->middleware('permission:taxes.modifier');
     });
 
     // ============================================
-    // EXPORTS
+    // CONFIGURATION TAXES
     // ============================================
-    Route::prefix('exports')->middleware(['permission:reporting.voir', 'throttle:exports'])->group(function () {
-        Route::get('factures', [ExportController::class, 'factures']);
-        Route::get('devis', [ExportController::class, 'devis']);
-        Route::get('ordres-travail', [ExportController::class, 'ordres']);
-        Route::get('paiements', [ExportController::class, 'paiements']);
-        Route::get('caisse', [ExportController::class, 'caisse']);
-        Route::get('caisse-especes', [ExportController::class, 'caisseEspeces']);
-        Route::get('caisse-globale', [ExportController::class, 'caisseGlobale']);
-        Route::get('clients', [ExportController::class, 'clients']);
-        Route::get('primes', [ExportController::class, 'primes']);
-        Route::get('chiffre-affaires', [ExportController::class, 'chiffreAffaires']);
-        Route::get('creances', [ExportController::class, 'creances']);
-        Route::get('tresorerie', [ExportController::class, 'tresorerie']);
-        Route::get('credits', [ExportController::class, 'credits']);
-        Route::get('annulations', [ExportController::class, 'annulations']);
-        Route::get('activite-globale', [ExportController::class, 'activiteGlobale']);
-        Route::get('tableau-de-bord', [ExportController::class, 'tableauDeBord']);
-        Route::get('roles', [ExportController::class, 'roles'])
-            ->middleware('permission:utilisateurs.voir');
+    Route::prefix('taxes')->middleware('audit')->group(function () {
+        Route::get('/', [TaxeController::class, 'index'])
+            ->middleware('permission:configuration.voir');
+        Route::put('/', [TaxeController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
     });
 
     // ============================================
-    // NOTIFICATIONS EMAIL
+    // EMAIL & NOTIFICATIONS
     // ============================================
     Route::prefix('notifications')->middleware('audit')->group(function () {
-        Route::post('facture/{facture}/envoyer', [NotificationController::class, 'envoyerFacture'])
+        Route::post('factures/{facture}/send', [NotificationController::class, 'sendFacture'])
             ->middleware('permission:factures.modifier');
-        Route::post('devis/{devis}/envoyer', [NotificationController::class, 'envoyerDevis'])
+        Route::post('devis/{devis}/send', [NotificationController::class, 'sendDevis'])
             ->middleware('permission:devis.modifier');
-        Route::post('ordre/{ordre}/envoyer', [NotificationController::class, 'envoyerOrdre'])
+        Route::post('ordres/{ordre}/send', [NotificationController::class, 'sendOrdreTravail'])
             ->middleware('permission:ordres.modifier');
-        Route::post('paiement/{paiement}/confirmation', [NotificationController::class, 'envoyerConfirmationPaiement'])
-            ->middleware('permission:paiements.voir');
-        Route::post('facture/{facture}/rappel', [NotificationController::class, 'envoyerRappel'])
-            ->middleware('permission:factures.modifier');
-        Route::post('rappels-automatiques', [NotificationController::class, 'rappelsAutomatiques'])
-            ->middleware('permission:factures.modifier');
-        Route::post('recapitulatif-quotidien', [NotificationController::class, 'recapitulatifQuotidien'])
-            ->middleware('permission:reporting.voir');
-        Route::post('email-personnalise', [NotificationController::class, 'envoyerEmailPersonnalise'])
-            ->middleware('permission:factures.modifier');
     });
 
-    // ============================================
-    // EMAIL TEMPLATES & AUTOMATIONS
-    // ============================================
     Route::prefix('email-templates')->middleware('audit')->group(function () {
         Route::get('/', [EmailTemplateController::class, 'index'])
             ->middleware('permission:configuration.voir');
         Route::post('/', [EmailTemplateController::class, 'store'])
             ->middleware('permission:configuration.modifier');
-        Route::get('types', [EmailTemplateController::class, 'types']);
         Route::get('{template}', [EmailTemplateController::class, 'show'])
             ->middleware('permission:configuration.voir');
         Route::put('{template}', [EmailTemplateController::class, 'update'])
             ->middleware('permission:configuration.modifier');
         Route::delete('{template}', [EmailTemplateController::class, 'destroy'])
             ->middleware('permission:configuration.modifier');
-        Route::post('{template}/duplicate', [EmailTemplateController::class, 'duplicate'])
-            ->middleware('permission:configuration.modifier');
-        Route::post('{template}/toggle', [EmailTemplateController::class, 'toggleActif'])
-            ->middleware('permission:configuration.modifier');
         Route::post('{template}/preview', [EmailTemplateController::class, 'preview'])
             ->middleware('permission:configuration.voir');
     });
 
-    Route::prefix('email-automations')->middleware('audit')->group(function () {
+    Route::prefix('email-automation')->middleware('audit')->group(function () {
         Route::get('/', [EmailAutomationController::class, 'index'])
             ->middleware('permission:configuration.voir');
-        Route::post('/', [EmailAutomationController::class, 'store'])
+        Route::put('/', [EmailAutomationController::class, 'update'])
             ->middleware('permission:configuration.modifier');
-        Route::get('declencheurs', [EmailAutomationController::class, 'declencheurs']);
-        Route::get('delai-unites', [EmailAutomationController::class, 'delaiUnites']);
-        Route::get('for-declencheur/{declencheur}', [EmailAutomationController::class, 'forDeclencheur']);
-        Route::get('{automation}', [EmailAutomationController::class, 'show'])
-            ->middleware('permission:configuration.voir');
-        Route::put('{automation}', [EmailAutomationController::class, 'update'])
-            ->middleware('permission:configuration.modifier');
-        Route::delete('{automation}', [EmailAutomationController::class, 'destroy'])
-            ->middleware('permission:configuration.modifier');
-        Route::post('{automation}/toggle', [EmailAutomationController::class, 'toggleActif'])
+        Route::post('test/{type}', [EmailAutomationController::class, 'testSend'])
             ->middleware('permission:configuration.modifier');
     });
 
@@ -776,28 +523,91 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:configuration.voir');
         Route::put('/', [EmailConfigController::class, 'update'])
             ->middleware('permission:configuration.modifier');
-        Route::post('test', [EmailConfigController::class, 'sendTest'])
+        Route::post('test', [EmailConfigController::class, 'testConnection'])
             ->middleware('permission:configuration.modifier');
     });
 
     // ============================================
-    // NOTIFICATIONS IN-APP (ALERTS)
+    // REPORTING & EXPORT
     // ============================================
-    require __DIR__.'/api_notifications.php';
+    Route::prefix('reporting')->middleware(['audit', 'throttle:reporting'])->group(function () {
+        Route::get('chiffre-affaires', [ReportingController::class, 'chiffreAffaires'])
+            ->middleware('permission:reporting.voir');
+        Route::get('creances', [ReportingController::class, 'creances'])
+            ->middleware('permission:reporting.voir');
+        Route::get('rentabilite-clients', [ReportingController::class, 'rentabiliteClients'])
+            ->middleware('permission:reporting.voir');
+        Route::get('evolution-mensuelle', [ReportingController::class, 'evolutionMensuelle'])
+            ->middleware('permission:reporting.voir');
+        Route::get('comparaison-periodes', [ReportingController::class, 'comparaisonPeriodes'])
+            ->middleware('permission:reporting.voir');
+        Route::get('top-clients', [ReportingController::class, 'topClients'])
+            ->middleware('permission:reporting.voir');
+        Route::get('analyse-operations', [ReportingController::class, 'analyseOperations'])
+            ->middleware('permission:reporting.voir');
+        Route::get('tresorerie', [ReportingController::class, 'tresorerie'])
+            ->middleware('permission:reporting.voir');
+        Route::get('synthese', [ReportingController::class, 'synthese'])
+            ->middleware('permission:reporting.voir');
+    });
+
+    Route::prefix('export')->middleware(['audit', 'throttle:exports'])->group(function () {
+        Route::get('factures', [ExportController::class, 'factures'])
+            ->middleware('permission:factures.voir');
+        Route::get('paiements', [ExportController::class, 'paiements'])
+            ->middleware('permission:paiements.voir');
+        Route::get('clients', [ExportController::class, 'clients'])
+            ->middleware('permission:clients.voir');
+        Route::get('reporting/{type}', [ExportController::class, 'reporting'])
+            ->middleware('permission:reporting.voir');
+    });
 
     // ============================================
-    // CONTENEURS TRAITÉS (reçus de Logistiga OPS)
+    // CONFIGURATION
     // ============================================
-    Route::prefix('conteneurs-en-attente')->middleware('audit')->group(function () {
-        Route::get('/', [ConteneurTraiteController::class, 'index'])
-            ->middleware('permission:ordres.voir');
-        Route::get('stats', [ConteneurTraiteController::class, 'stats'])
-            ->middleware('permission:ordres.voir');
-        Route::post('{conteneur}/affecter', [ConteneurTraiteController::class, 'affecterAOrdre'])
-            ->middleware('permission:ordres.modifier');
-        Route::post('{conteneur}/creer-ordre', [ConteneurTraiteController::class, 'creerOrdre'])
-            ->middleware('permission:ordres.creer');
-        Route::post('{conteneur}/ignorer', [ConteneurTraiteController::class, 'ignorer'])
-            ->middleware('permission:ordres.modifier');
+    Route::prefix('configuration')->middleware('audit')->group(function () {
+        Route::get('/', [ConfigurationController::class, 'index'])
+            ->middleware('permission:configuration.voir');
+        Route::put('/', [ConfigurationController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::get('{key}', [ConfigurationController::class, 'show'])
+            ->middleware('permission:configuration.voir');
+        Route::put('{key}', [ConfigurationController::class, 'updateKey'])
+            ->middleware('permission:configuration.modifier');
+    });
+
+    // ============================================
+    // ADMINISTRATION - UTILISATEURS
+    // ============================================
+    Route::prefix('admin/users')->middleware(['audit', 'role:admin'])->group(function () {
+        Route::get('/', [UserController::class, 'index']);
+        Route::post('/', [UserController::class, 'store']);
+        Route::get('{user}', [UserController::class, 'show']);
+        Route::put('{user}', [UserController::class, 'update']);
+        Route::delete('{user}', [UserController::class, 'destroy']);
+        Route::post('{user}/toggle-active', [UserController::class, 'toggleActive']);
+        Route::post('{user}/reset-password', [UserController::class, 'resetPassword']);
+    });
+
+    // ============================================
+    // ADMINISTRATION - RÔLES & PERMISSIONS
+    // ============================================
+    Route::prefix('admin/roles')->middleware(['audit', 'role:admin'])->group(function () {
+        Route::get('/', [RoleController::class, 'index']);
+        Route::post('/', [RoleController::class, 'store']);
+        Route::get('permissions', [RoleController::class, 'permissions']);
+        Route::get('{role}', [RoleController::class, 'show']);
+        Route::put('{role}', [RoleController::class, 'update']);
+        Route::delete('{role}', [RoleController::class, 'destroy']);
+    });
+
+    // ============================================
+    // AUDIT LOGS
+    // ============================================
+    Route::prefix('admin/audit')->middleware('role:admin')->group(function () {
+        Route::get('/', [AuditController::class, 'index']);
+        Route::get('stats', [AuditController::class, 'stats'])
+            ->middleware('throttle:stats');
+        Route::get('{auditLog}', [AuditController::class, 'show']);
     });
 });
