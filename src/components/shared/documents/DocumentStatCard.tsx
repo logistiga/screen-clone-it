@@ -1,3 +1,4 @@
+import * as React from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,7 +71,10 @@ const variantStyles: Record<DocumentStatVariant, {
   },
 };
 
-export function DocumentStatCard({
+export const DocumentStatCard = React.forwardRef<
+  HTMLDivElement,
+  DocumentStatCardProps
+>(({
   title,
   value,
   icon: Icon,
@@ -78,9 +82,8 @@ export function DocumentStatCard({
   subtitle,
   trend,
   delay = 0,
-}: DocumentStatCardProps) {
+}, ref) => {
   const styles = variantStyles[variant];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -127,7 +130,8 @@ export function DocumentStatCard({
       </Card>
     </motion.div>
   );
-}
+});
+DocumentStatCard.displayName = "DocumentStatCard";
 
 export function DocumentStatCardSkeleton() {
   return (

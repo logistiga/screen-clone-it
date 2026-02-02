@@ -4,7 +4,12 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root;
+// Wrapper forwardRef pour éviter le warning "Function components cannot be given refs"
+const Select = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>
+>((props, _ref) => <SelectPrimitive.Root {...props} />);
+Select.displayName = "Select";
 
 const SelectGroup = SelectPrimitive.Group;
 

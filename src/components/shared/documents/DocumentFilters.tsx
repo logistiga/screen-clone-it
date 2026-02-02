@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Search, X, LayoutGrid, List } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,10 @@ interface DocumentFiltersProps {
   showViewToggle?: boolean;
 }
 
-export function DocumentFilters({
+export const DocumentFilters = React.forwardRef<
+  HTMLDivElement,
+  DocumentFiltersProps
+>(({
   searchTerm,
   onSearchChange,
   searchPlaceholder = "Rechercher...",
@@ -49,7 +53,7 @@ export function DocumentFilters({
   viewMode = 'list',
   onViewModeChange,
   showViewToggle = false,
-}: DocumentFiltersProps) {
+}, ref) => {
   const activeFilters = [
     statutFilter && statutFilter !== 'all' && statutFilter,
     categorieFilter && categorieFilter !== 'all' && categorieFilter,
@@ -159,4 +163,5 @@ export function DocumentFilters({
       )}
     </div>
   );
-}
+});
+DocumentFilters.displayName = "DocumentFilters";
