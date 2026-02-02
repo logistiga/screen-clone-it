@@ -25,46 +25,77 @@ class TransitaireController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
-        $query = Transitaire::query()
-            ->withCount(['devis', 'ordresTravail', 'factures'])
-            ->select('transitaires.*')
-            ->selectSub(function ($q) {
-                $q->from('primes')
-                    ->selectRaw('COALESCE(SUM(montant), 0)')
-                    ->whereColumn('primes.transitaire_id', 'transitaires.id')
-                    ->whereIn('statut', ['En attente', 'Partiellement payée']);
-            }, 'primes_dues')
-            ->selectSub(function ($q) {
-                $q->from('primes')
-                    ->selectRaw('COALESCE(SUM(montant), 0)')
-                    ->whereColumn('primes.transitaire_id', 'transitaires.id')
-                    ->where('statut', 'Payée');
-            }, 'primes_payees');
+        try {
+            // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
+            $query = Transitaire::query()
+                ->withCount(['devis', 'ordresTravail', 'factures'])
+                ->select('transitaires.*')
+                ->selectSub(function ($q) {
+                    $q->from('primes')
+                        ->selectRaw('COALESCE(SUM(montant), 0)')
+                        ->whereColumn('primes.transitaire_id', 'transitaires.id')
+                        ->whereIn('statut', ['En attente', 'Partiellement payée']);
+                }, 'primes_dues')
+                ->selectSub(function ($q) {
+                    $q->from('primes')
+                        ->selectRaw('COALESCE(SUM(montant), 0)')
+                        ->whereColumn('primes.transitaire_id', 'transitaires.id')
+                        ->where('statut', 'Payée');
+                }, 'primes_payees');
 
-        // Recherche sécurisée
-        $search = $this->validateSearchParameter($request);
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('nom', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('telephone', 'like', "%{$search}%");
-            });
+            // Recherche sécurisée
+            $search = $this->validateSearchParameter($request);
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('telephone', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->has('actif')) {
+                $query->where('actif', $request->boolean('actif'));
+            }
+
+            // Tri et pagination sécurisés
+            $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
+            // Transitaires: on autorise un per_page plus élevé (liste de référence utilisée partout)
+            $pagination = $this->validatePaginationParameters($request, 200, 500);
+
+            $transitaires = $query->orderBy($sort['column'], $sort['direction'])
+                ->paginate($pagination['per_page']);
+
+            return response()->json(TransitaireResource::collection($transitaires)->response()->getData(true));
+
+        } catch (\Exception $e) {
+            // Fallback sans les calculs stats pour éviter erreur 500
+            \Log::warning('TransitaireController@index fallback: ' . $e->getMessage());
+
+            $query = Transitaire::query()->withCount(['devis', 'ordresTravail', 'factures']);
+
+            // Recherche sécurisée
+            $search = $this->validateSearchParameter($request);
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('telephone', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->has('actif')) {
+                $query->where('actif', $request->boolean('actif'));
+            }
+
+            // Tri et pagination sécurisés
+            $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
+            $pagination = $this->validatePaginationParameters($request, 200, 500);
+
+            $transitaires = $query->orderBy($sort['column'], $sort['direction'])
+                ->paginate($pagination['per_page']);
+
+            return response()->json(TransitaireResource::collection($transitaires)->response()->getData(true));
         }
-
-        if ($request->has('actif')) {
-            $query->where('actif', $request->boolean('actif'));
-        }
-
-        // Tri et pagination sécurisés
-        $sort = $this->validateSortParameters($request, $this->allowedSortColumns, 'nom', 'asc');
-        // Transitaires: on autorise un per_page plus élevé (liste de référence utilisée partout)
-        $pagination = $this->validatePaginationParameters($request, 200, 500);
-
-        $transitaires = $query->orderBy($sort['column'], $sort['direction'])
-            ->paginate($pagination['per_page']);
-
-        return response()->json(TransitaireResource::collection($transitaires)->response()->getData(true));
     }
 
     public function store(StoreTransitaireRequest $request): JsonResponse
