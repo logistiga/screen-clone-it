@@ -75,13 +75,24 @@ class AnnulationController extends Controller
             ->get();
 
         foreach ($ordresAnnules as $ordre) {
+            // Calculer le montant avec fallback robuste (si montant_ttc n'existe pas)
+            $montantHT = (float) ($ordre->montant_ht ?? 0);
+            $montantTVA = (float) ($ordre->tva ?? 0);
+            $montantCSS = (float) ($ordre->css ?? 0);
+            $montant = $ordre->montant_ttc ?? ($montantHT + $montantTVA + $montantCSS);
+            
+            // Si tout est à zéro mais qu'il y a un HT, utiliser le HT
+            if ($montant == 0 && $montantHT > 0) {
+                $montant = $montantHT;
+            }
+            
             Annulation::create([
                 'numero' => Annulation::genererNumero(),
                 'type' => 'ordre',
                 'document_id' => $ordre->id,
                 'document_numero' => $ordre->numero,
                 'client_id' => $ordre->client_id,
-                'montant' => $ordre->montant_ttc ?? 0,
+                'montant' => $montant,
                 'date' => $ordre->updated_at ?? now(),
                 'motif' => 'Annulation enregistrée automatiquement',
                 'avoir_genere' => false,
