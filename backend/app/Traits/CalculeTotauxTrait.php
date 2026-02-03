@@ -246,11 +246,17 @@ trait CalculeTotauxTrait
         );
 
         // Calculer le TTC
+        // IMPORTANT: Si aucune taxe n'est appliquée (total = 0), montant_ttc = montant_ht
         $montantTTC = $montantHTApresRemise + $taxes['total'];
+        
+        // Si pas de taxes, TTC = HT (après remise)
+        if ($taxes['total'] == 0) {
+            $montantTTC = $montantHTApresRemise;
+        }
 
         // Mettre à jour le document (colonnes legacy + nouveau)
         $updateData = [
-            'montant_ht' => round($montantHTBrut, 2),
+            'montant_ht' => round($montantHTApresRemise, 2), // HT après remise
             'remise_montant' => round($remiseMontant, 2),
             'tva' => round($taxes['tva'], 2),
             'css' => round($taxes['css'], 2),
