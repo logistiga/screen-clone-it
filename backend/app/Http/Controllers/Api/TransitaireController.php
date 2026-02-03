@@ -26,22 +26,12 @@ class TransitaireController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
+            // Optimisation: calcul SQL des primes avec selectRaw explicite (évite erreurs selectSub+whereIn)
             $query = Transitaire::query()
                 ->withCount(['devis', 'ordresTravail', 'factures'])
                 ->select('transitaires.*')
-                ->selectSub(function ($q) {
-                    $q->from('primes')
-                        ->selectRaw('COALESCE(SUM(montant), 0)')
-                        ->whereColumn('primes.transitaire_id', 'transitaires.id')
-                        ->whereIn('statut', ['En attente', 'Partiellement payée']);
-                }, 'primes_dues')
-                ->selectSub(function ($q) {
-                    $q->from('primes')
-                        ->selectRaw('COALESCE(SUM(montant), 0)')
-                        ->whereColumn('primes.transitaire_id', 'transitaires.id')
-                        ->where('statut', 'Payée');
-                }, 'primes_payees');
+                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ('En attente', 'Partiellement payée')) as primes_dues")
+                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut = 'Payée') as primes_payees");
 
             // Recherche sécurisée
             $search = $this->validateSearchParameter($request);
