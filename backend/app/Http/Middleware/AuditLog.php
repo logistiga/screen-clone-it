@@ -20,7 +20,12 @@ class AuditLog
         $response = $next($request);
 
         if ($this->shouldLog($request, $response)) {
-            $this->logAction($request, $response);
+            // IMPORTANT: l'audit ne doit jamais casser la réponse API
+            try {
+                $this->logAction($request, $response);
+            } catch (\Throwable $e) {
+                // Ignorer toute erreur d'audit (table manquante, contraintes DB, etc.)
+            }
         }
 
         return $response;
@@ -59,13 +64,40 @@ class AuditLog
             'user_id' => $request->user()->id,
             'action' => $action,
             'module' => $module,
-            'document_id' => $request->route('id') ?? $this->extractIdFromResponse($response),
+            'document_id' => $this->extractIdFromRoute($request) ?? $this->extractIdFromResponse($response),
             'details' => "{$action} sur {$module}",
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'old_values' => null,
             'new_values' => $request->except(['password', 'password_confirmation', 'current_password']),
         ]);
+    }
+
+    /**
+     * Récupère un ID depuis les paramètres de route, quel que soit le nom du paramètre.
+     * Supporte : {id}, {ordre}, {facture}, {devis}, etc. + binding modèle.
+     */
+    protected function extractIdFromRoute(Request $request): ?int
+    {
+        $route = $request->route();
+        if (!$route) return null;
+
+        foreach ($route->parameters() as $value) {
+            // Paramètre simple (ex: /.../240)
+            if (is_scalar($value) && is_numeric($value)) {
+                return (int) $value;
+            }
+
+            // Paramètre bound à un modèle Eloquent
+            if (is_object($value) && method_exists($value, 'getKey')) {
+                $key = $value->getKey();
+                if (is_numeric($key)) {
+                    return (int) $key;
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function extractTableName(string $routeName): string
@@ -77,6 +109,12 @@ class AuditLog
     protected function extractIdFromResponse(Response $response): ?int
     {
         $content = json_decode($response->getContent(), true);
-        return $content['id'] ?? $content['data']['id'] ?? null;
+        if (!is_array($content)) return null;
+
+        return $content['id']
+            ?? ($content['data']['id'] ?? null)
+            ?? ($content['annulation']['id'] ?? null)
+            ?? ($content['annulation']['data']['id'] ?? null)
+            ?? null;
     }
 }
