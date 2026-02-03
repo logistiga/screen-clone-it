@@ -122,40 +122,15 @@ class SyncDiagnosticController extends Controller
                 ], 503);
             }
 
-            // Exécuter la commande Artisan
-            $exitCode = Artisan::call('sync:from-ops', [
-                '--conteneurs' => true,
-            ]);
-
-            $output = Artisan::output();
-
-            if ($exitCode === 0) {
-                Log::info('[SyncDiagnostic] Sync conteneurs réussie', [
-                    'output' => $output,
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Synchronisation des conteneurs réussie',
-                    'debug' => [
-                        'output' => $output,
-                    ]
-                ]);
-            }
-
-            Log::warning('[SyncDiagnostic] Sync conteneurs échouée', [
-                'exit_code' => $exitCode,
-                'output' => $output,
-            ]);
+            // Exécuter la synchronisation directement sans passer par Artisan
+            // pour éviter les problèmes de cache de commandes
+            $result = $this->executeSyncConteneurs();
 
             return response()->json([
-                'success' => false,
-                'message' => 'Échec de la synchronisation',
-                'debug' => [
-                    'exit_code' => $exitCode,
-                    'output' => $output,
-                ]
-            ], 500);
+                'success' => true,
+                'message' => 'Synchronisation des conteneurs réussie',
+                'data' => $result,
+            ]);
 
         } catch (\Exception $e) {
             Log::error('[SyncDiagnostic] Erreur sync conteneurs', [
@@ -171,6 +146,92 @@ class SyncDiagnosticController extends Controller
                 ]
             ], 500);
         }
+    }
+
+    /**
+     * Exécute la synchronisation des conteneurs directement
+     */
+    private function executeSyncConteneurs(): array
+    {
+        $imported = 0;
+        $skipped = 0;
+
+        // Lecture depuis sorties_conteneurs avec le schéma réel
+        $opsConteneurs = DB::connection('ops')
+            ->table('sorties_conteneurs')
+            ->select([
+                'id as sortie_id_externe',
+                'numero_conteneur',
+                'type_conteneur',
+                'numero_bl',
+                'code_armateur',
+                'nom_client',
+                'adresse_client',
+                'nom_transitaire',
+                'date_sortie',
+                'date_retour',
+                'camion_id',
+                'remorque_id',
+                'prime_chauffeur',
+                'destination',
+                'type_destination',
+                'statut as statut_ops',
+            ])
+            // Conteneurs terminés: retournés au port ou livrés
+            ->whereIn('statut', ['retourne_port', 'livre_client', 'a_la_base'])
+            ->whereNull('deleted_at')
+            ->get();
+
+        foreach ($opsConteneurs as $opsConteneur) {
+            // Vérifier si déjà synchronisé
+            $existeDejaSync = \App\Models\ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->exists();
+
+            if ($existeDejaSync) {
+                $skipped++;
+                continue;
+            }
+
+            // Récupérer le nom de l'armateur depuis le code
+            $armateur = DB::connection('ops')
+                ->table('armateurs')
+                ->where('code', $opsConteneur->code_armateur)
+                ->first();
+
+            // Insérer dans conteneurs_traites
+            \App\Models\ConteneurTraite::create([
+                'sortie_id_externe' => $opsConteneur->sortie_id_externe,
+                'numero_conteneur' => $opsConteneur->numero_conteneur,
+                'numero_bl' => $opsConteneur->numero_bl,
+                'armateur_code' => $opsConteneur->code_armateur,
+                'armateur_nom' => $armateur->nom ?? null,
+                'client_nom' => $opsConteneur->nom_client,
+                'client_adresse' => $opsConteneur->adresse_client,
+                'transitaire_nom' => $opsConteneur->nom_transitaire,
+                'date_sortie' => $opsConteneur->date_sortie,
+                'date_retour' => $opsConteneur->date_retour,
+                'camion_id_externe' => $opsConteneur->camion_id,
+                'remorque_id_externe' => $opsConteneur->remorque_id,
+                'prime_chauffeur' => $opsConteneur->prime_chauffeur,
+                'destination_type' => $opsConteneur->type_destination,
+                'destination_adresse' => null,
+                'statut_ops' => $opsConteneur->statut_ops,
+                'statut' => 'en_attente',
+                'source_system' => 'logistiga_ops',
+                'synced_at' => now(),
+            ]);
+
+            $imported++;
+        }
+
+        Log::info('[SyncDiagnostic] Sync conteneurs terminée', [
+            'imported' => $imported,
+            'skipped' => $skipped,
+        ]);
+
+        return [
+            'conteneurs_importes' => $imported,
+            'conteneurs_ignores' => $skipped,
+        ];
     }
 
     /**
