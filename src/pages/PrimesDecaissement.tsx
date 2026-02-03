@@ -22,7 +22,9 @@ import {
   User,
   Package,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw,
+  Receipt
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
@@ -78,6 +80,7 @@ interface PrimeCamion {
   chauffeur_nom: string | null;
   chauffeur_prenom: string | null;
   decaisse: boolean;
+  mouvement_id: number | null;
 }
 
 interface PrimeCamionResponse {
@@ -227,6 +230,14 @@ export default function PrimesDecaissementPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Primes à décaisser</h1>
             <p className="text-muted-foreground mt-1">Validez les décaissements des primes camion depuis OPS</p>
           </div>
+          <Button 
+            variant="outline" 
+            onClick={() => refetch()} 
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </Button>
         </div>
 
         {/* Stats */}
@@ -352,10 +363,18 @@ export default function PrimesDecaissementPage() {
                         </TableCell>
                         <TableCell>
                           {prime.decaisse ? (
-                            <Badge className="bg-success/20 text-success gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Décaissée
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge className="bg-success/20 text-success gap-1 w-fit">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Décaissée
+                              </Badge>
+                              {prime.mouvement_id && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Receipt className="h-3 w-3" />
+                                  N° {prime.mouvement_id}
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <Badge className="bg-warning/20 text-warning gap-1">
                               <Clock className="h-3 w-3" />
@@ -368,7 +387,10 @@ export default function PrimesDecaissementPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {prime.decaisse ? (
-                            <span className="text-sm text-muted-foreground">Traité</span>
+                            <span className="text-sm text-muted-foreground flex items-center gap-1 justify-end">
+                              <Receipt className="h-4 w-4" />
+                              Mvt #{prime.mouvement_id}
+                            </span>
                           ) : (
                             <Button 
                               size="sm" 
