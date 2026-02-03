@@ -3,7 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Armateur;
+use App\Models\ConteneurAnomalie;
 use App\Models\ConteneurTraite;
+use App\Models\OrdreTravail;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,11 +16,13 @@ use Illuminate\Support\Facades\Log;
  * Cette commande lit la base OPS pour:
  * 1. Importer les conteneurs traités en attente de facturation
  * 2. Synchroniser les armateurs
+ * 3. Détecter les anomalies (conteneurs oubliés)
  * 
  * Usage:
  *   php artisan sync:from-ops                    # Sync complet
  *   php artisan sync:from-ops --conteneurs      # Conteneurs uniquement
  *   php artisan sync:from-ops --armateurs       # Armateurs uniquement
+ *   php artisan sync:from-ops --detect-oublies  # Détection anomalies uniquement
  *   php artisan sync:from-ops --dry-run         # Afficher sans modifier
  *   php artisan sync:from-ops --status          # Tester la connexion
  */
@@ -27,15 +31,17 @@ class SyncFromOps extends Command
     protected $signature = 'sync:from-ops 
                             {--conteneurs : Synchroniser uniquement les conteneurs}
                             {--armateurs : Synchroniser uniquement les armateurs}
+                            {--detect-oublies : Détecter les conteneurs oubliés}
                             {--dry-run : Afficher les données sans les insérer}
                             {--status : Tester la connexion OPS}';
 
-    protected $description = 'Synchronise les conteneurs et armateurs depuis Logistiga OPS';
+    protected $description = 'Synchronise les conteneurs et armateurs depuis Logistiga OPS et détecte les anomalies';
 
     private int $conteneursImported = 0;
     private int $conteneursSkipped = 0;
     private int $armateursImported = 0;
     private int $armateursUpdated = 0;
+    private int $anomaliesDetected = 0;
 
     public function handle(): int
     {
@@ -52,7 +58,7 @@ class SyncFromOps extends Command
             return Command::FAILURE;
         }
 
-        $syncAll = !$this->option('conteneurs') && !$this->option('armateurs');
+        $syncAll = !$this->option('conteneurs') && !$this->option('armateurs') && !$this->option('detect-oublies');
 
         try {
             DB::beginTransaction();
@@ -67,6 +73,11 @@ class SyncFromOps extends Command
                 $this->syncConteneurs();
             }
 
+            // Détection des anomalies
+            if ($syncAll || $this->option('detect-oublies')) {
+                $this->detecterAnomalies();
+            }
+
             if (!$this->option('dry-run')) {
                 DB::commit();
             }
@@ -78,6 +89,7 @@ class SyncFromOps extends Command
                 'conteneurs_skipped' => $this->conteneursSkipped,
                 'armateurs_imported' => $this->armateursImported,
                 'armateurs_updated' => $this->armateursUpdated,
+                'anomalies_detected' => $this->anomaliesDetected,
             ]);
 
             return Command::SUCCESS;
@@ -107,6 +119,10 @@ class SyncFromOps extends Command
                 $tables = DB::connection('ops')->select('SHOW TABLES');
                 $this->line("   Tables disponibles: " . count($tables));
                 
+                // Compter les conteneurs dans OPS
+                $count = DB::connection('ops')->table('sorties_conteneurs')->count();
+                $this->line("   Conteneurs dans OPS: " . $count);
+                
                 return Command::SUCCESS;
             }
         } catch (\Exception $e) {
@@ -134,15 +150,11 @@ class SyncFromOps extends Command
 
     /**
      * Synchronise les armateurs depuis OPS
-     * 
-     * La table OPS `armateurs` a les colonnes: id, nom, code, actif, created_at, updated_at
-     * (pas de colonnes email, telephone, adresse)
      */
     private function syncArmateurs(): void
     {
         $this->info('📦 Synchronisation des armateurs...');
 
-        // Lire les armateurs depuis OPS (colonnes réelles de la table OPS)
         $opsArmateurs = DB::connection('ops')
             ->table('armateurs')
             ->select(['id', 'nom', 'code', 'actif', 'created_at', 'updated_at'])
@@ -158,11 +170,9 @@ class SyncFromOps extends Command
                 continue;
             }
 
-            // Upsert basé sur le code (identifiant métier unique)
             $existing = Armateur::where('code', $opsArmateur->code)->first();
 
             if ($existing) {
-                // Mettre à jour si modifié récemment dans OPS
                 if ($opsArmateur->updated_at > $existing->updated_at) {
                     $existing->update([
                         'nom' => $opsArmateur->nom,
@@ -171,7 +181,6 @@ class SyncFromOps extends Command
                     $this->armateursUpdated++;
                 }
             } else {
-                // Créer le nouvel armateur
                 Armateur::create([
                     'nom' => $opsArmateur->nom,
                     'code' => $opsArmateur->code,
@@ -189,40 +198,38 @@ class SyncFromOps extends Command
 
     /**
      * Synchronise les conteneurs traités depuis OPS
+     * Utilise la table `sorties_conteneurs` avec son schéma réel
      */
     private function syncConteneurs(): void
     {
         $this->info('🚢 Synchronisation des conteneurs traités...');
 
-        // Lire les sorties/conteneurs depuis OPS qui sont terminées
-        // Note: Adapter la requête selon la structure réelle de la table OPS
+        // Lecture depuis sorties_conteneurs avec le schéma réel
         $opsConteneurs = DB::connection('ops')
-            ->table('sorties') // ou 'conteneurs_sorties' selon votre schéma
+            ->table('sorties_conteneurs')
             ->select([
                 'id as sortie_id_externe',
                 'numero_conteneur',
+                'type_conteneur',
                 'numero_bl',
-                'armateur_code',
-                'armateur_nom',
-                'client_nom',
-                'client_adresse',
-                'transitaire_nom',
+                'code_armateur',
+                'nom_client',
+                'adresse_client',
+                'nom_transitaire',
                 'date_sortie',
                 'date_retour',
-                'camion_id as camion_id_externe',
-                'camion_plaque',
-                'remorque_id as remorque_id_externe', 
-                'remorque_plaque',
-                'chauffeur_nom',
+                'camion_id',
+                'remorque_id',
                 'prime_chauffeur',
-                'destination_type',
-                'destination_adresse',
+                'destination',
+                'type_destination',
                 'statut as statut_ops',
                 'created_at',
                 'updated_at',
             ])
-            ->where('statut', 'termine') // Conteneurs dont l'opération est terminée
-            ->orWhere('statut', 'retourne') // Ou retournés
+            // Conteneurs terminés: retournés au port ou livrés
+            ->whereIn('statut', ['retourne_port', 'livre_client', 'a_la_base'])
+            ->whereNull('deleted_at')
             ->get();
 
         $bar = $this->output->createProgressBar($opsConteneurs->count());
@@ -244,33 +251,138 @@ class SyncFromOps extends Command
                 continue;
             }
 
+            // Récupérer le nom de l'armateur depuis le code
+            $armateur = DB::connection('ops')
+                ->table('armateurs')
+                ->where('code', $opsConteneur->code_armateur)
+                ->first();
+
             // Insérer dans conteneurs_traites
             ConteneurTraite::create([
                 'sortie_id_externe' => $opsConteneur->sortie_id_externe,
                 'numero_conteneur' => $opsConteneur->numero_conteneur,
                 'numero_bl' => $opsConteneur->numero_bl,
-                'armateur_code' => $opsConteneur->armateur_code,
-                'armateur_nom' => $opsConteneur->armateur_nom,
-                'client_nom' => $opsConteneur->client_nom,
-                'client_adresse' => $opsConteneur->client_adresse,
-                'transitaire_nom' => $opsConteneur->transitaire_nom,
+                'armateur_code' => $opsConteneur->code_armateur,
+                'armateur_nom' => $armateur->nom ?? null,
+                'client_nom' => $opsConteneur->nom_client,
+                'client_adresse' => $opsConteneur->adresse_client,
+                'transitaire_nom' => $opsConteneur->nom_transitaire,
                 'date_sortie' => $opsConteneur->date_sortie,
                 'date_retour' => $opsConteneur->date_retour,
-                'camion_id_externe' => $opsConteneur->camion_id_externe,
-                'camion_plaque' => $opsConteneur->camion_plaque,
-                'remorque_id_externe' => $opsConteneur->remorque_id_externe,
-                'remorque_plaque' => $opsConteneur->remorque_plaque,
-                'chauffeur_nom' => $opsConteneur->chauffeur_nom,
+                'camion_id_externe' => $opsConteneur->camion_id,
+                'remorque_id_externe' => $opsConteneur->remorque_id,
                 'prime_chauffeur' => $opsConteneur->prime_chauffeur,
-                'destination_type' => $opsConteneur->destination_type,
-                'destination_adresse' => $opsConteneur->destination_adresse,
+                'destination_type' => $opsConteneur->type_destination,
+                'destination_adresse' => null, // Pas disponible directement
                 'statut_ops' => $opsConteneur->statut_ops,
-                'statut' => 'en_attente', // Nouveau conteneur = en attente de facturation
+                'statut' => 'en_attente',
                 'source_system' => 'logistiga_ops',
                 'synced_at' => now(),
             ]);
 
             $this->conteneursImported++;
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    /**
+     * Détecte les conteneurs "oubliés": présents dans OPS mais absents d'un OT existant
+     * pour le même client + BL
+     */
+    private function detecterAnomalies(): void
+    {
+        $this->info('🔍 Détection des anomalies (conteneurs oubliés)...');
+
+        // Récupérer toutes les combinaisons uniques client+BL depuis OPS
+        $combinaisonsOps = DB::connection('ops')
+            ->table('sorties_conteneurs')
+            ->select([
+                DB::raw('UPPER(TRIM(nom_client)) as client_normalise'),
+                DB::raw('UPPER(TRIM(numero_bl)) as bl_normalise'),
+                'nom_client',
+                'numero_bl',
+            ])
+            ->whereIn('statut', ['retourne_port', 'livre_client', 'a_la_base'])
+            ->whereNull('deleted_at')
+            ->whereNotNull('numero_bl')
+            ->groupBy('client_normalise', 'bl_normalise', 'nom_client', 'numero_bl')
+            ->get();
+
+        $bar = $this->output->createProgressBar($combinaisonsOps->count());
+        $bar->start();
+
+        foreach ($combinaisonsOps as $combi) {
+            // Récupérer tous les conteneurs OPS pour cette combinaison
+            $conteneursOps = DB::connection('ops')
+                ->table('sorties_conteneurs')
+                ->whereRaw('UPPER(TRIM(nom_client)) = ?', [$combi->client_normalise])
+                ->whereRaw('UPPER(TRIM(numero_bl)) = ?', [$combi->bl_normalise])
+                ->whereIn('statut', ['retourne_port', 'livre_client', 'a_la_base'])
+                ->whereNull('deleted_at')
+                ->pluck('numero_conteneur')
+                ->map(fn($n) => strtoupper(trim($n)))
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // Chercher l'OT correspondant dans FAC
+            $ordre = OrdreTravail::whereHas('client', function ($q) use ($combi) {
+                    $q->whereRaw('UPPER(TRIM(nom)) = ?', [$combi->client_normalise]);
+                })
+                ->whereRaw('UPPER(TRIM(numero_bl)) = ?', [$combi->bl_normalise])
+                ->with('conteneurs')
+                ->first();
+
+            if ($ordre) {
+                // OT existe: vérifier s'il manque des conteneurs
+                $conteneursOt = $ordre->conteneurs
+                    ->pluck('numero')
+                    ->map(fn($n) => strtoupper(trim($n)))
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                // Conteneurs présents dans OPS mais absents de l'OT
+                $manquants = array_diff($conteneursOps, $conteneursOt);
+
+                if (!empty($manquants)) {
+                    // Vérifier si anomalie déjà enregistrée pour cet OT
+                    foreach ($manquants as $numConteneur) {
+                        $existeDeja = ConteneurAnomalie::where('ordre_travail_id', $ordre->id)
+                            ->where('numero_conteneur', $numConteneur)
+                            ->where('statut', 'non_traite')
+                            ->exists();
+
+                        if (!$existeDeja && !$this->option('dry-run')) {
+                            ConteneurAnomalie::create([
+                                'type' => 'oublie',
+                                'numero_conteneur' => $numConteneur,
+                                'numero_bl' => $combi->numero_bl,
+                                'client_nom' => $combi->nom_client,
+                                'ordre_travail_id' => $ordre->id,
+                                'details' => [
+                                    'conteneurs_ops' => $conteneursOps,
+                                    'conteneurs_ot' => $conteneursOt,
+                                    'manquants' => array_values($manquants),
+                                    'date_detection' => now()->toIso8601String(),
+                                ],
+                                'statut' => 'non_traite',
+                                'detected_at' => now(),
+                            ]);
+                            $this->anomaliesDetected++;
+                        }
+
+                        if ($this->option('dry-run')) {
+                            $this->line("   [DRY-RUN] Anomalie: {$numConteneur} oublié dans OT {$ordre->numero}");
+                        }
+                    }
+                }
+            }
+            // Si pas d'OT, les conteneurs restent dans "en_attente" (comportement normal)
+
             $bar->advance();
         }
 
@@ -287,6 +399,7 @@ class SyncFromOps extends Command
             [
                 ['Armateurs', $this->armateursImported, $this->armateursUpdated, '-'],
                 ['Conteneurs', $this->conteneursImported, '-', $this->conteneursSkipped],
+                ['Anomalies détectées', $this->anomaliesDetected, '-', '-'],
             ]
         );
 
