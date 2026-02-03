@@ -114,19 +114,13 @@ export const initializeCsrf = async (): Promise<void> => {
   csrfInitializing = (async () => {
     try {
       // Appel à /sanctum/csrf-cookie pour obtenir le cookie XSRF-TOKEN
-      // On essaie d'abord sans /public (proxy htaccess), puis avec /public si échec
-      const csrfUrlPrimary = BACKEND_BASE_URL.replace(/\/public\/?$/, '') + '/sanctum/csrf-cookie';
-      const csrfUrlFallback = `${BACKEND_BASE_URL}/sanctum/csrf-cookie`;
-
-      log.info('[Auth] Initialisation CSRF (primary):', csrfUrlPrimary);
-
-      try {
-        await axios.get(csrfUrlPrimary, { withCredentials: true });
-      } catch (primaryErr) {
-        log.warn('[Auth] CSRF primary failed, trying fallback:', csrfUrlFallback);
-        await axios.get(csrfUrlFallback, { withCredentials: true });
-      }
-
+      // IMPORTANT: L'URL doit inclure /backend/public pour atteindre Laravel
+      const csrfUrl = `${BACKEND_BASE_URL}/sanctum/csrf-cookie`;
+      log.info('[Auth] Initialisation CSRF:', csrfUrl);
+      
+      await axios.get(csrfUrl, {
+        withCredentials: true,
+      });
       csrfInitialized = true;
       log.info('[Auth] CSRF cookie initialisé avec succès');
     } catch (error) {
