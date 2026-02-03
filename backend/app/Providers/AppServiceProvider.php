@@ -5,8 +5,10 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use App\Models\OrdreTravail;
 use App\Services\PaiementService;
 use App\Services\NoteDebutService;
 use App\Services\CaisseService;
@@ -101,6 +103,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Fix pour MySQL < 5.7.7 / MariaDB avec utf8mb4
         Schema::defaultStringLength(191);
+
+        // Route model binding explicite pour OrdreTravail
+        Route::model('ordreTravail', OrdreTravail::class);
 
         // =============================================
         // RATE LIMITERS - Configuration centralisée
