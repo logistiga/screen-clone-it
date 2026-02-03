@@ -105,6 +105,7 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         // Route model binding explicite pour OrdreTravail
+        Route::model('ordre', OrdreTravail::class);
         Route::model('ordreTravail', OrdreTravail::class);
 
         // =============================================

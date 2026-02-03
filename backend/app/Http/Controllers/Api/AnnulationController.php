@@ -142,19 +142,24 @@ class AnnulationController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur serveur lors de l\'annulation de la facture',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
-    public function annulerOrdre(Request $request, OrdreTravail $ordreTravail): JsonResponse
+    public function annulerOrdre(Request $request, OrdreTravail $ordre): JsonResponse
     {
         $request->validate([
             'motif' => 'required|string|max:500',
         ]);
 
         try {
-            $annulation = $this->annulationService->annulerOrdre($ordreTravail, $request->motif);
+            $annulation = $this->annulationService->annulerOrdre($ordre, $request->motif);
 
-            Audit::log('cancel', 'ordre', "Ordre annulé: {$ordreTravail->numero}", $ordreTravail->id);
+            Audit::log('cancel', 'ordre', "Ordre annulé: {$ordre->numero}", $ordre->id);
 
             return response()->json([
                 'message' => 'Ordre de travail annulé avec succès',
@@ -163,6 +168,11 @@ class AnnulationController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur serveur lors de l\'annulation de l\'ordre',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -184,6 +194,11 @@ class AnnulationController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur serveur lors de l\'annulation du devis',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
