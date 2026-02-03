@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\TaxeController;
 use App\Http\Controllers\Api\ConteneurTraiteController;
 use App\Http\Controllers\Api\ConteneurAnomalieController;
 use App\Http\Controllers\Api\SyncDiagnosticController;
+use App\Http\Controllers\Api\PrimeCamionController;
 
 
 /*
@@ -417,6 +418,17 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
+    // PRIMES CAMION (depuis OPS - décaissement comptable)
+    // ============================================
+    Route::prefix('primes-camion')->middleware('audit')->group(function () {
+        Route::get('/', [PrimeCamionController::class, 'index'])
+            ->middleware('permission:caisse.voir');
+        Route::get('stats', [PrimeCamionController::class, 'stats'])
+            ->middleware('permission:caisse.voir');
+        Route::post('{primeId}/decaisser', [PrimeCamionController::class, 'decaisser'])
+            ->middleware('permission:caisse.creer');
+    });
+
     // NOTE DE DÉBIT
     // ============================================
     Route::prefix('notes-debit')->middleware('audit')->group(function () {
