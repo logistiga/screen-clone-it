@@ -470,12 +470,29 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ANNULATIONS
     // ============================================
     Route::prefix('annulations')->middleware('audit')->group(function () {
+        // Routes statiques en premier
+        Route::get('stats', [AnnulationController::class, 'stats'])
+            ->middleware(['permission:annulations.voir', 'throttle:stats']);
+        
+        // Routes d'annulation par type de document
+        Route::post('facture/{facture}', [AnnulationController::class, 'annulerFacture'])
+            ->middleware('permission:annulations.creer');
+        Route::post('ordre/{ordre}', [AnnulationController::class, 'annulerOrdre'])
+            ->middleware('permission:annulations.creer');
+        Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
+            ->middleware('permission:annulations.creer');
+        
+        // Routes client
+        Route::get('client/{clientId}', [AnnulationController::class, 'historiqueClient'])
+            ->middleware('permission:annulations.voir');
+        Route::get('avoirs/client/{clientId}', [AnnulationController::class, 'avoirsClient'])
+            ->middleware('permission:annulations.voir');
+        
+        // Routes CRUD de base
         Route::get('/', [AnnulationController::class, 'index'])
             ->middleware('permission:annulations.voir');
         Route::post('/', [AnnulationController::class, 'store'])
             ->middleware('permission:annulations.creer');
-        Route::get('stats', [AnnulationController::class, 'stats'])
-            ->middleware(['permission:annulations.voir', 'throttle:stats']);
         Route::get('{annulation}', [AnnulationController::class, 'show'])
             ->middleware('permission:annulations.voir');
         Route::put('{annulation}', [AnnulationController::class, 'update'])
@@ -484,6 +501,12 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:annulations.valider');
         Route::post('{annulation}/rejeter', [AnnulationController::class, 'rejeter'])
             ->middleware('permission:annulations.valider');
+        Route::post('{annulation}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
+            ->middleware('permission:annulations.creer');
+        Route::post('{annulation}/rembourser', [AnnulationController::class, 'rembourser'])
+            ->middleware('permission:caisse.creer');
+        Route::post('{annulation}/utiliser-avoir', [AnnulationController::class, 'utiliserAvoir'])
+            ->middleware('permission:paiements.creer');
     });
 
     // ============================================
