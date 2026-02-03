@@ -15,7 +15,8 @@ import {
   PlusCircle,
   Link as LinkIcon,
   XCircle,
-  ArrowRight
+  ArrowRight,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -55,9 +56,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { conteneursTraitesApi, ConteneurTraite, ConteneursTraitesStats } from "@/lib/api/conteneurs-traites";
+import { conteneursTraitesApi, ConteneurTraite, ConteneursTraitesStats, anomaliesApi } from "@/lib/api/conteneurs-traites";
 import { ordresApi } from "@/lib/api/commercial";
 import { DebugPanel } from "@/components/debug/DebugPanel";
+import { AnomaliesSection } from "@/components/conteneurs/AnomaliesSection";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function ConteneursEnAttentePage() {
@@ -223,6 +225,26 @@ export default function ConteneursEnAttentePage() {
     }
   };
 
+  // Mutation pour sync + détection
+  const syncAndDetectMutation = useMutation({
+    mutationFn: async () => {
+      // D'abord synchroniser les conteneurs
+      await conteneursTraitesApi.syncFromOps();
+      // Puis détecter les anomalies
+      await anomaliesApi.detecter();
+    },
+    onSuccess: () => {
+      toast.success("Synchronisation et détection terminées");
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites'] });
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies'] });
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies-stats'] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la synchronisation");
+    },
+  });
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -235,6 +257,21 @@ export default function ConteneursEnAttentePage() {
           <p className="text-muted-foreground mt-1">
             Conteneurs traités par Logistiga OPS, prêts à être facturés
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => syncAndDetectMutation.mutate()} 
+            disabled={syncAndDetectMutation.isPending}
+            variant="default"
+          >
+            <Download className={`h-4 w-4 mr-2 ${syncAndDetectMutation.isPending ? 'animate-spin' : ''}`} />
+            Synchroniser depuis OPS
+          </Button>
+          <Button onClick={() => refetch()} disabled={isRefetching} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Debug Panel - visible en dev ou pour admins */}
@@ -254,11 +291,9 @@ export default function ConteneursEnAttentePage() {
           onRefresh={() => refetch()}
         />
       )}
-        <Button onClick={() => refetch()} disabled={isRefetching} variant="outline">
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
-      </div>
+
+      {/* Section Anomalies - en haut, bien visible */}
+      <AnomaliesSection />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use App\Http\Controllers\Api\ConteneurTraiteController;
+use App\Http\Controllers\Api\ConteneurAnomalieController;
 use App\Http\Controllers\Api\SyncDiagnosticController;
 
 
@@ -200,6 +201,24 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('{conteneur}/creer-ordre', [ConteneurTraiteController::class, 'creerOrdre'])
             ->middleware('permission:ordres.creer');
         Route::post('{conteneur}/ignorer', [ConteneurTraiteController::class, 'ignorer'])
+            ->middleware('permission:ordres.modifier');
+    });
+
+    // ============================================
+    // ANOMALIES CONTENEURS
+    // ============================================
+    Route::prefix('conteneurs-anomalies')->middleware('audit')->group(function () {
+        Route::get('/', [ConteneurAnomalieController::class, 'index'])
+            ->middleware('permission:ordres.voir');
+        Route::get('stats', [ConteneurAnomalieController::class, 'stats'])
+            ->middleware('permission:ordres.voir');
+        Route::post('detecter', [ConteneurAnomalieController::class, 'detecter'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('traiter-masse', [ConteneurAnomalieController::class, 'traiterEnMasse'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('{anomalie}/ajouter', [ConteneurAnomalieController::class, 'ajouterAOrdre'])
+            ->middleware('permission:ordres.modifier');
+        Route::post('{anomalie}/ignorer', [ConteneurAnomalieController::class, 'ignorer'])
             ->middleware('permission:ordres.modifier');
     });
 
