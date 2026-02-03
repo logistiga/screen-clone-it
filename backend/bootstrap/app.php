@@ -61,7 +61,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         // Retourner JSON 401 au lieu de rediriger vers 'login' pour les API
         $exceptions->render(function (AuthenticationException $e, Request $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
+            // Couvrir tous les patterns d'URL API possibles
+            if ($request->is('api/*') || $request->is('*/api/*') || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'Non authentifié. Veuillez vous connecter.',
                     'error' => 'Unauthenticated'
