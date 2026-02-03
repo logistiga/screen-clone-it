@@ -99,6 +99,7 @@ const ModifierNoteDebutPage = lazy(() => import("./pages/ModifierNoteDebut"));
 const CaissePage = lazy(() => import("./pages/Caisse"));
 const BanquePage = lazy(() => import("./pages/Banque"));
 const CaisseGlobalePage = lazy(() => import("./pages/CaisseGlobale"));
+const PrimesDecaissementPage = lazy(() => import("./pages/PrimesDecaissement"));
 const FacturesExonereesPage = lazy(() => import("./pages/FacturesExonerees"));
 const ReportingPage = lazy(() => import("./pages/Reporting"));
 const PrevisionsPage = lazy(() => import("./pages/Previsions"));
@@ -227,6 +228,7 @@ const App = () => (
                 <Route path="/caisse" element={<ProtectedRoute requiredPermission={P.caisse.view}><CaissePage /></ProtectedRoute>} />
                 <Route path="/banque" element={<ProtectedRoute requiredPermission={P.banques.view}><BanquePage /></ProtectedRoute>} />
                 <Route path="/caisse-globale" element={<ProtectedRoute requiredPermission={P.caisse.view}><CaisseGlobalePage /></ProtectedRoute>} />
+                <Route path="/primes-decaissement" element={<ProtectedRoute requiredPermission={P.caisse.view}><PrimesDecaissementPage /></ProtectedRoute>} />
                 <Route path="/factures-exonerees" element={<ProtectedRoute requiredPermission={P.factures.view}><FacturesExonereesPage /></ProtectedRoute>} />
                 
                 {/* Routes protégées - Reporting */}
