@@ -7,26 +7,34 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Console\Scheduling\Schedule;
 
-return Application::configure(basePath: dirname(__DIR__))
+$builder = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-    )
-    ->withSchedule(function (Schedule $schedule) {
+    );
+
+// IMPORTANT: La planification ne doit impacter que le runtime CLI (cron/artisan).
+// En environnement HTTP, certains hébergeurs déclenchent des erreurs très tôt
+// (avant le chargement de la config), ce qui peut casser toutes les routes.
+if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
+    $builder = $builder->withSchedule(function (Schedule $schedule) {
         // Planification des tâches périodiques (Laravel 11+)
         $schedule->command('notifications:rappels-automatiques')
             ->dailyAt('09:00')
             ->timezone('Africa/Dakar');
-        
+
         $schedule->command('credits:check-approvals')
             ->everyMinute();
-        
+
         $schedule->command('paiements:check-delays')
             ->dailyAt('08:00')
             ->timezone('Africa/Dakar');
-    })
+    });
+}
+
+return $builder
     ->withMiddleware(function (Middleware $middleware) {
         // Alias des middlewares personnalisés
         $middleware->alias([
