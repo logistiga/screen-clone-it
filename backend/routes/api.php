@@ -507,12 +507,27 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
-    // CONFIGURATION TAXES
+    // CONFIGURATION TAXES (CRUD complet)
     // ============================================
     Route::prefix('taxes')->middleware('audit')->group(function () {
+        // Routes spécifiques AVANT les routes paramétrées
+        Route::get('actives', [TaxeController::class, 'actives'])
+            ->middleware('permission:ordres.voir');
+        Route::post('reorder', [TaxeController::class, 'reorder'])
+            ->middleware('permission:configuration.modifier');
+        
+        // CRUD standard
         Route::get('/', [TaxeController::class, 'index'])
             ->middleware('permission:configuration.voir');
-        Route::put('/', [TaxeController::class, 'update'])
+        Route::post('/', [TaxeController::class, 'store'])
+            ->middleware('permission:configuration.modifier');
+        Route::get('{taxe}', [TaxeController::class, 'show'])
+            ->middleware('permission:configuration.voir');
+        Route::put('{taxe}', [TaxeController::class, 'update'])
+            ->middleware('permission:configuration.modifier');
+        Route::delete('{taxe}', [TaxeController::class, 'destroy'])
+            ->middleware('permission:configuration.modifier');
+        Route::post('{taxe}/toggle-active', [TaxeController::class, 'toggleActive'])
             ->middleware('permission:configuration.modifier');
     });
 
