@@ -17,11 +17,12 @@ import {
   CheckCircle2, 
   Wallet, 
   Clock, 
-  AlertCircle,
+  Truck,
   Coins,
   User,
-  FileText,
-  Loader2
+  Package,
+  Loader2,
+  AlertTriangle
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
@@ -51,12 +52,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import type { Prime } from "@/types/partenaires";
 
 const statutFilterOptions = [
+  { value: "paye", label: "Payées (à décaisser)" },
   { value: "all", label: "Tous les statuts" },
-  { value: "Payée", label: "Payée (en attente décaissement)" },
-  { value: "Partiellement payée", label: "Partiellement payée" },
 ];
 
 const itemVariants = {
@@ -64,8 +63,25 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-interface PrimeResponse {
-  data: Prime[];
+interface PrimeCamion {
+  id: number;
+  vehicule_id: number;
+  chauffeur_id: number;
+  numero_conteneur: string;
+  numero_bl: string;
+  nom_client: string;
+  date_sortie: string;
+  montant: number;
+  statut: string;
+  date_paiement: string | null;
+  numero_camion: string | null;
+  chauffeur_nom: string | null;
+  chauffeur_prenom: string | null;
+  decaisse: boolean;
+}
+
+interface PrimeCamionResponse {
+  data: PrimeCamion[];
   meta?: {
     current_page: number;
     last_page: number;
@@ -74,41 +90,56 @@ interface PrimeResponse {
   };
 }
 
+interface StatsResponse {
+  total_a_decaisser: number;
+  nombre_primes: number;
+  deja_decaissees: number;
+  total_payees?: number;
+}
+
 export default function PrimesDecaissementPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statutFilter, setStatutFilter] = useState<string>("Payée");
+  const [statutFilter, setStatutFilter] = useState<string>("paye");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   
   // Modal de décaissement
   const [decaissementModalOpen, setDecaissementModalOpen] = useState(false);
-  const [selectedPrime, setSelectedPrime] = useState<Prime | null>(null);
+  const [selectedPrime, setSelectedPrime] = useState<PrimeCamion | null>(null);
   const [modePaiement, setModePaiement] = useState("Espèces");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Fetch primes payées (en attente de décaissement)
+  // Fetch primes camion depuis OPS
   const { data: primesData, isLoading, refetch } = useQuery({
-    queryKey: ['primes-decaissement', currentPage, pageSize, searchTerm, statutFilter],
+    queryKey: ['primes-camion', currentPage, pageSize, searchTerm, statutFilter],
     queryFn: async () => {
       const params: Record<string, string | number> = {
         page: currentPage,
         per_page: pageSize,
-        statut: statutFilter === 'all' ? '' : statutFilter,
+        statut: statutFilter,
       };
       if (searchTerm) params.search = searchTerm;
       
-      const response = await api.get<PrimeResponse>('/primes', { params });
+      const response = await api.get<PrimeCamionResponse>('/primes-camion', { params });
+      return response.data;
+    },
+  });
+
+  // Fetch statistiques
+  const { data: statsData } = useQuery({
+    queryKey: ['primes-camion-stats'],
+    queryFn: async () => {
+      const response = await api.get<StatsResponse>('/primes-camion/stats');
       return response.data;
     },
   });
 
   // Mutation pour valider le décaissement
   const decaissementMutation = useMutation({
-    mutationFn: async (primeId: string | number) => {
-      // On utilise l'endpoint payer pour créer la sortie de caisse
-      const response = await api.post(`/primes/${primeId}/decaisser`, {
+    mutationFn: async (primeId: number) => {
+      const response = await api.post(`/primes-camion/${primeId}/decaisser`, {
         mode_paiement: modePaiement,
         reference,
         notes,
@@ -117,7 +148,8 @@ export default function PrimesDecaissementPage() {
     },
     onSuccess: () => {
       toast.success("Décaissement validé avec succès");
-      queryClient.invalidateQueries({ queryKey: ['primes-decaissement'] });
+      queryClient.invalidateQueries({ queryKey: ['primes-camion'] });
+      queryClient.invalidateQueries({ queryKey: ['primes-camion-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
       setDecaissementModalOpen(false);
@@ -133,15 +165,18 @@ export default function PrimesDecaissementPage() {
   const totalItems = primesData?.meta?.total || 0;
 
   // Statistiques
-  const totalMontant = primes.reduce((sum, p) => sum + p.montant, 0);
-  const primesPayees = primes.filter(p => p.statut === 'Payée');
-  const primesPartielles = primes.filter(p => p.statut === 'Partiellement payée');
+  const totalADecaisser = statsData?.total_a_decaisser || 0;
+  const nombrePrimes = statsData?.nombre_primes || 0;
+  const dejaDecaissees = statsData?.deja_decaissees || 0;
 
-  const hasFilters = !!searchTerm || statutFilter !== 'Payée';
+  // Primes non encore décaissées dans la page courante
+  const primesADecaisser = primes.filter(p => !p.decaisse);
+
+  const hasFilters = !!searchTerm || statutFilter !== 'paye';
 
   const clearFilters = () => {
     setSearchTerm("");
-    setStatutFilter("Payée");
+    setStatutFilter("paye");
     setCurrentPage(1);
   };
 
@@ -152,7 +187,7 @@ export default function PrimesDecaissementPage() {
     setNotes("");
   };
 
-  const openDecaissementModal = (prime: Prime) => {
+  const openDecaissementModal = (prime: PrimeCamion) => {
     setSelectedPrime(prime);
     setDecaissementModalOpen(true);
   };
@@ -165,7 +200,7 @@ export default function PrimesDecaissementPage() {
   if (isLoading) {
     return (
       <MainLayout title="Primes à décaisser">
-        <DocumentLoadingState message="Chargement des primes..." />
+        <DocumentLoadingState message="Chargement des primes camion..." />
       </MainLayout>
     );
   }
@@ -175,9 +210,9 @@ export default function PrimesDecaissementPage() {
     return (
       <MainLayout title="Primes à décaisser">
         <DocumentEmptyState
-          icon={Coins}
-          title="Aucune prime en attente de décaissement"
-          description="Les primes marquées comme payées dans le module Partenaires apparaîtront ici pour validation du décaissement."
+          icon={Truck}
+          title="Aucune prime camion en attente"
+          description="Les primes camion marquées comme payées dans OPS apparaîtront ici pour validation du décaissement."
         />
       </MainLayout>
     );
@@ -190,7 +225,7 @@ export default function PrimesDecaissementPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Primes à décaisser</h1>
-            <p className="text-muted-foreground mt-1">Validez les décaissements des primes partenaires</p>
+            <p className="text-muted-foreground mt-1">Validez les décaissements des primes camion depuis OPS</p>
           </div>
         </div>
 
@@ -198,34 +233,33 @@ export default function PrimesDecaissementPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <DocumentStatCard
             title="Total à décaisser"
-            value={formatMontant(totalMontant)}
+            value={formatMontant(totalADecaisser)}
             icon={Wallet}
-            subtitle={`${totalItems} primes`}
+            subtitle={`${nombrePrimes} primes`}
             variant="primary"
             delay={0}
           />
           <DocumentStatCard
             title="Primes payées"
-            value={primesPayees.length}
-            icon={CheckCircle2}
+            value={primesADecaisser.length}
+            icon={Clock}
             subtitle="en attente décaissement"
-            variant="success"
+            variant="warning"
             delay={0.1}
           />
           <DocumentStatCard
-            title="Partiellement payées"
-            value={primesPartielles.length}
-            icon={Clock}
-            subtitle="paiement partiel"
-            variant="warning"
+            title="Déjà décaissées"
+            value={dejaDecaissees}
+            icon={CheckCircle2}
+            subtitle="sorties de caisse créées"
+            variant="success"
             delay={0.2}
           />
           <DocumentStatCard
-            title="Montant total"
-            value={formatMontant(primes.reduce((sum, p) => sum + (p.reste_a_payer || 0), 0))}
-            icon={AlertCircle}
-            subtitle="reste à décaisser"
-            variant="danger"
+            title="Total affiché"
+            value={totalItems}
+            icon={Truck}
+            subtitle="primes dans la liste"
             delay={0.3}
           />
         </div>
@@ -234,7 +268,7 @@ export default function PrimesDecaissementPage() {
         <DocumentFilters
           searchTerm={searchTerm}
           onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
-          searchPlaceholder="Rechercher (représentant, facture)..."
+          searchPlaceholder="Rechercher (camion, conteneur, BL, client)..."
           statutFilter={statutFilter}
           onStatutChange={(v) => { setStatutFilter(v); setCurrentPage(1); }}
           statutOptions={statutFilterOptions}
@@ -244,8 +278,8 @@ export default function PrimesDecaissementPage() {
         <Card className="border-border/50 overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-primary" />
-              Primes en attente de décaissement
+              <Truck className="h-5 w-5 text-primary" />
+              Primes camion en attente de décaissement
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -253,10 +287,11 @@ export default function PrimesDecaissementPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-muted/50">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Représentant</TableHead>
-                    <TableHead>Facture</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>Date sortie</TableHead>
+                    <TableHead>N° Camion</TableHead>
+                    <TableHead>Chauffeur</TableHead>
+                    <TableHead>Conteneur</TableHead>
+                    <TableHead>Client</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Montant</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -265,9 +300,9 @@ export default function PrimesDecaissementPage() {
                 <TableBody>
                   {primes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-16 text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="py-16 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
-                          <Coins className="h-8 w-8 opacity-50" />
+                          <Truck className="h-8 w-8 opacity-50" />
                           <p>Aucune prime trouvée</p>
                           {hasFilters && (
                             <Button variant="link" onClick={clearFilters} className="text-primary">
@@ -288,54 +323,62 @@ export default function PrimesDecaissementPage() {
                         className="group hover:bg-muted/50 transition-colors"
                       >
                         <TableCell className="text-muted-foreground">
-                          {formatDate(prime.created_at)}
+                          {formatDate(prime.date_sortie)}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">
-                              {prime.representant_id ? `Rep. #${prime.representant_id}` : '-'}
+                            <Truck className="h-4 w-4 text-primary" />
+                            <span className="font-semibold">
+                              {prime.numero_camion || '-'}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {prime.facture ? (
-                            <Badge variant="outline" className="gap-1">
-                              <FileText className="h-3 w-3" />
-                              {prime.facture.numero}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {prime.description || '-'}
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span>
+                              {prime.chauffeur_nom ? `${prime.chauffeur_nom} ${prime.chauffeur_prenom || ''}`.trim() : '-'}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            className={
-                              prime.statut === 'Payée' 
-                                ? 'bg-success/20 text-success' 
-                                : prime.statut === 'Partiellement payée'
-                                ? 'bg-warning/20 text-warning'
-                                : 'bg-muted text-muted-foreground'
-                            }
-                          >
-                            {prime.statut}
+                          <Badge variant="outline" className="gap-1">
+                            <Package className="h-3 w-3" />
+                            {prime.numero_conteneur || '-'}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[150px] truncate">
+                          {prime.nom_client || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {prime.decaisse ? (
+                            <Badge className="bg-success/20 text-success gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Décaissée
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-warning/20 text-warning gap-1">
+                              <Clock className="h-3 w-3" />
+                              À décaisser
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
                           {formatMontant(prime.montant)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            size="sm" 
-                            className="gap-1"
-                            onClick={() => openDecaissementModal(prime)}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Décaisser
-                          </Button>
+                          {prime.decaisse ? (
+                            <span className="text-sm text-muted-foreground">Traité</span>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              className="gap-1"
+                              onClick={() => openDecaissementModal(prime)}
+                            >
+                              <Coins className="h-4 w-4" />
+                              Décaisser
+                            </Button>
+                          )}
                         </TableCell>
                       </motion.tr>
                     ))
@@ -371,7 +414,7 @@ export default function PrimesDecaissementPage() {
               Valider le décaissement
             </DialogTitle>
             <DialogDescription>
-              Cette action va créer une sortie de caisse pour cette prime.
+              Cette action va créer une sortie de caisse pour cette prime camion.
             </DialogDescription>
           </DialogHeader>
 
@@ -381,20 +424,24 @@ export default function PrimesDecaissementPage() {
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Montant:</span>
-                  <span className="font-semibold">{formatMontant(selectedPrime.montant)}</span>
+                  <span className="font-semibold text-lg">{formatMontant(selectedPrime.montant)}</span>
                 </div>
-                {selectedPrime.facture && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Facture:</span>
-                    <span>{selectedPrime.facture.numero}</span>
-                  </div>
-                )}
-                {selectedPrime.description && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Description:</span>
-                    <span className="truncate max-w-[200px]">{selectedPrime.description}</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Camion:</span>
+                  <span className="font-medium">{selectedPrime.numero_camion || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Chauffeur:</span>
+                  <span>{selectedPrime.chauffeur_nom ? `${selectedPrime.chauffeur_nom} ${selectedPrime.chauffeur_prenom || ''}`.trim() : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Conteneur:</span>
+                  <span>{selectedPrime.numero_conteneur || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Client:</span>
+                  <span className="truncate max-w-[200px]">{selectedPrime.nom_client || '-'}</span>
+                </div>
               </div>
 
               {/* Mode de paiement */}
