@@ -81,8 +81,19 @@ class AnnulationService
                 throw new \Exception('Impossible d\'annuler un ordre déjà facturé. Annulez d\'abord la facture.');
             }
 
-            // Calculer le montant (fallback si montant_ttc absent)
-            $montant = $ordre->montant_ttc ?? ($ordre->montant_ht + ($ordre->tva ?? 0) + ($ordre->css ?? 0));
+            // Calculer le montant avec fallback robuste
+            // Pour les ordres sans taxes: montant_ttc = montant_ht
+            $montantHT = (float) ($ordre->montant_ht ?? 0);
+            $montantTVA = (float) ($ordre->tva ?? 0);
+            $montantCSS = (float) ($ordre->css ?? 0);
+            
+            // Priorité: montant_ttc > calcul manuel
+            $montant = $ordre->montant_ttc ?? ($montantHT + $montantTVA + $montantCSS);
+            
+            // Si tout est à zéro mais qu'il y a un montant_ht, utiliser le HT
+            if ($montant == 0 && $montantHT > 0) {
+                $montant = $montantHT;
+            }
 
             // Créer l'annulation
             $annulation = Annulation::create([
