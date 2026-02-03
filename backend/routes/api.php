@@ -477,7 +477,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         // Routes d'annulation par type de document
         Route::post('facture/{facture}', [AnnulationController::class, 'annulerFacture'])
             ->middleware('permission:annulations.creer');
-        Route::post('ordre/{ordre}', [AnnulationController::class, 'annulerOrdre'])
+        Route::post('ordre/{ordreTravail}', [AnnulationController::class, 'annulerOrdre'])
             ->middleware('permission:annulations.creer');
         Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
             ->middleware('permission:annulations.creer');

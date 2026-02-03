@@ -145,16 +145,16 @@ class AnnulationController extends Controller
         }
     }
 
-    public function annulerOrdre(Request $request, OrdreTravail $ordre): JsonResponse
+    public function annulerOrdre(Request $request, OrdreTravail $ordreTravail): JsonResponse
     {
         $request->validate([
             'motif' => 'required|string|max:500',
         ]);
 
         try {
-            $annulation = $this->annulationService->annulerOrdre($ordre, $request->motif);
+            $annulation = $this->annulationService->annulerOrdre($ordreTravail, $request->motif);
 
-            Audit::log('cancel', 'ordre', "Ordre annulé: {$ordre->numero}", $ordre->id);
+            Audit::log('cancel', 'ordre', "Ordre annulé: {$ordreTravail->numero}", $ordreTravail->id);
 
             return response()->json([
                 'message' => 'Ordre de travail annulé avec succès',
