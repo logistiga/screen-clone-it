@@ -300,16 +300,16 @@ export default function PrimesDecaissementPage() {
                   <TableRow className="hover:bg-transparent bg-muted/50">
                     <TableHead>Date sortie</TableHead>
                     <TableHead>N° Camion</TableHead>
-                    <TableHead>Chauffeur</TableHead>
                     <TableHead>Conteneur</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead>N° Paiement</TableHead>
                     <TableHead className="text-right">Montant</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {primes.length === 0 ? (
+                {primes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="py-16 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
@@ -345,14 +345,6 @@ export default function PrimesDecaissementPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span>
-                              {prime.chauffeur_nom ? `${prime.chauffeur_nom} ${prime.chauffeur_prenom || ''}`.trim() : '-'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
                           <Badge variant="outline" className="gap-1">
                             <Package className="h-3 w-3" />
                             {prime.numero_conteneur || '-'}
@@ -363,18 +355,10 @@ export default function PrimesDecaissementPage() {
                         </TableCell>
                         <TableCell>
                           {prime.decaisse ? (
-                            <div className="flex flex-col gap-1">
-                              <Badge className="bg-success/20 text-success gap-1 w-fit">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Décaissée
-                              </Badge>
-                              {prime.mouvement_id && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Receipt className="h-3 w-3" />
-                                  N° {prime.mouvement_id}
-                                </span>
-                              )}
-                            </div>
+                            <Badge className="bg-success/20 text-success gap-1 w-fit">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Décaissée
+                            </Badge>
                           ) : (
                             <Badge className="bg-warning/20 text-warning gap-1">
                               <Clock className="h-3 w-3" />
@@ -382,15 +366,22 @@ export default function PrimesDecaissementPage() {
                             </Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {prime.mouvement_id ? (
+                            <span className="text-sm font-medium flex items-center gap-1">
+                              <Receipt className="h-4 w-4 text-primary" />
+                              #{prime.mouvement_id}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-semibold">
                           {formatMontant(prime.montant)}
                         </TableCell>
                         <TableCell className="text-right">
                           {prime.decaisse ? (
-                            <span className="text-sm text-muted-foreground flex items-center gap-1 justify-end">
-                              <Receipt className="h-4 w-4" />
-                              Mvt #{prime.mouvement_id}
-                            </span>
+                            <span className="text-sm text-success">Traité</span>
                           ) : (
                             <Button 
                               size="sm" 
