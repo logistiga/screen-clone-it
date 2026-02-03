@@ -86,18 +86,19 @@ class PrimeCamionController extends Controller
                 ->limit($perPage)
                 ->get();
 
-            // Vérifier si la prime a déjà été décaissée dans FAC
+            // Vérifier si la prime a déjà été décaissée dans FAC et récupérer le numéro de mouvement
             $primeIds = $primes->pluck('id')->toArray();
-            $decaissees = DB::table('mouvements_caisse')
+            $mouvementsDecaisses = DB::table('mouvements_caisse')
                 ->where('categorie', 'Prime camion')
                 ->whereIn('reference', array_map(fn($id) => "OPS-PRIME-{$id}", $primeIds))
-                ->pluck('reference')
-                ->map(fn($ref) => (int) str_replace('OPS-PRIME-', '', $ref))
-                ->toArray();
+                ->get(['id', 'reference'])
+                ->keyBy(fn($m) => (int) str_replace('OPS-PRIME-', '', $m->reference));
 
-            // Ajouter le flag décaissé
-            $primes = $primes->map(function ($prime) use ($decaissees) {
-                $prime->decaisse = in_array($prime->id, $decaissees);
+            // Ajouter le flag décaissé et le numéro de mouvement
+            $primes = $primes->map(function ($prime) use ($mouvementsDecaisses) {
+                $mouvement = $mouvementsDecaisses->get($prime->id);
+                $prime->decaisse = $mouvement !== null;
+                $prime->mouvement_id = $mouvement?->id;
                 return $prime;
             });
 
