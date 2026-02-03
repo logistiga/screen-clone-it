@@ -411,8 +411,6 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:primes.modifier');
         Route::post('{prime}/payer', [PrimeController::class, 'payer'])
             ->middleware('permission:primes.payer');
-        Route::post('{prime}/decaisser', [PrimeController::class, 'decaisser'])
-            ->middleware('permission:caisse.creer');
         Route::delete('{prime}', [PrimeController::class, 'destroy'])
             ->middleware('permission:primes.supprimer');
     });
