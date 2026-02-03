@@ -166,13 +166,18 @@ class AnnulationController extends Controller
                 'annulation' => new AnnulationResource($annulation),
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            return response()->json([
-                'message' => 'Erreur serveur lors de l\'annulation de l\'ordre',
+            // Log l'erreur pour debugging
+            \Illuminate\Support\Facades\Log::error('Erreur annulation ordre', [
+                'ordre_id' => $ordre->id ?? null,
                 'error' => $e->getMessage(),
-            ], 500);
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
+            ], 422);
         }
     }
 
