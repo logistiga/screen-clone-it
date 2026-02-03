@@ -81,6 +81,9 @@ class AnnulationService
                 throw new \Exception('Impossible d\'annuler un ordre déjà facturé. Annulez d\'abord la facture.');
             }
 
+            // Calculer le montant (fallback si montant_ttc absent)
+            $montant = $ordre->montant_ttc ?? ($ordre->montant_ht + ($ordre->tva ?? 0) + ($ordre->css ?? 0));
+
             // Créer l'annulation
             $annulation = Annulation::create([
                 'numero' => Annulation::genererNumero(),
@@ -88,7 +91,7 @@ class AnnulationService
                 'document_id' => $ordre->id,
                 'document_numero' => $ordre->numero,
                 'client_id' => $ordre->client_id,
-                'montant' => $ordre->montant_ttc,
+                'montant' => $montant,
                 'date' => now(),
                 'motif' => $motif,
                 'avoir_genere' => false,
