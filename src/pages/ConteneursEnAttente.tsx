@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { 
   Package, 
-  Search, 
   RefreshCw, 
   Clock, 
   CheckCircle2, 
@@ -16,14 +15,16 @@ import {
   Link as LinkIcon,
   XCircle,
   ArrowRight,
-  Download
+  Download,
+  AlertTriangle,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 
+import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,74 +59,42 @@ import {
 
 import { conteneursTraitesApi, ConteneurTraite, ConteneursTraitesStats, anomaliesApi } from "@/lib/api/conteneurs-traites";
 import { ordresApi } from "@/lib/api/commercial";
-import { DebugPanel } from "@/components/debug/DebugPanel";
+import {
+  DocumentStatCard,
+  DocumentFilters,
+  DocumentEmptyState,
+  DocumentLoadingState,
+  DocumentErrorState,
+} from "@/components/shared/documents";
 import { AnomaliesSection } from "@/components/conteneurs/AnomaliesSection";
-import { useAuth } from "@/hooks/use-auth";
+
+// Options de filtres
+const statutOptions = [
+  { value: "all", label: "Tous les statuts" },
+  { value: "en_attente", label: "En attente" },
+  { value: "affecte", label: "Affectés" },
+  { value: "facture", label: "Facturés" },
+  { value: "ignore", label: "Ignorés" },
+];
 
 export default function ConteneursEnAttentePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { hasRole } = useAuth();
-  const isAdmin = hasRole('admin') || hasRole('administrateur') || hasRole('directeur');
   
   const [searchQuery, setSearchQuery] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("en_attente");
   const [selectedConteneur, setSelectedConteneur] = useState<ConteneurTraite | null>(null);
   const [isAffecterDialogOpen, setIsAffecterDialogOpen] = useState(false);
   const [selectedOrdreId, setSelectedOrdreId] = useState<string>("");
-  
-  // Debug info state
-  const [debugInfo, setDebugInfo] = useState<{
-    lastRequest: any;
-    lastResponse: any;
-    lastError: any;
-    apiUrl: string;
-    timestamp: string | null;
-    duration: number | null;
-  }>({
-    lastRequest: null,
-    lastResponse: null,
-    lastError: null,
-    apiUrl: '/conteneurs-en-attente',
-    timestamp: null,
-    duration: null,
-  });
 
-  // Récupérer les conteneurs avec debug
+  // Récupérer les conteneurs
   const { data: conteneursData, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['conteneurs-traites', statutFilter, searchQuery],
-    queryFn: async () => {
-      const startTime = Date.now();
-      const requestParams = { 
-        statut: statutFilter || undefined,
-        search: searchQuery || undefined,
-        per_page: 50,
-      };
-      
-      try {
-        const result = await conteneursTraitesApi.getAll(requestParams);
-        
-        setDebugInfo({
-          lastRequest: requestParams,
-          lastResponse: result,
-          lastError: null,
-          apiUrl: '/conteneurs-en-attente',
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime,
-        });
-        
-        return result;
-      } catch (err: any) {
-        setDebugInfo(prev => ({
-          ...prev,
-          lastRequest: requestParams,
-          lastError: err?.response?.data || err?.message || err,
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime,
-        }));
-        throw err;
-      }
-    },
+    queryFn: () => conteneursTraitesApi.getAll({ 
+      statut: statutFilter !== "all" ? statutFilter : undefined,
+      search: searchQuery || undefined,
+      per_page: 50,
+    }),
   });
 
   // Récupérer les stats
@@ -142,21 +111,6 @@ export default function ConteneursEnAttentePage() {
   });
 
   // Mutations
-  const creerOrdreMutation = useMutation({
-    mutationFn: (conteneurId: number) => conteneursTraitesApi.creerOrdre(conteneurId),
-    onSuccess: (data) => {
-      toast.success(`Ordre ${data.ordre?.numero} créé avec succès`);
-      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites'] });
-      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites-stats'] });
-      if (data.ordre?.id) {
-        navigate(`/ordres/${data.ordre.id}`);
-      }
-    },
-    onError: () => {
-      toast.error("Erreur lors de la création de l'ordre");
-    },
-  });
-
   const affecterOrdreMutation = useMutation({
     mutationFn: ({ conteneurId, ordreId }: { conteneurId: number; ordreId: number }) => 
       conteneursTraitesApi.affecterAOrdre(conteneurId, ordreId),
@@ -184,6 +138,28 @@ export default function ConteneursEnAttentePage() {
     },
   });
 
+  // Mutation pour sync + détection
+  const syncAndDetectMutation = useMutation({
+    mutationFn: async () => {
+      await conteneursTraitesApi.syncFromOps();
+      try {
+        await anomaliesApi.detecter();
+      } catch {
+        // Ignorer si l'API anomalies échoue
+      }
+    },
+    onSuccess: () => {
+      toast.success("Synchronisation terminée");
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites'] });
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies'] });
+      queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies-stats'] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la synchronisation");
+    },
+  });
+
   const conteneurs: ConteneurTraite[] = conteneursData?.data || [];
   const ordres = Array.isArray(ordresData) ? ordresData : (ordresData?.data || []);
 
@@ -197,18 +173,35 @@ export default function ConteneursEnAttentePage() {
   };
 
   const getStatutBadge = (statut: string) => {
-    switch (statut) {
-      case 'en_attente':
-        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200"><Clock className="h-3 w-3 mr-1" /> En attente</Badge>;
-      case 'affecte':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><LinkIcon className="h-3 w-3 mr-1" /> Affecté</Badge>;
-      case 'facture':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" /> Facturé</Badge>;
-      case 'ignore':
-        return <Badge variant="secondary"><XCircle className="h-3 w-3 mr-1" /> Ignoré</Badge>;
-      default:
-        return <Badge variant="secondary">{statut}</Badge>;
-    }
+    const configs: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      en_attente: { 
+        label: "En attente", 
+        icon: <Clock className="h-3 w-3" />,
+        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200" 
+      },
+      affecte: { 
+        label: "Affecté", 
+        icon: <LinkIcon className="h-3 w-3" />,
+        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200" 
+      },
+      facture: { 
+        label: "Facturé", 
+        icon: <CheckCircle2 className="h-3 w-3" />,
+        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200" 
+      },
+      ignore: { 
+        label: "Ignoré", 
+        icon: <XCircle className="h-3 w-3" />,
+        className: "bg-muted text-muted-foreground" 
+      },
+    };
+    const config = configs[statut] || { label: statut, icon: null, className: "bg-muted" };
+    return (
+      <Badge variant="outline" className={`${config.className} flex items-center gap-1`}>
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
   };
 
   const handleAffecterClick = (conteneur: ConteneurTraite) => {
@@ -225,324 +218,358 @@ export default function ConteneursEnAttentePage() {
     }
   };
 
-  // Mutation pour sync + détection
-  const syncAndDetectMutation = useMutation({
-    mutationFn: async () => {
-      // D'abord synchroniser les conteneurs
-      await conteneursTraitesApi.syncFromOps();
-      // Puis détecter les anomalies
-      await anomaliesApi.detecter();
-    },
-    onSuccess: () => {
-      toast.success("Synchronisation et détection terminées");
-      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites'] });
-      queryClient.invalidateQueries({ queryKey: ['conteneurs-traites-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies'] });
-      queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies-stats'] });
-    },
-    onError: () => {
-      toast.error("Erreur lors de la synchronisation");
-    },
-  });
+  // Rediriger vers le formulaire de nouvel ordre avec données pré-remplies
+  const handleCreerOrdre = (conteneur: ConteneurTraite) => {
+    // Stocker les données du conteneur dans sessionStorage pour pré-remplissage
+    const prefillData = {
+      categorie: 'conteneurs',
+      numeroBL: conteneur.numero_bl || '',
+      clientNom: conteneur.client_nom || '',
+      armateurCode: conteneur.armateur_code || '',
+      armateurNom: conteneur.armateur_nom || '',
+      conteneur: {
+        numero: conteneur.numero_conteneur,
+        taille: '20', // Valeur par défaut
+        type: 'DRY',
+      },
+      sourceConteneurId: conteneur.id, // Pour marquer comme affecté après création
+    };
+    
+    sessionStorage.setItem('prefill_ordre', JSON.stringify(prefillData));
+    navigate('/ordres/nouveau?prefill=conteneur');
+  };
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Conteneurs en Attente">
+        <DocumentLoadingState message="Chargement des conteneurs..." />
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Conteneurs en Attente">
+        <DocumentErrorState 
+          message="Erreur lors du chargement des conteneurs"
+          onRetry={() => refetch()}
+        />
+      </MainLayout>
+    );
+  }
+
+  // État vide
+  if (conteneurs.length === 0 && !searchQuery && statutFilter === "en_attente") {
+    return (
+      <MainLayout title="Conteneurs en Attente">
+        <div className="space-y-6 animate-fade-in">
+          {/* Stats Cards - toujours visibles */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <DocumentStatCard
+              title="En attente"
+              value={stats?.en_attente || 0}
+              icon={Clock}
+              variant="warning"
+              subtitle="À traiter"
+              delay={0}
+            />
+            <DocumentStatCard
+              title="Affectés"
+              value={stats?.affectes || 0}
+              icon={LinkIcon}
+              variant="info"
+              subtitle="Ordres créés"
+              delay={0.1}
+            />
+            <DocumentStatCard
+              title="Facturés"
+              value={stats?.factures || 0}
+              icon={CheckCircle2}
+              variant="success"
+              subtitle="Terminés"
+              delay={0.2}
+            />
+            <DocumentStatCard
+              title="Total"
+              value={stats?.total || 0}
+              icon={Package}
+              variant="primary"
+              subtitle="Tous conteneurs"
+              delay={0.3}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button 
+              onClick={() => syncAndDetectMutation.mutate()} 
+              disabled={syncAndDetectMutation.isPending}
+              variant="default"
+              className="gap-2"
+            >
+              <Download className={`h-4 w-4 ${syncAndDetectMutation.isPending ? 'animate-spin' : ''}`} />
+              Synchroniser depuis OPS
+            </Button>
+            <Button onClick={() => refetch()} disabled={isRefetching} variant="outline" className="gap-2">
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+          </div>
+
+          <DocumentEmptyState
+            icon={Package}
+            title="Aucun conteneur en attente"
+            description="Les conteneurs traités par Logistiga OPS apparaîtront ici. Cliquez sur 'Synchroniser depuis OPS' pour récupérer les dernières données."
+            actionLabel="Synchroniser"
+            onAction={() => syncAndDetectMutation.mutate()}
+          />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            Conteneurs en Attente de Facturation
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Conteneurs traités par Logistiga OPS, prêts à être facturés
-          </p>
+    <MainLayout title="Conteneurs en Attente">
+      <div className="space-y-6 animate-fade-in">
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DocumentStatCard
+            title="En attente"
+            value={stats?.en_attente || 0}
+            icon={Clock}
+            variant="warning"
+            subtitle="À traiter"
+            delay={0}
+          />
+          <DocumentStatCard
+            title="Affectés"
+            value={stats?.affectes || 0}
+            icon={LinkIcon}
+            variant="info"
+            subtitle="Ordres créés"
+            delay={0.1}
+          />
+          <DocumentStatCard
+            title="Facturés"
+            value={stats?.factures || 0}
+            icon={CheckCircle2}
+            variant="success"
+            subtitle="Terminés"
+            delay={0.2}
+          />
+          <DocumentStatCard
+            title="Total"
+            value={stats?.total || 0}
+            icon={Package}
+            variant="primary"
+            subtitle="Tous conteneurs"
+            delay={0.3}
+          />
         </div>
-        <div className="flex gap-2">
+
+        {/* Filters */}
+        <DocumentFilters
+          searchTerm={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Rechercher par conteneur, BL, client..."
+          statutFilter={statutFilter}
+          onStatutChange={setStatutFilter}
+          statutOptions={statutOptions}
+        />
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 justify-end">
           <Button 
             onClick={() => syncAndDetectMutation.mutate()} 
             disabled={syncAndDetectMutation.isPending}
             variant="default"
+            className="gap-2 transition-all duration-200 hover:scale-105"
           >
-            <Download className={`h-4 w-4 mr-2 ${syncAndDetectMutation.isPending ? 'animate-spin' : ''}`} />
+            <Download className={`h-4 w-4 ${syncAndDetectMutation.isPending ? 'animate-spin' : ''}`} />
             Synchroniser depuis OPS
           </Button>
-          <Button onClick={() => refetch()} disabled={isRefetching} variant="outline">
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
+          <Button onClick={() => refetch()} disabled={isRefetching} variant="outline" className="gap-2 transition-all duration-200 hover:scale-105">
+            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
             Actualiser
           </Button>
         </div>
-      </div>
 
-      {/* Debug Panel - visible en dev ou pour admins */}
-      {(import.meta.env.DEV || isAdmin) && (
-        <DebugPanel 
-          title="Debug Communication API"
-          data={{
-            apiUrl: debugInfo.apiUrl,
-            request: debugInfo.lastRequest,
-            response: debugInfo.lastResponse,
-            error: debugInfo.lastError || error,
-            queryStatus: { isLoading, isError: !!error, isRefetching },
-            stats: stats,
-            timestamp: debugInfo.timestamp,
-            duration: debugInfo.duration,
-          }}
-          onRefresh={() => refetch()}
-        />
-      )}
+        {/* Section Anomalies */}
+        <AnomaliesSection />
 
-      {/* Section Anomalies - en haut, bien visible */}
-      <AnomaliesSection />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-100">
-                <Clock className="h-5 w-5 text-orange-600" />
+        {/* Table */}
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
+          <CardHeader className="bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Package className="h-5 w-5" />
+              Liste des conteneurs
+              <Badge variant="secondary" className="ml-2">{conteneurs.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {conteneurs.length === 0 ? (
+              <div className="text-center py-12">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-lg font-medium">Aucun résultat</p>
+                <p className="text-muted-foreground">
+                  Modifiez vos filtres pour voir plus de conteneurs
+                </p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.en_attente || 0}</p>
-                <p className="text-sm text-muted-foreground">En attente</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <LinkIcon className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.affectes || 0}</p>
-                <p className="text-sm text-muted-foreground">Affectés</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.factures || 0}</p>
-                <p className="text-sm text-muted-foreground">Facturés</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-100">
-                <Package className="h-5 w-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.total || 0}</p>
-                <p className="text-sm text-muted-foreground">Total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par conteneur, BL, client..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statutFilter} onValueChange={setStatutFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="en_attente">En attente</SelectItem>
-                <SelectItem value="affecte">Affectés</SelectItem>
-                <SelectItem value="facture">Facturés</SelectItem>
-                <SelectItem value="ignore">Ignorés</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Liste des conteneurs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : conteneurs.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-lg font-medium">Aucun conteneur en attente</p>
-              <p className="text-muted-foreground">
-                Les conteneurs traités par Logistiga OPS apparaîtront ici
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Conteneur</TableHead>
-                    <TableHead>N° BL</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Armateur</TableHead>
-                    <TableHead>Date Sortie</TableHead>
-                    <TableHead>Véhicule</TableHead>
-                    <TableHead>Chauffeur</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {conteneurs.map((conteneur) => (
-                    <TableRow key={conteneur.id}>
-                      <TableCell className="font-medium">
-                        {conteneur.numero_conteneur}
-                      </TableCell>
-                      <TableCell>{conteneur.numero_bl || "-"}</TableCell>
-                      <TableCell>{conteneur.client_nom || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Ship className="h-3 w-3 text-muted-foreground" />
-                          {conteneur.armateur_nom || conteneur.armateur_code || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          {formatDate(conteneur.date_sortie)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {conteneur.camion_plaque && (
-                          <div className="flex items-center gap-1">
-                            <Truck className="h-3 w-3 text-muted-foreground" />
-                            {conteneur.camion_plaque}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {conteneur.chauffeur_nom && (
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3 text-muted-foreground" />
-                            {conteneur.chauffeur_nom}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
-                      <TableCell className="text-right">
-                        {conteneur.statut === 'en_attente' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                Actions
-                                <ArrowRight className="h-4 w-4 ml-1" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => creerOrdreMutation.mutate(conteneur.id)}>
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Créer un ordre
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAffecterClick(conteneur)}>
-                                <LinkIcon className="h-4 w-4 mr-2" />
-                                Affecter à un ordre
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => ignorerMutation.mutate(conteneur.id)}
-                                className="text-destructive"
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Ignorer
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                        {conteneur.statut === 'affecte' && conteneur.ordre_travail && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => navigate(`/ordres/${conteneur.ordre_travail_id}`)}
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            {conteneur.ordre_travail.numero}
-                          </Button>
-                        )}
-                      </TableCell>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Conteneur</TableHead>
+                      <TableHead>N° BL</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Armateur</TableHead>
+                      <TableHead>Date Sortie</TableHead>
+                      <TableHead>Véhicule</TableHead>
+                      <TableHead>Chauffeur</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead className="w-48">Actions</TableHead>
                     </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {conteneurs.map((conteneur) => (
+                      <TableRow key={conteneur.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="font-medium font-mono">
+                          {conteneur.numero_conteneur}
+                        </TableCell>
+                        <TableCell>{conteneur.numero_bl || "-"}</TableCell>
+                        <TableCell className="max-w-[150px] truncate">{conteneur.client_nom || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <Ship className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="truncate max-w-[100px]">
+                              {conteneur.armateur_nom || conteneur.armateur_code || "-"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            {formatDate(conteneur.date_sortie)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {conteneur.camion_plaque ? (
+                            <div className="flex items-center gap-1.5">
+                              <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                              {conteneur.camion_plaque}
+                            </div>
+                          ) : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {conteneur.chauffeur_nom ? (
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="truncate max-w-[100px]">{conteneur.chauffeur_nom}</span>
+                            </div>
+                          ) : "-"}
+                        </TableCell>
+                        <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
+                        <TableCell>
+                          {conteneur.statut === 'en_attente' && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-1">
+                                  Actions
+                                  <ArrowRight className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleCreerOrdre(conteneur)}>
+                                  <PlusCircle className="h-4 w-4 mr-2" />
+                                  Créer un ordre
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleAffecterClick(conteneur)}>
+                                  <LinkIcon className="h-4 w-4 mr-2" />
+                                  Affecter à un ordre
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => ignorerMutation.mutate(conteneur.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Ignorer
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                          {conteneur.statut === 'affecte' && conteneur.ordre_travail && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => navigate(`/ordres/${conteneur.ordre_travail_id}`)}
+                            >
+                              <FileText className="h-4 w-4" />
+                              {conteneur.ordre_travail.numero}
+                            </Button>
+                          )}
+                          {conteneur.statut === 'facture' && (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Terminé
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Dialog Affecter à un ordre */}
+        <Dialog open={isAffecterDialogOpen} onOpenChange={setIsAffecterDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Affecter à un ordre de travail</DialogTitle>
+              <DialogDescription>
+                Sélectionnez l'ordre de travail auquel affecter le conteneur{" "}
+                <strong className="font-mono">{selectedConteneur?.numero_conteneur}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <Select value={selectedOrdreId} onValueChange={setSelectedOrdreId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un ordre de travail" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ordres.map((ordre: any) => (
+                    <SelectItem key={ordre.id} value={String(ordre.id)}>
+                      {ordre.numero} - {ordre.client?.nom || 'Client inconnu'}
+                    </SelectItem>
                   ))}
-                </TableBody>
-              </Table>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Dialog Affecter à un ordre */}
-      <Dialog open={isAffecterDialogOpen} onOpenChange={setIsAffecterDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Affecter à un ordre de travail</DialogTitle>
-            <DialogDescription>
-              Sélectionnez l'ordre de travail auquel affecter le conteneur{" "}
-              <strong>{selectedConteneur?.numero_conteneur}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <Select value={selectedOrdreId} onValueChange={setSelectedOrdreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir un ordre de travail" />
-              </SelectTrigger>
-              <SelectContent>
-                {ordres.map((ordre: any) => (
-                  <SelectItem key={ordre.id} value={String(ordre.id)}>
-                    {ordre.numero} - {ordre.client?.nom || 'Client inconnu'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAffecterDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleAffecterConfirm} 
-              disabled={!selectedOrdreId || affecterOrdreMutation.isPending}
-            >
-              {affecterOrdreMutation.isPending ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <LinkIcon className="h-4 w-4 mr-2" />
-              )}
-              Affecter
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAffecterDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleAffecterConfirm} 
+                disabled={!selectedOrdreId || affecterOrdreMutation.isPending}
+              >
+                {affecterOrdreMutation.isPending ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                )}
+                Affecter
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </MainLayout>
   );
 }

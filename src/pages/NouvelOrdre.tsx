@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Ship, Save, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -52,9 +52,13 @@ interface DraftData {
 
 export default function NouvelOrdrePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Ref pour éviter le pré-remplissage multiple
+  const prefillAppliedRef = useRef(false);
   
   // API hooks
-  const { data: clientsData } = useClients({ per_page: 1000 });
+  const { data: clientsData, isLoading: clientsLoading } = useClients({ per_page: 1000 });
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
   const { data: representantsData } = useRepresentants();
@@ -205,6 +209,87 @@ export default function NouvelOrdrePage() {
     }
     setShowRestorePrompt(false);
   };
+
+  // Pré-remplissage depuis conteneur en attente (via sessionStorage)
+  useEffect(() => {
+    // Guard: ne s'exécute qu'une seule fois et si prefill=conteneur dans l'URL
+    if (prefillAppliedRef.current) return;
+    if (searchParams.get('prefill') !== 'conteneur') return;
+    if (clientsLoading) return; // Attendre que les clients soient chargés
+    
+    const prefillDataStr = sessionStorage.getItem('prefill_ordre');
+    if (!prefillDataStr) return;
+    
+    try {
+      const prefillData = JSON.parse(prefillDataStr);
+      prefillAppliedRef.current = true;
+      
+      // Nettoyer sessionStorage
+      sessionStorage.removeItem('prefill_ordre');
+      
+      // Appliquer les données
+      setCategorie('conteneurs');
+      setShowRestorePrompt(false); // Ne pas proposer de restaurer un brouillon
+      
+      // Chercher le client par nom
+      if (prefillData.clientNom && clients.length > 0) {
+        const clientMatch = clients.find(
+          (c: any) => c.nom?.toLowerCase().includes(prefillData.clientNom.toLowerCase()) ||
+            c.raison_sociale?.toLowerCase().includes(prefillData.clientNom.toLowerCase())
+        );
+        if (clientMatch) {
+          setClientId(clientMatch.id);
+        }
+      }
+      
+      // Chercher l'armateur par code
+      let armateurId = '';
+      if (prefillData.armateurCode && armateurs.length > 0) {
+        const armateurMatch = armateurs.find(
+          (a: any) => a.code?.toLowerCase() === prefillData.armateurCode.toLowerCase()
+        );
+        if (armateurMatch) {
+          armateurId = armateurMatch.id;
+        }
+      }
+      
+      // Pré-remplir les données conteneurs
+      // Note: la taille doit être "20'" ou "40'" selon le type LigneConteneur
+      const tailleFormatted = (prefillData.conteneur?.taille === '40' || prefillData.conteneur?.taille === "40'") 
+        ? "40'" as const 
+        : "20'" as const;
+      
+      setConteneursData({
+        typeOperation: 'import', // Valeur par défaut
+        numeroBL: prefillData.numeroBL || '',
+        armateurId: armateurId,
+        transitaireId: '',
+        representantId: '',
+        primeTransitaire: 0,
+        primeRepresentant: 0,
+        conteneurs: [{
+          id: crypto.randomUUID(),
+          numero: prefillData.conteneur?.numero || '',
+          taille: tailleFormatted,
+          description: '',
+          prixUnitaire: 0,
+          operations: [],
+        }],
+        montantHT: 0,
+      });
+      
+      // Passer directement à l'étape 2 (client) ou 3 si client trouvé
+      setCurrentStep(2);
+      
+      toast.success("Données du conteneur pré-remplies", {
+        description: `Conteneur ${prefillData.conteneur?.numero || ''} ajouté. Complétez les informations.`
+      });
+      
+    } catch (error) {
+      console.error('Erreur lors du pré-remplissage:', error);
+      sessionStorage.removeItem('prefill_ordre');
+    }
+  }, [searchParams, clients, armateurs, clientsLoading]);
 
   // Calcul du montant HT selon la catégorie
   const getMontantHT = (): number => {
