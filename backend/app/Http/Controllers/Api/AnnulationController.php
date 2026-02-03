@@ -150,26 +150,45 @@ class AnnulationController extends Controller
         }
     }
 
-    public function annulerOrdre(Request $request, OrdreTravail $ordre): JsonResponse
+    public function annulerOrdre(Request $request, $ordre): JsonResponse
     {
         $request->validate([
             'motif' => 'required|string|max:500',
         ]);
 
         try {
-            $annulation = $this->annulationService->annulerOrdre($ordre, $request->motif);
+            // IMPORTANT: éviter le model binding implicite ici.
+            // Si la DB a un souci de schéma (ex: colonne manquante), l'exception peut se produire
+            // avant d'entrer dans la méthode (et donc avant notre try/catch). En chargeant
+            // explicitement l'OT ici, on garantit un retour JSON contrôlé.
+            $ordreModel = OrdreTravail::findOrFail((int) $ordre);
 
-            Audit::log('cancel', 'ordre', "Ordre annulé: {$ordre->numero}", $ordre->id);
+            $annulation = $this->annulationService->annulerOrdre($ordreModel, $request->motif);
+
+            Audit::log('cancel', 'ordre', "Ordre annulé: {$ordreModel->numero}", $ordreModel->id);
 
             return response()->json([
                 'message' => 'Ordre de travail annulé avec succès',
                 'annulation' => new AnnulationResource($annulation),
             ]);
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur DB annulation ordre', [
+                'ordre_param' => $ordre,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Ne pas exposer toute la requête SQL en prod, mais renvoyer un message exploitable
+            // (notamment en cas de colonne manquante).
+            return response()->json([
+                'message' => 'Erreur base de données lors de l\'annulation (schéma incomplet ?).',
+                'error' => $e->getMessage(),
+            ], 422);
+
         } catch (\Throwable $e) {
             // Log l'erreur pour debugging
             \Illuminate\Support\Facades\Log::error('Erreur annulation ordre', [
-                'ordre_id' => $ordre->id ?? null,
+                'ordre_param' => $ordre,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
