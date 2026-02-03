@@ -229,18 +229,12 @@ class ConteneurAnomalieController extends Controller
 
     /**
      * Lancer la détection d'anomalies manuellement
+     * Exécute la logique directement pour éviter les problèmes de cache Artisan
      */
     public function detecter(): JsonResponse
     {
         try {
-            // Appeler la commande Artisan
-            \Artisan::call('sync:from-ops', ['--detect-oublies' => true]);
-            $output = \Artisan::output();
-
-            // Compter les nouvelles anomalies
-            $nouvelles = ConteneurAnomalie::where('statut', 'non_traite')
-                ->where('detected_at', '>=', now()->subMinutes(5))
-                ->count();
+            $nouvelles = $this->executeDetectionAnomalies();
 
             return response()->json([
                 'success' => true,
@@ -251,11 +245,97 @@ class ConteneurAnomalieController extends Controller
         } catch (\Exception $e) {
             Log::error('[Anomalie] Erreur détection', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la détection',
+                'message' => 'Erreur lors de la détection: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Exécute la détection d'anomalies directement
+     * Compare les conteneurs OPS avec les conteneurs des OT locaux
+     */
+    private function executeDetectionAnomalies(): int
+    {
+        $nouvelles = 0;
+
+        // Récupérer les conteneurs synchronisés depuis OPS (table conteneurs_traites)
+        // Grouper par client + BL pour trouver les OT correspondants
+        $conteneursOps = DB::table('conteneurs_traites')
+            ->whereNotNull('client_nom')
+            ->whereNotNull('numero_bl')
+            ->whereNotNull('numero_conteneur')
+            ->select('client_nom', 'numero_bl', 'numero_conteneur')
+            ->get();
+
+        // Grouper par client+BL
+        $groupes = $conteneursOps->groupBy(function ($item) {
+            return strtoupper(trim($item->client_nom)) . '|' . strtoupper(trim($item->numero_bl));
+        });
+
+        foreach ($groupes as $key => $conteneurs) {
+            [$clientNom, $numeroBl] = explode('|', $key);
+            
+            // Trouver l'OT local correspondant
+            $ordre = OrdreTravail::whereRaw('UPPER(TRIM(client_nom)) = ?', [$clientNom])
+                ->whereRaw('UPPER(TRIM(numero_bl)) = ?', [$numeroBl])
+                ->with('conteneurs')
+                ->first();
+
+            if (!$ordre) {
+                // Pas d'OT local = pas une anomalie de type "oublié"
+                // (c'est un conteneur en attente, pas un oubli)
+                continue;
+            }
+
+            // Conteneurs dans l'OT local
+            $conteneursOt = $ordre->conteneurs->pluck('numero')
+                ->map(fn($n) => strtoupper(trim($n)))
+                ->toArray();
+
+            // Conteneurs dans OPS
+            $conteneursOpsListe = $conteneurs->pluck('numero_conteneur')
+                ->map(fn($n) => strtoupper(trim($n)))
+                ->toArray();
+
+            // Trouver les manquants (dans OPS mais pas dans l'OT local)
+            $manquants = array_diff($conteneursOpsListe, $conteneursOt);
+
+            foreach ($manquants as $numeroConteneur) {
+                // Vérifier si cette anomalie n'existe pas déjà
+                $existe = ConteneurAnomalie::where('numero_conteneur', $numeroConteneur)
+                    ->where('ordre_travail_id', $ordre->id)
+                    ->where('statut', 'non_traite')
+                    ->exists();
+
+                if (!$existe) {
+                    ConteneurAnomalie::create([
+                        'type' => 'oublie',
+                        'numero_conteneur' => $numeroConteneur,
+                        'numero_bl' => $ordre->numero_bl,
+                        'client_nom' => $ordre->client_nom,
+                        'ordre_travail_id' => $ordre->id,
+                        'statut' => 'non_traite',
+                        'detected_at' => now(),
+                        'details' => [
+                            'conteneurs_ops' => $conteneursOpsListe,
+                            'conteneurs_ot' => $conteneursOt,
+                            'manquants' => array_values($manquants),
+                            'date_detection' => now()->toIso8601String(),
+                        ],
+                    ]);
+                    $nouvelles++;
+                }
+            }
+        }
+
+        Log::info('[Anomalie] Détection terminée', [
+            'nouvelles_anomalies' => $nouvelles,
+        ]);
+
+        return $nouvelles;
     }
 }
