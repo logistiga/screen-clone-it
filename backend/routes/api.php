@@ -419,11 +419,11 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // PRIMES CAMION (depuis OPS - décaissement comptable)
     // ============================================
     Route::prefix('primes-camion')->middleware('audit')->group(function () {
+        Route::get('/stats', [PrimeCamionController::class, 'stats'])
+            ->middleware('permission:caisse.voir');
         Route::get('/', [PrimeCamionController::class, 'index'])
             ->middleware('permission:caisse.voir');
-        Route::get('stats', [PrimeCamionController::class, 'stats'])
-            ->middleware('permission:caisse.voir');
-        Route::post('{primeId}/decaisser', [PrimeCamionController::class, 'decaisser'])
+        Route::post('/{primeId}/decaisser', [PrimeCamionController::class, 'decaisser'])
             ->middleware('permission:caisse.creer');
     });
 
