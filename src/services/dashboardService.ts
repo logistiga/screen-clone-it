@@ -95,12 +95,14 @@ const normalizeGraphiques = (data: any): DashboardGraphiques => ({
         montant: safeNumber(c?.factures_sum_montant_ttc ?? c?.montant ?? c?.ca_total ?? c?.total),
       }))
     : [],
-  factures_par_categorie: Array.isArray(data?.factures_par_categorie ?? data?.repartition_types)
-    ? (data?.factures_par_categorie ?? data?.repartition_types).map((f: any) => ({
-        categorie: String(f?.categorie ?? f?.type ?? ''),
-        count: safeNumber(f?.count ?? f?.nombre),
-      }))
-    : [],
+  factures_par_categorie: (() => {
+    const source = data?.factures_par_categorie ?? data?.repartition_types;
+    if (!Array.isArray(source)) return [];
+    return source.map((f: Record<string, unknown>) => ({
+      categorie: String(f?.categorie ?? f?.type ?? ''),
+      count: safeNumber(f?.count ?? f?.nombre),
+    }));
+  })(),
 });
 
 const normalizeAlertes = (data: any[]): DashboardAlerte[] => {
