@@ -93,3 +93,12 @@ export function formatApiErrorDebug(info: ApiErrorInfo): string {
 
   return safeJsonStringify(parts);
 }
+
+/**
+ * Extrait un message d'erreur lisible depuis une erreur API ou inconnue.
+ * Utile pour les handlers onError de React Query / mutations.
+ */
+export function getApiErrorMessage(error: unknown, defaultMessage = "Une erreur est survenue"): string {
+  const info = extractApiErrorInfo(error);
+  return info.message || defaultMessage;
+}

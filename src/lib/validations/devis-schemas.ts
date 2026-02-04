@@ -30,7 +30,7 @@ const numeroBLSchema = z
   .trim()
   .min(1, { message: messages.required })
   .max(50, { message: messages.string.max(50) })
-  .regex(/^[A-Za-z0-9\-\/]+$/, { message: messages.string.blFormat });
+  .regex(/^[A-Za-z0-9/\-]+$/, { message: messages.string.blFormat });
 
 const numeroConteneurSchema = z
   .string()
