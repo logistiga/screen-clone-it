@@ -1,163 +1,108 @@
 
-# Plan : Synchronisation intelligente des conteneurs OPS avec détection d'anomalies
+# Plan : Correction des permissions d'annulation (Erreur 500)
 
-## Objectif
-Synchroniser les conteneurs depuis la base OPS et détecter automatiquement :
-1. **Conteneurs nouveaux** : présents dans OPS mais pas encore dans FAC (à facturer)
-2. **Conteneurs oubliés** : OT existe avec certains conteneurs mais d'autres du même BL/client sont absents
+## Résumé du problème
 
----
+L'annulation d'un ordre de travail échoue avec une erreur 500 car le middleware vérifie une permission `annulations.creer` qui **n'existe pas** dans la base de données. Le fichier `config/permissions.php` ne définit pas de module "annulations".
 
-## Phase 1 : Adaptation du schéma OPS
+## Solution retenue
 
-### Étape 1.1 : Découvrir la structure réelle de la table OPS
-Avant toute modification, il faut connaître les colonnes exactes de votre table `sorties` côté OPS.
-
-**Action requise (à exécuter sur le serveur)** :
-```bash
-cd facturation/backend
-php artisan tinker
->>> \DB::connection('ops')->select('DESCRIBE sorties');
-```
-
-Cela affichera la structure exacte de la table pour adapter le mapping.
+Utiliser les permissions existantes des documents (`ordres.annuler`, `factures.annuler`, `devis.annuler`) au lieu de créer une nouvelle famille de permissions. Cela est cohérent avec l'architecture actuelle.
 
 ---
 
-## Phase 2 : Modifications Backend
+## Modifications à effectuer
 
-### Étape 2.1 : Améliorer la commande SyncFromOps
-**Fichier** : `backend/app/Console/Commands/SyncFromOps.php`
+### 1. Mettre à jour les routes API (backend/routes/api.php)
 
-Modifications :
-- Adapter les colonnes SELECT selon la structure réelle de `sorties`
-- Ajouter un flag `--detect-oublies` pour lancer la détection d'anomalies
-- Stocker les anomalies détectées dans une nouvelle table
+Remplacer les middlewares `permission:annulations.*` par les permissions des documents correspondants :
 
-### Étape 2.2 : Créer une table pour les anomalies
-**Migration** : `create_conteneurs_anomalies_table`
+| Route actuelle | Permission actuelle | Nouvelle permission |
+|----------------|---------------------|---------------------|
+| `POST annulations/ordre/{ordre}` | `annulations.creer` | `ordres.annuler` |
+| `POST annulations/facture/{facture}` | `annulations.creer` | `factures.annuler` |
+| `POST annulations/devis/{devis}` | `annulations.creer` | `devis.annuler` |
+| `GET annulations/` | `annulations.voir` | `ordres.voir` |
+| `GET annulations/stats` | `annulations.voir` | `ordres.voir` |
+| `GET annulations/{annulation}` | `annulations.voir` | `ordres.voir` |
+| `PUT annulations/{annulation}` | `annulations.modifier` | `ordres.modifier` |
+| `POST {annulation}/valider` | `annulations.valider` | `ordres.valider` |
+| `POST {annulation}/rejeter` | `annulations.valider` | `ordres.valider` |
+| `POST {annulation}/generer-avoir` | `annulations.creer` | `factures.creer` |
+| `GET annulations/client/{clientId}` | `annulations.voir` | `clients.voir` |
+| `GET annulations/avoirs/client/{clientId}` | `annulations.voir` | `clients.voir` |
+
+### 2. Vérifier que les permissions existent dans la config
+
+Les permissions `ordres.annuler`, `factures.annuler`, `devis.annuler` existent déjà dans `config/permissions.php` :
 
 ```text
-conteneurs_anomalies
-├── id
-├── type (enum: 'oublie', 'doublon', 'mismatch')
-├── numero_conteneur
-├── numero_bl
-├── client_nom
-├── ordre_travail_id (lien vers l'OT concerné)
-├── details (JSON: infos supplémentaires)
-├── statut (enum: 'non_traite', 'traite', 'ignore')
-├── traite_par (user_id)
-├── traite_at
-└── timestamps
+ordres -> specific_actions: ['valider', 'annuler', ...]
+factures -> specific_actions: ['valider', 'annuler', ...]
+devis -> specific_actions: ['valider', 'annuler', ...]
 ```
 
-### Étape 2.3 : Ajouter un endpoint de détection
-**Fichier** : `backend/app/Http/Controllers/Api/ConteneurTraiteController.php`
+Elles devraient donc déjà être en base si le seeder a été exécuté.
 
-Nouvelle méthode `detecterAnomalies()` :
-- Pour chaque combinaison (client + BL) dans OPS, compter les conteneurs
-- Comparer avec le nombre de conteneurs dans l'OT correspondant côté FAC
-- Si différence → créer une entrée dans `conteneurs_anomalies`
+### 3. Ajouter les permissions aux rôles concernés
 
-### Étape 2.4 : Créer un nouveau Resource et routes
-- `AnomalieConteneurResource.php`
-- Routes API pour lister/traiter les anomalies
+Mettre à jour `config/permissions.php` pour s'assurer que les rôles sélectionnés ont les permissions d'annulation :
+
+| Rôle | Permissions à ajouter |
+|------|----------------------|
+| **comptable** | `ordres.annuler`, `factures.annuler`, `devis.annuler` |
+| **commercial** | `ordres.annuler`, `devis.annuler` |
+| **caissier** | `ordres.annuler` (si applicable) |
+
+Les rôles `administrateur` et `directeur` ont déjà toutes les permissions (`permissions: 'all'`).
 
 ---
 
-## Phase 3 : Modifications Frontend
+## Étapes après déploiement
 
-### Étape 3.1 : Ajouter une section "Anomalies" dans la page
-**Fichier** : `src/pages/ConteneursEnAttente.tsx`
-
-- Ajouter un onglet ou une section "Anomalies détectées"
-- Afficher en rouge/orange les conteneurs avec écart
-- Pour chaque anomalie :
-  - Numéro OT existant
-  - Client / BL
-  - Conteneurs dans OT : X
-  - Conteneurs dans OPS : Y
-  - Différence : Y - X conteneurs manquants
-  - Bouton "Voir les détails" → liste les numéros manquants
-
-### Étape 3.2 : Actions sur les anomalies
-- **Ajouter au OT** : Ajoute les conteneurs manquants à l'OT existant
-- **Ignorer** : Marque l'anomalie comme traitée (erreur de saisie côté OPS)
-- **Créer nouvel OT** : Crée un OT séparé pour ces conteneurs
-
-### Étape 3.3 : Bouton "Synchroniser + Détecter"
-- Un bouton qui :
-  1. Lance la synchro des conteneurs depuis OPS
-  2. Lance la détection d'anomalies
-  3. Rafraîchit les listes
+1. Déployer le backend avec les modifications
+2. Exécuter les commandes sur le serveur :
+   ```bash
+   php artisan permission:cache-reset
+   php artisan db:seed --class=RolesAndPermissionsSeeder
+   ```
+3. Tester l'annulation d'un ordre de travail
 
 ---
 
-## Phase 4 : Logique de comparaison détaillée
+## Fichiers modifiés
 
-### Algorithme de détection des "oubliés"
-```text
-Pour chaque combinaison unique (client_nom, numero_bl) dans OPS :
-  1. Récupérer tous les conteneurs OPS avec ce client+BL
-  2. Chercher l'OT correspondant dans FAC (même client + même BL)
-  3. Si OT trouvé :
-     a. Récupérer les conteneurs de cet OT
-     b. Comparer avec les conteneurs OPS
-     c. Pour chaque conteneur OPS absent de l'OT → anomalie "oublie"
-  4. Si OT non trouvé :
-     → Ces conteneurs restent dans "en_attente" (comportement actuel)
-```
+1. `backend/routes/api.php` - Mise à jour des middlewares de permission
+2. `backend/config/permissions.php` - Ajout des permissions d'annulation aux rôles concernés
 
 ---
 
-## Résumé des fichiers à créer/modifier
+## Section technique
 
-### Nouveaux fichiers
-| Fichier | Description |
-|---------|-------------|
-| `database/migrations/..._create_conteneurs_anomalies_table.php` | Table des anomalies |
-| `app/Models/ConteneurAnomalie.php` | Modèle Eloquent |
-| `app/Http/Resources/ConteneurAnomalieResource.php` | Resource API |
+### Détail de l'erreur
 
-### Fichiers à modifier
-| Fichier | Modification |
-|---------|--------------|
-| `app/Console/Commands/SyncFromOps.php` | Adapter colonnes + détection anomalies |
-| `app/Http/Controllers/Api/ConteneurTraiteController.php` | Endpoint anomalies |
-| `routes/api.php` | Routes anomalies |
-| `src/pages/ConteneursEnAttente.tsx` | Section anomalies UI |
-| `src/lib/api/conteneurs-traites.ts` | Endpoints anomalies |
-
----
-
-## Détails techniques
-
-### Critères de comparaison (insensible casse, trim)
-```sql
-UPPER(TRIM(client_nom)) = UPPER(TRIM(c.nom))
-UPPER(TRIM(numero_bl)) = UPPER(TRIM(ot.numero_bl))
-UPPER(TRIM(numero_conteneur)) = UPPER(TRIM(co.numero))
+```
+Spatie\Permission\Exceptions\PermissionDoesNotExist:
+There is no permission named `annulations.creer` for guard `web`.
 ```
 
-### Structure JSON pour les détails d'anomalie
-```json
-{
-  "conteneurs_ops": ["CONT001", "CONT002", "CONT003", ...],
-  "conteneurs_ot": ["CONT001", "CONT002"],
-  "manquants": ["CONT003", ...],
-  "date_detection": "2026-02-03T10:00:00Z"
-}
+Cette erreur est lancée par le middleware `CheckPermission` lorsqu'il appelle `hasPermissionTo('annulations.creer')` sur l'utilisateur. Spatie Permission vérifie d'abord que la permission existe en base, et lance une exception si ce n'est pas le cas.
+
+### Pourquoi la permission n'existe pas ?
+
+Le seeder `RolesAndPermissionsSeeder` génère les permissions à partir de `config/permissions.php`. Ce fichier définit les modules (`clients`, `devis`, `ordres`, `factures`, etc.) mais **pas de module `annulations`**.
+
+### Alternative non retenue
+
+On aurait pu ajouter un module `annulations` dans la config :
+
+```php
+'annulations' => [
+    'label' => 'Annulations',
+    'category' => 'finance',
+    'global_actions' => ['voir', 'creer', 'modifier'],
+    'specific_actions' => ['valider'],
+],
 ```
 
----
-
-## Prérequis avant implémentation
-
-**Tu dois me fournir la structure de la table `sorties` côté OPS** en exécutant :
-```bash
-php artisan tinker
->>> \DB::connection('ops')->select('DESCRIBE sorties');
-```
-
-Ou si la table s'appelle autrement, dis-moi le nom exact et je l'adapterai.
+Mais l'utilisateur a préféré utiliser les permissions des documents pour plus de cohérence.
