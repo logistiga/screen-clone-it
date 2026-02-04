@@ -468,41 +468,43 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
 
     // ============================================
     // ANNULATIONS
+    // Utilise les permissions des documents (ordres.annuler, factures.annuler, devis.annuler)
+    // au lieu d'une famille de permissions "annulations.*" séparée
     // ============================================
     Route::prefix('annulations')->middleware('audit')->group(function () {
         // Routes statiques en premier
         Route::get('stats', [AnnulationController::class, 'stats'])
-            ->middleware(['permission:annulations.voir', 'throttle:stats']);
+            ->middleware(['permission:ordres.voir', 'throttle:stats']);
         
-        // Routes d'annulation par type de document
+        // Routes d'annulation par type de document - permissions spécifiques au document
         Route::post('facture/{facture}', [AnnulationController::class, 'annulerFacture'])
-            ->middleware('permission:annulations.creer');
+            ->middleware('permission:factures.annuler');
         Route::post('ordre/{ordre}', [AnnulationController::class, 'annulerOrdre'])
-            ->middleware('permission:annulations.creer');
+            ->middleware('permission:ordres.annuler');
         Route::post('devis/{devis}', [AnnulationController::class, 'annulerDevis'])
-            ->middleware('permission:annulations.creer');
+            ->middleware('permission:devis.annuler');
         
-        // Routes client
+        // Routes client - utilise la permission de lecture du type principal (ordres)
         Route::get('client/{clientId}', [AnnulationController::class, 'historiqueClient'])
-            ->middleware('permission:annulations.voir');
+            ->middleware('permission:clients.voir');
         Route::get('avoirs/client/{clientId}', [AnnulationController::class, 'avoirsClient'])
-            ->middleware('permission:annulations.voir');
+            ->middleware('permission:clients.voir');
         
-        // Routes CRUD de base
+        // Routes CRUD de base - gestion globale des annulations liée aux ordres
         Route::get('/', [AnnulationController::class, 'index'])
-            ->middleware('permission:annulations.voir');
+            ->middleware('permission:ordres.voir');
         Route::post('/', [AnnulationController::class, 'store'])
-            ->middleware('permission:annulations.creer');
+            ->middleware('permission:ordres.annuler');
         Route::get('{annulation}', [AnnulationController::class, 'show'])
-            ->middleware('permission:annulations.voir');
+            ->middleware('permission:ordres.voir');
         Route::put('{annulation}', [AnnulationController::class, 'update'])
-            ->middleware('permission:annulations.modifier');
+            ->middleware('permission:ordres.modifier');
         Route::post('{annulation}/valider', [AnnulationController::class, 'valider'])
-            ->middleware('permission:annulations.valider');
+            ->middleware('permission:ordres.valider');
         Route::post('{annulation}/rejeter', [AnnulationController::class, 'rejeter'])
-            ->middleware('permission:annulations.valider');
+            ->middleware('permission:ordres.valider');
         Route::post('{annulation}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
-            ->middleware('permission:annulations.creer');
+            ->middleware('permission:factures.creer');
         Route::post('{annulation}/rembourser', [AnnulationController::class, 'rembourser'])
             ->middleware('permission:caisse.creer');
         Route::post('{annulation}/utiliser-avoir', [AnnulationController::class, 'utiliserAvoir'])

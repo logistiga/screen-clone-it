@@ -289,12 +289,12 @@ return [
                 'profil.voir', 'profil.modifier',
                 // Clients - lecture et modification, PAS de suppression
                 'clients.voir', 'clients.modifier', 'clients.exporter',
-                // Devis - lecture complète
-                'devis.voir', 'devis.exporter', 'devis.imprimer', 'devis.telecharger',
-                // Ordres - toutes les actions sauf suppression
-                'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.valider', 'ordres.exporter', 'ordres.imprimer', 'ordres.envoyer', 'ordres.paiement', 'ordres.telecharger', 'ordres.convertir',
-                // Factures - toutes les actions sauf suppression
-                'factures.voir', 'factures.creer', 'factures.modifier', 'factures.valider', 'factures.exporter', 'factures.imprimer', 'factures.envoyer', 'factures.telecharger',
+                // Devis - lecture complète + annulation
+                'devis.voir', 'devis.exporter', 'devis.imprimer', 'devis.telecharger', 'devis.annuler',
+                // Ordres - toutes les actions sauf suppression + annulation
+                'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.valider', 'ordres.annuler', 'ordres.exporter', 'ordres.imprimer', 'ordres.envoyer', 'ordres.paiement', 'ordres.telecharger', 'ordres.convertir',
+                // Factures - toutes les actions sauf suppression + annulation
+                'factures.voir', 'factures.creer', 'factures.modifier', 'factures.valider', 'factures.annuler', 'factures.exporter', 'factures.imprimer', 'factures.envoyer', 'factures.telecharger',
                 // Paiements
                 'paiements.voir', 'paiements.creer', 'paiements.modifier', 'paiements.valider', 'paiements.exporter',
                 // Caisse
@@ -321,6 +321,8 @@ return [
                 'profil.voir', 'profil.modifier',
                 // Clients - lecture seule
                 'clients.voir',
+                // Ordres - lecture + annulation (pour remboursements)
+                'ordres.voir', 'ordres.annuler',
                 // Factures - lecture seule
                 'factures.voir', 'factures.imprimer',
                 // Paiements
@@ -341,10 +343,10 @@ return [
                 'profil.voir', 'profil.modifier',
                 // Clients - toutes actions sauf suppression
                 'clients.voir', 'clients.creer', 'clients.modifier', 'clients.exporter',
-                // Devis - toutes les actions sauf suppression
-                'devis.voir', 'devis.creer', 'devis.modifier', 'devis.dupliquer', 'devis.valider', 'devis.exporter', 'devis.imprimer', 'devis.envoyer', 'devis.convertir', 'devis.telecharger',
-                // Ordres - toutes les actions sauf suppression
-                'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.valider', 'ordres.exporter', 'ordres.imprimer', 'ordres.envoyer', 'ordres.paiement', 'ordres.telecharger', 'ordres.convertir',
+                // Devis - toutes les actions sauf suppression + annulation
+                'devis.voir', 'devis.creer', 'devis.modifier', 'devis.dupliquer', 'devis.valider', 'devis.annuler', 'devis.exporter', 'devis.imprimer', 'devis.envoyer', 'devis.convertir', 'devis.telecharger',
+                // Ordres - toutes les actions sauf suppression + annulation
+                'ordres.voir', 'ordres.creer', 'ordres.modifier', 'ordres.valider', 'ordres.annuler', 'ordres.exporter', 'ordres.imprimer', 'ordres.envoyer', 'ordres.paiement', 'ordres.telecharger', 'ordres.convertir',
                 // Factures - toutes les actions sauf suppression et création
                 'factures.voir', 'factures.modifier', 'factures.exporter', 'factures.imprimer', 'factures.envoyer', 'factures.telecharger',
                 // Partenaires, transitaires, transporteurs - lecture
