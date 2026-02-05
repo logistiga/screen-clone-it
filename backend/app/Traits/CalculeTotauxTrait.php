@@ -168,7 +168,7 @@ trait CalculeTotauxTrait
             }
             
             $isExonerated = $hasExoneration && in_array($code, $exoneratedCodes);
-            $montant = $isExonerated ? 0 : round($montantHTApresRemise * ($taxe['taux'] / 100), 2);
+            $montant = $isExonerated ? 0 : round($montantHTApresRemise * ($taxe['taux'] / 100));
             
             $details[$code] = [
                 'taux' => $taxe['taux'],
@@ -221,8 +221,8 @@ trait CalculeTotauxTrait
         );
 
         // Mettre à jour remise_montant si différent
-        if (round($remiseMontant, 2) !== round((float) ($document->remise_montant ?? 0), 2)) {
-            $document->remise_montant = round($remiseMontant, 2);
+        if (round($remiseMontant) !== round((float) ($document->remise_montant ?? 0))) {
+            $document->remise_montant = round($remiseMontant);
         }
 
         // Montant HT après remise
@@ -256,11 +256,11 @@ trait CalculeTotauxTrait
 
         // Mettre à jour le document (colonnes legacy + nouveau)
         $updateData = [
-            'montant_ht' => round($montantHTApresRemise, 2), // HT après remise
-            'remise_montant' => round($remiseMontant, 2),
-            'tva' => round($taxes['tva'], 2),
-            'css' => round($taxes['css'], 2),
-            'montant_ttc' => round($montantTTC, 2),
+            'montant_ht' => round($montantHTApresRemise), // HT après remise
+            'remise_montant' => round($remiseMontant),
+            'tva' => round($taxes['tva']),
+            'css' => round($taxes['css']),
+            'montant_ttc' => round($montantTTC),
         ];
         
         // Synchroniser exonere_tva/exonere_css depuis taxes_selection pour rétrocompatibilité
