@@ -255,7 +255,7 @@ export default function OrdreConventionnelForm({
                       type="number"
                       min="1"
                       value={lot.quantite}
-                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseFloat(e.target.value) || 0)}
                       onBlur={() => handleBlur(`lots.${index}.quantite`)}
                       className={cn(getFieldError(`lots.${index}.quantite`) && "border-destructive")}
                     />
@@ -268,7 +268,7 @@ export default function OrdreConventionnelForm({
                       min="0"
                       placeholder="0"
                       value={lot.prixUnitaire || ""}
-                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
                     />
                   </div>
                   <div className="space-y-2">
