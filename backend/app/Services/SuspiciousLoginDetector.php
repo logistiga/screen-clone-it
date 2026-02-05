@@ -208,7 +208,7 @@ class SuspiciousLoginDetector
         $timestamp = now()->format('d/m/Y à H:i:s');
         
         // Générer les URLs d'action - pointer vers le frontend qui appelle l'API
-        $frontendUrl = config('app.frontend_url', config('app.url'));
+        $frontendUrl = env('FRONTEND_URL', 'https://facturation.logistiga.pro');
         $approveUrl = "{$frontendUrl}/security/{$suspiciousLogin->action_token}/approve";
         $blockUrl = "{$frontendUrl}/security/{$suspiciousLogin->action_token}/block";
 
