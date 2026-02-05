@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, LogOut, KeyRound, Settings } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -22,7 +23,8 @@ interface AppHeaderProps {
   title: string;
 }
 
-export function AppHeader({ title }: AppHeaderProps) {
+export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(
+  function AppHeader({ title }, ref) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { data: profile } = useProfile();
@@ -43,7 +45,7 @@ export function AppHeader({ title }: AppHeaderProps) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
+    <header ref={ref} className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="lg:hidden" />
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
@@ -105,4 +107,6 @@ export function AppHeader({ title }: AppHeaderProps) {
       </div>
     </header>
   );
-}
+});
+
+AppHeader.displayName = "AppHeader";

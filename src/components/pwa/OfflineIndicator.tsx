@@ -1,16 +1,19 @@
+import { forwardRef } from "react";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { WifiOff, Wifi, CloudOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 
-export function OfflineIndicator() {
+export const OfflineIndicator = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function OfflineIndicator(_props, ref) {
   const { isOnline, isChecking } = useNetworkStatus();
 
   if (isOnline && !isChecking) {
-    return null;
+    return <div ref={ref} style={{ display: 'none' }} />;
   }
 
   return (
+    <div ref={ref}>
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -39,5 +42,8 @@ export function OfflineIndicator() {
         </Badge>
       </motion.div>
     </AnimatePresence>
+    </div>
   );
-}
+});
+
+OfflineIndicator.displayName = "OfflineIndicator";
