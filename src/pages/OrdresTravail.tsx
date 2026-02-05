@@ -556,10 +556,7 @@ L'équipe LOGISTIGA`;
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" title="Voir PDF" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)} className="transition-all duration-200 hover:scale-110 hover:bg-muted">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+                          <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
                             <Download className="h-4 w-4" />
                           </Button>
                           <Button 
