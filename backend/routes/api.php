@@ -698,6 +698,14 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     // ============================================
+    // ADMINISTRATION - CONNEXIONS SUSPECTES
+    // ============================================
+    Route::prefix('suspicious-logins')->middleware(['audit', 'role:admin'])->group(function () {
+        Route::get('/', [SuspiciousLoginController::class, 'index']);
+        Route::get('stats', [SuspiciousLoginController::class, 'stats']);
+    });
+
+    // ============================================
     // NOTIFICATIONS IN-APP (ALERTES)
     // ============================================
     require __DIR__.'/api_notifications.php';
