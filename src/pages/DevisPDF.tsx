@@ -121,9 +121,18 @@ export default function DevisPDFPage() {
   
   const lignesAffichage = getLignesAffichage();
   
-  // URL simple pour le QR code - pointe vers la page de vérification publique
-  const baseUrl = "https://facturation.logistiga.pro";
-  const qrData = `${baseUrl}/verifier/devis/${id}`;
+  // URL pour le QR code - encode les données essentielles directement
+  const baseUrl = window.location.origin;
+  const qrPayload = {
+    t: "devis",
+    n: devisData.numero,
+    d: devisData.date_creation || devisData.date,
+    c: client?.nom || "",
+    m: devisData.montant_ttc || 0,
+    p: 0,
+    s: devisData.statut
+  };
+  const qrData = `${baseUrl}/verifier?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
   return (
     <div className="min-h-screen bg-muted/30 animate-fade-in">

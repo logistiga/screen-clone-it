@@ -1,12 +1,10 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, FileText, User, Calendar, CreditCard, ExternalLink } from "lucide-react";
+import { CheckCircle, XCircle, FileText, User, Calendar, CreditCard } from "lucide-react";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 import { formatMontant, formatDate } from "@/data/mockData";
-import api from "@/lib/api";
 
 interface DocumentInfo {
   type: string;
@@ -19,91 +17,43 @@ interface DocumentInfo {
   statut: string;
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  facture: "Facture",
+  ordre: "Ordre de Travail",
+  ot: "Ordre de Travail",
+  devis: "Devis",
+};
+
 /**
  * Page publique de vérification de document via QR code
- * Accessible sans authentification
+ * Les données sont encodées directement dans l'URL (pas d'API requise)
  */
 export default function VerifierDocumentPage() {
-  const { type, id } = useParams<{ type: string; id: string }>();
-  const navigate = useNavigate();
-  const [documentInfo, setDocumentInfo] = useState<DocumentInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    const fetchDocument = async () => {
-      if (!type || !id) {
-        setError("Paramètres invalides");
-        setIsLoading(false);
-        return;
-      }
+  const documentInfo = useMemo<DocumentInfo | null>(() => {
+    const dataParam = searchParams.get("data");
+    if (!dataParam) return null;
 
-      try {
-        let response;
-        
-        // Appeler l'API selon le type de document
-        if (type === "ordre" || type === "ot") {
-          response = await api.get(`/ordres-travail/${id}`);
-          const data = response.data.data || response.data;
-          setDocumentInfo({
-            type: "Ordre de Travail",
-            numero: data.numero,
-            date: data.date || data.created_at,
-            client: data.client?.nom || "Client",
-            montantTTC: data.montant_ttc || 0,
-            montantPaye: data.montant_paye || 0,
-            reste: (data.montant_ttc || 0) - (data.montant_paye || 0),
-            statut: data.statut,
-          });
-        } else if (type === "facture") {
-          response = await api.get(`/factures/${id}`);
-          const data = response.data.data || response.data;
-          setDocumentInfo({
-            type: "Facture",
-            numero: data.numero,
-            date: data.date || data.created_at,
-            client: data.client?.nom || "Client",
-            montantTTC: data.montant_ttc || 0,
-            montantPaye: data.montant_paye || 0,
-            reste: data.reste_a_payer || ((data.montant_ttc || 0) - (data.montant_paye || 0)),
-            statut: data.statut,
-          });
-        } else if (type === "devis") {
-          response = await api.get(`/devis/${id}`);
-          const data = response.data.data || response.data;
-          setDocumentInfo({
-            type: "Devis",
-            numero: data.numero,
-            date: data.date || data.created_at,
-            client: data.client?.nom || "Client",
-            montantTTC: data.montant_ttc || 0,
-            montantPaye: 0,
-            reste: data.montant_ttc || 0,
-            statut: data.statut,
-          });
-        } else {
-          setError("Type de document non reconnu");
-          setIsLoading(false);
-          return;
-        }
-
-        setIsLoading(false);
-      } catch (err: any) {
-        console.error("Erreur de vérification:", err);
-        if (err.response?.status === 404) {
-          setError("Document introuvable");
-        } else if (err.response?.status === 401) {
-          // Pour les utilisateurs non connectés, afficher une version simplifiée
-          setError("Veuillez vous connecter pour voir les détails");
-        } else {
-          setError("Erreur lors de la vérification");
-        }
-        setIsLoading(false);
-      }
-    };
-
-    fetchDocument();
-  }, [type, id]);
+    try {
+      const parsed = JSON.parse(decodeURIComponent(dataParam));
+      const montantTTC = parsed.m || 0;
+      const montantPaye = parsed.p || 0;
+      
+      return {
+        type: TYPE_LABELS[parsed.t] || parsed.t || "Document",
+        numero: parsed.n || "",
+        date: parsed.d || "",
+        client: parsed.c || "",
+        montantTTC,
+        montantPaye,
+        reste: montantTTC - montantPaye,
+        statut: parsed.s || "",
+      };
+    } catch {
+      return null;
+    }
+  }, [searchParams]);
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -114,35 +64,16 @@ export default function VerifierDocumentPage() {
       validee: { variant: "default", label: "Validée" },
       valide: { variant: "default", label: "Validé" },
       annule: { variant: "destructive", label: "Annulé" },
+      annulee: { variant: "destructive", label: "Annulée" },
       brouillon: { variant: "outline", label: "Brouillon" },
       en_attente: { variant: "outline", label: "En attente" },
-      partiellement_payee: { variant: "default", label: "Partiellement payée" },
+      emise: { variant: "default", label: "Émise" },
+      partielle: { variant: "outline", label: "Partiellement payée" },
+      impayee: { variant: "destructive", label: "Impayée" },
     };
     const config = variants[statut] || { variant: "outline" as const, label: statut };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
-
-  const getPdfUrl = () => {
-    if (type === "ordre" || type === "ot") {
-      return `/ordres/${id}/pdf`;
-    } else if (type === "facture") {
-      return `/factures/${id}/pdf`;
-    } else if (type === "devis") {
-      return `/devis/${id}/pdf`;
-    }
-    return null;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 shadow-xl text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
-          <p className="text-muted-foreground">Vérification en cours...</p>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
@@ -164,7 +95,7 @@ export default function VerifierDocumentPage() {
           ) : (
             <div className="flex items-center gap-2 text-destructive bg-destructive/10 px-4 py-3 rounded-full">
               <XCircle className="h-6 w-6" />
-              <span className="font-semibold">{error || "Document Non Valide"}</span>
+              <span className="font-semibold">Document Non Valide</span>
             </div>
           )}
         </div>
@@ -229,19 +160,6 @@ export default function VerifierDocumentPage() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="pt-4">
-              {getPdfUrl() && (
-                <Button 
-                  className="w-full gap-2"
-                  onClick={() => navigate(getPdfUrl()!)}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Voir le document PDF
-                </Button>
-              )}
             </div>
           </div>
         )}
