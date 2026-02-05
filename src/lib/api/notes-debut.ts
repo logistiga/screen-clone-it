@@ -142,45 +142,45 @@ export interface NoteDebutStats {
 
 export const notesDebutApi = {
   getAll: async (params?: NoteDebutParams): Promise<PaginatedNotesResponse> => {
-    const response = await api.get('/notes-debut', { params });
+    const response = await api.get('/notes-debit', { params });
     return response.data;
   },
 
   getById: async (id: string): Promise<NoteDebut> => {
-    const response = await api.get(`/notes-debut/${id}`);
+    const response = await api.get(`/notes-debit/${id}`);
     const payload = response.data;
     return payload?.data ?? payload;
   },
 
   create: async (data: Partial<NoteDebut>): Promise<NoteDebut> => {
-    const response = await api.post('/notes-debut', data);
+    const response = await api.post('/notes-debit', data);
     const payload = response.data;
     return payload?.data ?? payload;
   },
 
   update: async (id: string, data: Partial<NoteDebut>): Promise<NoteDebut> => {
-    const response = await api.put(`/notes-debut/${id}`, data);
+    const response = await api.put(`/notes-debit/${id}`, data);
     const payload = response.data;
     return payload?.data ?? payload;
   },
 
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/notes-debut/${id}`);
+    await api.delete(`/notes-debit/${id}`);
   },
 
   duplicate: async (id: string): Promise<NoteDebut> => {
-    const response = await api.post(`/notes-debut/${id}/duplicate`);
+    const response = await api.post(`/notes-debit/${id}/duplicate`);
     const payload = response.data;
     return payload?.data ?? payload;
   },
 
   getStats: async (params?: { client_id?: string; type?: string; date_debut?: string; date_fin?: string }): Promise<NoteDebutStats> => {
-    const response = await api.get('/notes-debut/stats', { params });
+    const response = await api.get('/notes-debit/stats', { params });
     return response.data;
   },
 
   sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }): Promise<void> => {
-    const response = await api.post(`/notes-debut/${id}/send-email`, data);
+    const response = await api.post(`/notes-debit/${id}/send-email`, data);
     return response.data;
   },
 };
