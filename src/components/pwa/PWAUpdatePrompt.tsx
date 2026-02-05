@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshCw, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function PWAUpdatePrompt() {
+export const PWAUpdatePrompt = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function PWAUpdatePrompt(_props, ref) {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [swRegistration, setSwRegistration] = useState<globalThis.ServiceWorkerRegistration | null>(null);
 
@@ -60,11 +61,12 @@ export function PWAUpdatePrompt() {
   };
 
   if (!showUpdatePrompt) {
-    return null;
+    return <div ref={ref} style={{ display: 'none' }} />;
   }
 
   return (
-    <AnimatePresence>
+    <div ref={ref}>
+      <AnimatePresence>
       <motion.div
         initial={{ opacity: 0, y: -100 }}
         animate={{ opacity: 1, y: 0 }}
@@ -108,5 +110,8 @@ export function PWAUpdatePrompt() {
         </Card>
       </motion.div>
     </AnimatePresence>
+    </div>
   );
-}
+});
+
+PWAUpdatePrompt.displayName = "PWAUpdatePrompt";

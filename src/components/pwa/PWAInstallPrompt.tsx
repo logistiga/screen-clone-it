@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, X, Smartphone, Monitor, Check, Wifi } from "lucide-react";
@@ -32,7 +32,8 @@ const STORAGE_KEYS = {
   INSTALL_SHOWN_AFTER_LOGIN: "pwa-install-shown-after-login",
 };
 
-export function PWAInstallPrompt() {
+export const PWAInstallPrompt = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function PWAInstallPrompt(_props, ref) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
@@ -164,11 +165,11 @@ export function PWAInstallPrompt() {
   };
 
   if (isInstalled || dismissed) {
-    return null;
+    return <div ref={ref} style={{ display: 'none' }} />;
   }
 
   return (
-    <>
+    <div ref={ref}>
       {/* Dialog modal pour première connexion */}
       <Dialog open={showInstallDialog} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-md">
@@ -280,9 +281,11 @@ export function PWAInstallPrompt() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
-}
+});
+
+PWAInstallPrompt.displayName = "PWAInstallPrompt";
 
 // Fonction utilitaire pour déclencher le prompt après connexion
 export function triggerPWAInstallAfterLogin() {

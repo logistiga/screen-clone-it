@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, forwardRef } from "react";
 import { 
   Users, FileText, ClipboardList, Receipt, XCircle,
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
@@ -102,7 +102,8 @@ const menuItems = {
   }
 };
 
-export function AppSidebar() {
+export const AppSidebar = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function AppSidebar(_props, ref) {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const { prefetchRoute } = usePrefetch();
@@ -162,7 +163,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar ref={ref} collapsible="icon" className="border-r-0">
       <div className={cn(
         "flex h-20 items-center border-b border-sidebar-border px-4 transition-all duration-200",
         isCollapsed ? "justify-center" : "justify-center"
@@ -302,4 +303,6 @@ export function AppSidebar() {
       </div>
     </Sidebar>
   );
-}
+});
+
+AppSidebar.displayName = "AppSidebar";

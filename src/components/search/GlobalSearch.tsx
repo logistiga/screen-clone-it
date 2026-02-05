@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Users, FileText, Truck, Receipt, Loader2 } from "lucide-react";
 import {
@@ -24,7 +24,8 @@ interface SearchResult {
   status?: string;
 }
 
-export function GlobalSearch() {
+export const GlobalSearch = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function GlobalSearch(_props, ref) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -179,7 +180,7 @@ export function GlobalSearch() {
   };
 
   return (
-    <>
+    <div ref={ref}>
       <Button
         variant="outline"
         className="relative h-9 w-9 p-0 xl:h-10 xl:w-60 xl:justify-start xl:px-3 xl:py-2"
@@ -312,6 +313,8 @@ export function GlobalSearch() {
           )}
         </CommandList>
       </CommandDialog>
-    </>
+    </div>
   );
-}
+});
+
+GlobalSearch.displayName = "GlobalSearch";

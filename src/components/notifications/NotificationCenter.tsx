@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Check, Trash2, X, AlertTriangle, Info, CheckCircle, CreditCard, Receipt, FileText, Users, RefreshCw, Loader2, Wallet, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,7 +71,8 @@ const getIconStyles = (type: Notification["type"]) => {
   }
 };
 
-export function NotificationCenter() {
+export const NotificationCenter = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function NotificationCenter(_props, ref) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   
@@ -130,6 +132,7 @@ export function NotificationCenter() {
   };
 
   return (
+    <div ref={ref}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
@@ -297,5 +300,8 @@ export function NotificationCenter() {
         )}
       </PopoverContent>
     </Popover>
+    </div>
   );
-}
+});
+
+NotificationCenter.displayName = "NotificationCenter";

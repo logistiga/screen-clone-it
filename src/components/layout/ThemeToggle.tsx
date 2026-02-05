@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function ThemeToggle() {
+export const ThemeToggle = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  function ThemeToggle(_props, ref) {
   const { theme, setTheme } = useTheme();
 
   return (
+    <div ref={ref}>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
@@ -35,5 +38,8 @@ export function ThemeToggle() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </div>
   );
-}
+});
+
+ThemeToggle.displayName = "ThemeToggle";

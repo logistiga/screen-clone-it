@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, forwardRef } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2, ShieldX, Lock } from 'lucide-react';
@@ -12,13 +12,14 @@ interface ProtectedRouteProps {
   requireAny?: boolean; // true = OR, false = AND pour requiredPermissions
 }
 
-export function ProtectedRoute({ 
-  children, 
-  requiredPermission, 
-  requiredPermissions,
-  requiredRole,
-  requireAny = true 
-}: ProtectedRouteProps) {
+export const ProtectedRoute = forwardRef<HTMLDivElement, ProtectedRouteProps>(
+  function ProtectedRoute({ 
+    children, 
+    requiredPermission, 
+    requiredPermissions,
+    requiredRole,
+    requireAny = true 
+  }, ref) {
   const { isAuthenticated, isLoading, hasPermission, hasRole, user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export function ProtectedRoute({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Chargement...</p>
@@ -40,7 +41,11 @@ export function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return (
+      <div ref={ref}>
+        <Navigate to="/login" state={{ from: location }} replace />
+      </div>
+    );
   }
 
   // Vérification des permissions
@@ -83,7 +88,7 @@ export function ProtectedRoute({
 
   if (!checkPermissions()) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-6 max-w-md p-8">
           <div className="flex justify-center">
             <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -122,7 +127,7 @@ export function ProtectedRoute({
 
   if (!checkRoles()) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-6 max-w-md p-8">
           <div className="flex justify-center">
             <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -159,8 +164,10 @@ export function ProtectedRoute({
     );
   }
 
-  return <>{children}</>;
-}
+  return <div ref={ref}>{children}</div>;
+});
+
+ProtectedRoute.displayName = "ProtectedRoute";
 
 // Hook utilitaire pour vérifier les permissions dans les composants
 export function usePermission(permission: string): boolean {
