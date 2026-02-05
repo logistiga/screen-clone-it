@@ -67,6 +67,7 @@ import {
   DocumentErrorState,
 } from "@/components/shared/documents";
 import { AnomaliesSection } from "@/components/conteneurs/AnomaliesSection";
+import { OpsConnectionStatus } from "@/components/conteneurs/OpsConnectionStatus";
 
 // Options de filtres
 const statutOptions = [
@@ -155,8 +156,10 @@ export default function ConteneursEnAttentePage() {
       queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies'] });
       queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies-stats'] });
     },
-    onError: () => {
-      toast.error("Erreur lors de la synchronisation");
+    onError: (error: Error) => {
+      toast.error("Erreur lors de la synchronisation - voir les détails ci-dessous");
+      // L'erreur sera affichée dans le composant OpsConnectionStatus
+      console.error('[Sync OPS] Erreur:', error);
     },
   });
 
@@ -316,6 +319,12 @@ export default function ConteneursEnAttentePage() {
             </Button>
           </div>
 
+          {/* Diagnostic OPS - affiché si erreur de sync */}
+          <OpsConnectionStatus 
+            syncError={syncAndDetectMutation.error as Error | null}
+            onRetrySync={() => syncAndDetectMutation.mutate()}
+          />
+
           <DocumentEmptyState
             icon={Package}
             title="Aucun conteneur en attente"
@@ -393,6 +402,12 @@ export default function ConteneursEnAttentePage() {
             Actualiser
           </Button>
         </div>
+
+        {/* Diagnostic OPS - affiché si erreur de sync */}
+        <OpsConnectionStatus 
+          syncError={syncAndDetectMutation.error as Error | null}
+          onRetrySync={() => syncAndDetectMutation.mutate()}
+        />
 
         {/* Section Anomalies */}
         <AnomaliesSection />
