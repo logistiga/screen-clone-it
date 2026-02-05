@@ -119,6 +119,7 @@ const NumerotationPage = lazy(() => import("./pages/Numerotation"));
 const CategoriesDepensesPage = lazy(() => import("./pages/CategoriesDepenses"));
 const CategorieDepenseDetailPage = lazy(() => import("./pages/CategorieDepenseDetail"));
 const VerificationDocumentPage = lazy(() => import("./pages/VerificationDocument"));
+const VerifierDocumentPage = lazy(() => import("./pages/VerifierDocument"));
 const PartenairesPage = lazy(() => import("./pages/Partenaires"));
 const TransitaireDetailPage = lazy(() => import("./pages/TransitaireDetail"));
 const RepresentantDetailPage = lazy(() => import("./pages/RepresentantDetail"));
@@ -174,6 +175,7 @@ const App = () => (
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/pending-approval" element={<PendingApprovalPage />} />
                 <Route path="/security/:token/:action" element={<SecurityActionPage />} />
+                <Route path="/verifier/:type/:id" element={<VerifierDocumentPage />} />
                 
                 {/* Routes protégées - Dashboard (accessible à tous les utilisateurs authentifiés) */}
                 <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
