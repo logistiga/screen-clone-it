@@ -700,7 +700,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ADMINISTRATION - CONNEXIONS SUSPECTES
     // ============================================
-    Route::prefix('suspicious-logins')->middleware(['audit', 'role:admin'])->group(function () {
+    Route::prefix('suspicious-logins')->middleware(['audit', 'role:admin,directeur'])->group(function () {
         Route::get('/', [SuspiciousLoginController::class, 'index']);
         Route::get('stats', [SuspiciousLoginController::class, 'stats']);
     });
