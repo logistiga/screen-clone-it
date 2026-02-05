@@ -126,9 +126,18 @@ export default function FacturePDFPage() {
   const lignesConventionnel = buildLignesConventionnel();
   const lignesIndependant = buildLignesIndependant();
   
-  // URL simple pour le QR code - pointe vers la page de vérification publique
-  const baseUrl = "https://facturation.logistiga.pro";
-  const qrData = `${baseUrl}/verifier/facture/${id}`;
+  // URL pour le QR code - encode les données essentielles directement
+  const baseUrl = window.location.origin;
+  const qrPayload = {
+    t: "facture",
+    n: facture.numero,
+    d: facture.date_facture || facture.created_at,
+    c: client?.nom || "",
+    m: facture.montant_ttc || 0,
+    p: facture.montant_paye || 0,
+    s: facture.statut
+  };
+  const qrData = `${baseUrl}/verifier?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
   return (
     <div className="min-h-screen bg-muted/30">

@@ -175,7 +175,7 @@ const App = () => (
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/pending-approval" element={<PendingApprovalPage />} />
                 <Route path="/security/:token/:action" element={<SecurityActionPage />} />
-                <Route path="/verifier/:type/:id" element={<VerifierDocumentPage />} />
+                <Route path="/verifier" element={<VerifierDocumentPage />} />
                 
                 {/* Routes protégées - Dashboard (accessible à tous les utilisateurs authentifiés) */}
                 <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
