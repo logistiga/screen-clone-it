@@ -171,7 +171,27 @@ class SuspiciousLoginController extends Controller
         $perPage = $request->get('per_page', 20);
         $suspiciousLogins = $query->paginate($perPage);
 
-        return response()->json($suspiciousLogins);
+        // Calculer les stats pour le frontend
+        $stats = [
+            'total' => SuspiciousLogin::count(),
+            'pending' => SuspiciousLogin::where('status', 'pending')
+                ->where('token_expires_at', '>', now())
+                ->count(),
+            'approved' => SuspiciousLogin::where('status', 'approved')->count(),
+            'blocked' => SuspiciousLogin::where('status', 'blocked')->count(),
+            'last_24h' => SuspiciousLogin::where('created_at', '>=', now()->subDay())->count(),
+        ];
+
+        return response()->json([
+            'data' => $suspiciousLogins->items(),
+            'stats' => $stats,
+            'meta' => [
+                'current_page' => $suspiciousLogins->currentPage(),
+                'last_page' => $suspiciousLogins->lastPage(),
+                'per_page' => $suspiciousLogins->perPage(),
+                'total' => $suspiciousLogins->total(),
+            ],
+        ]);
     }
 
     /**
