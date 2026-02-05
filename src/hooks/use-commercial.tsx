@@ -772,7 +772,14 @@ export function useCreatePaiement() {
       toast.success('Paiement enregistré avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement du paiement');
+      console.error('[Paiement] Erreur 422:', error.response?.data);
+      const errors = error.response?.data?.errors;
+      if (errors) {
+        const firstError = Object.values(errors).flat()[0];
+        toast.error(String(firstError) || 'Erreur de validation');
+      } else {
+        toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement du paiement');
+      }
     },
   });
 }
