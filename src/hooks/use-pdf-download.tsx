@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface UsePdfDownloadOptions {
   filename: string;
@@ -7,29 +8,61 @@ interface UsePdfDownloadOptions {
 }
 
 /**
- * Hook for PDF download using html2pdf.js.
- * Generates PDF as Blob for both download and email attachment.
+ * Hook for PDF download using html2canvas + jsPDF.
+ * Forces content to fit on a single A4 page.
  */
-export function usePdfDownload({ filename, margin = 10 }: UsePdfDownloadOptions) {
+export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Generate PDF as Blob
+  // Generate PDF as Blob - fits content to single A4 page
   const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
     if (!contentRef.current) return null;
 
     try {
-      const blob = await html2pdf()
-        .set({
-          margin,
-          filename: `${filename}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        })
-        .from(contentRef.current)
-        .outputPdf('blob');
+      // A4 dimensions in mm
+      const A4_WIDTH_MM = 210;
+      const A4_HEIGHT_MM = 297;
+      const CONTENT_WIDTH_MM = A4_WIDTH_MM - (margin * 2);
+      const CONTENT_HEIGHT_MM = A4_HEIGHT_MM - (margin * 2);
 
-      return blob;
+      // Capture the content at high resolution
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      // Calculate scaling to fit content on one page
+      const imgWidthPx = canvas.width;
+      const imgHeightPx = canvas.height;
+      
+      // Scale factor to fit width
+      const scaleX = CONTENT_WIDTH_MM / (imgWidthPx / 2);
+      // Scale factor to fit height
+      const scaleY = CONTENT_HEIGHT_MM / (imgHeightPx / 2);
+      
+      // Use the smaller scale to ensure everything fits
+      const scale = Math.min(scaleX, scaleY);
+      
+      const finalWidth = (imgWidthPx / 2) * scale;
+      const finalHeight = (imgHeightPx / 2) * scale;
+      
+      // Center horizontally
+      const xOffset = margin + (CONTENT_WIDTH_MM - finalWidth) / 2;
+      const yOffset = margin;
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(imgData, 'JPEG', xOffset, yOffset, finalWidth, finalHeight);
+
+      return pdf.output('blob');
     } catch (error) {
       console.error('Error generating PDF:', error);
       return null;
