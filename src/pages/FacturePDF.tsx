@@ -126,8 +126,8 @@ export default function FacturePDFPage() {
   const lignesConventionnel = buildLignesConventionnel();
   const lignesIndependant = buildLignesIndependant();
   
-  // URL pour le QR code - encode les données essentielles directement
-  const baseUrl = window.location.origin;
+  // URL pour le QR code - toujours pointer vers la production
+  const baseUrl = "https://facturation.logistiga.pro";
   const qrPayload = {
     t: "facture",
     n: facture.numero,
