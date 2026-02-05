@@ -669,7 +669,7 @@ export default function OrdreConteneursForm({
                                 min="1"
                                 className="h-9"
                                 value={op.quantite}
-                                onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "quantite", parseInt(e.target.value) || 0)}
+                                onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "quantite", parseFloat(e.target.value) || 0)}
                               />
                             </div>
                             <div className="space-y-1">
@@ -679,7 +679,7 @@ export default function OrdreConteneursForm({
                                 min="0"
                                 className="h-9"
                                 value={op.prixUnitaire}
-                                onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "prixUnitaire", parseInt(e.target.value) || 0)}
+                                onChange={(e) => handleOperationConteneurChange(conteneur.id, op.id, "prixUnitaire", parseFloat(e.target.value) || 0)}
                               />
                             </div>
                             <div className="space-y-1">

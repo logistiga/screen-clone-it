@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useRef } from 'react';
 import { useTaxesActives } from './use-taxes';
 import { TaxeItem, TaxesSelectionData } from '@/components/shared/TaxesSelector';
+import { roundMoney } from '@/lib/utils';
 
 // Constante stable pour les taxes par défaut (évite les re-renders)
 const DEFAULT_TAXES: TaxeItem[] = [
@@ -184,7 +185,7 @@ export function useDocumentTaxes() {
       
       // Taxe exonérée → montant = 0
       const isExonerated = hasExoneration && exoneratedTaxCodes.includes(taxe.code);
-      const montant = isExonerated ? 0 : Math.round(montantHTApresRemise * (taxe.taux / 100));
+      const montant = isExonerated ? 0 : roundMoney(montantHTApresRemise * (taxe.taux / 100));
       
       details[taxe.code] = montant;
       totalTaxes += montant;
