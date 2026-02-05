@@ -138,21 +138,9 @@ export default function OrdrePDFPage() {
   const lignesConventionnel = buildLignesConventionnel();
   const lignesIndependant = buildLignesIndependant();
   
-  // Données encodées dans le QR code (URL de vérification)
-  const qrPayload = {
-    type: "CONNAISSEMENT",
-    numero: ordre.numero,
-    date: ordre.date || ordre.created_at,
-    client: client?.nom,
-    typeOperation: ordre.type_document,
-    montantTTC: ordre.montant_ttc,
-    montantPaye: ordre.montant_paye || 0,
-    reste: resteAPayer,
-    statut: ordre.statut,
-    url: `${window.location.origin}/ordres/${id}`
-  };
-  
-  const qrData = `${window.location.origin}/verification?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
+  // URL simple pour le QR code - pointe vers la page de vérification publique
+  const baseUrl = "https://facturation.logistiga.pro";
+  const qrData = `${baseUrl}/verifier/ordre/${id}`;
 
   return (
     <div className="min-h-screen bg-muted/30">
