@@ -279,10 +279,13 @@ class ConteneurAnomalieController extends Controller
         foreach ($groupes as $key => $conteneurs) {
             [$clientNom, $numeroBl] = explode('|', $key);
             
-            // Trouver l'OT local correspondant
-            $ordre = OrdreTravail::whereRaw('UPPER(TRIM(client_nom)) = ?', [$clientNom])
-                ->whereRaw('UPPER(TRIM(numero_bl)) = ?', [$numeroBl])
+            // Trouver l'OT local correspondant via jointure avec clients
+            // La table ordres_travail utilise client_id, pas client_nom
+            $ordre = OrdreTravail::join('clients', 'ordres_travail.client_id', '=', 'clients.id')
+                ->whereRaw('UPPER(TRIM(clients.nom)) = ?', [$clientNom])
+                ->whereRaw('UPPER(TRIM(ordres_travail.numero_bl)) = ?', [$numeroBl])
                 ->with('conteneurs')
+                ->select('ordres_travail.*')
                 ->first();
 
             if (!$ordre) {
@@ -304,6 +307,10 @@ class ConteneurAnomalieController extends Controller
             // Trouver les manquants (dans OPS mais pas dans l'OT local)
             $manquants = array_diff($conteneursOpsListe, $conteneursOt);
 
+            // Récupérer le nom du client pour l'anomalie
+            $ordre->load('client');
+            $clientNomPourAnomalie = $ordre->client?->nom ?? $clientNom;
+
             foreach ($manquants as $numeroConteneur) {
                 // Vérifier si cette anomalie n'existe pas déjà
                 $existe = ConteneurAnomalie::where('numero_conteneur', $numeroConteneur)
@@ -316,7 +323,7 @@ class ConteneurAnomalieController extends Controller
                         'type' => 'oublie',
                         'numero_conteneur' => $numeroConteneur,
                         'numero_bl' => $ordre->numero_bl,
-                        'client_nom' => $ordre->client_nom,
+                        'client_nom' => $clientNomPourAnomalie,
                         'ordre_travail_id' => $ordre->id,
                         'statut' => 'non_traite',
                         'detected_at' => now(),
