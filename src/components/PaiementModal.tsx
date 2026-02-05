@@ -267,7 +267,7 @@ export function PaiementModal({
             Enregistrer un paiement
           </DialogTitle>
           <DialogDescription>
-            {documentType === "facture" ? "Facture" : "Ordre"} <strong>{documentNumero}</strong>
+            {documentType === "facture" ? "Facture" : documentType === "ordre" ? "Ordre" : "Note de débit"} <strong>{documentNumero}</strong>
             <br />
             Reste à payer: <strong className="text-primary">{formatMontant(montantRestant)}</strong>
           </DialogDescription>
