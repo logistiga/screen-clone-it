@@ -270,33 +270,11 @@ export default function OrdrePDFPage() {
               </tbody>
             </table>
 
-            {/* Totaux - à droite */}
+            {/* Totaux - à droite (sans détail taxes sur connaissement) */}
             <div className="flex justify-end mb-2">
               <div className="w-44 border text-[9px]">
-                <div className="flex justify-between py-0.5 px-1.5 border-b">
-                  <span>Total HT</span>
-                  <span className="font-medium">{formatMontant(ordre.montant_ht)}</span>
-                </div>
-                <div className="flex justify-between py-0.5 px-1.5 border-b">
-                  <span>
-                    TVA ({ordre.taux_tva || 18}%)
-                    {ordre.exonere_tva && <span className="text-amber-600 ml-1 text-[7px]">(Exo)</span>}
-                  </span>
-                  <span className={ordre.exonere_tva ? "line-through text-muted-foreground" : ""}>
-                    {formatMontant(ordre.exonere_tva ? 0 : ordre.montant_tva)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-0.5 px-1.5 border-b">
-                  <span>
-                    CSS ({ordre.taux_css || 1}%)
-                    {ordre.exonere_css && <span className="text-amber-600 ml-1 text-[7px]">(Exo)</span>}
-                  </span>
-                  <span className={ordre.exonere_css ? "line-through text-muted-foreground" : ""}>
-                    {formatMontant(ordre.exonere_css ? 0 : ordre.montant_css)}
-                  </span>
-                </div>
                 <div className="flex justify-between py-0.5 px-1.5 bg-primary text-primary-foreground font-bold border-b">
-                  <span>Total TTC</span>
+                  <span>Total</span>
                   <span>{formatMontant(ordre.montant_ttc)}</span>
                 </div>
                 <div className="flex justify-between py-0.5 px-1.5 border-b">
