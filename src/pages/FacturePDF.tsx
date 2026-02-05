@@ -63,61 +63,68 @@ export default function FacturePDFPage() {
   const isAnnulee = facture.statut === "annulee";
   const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
 
-  // Construire les lignes pour le PDF
-  const buildLignes = () => {
-    const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montantHT: number }> = [];
-    
-    // Lignes directes
+  // Déterminer le type de facture
+  const isConteneur = facture.categorie === "conteneurs" || (facture.conteneurs && facture.conteneurs.length > 0);
+  const isConventionnel = facture.categorie === "conventionnel" || (facture.lots && facture.lots.length > 0);
+  const isIndependant = facture.categorie === "operations_independantes" || (!isConteneur && !isConventionnel && facture.lignes && facture.lignes.length > 0);
+
+  // Type d'opération (Import/Export)
+  const typeOperation = (facture as any).type_operation || "";
+  const isImport = typeOperation.toLowerCase().includes("import");
+  const isExport = typeOperation.toLowerCase().includes("export");
+
+  // Construire les lignes pour CONTENEURS
+  const buildLignesConteneur = () => {
+    const lignes: Array<{ numero: string; taille: string; montant: number }> = [];
+    if (facture.conteneurs && facture.conteneurs.length > 0) {
+      facture.conteneurs.forEach((conteneur: any) => {
+        const totalConteneur = (conteneur.montant_ht || conteneur.prix_unitaire || 0) + 
+          (conteneur.operations?.reduce((sum: number, op: any) => sum + (op.montant_ht || op.prix_total || 0), 0) || 0);
+        lignes.push({
+          numero: conteneur.numero || '',
+          taille: conteneur.taille || '',
+          montant: totalConteneur
+        });
+      });
+    }
+    return lignes;
+  };
+
+  // Construire les lignes pour CONVENTIONNEL (Lots)
+  const buildLignesConventionnel = () => {
+    const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
+    if (facture.lots && facture.lots.length > 0) {
+      facture.lots.forEach((lot: any) => {
+        lignes.push({
+          description: lot.designation || lot.description || `Lot ${lot.numero_lot || ''}`,
+          quantite: lot.quantite || 1,
+          prixUnitaire: lot.prix_unitaire || 0,
+          montant: lot.montant_ht || lot.prix_total || (lot.quantite * lot.prix_unitaire) || 0
+        });
+      });
+    }
+    return lignes;
+  };
+
+  // Construire les lignes pour OPÉRATIONS INDÉPENDANTES
+  const buildLignesIndependant = () => {
+    const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
     if (facture.lignes && facture.lignes.length > 0) {
       facture.lignes.forEach((ligne: any) => {
         lignes.push({
           description: ligne.description || ligne.type_operation || 'Prestation',
           quantite: ligne.quantite || 1,
           prixUnitaire: ligne.prix_unitaire || 0,
-          montantHT: ligne.montant_ht || (ligne.quantite * ligne.prix_unitaire) || 0
+          montant: ligne.montant_ht || (ligne.quantite * ligne.prix_unitaire) || 0
         });
       });
     }
-    
-    // Conteneurs avec leurs opérations
-    if (facture.conteneurs && facture.conteneurs.length > 0) {
-      facture.conteneurs.forEach((conteneur: any) => {
-        if (conteneur.operations && conteneur.operations.length > 0) {
-          conteneur.operations.forEach((op: any) => {
-            lignes.push({
-              description: `${conteneur.numero} - ${op.description || op.type_operation}`,
-              quantite: op.quantite || 1,
-              prixUnitaire: op.prix_unitaire || 0,
-              montantHT: op.montant_ht || (op.quantite * op.prix_unitaire) || 0
-            });
-          });
-        } else {
-          lignes.push({
-            description: `Conteneur ${conteneur.numero} (${conteneur.taille})`,
-            quantite: 1,
-            prixUnitaire: conteneur.montant_ht || 0,
-            montantHT: conteneur.montant_ht || 0
-          });
-        }
-      });
-    }
-    
-    // Lots
-    if (facture.lots && facture.lots.length > 0) {
-      facture.lots.forEach((lot: any) => {
-        lignes.push({
-          description: lot.designation || `Lot`,
-          quantite: lot.quantite || 1,
-          prixUnitaire: lot.prix_unitaire || 0,
-          montantHT: lot.montant_ht || (lot.quantite * lot.prix_unitaire) || 0
-        });
-      });
-    }
-    
     return lignes;
   };
 
-  const lignes = buildLignes();
+  const lignesConteneur = buildLignesConteneur();
+  const lignesConventionnel = buildLignesConventionnel();
+  const lignesIndependant = buildLignesIndependant();
   
   // URL simple pour le QR code - pointe vers la page de vérification publique
   const baseUrl = "https://facturation.logistiga.pro";
@@ -177,6 +184,11 @@ export default function FacturePDFPage() {
             <div className="text-center">
               <h1 className="text-xl font-bold text-primary">FACTURE</h1>
               <p className="text-sm font-semibold">{facture.numero}</p>
+              {isConteneur && (isImport || isExport) && (
+                <p className="text-xs font-medium text-primary/80 mt-1">
+                  {isImport ? "IMPORT" : "EXPORT"}
+                </p>
+              )}
             </div>
             <div className="flex flex-col items-end gap-1">
               <QRCodeSVG value={qrData} size={60} level="M" />
@@ -207,41 +219,127 @@ export default function FacturePDFPage() {
             </p>
           </div>
 
-          {/* Tableau des lignes */}
-          <table className="w-full mb-4 text-xs border-collapse border">
-            <thead>
-              <tr className="bg-primary text-primary-foreground">
-                <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
-                <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
-                <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
-                <th className="text-right py-2 px-2 font-semibold w-28">Montant HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lignes.map((ligne, index) => (
-                <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
-                  <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
-                  <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
-                  <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-1.5 px-2 font-medium border-b">
-                    {formatMontant(ligne.montantHT)}
+          {/* Tableau des lignes - MODÈLE CONTENEUR */}
+          {isConteneur && (
+            <table className="w-full mb-4 text-xs border-collapse border">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                  <th className="text-left py-2 px-2 font-semibold border-r">Conteneur</th>
+                  <th className="text-center py-2 px-2 font-semibold w-20 border-r">Taille</th>
+                  <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lignesConteneur.map((ligne, index) => (
+                  <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b font-mono">{ligne.numero}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b">{ligne.taille}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b">{formatMontant(ligne.montant)}</td>
+                  </tr>
+                ))}
+                {Array.from({ length: Math.max(0, 10 - lignesConteneur.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="h-6">
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Tableau des lignes - MODÈLE CONVENTIONNEL */}
+          {isConventionnel && !isConteneur && (
+            <table className="w-full mb-4 text-xs border-collapse border">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                  <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
+                  <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
+                  <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
+                  <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lignesConventionnel.map((ligne, index) => (
+                  <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
+                    <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b">{formatMontant(ligne.montant)}</td>
+                  </tr>
+                ))}
+                {Array.from({ length: Math.max(0, 10 - lignesConventionnel.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="h-6">
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Tableau des lignes - MODÈLE OPÉRATIONS INDÉPENDANTES */}
+          {isIndependant && !isConteneur && !isConventionnel && (
+            <table className="w-full mb-4 text-xs border-collapse border">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                  <th className="text-left py-2 px-2 font-semibold border-r">Prestation</th>
+                  <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
+                  <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
+                  <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lignesIndependant.map((ligne, index) => (
+                  <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
+                    <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b">{formatMontant(ligne.montant)}</td>
+                  </tr>
+                ))}
+                {Array.from({ length: Math.max(0, 10 - lignesIndependant.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="h-6">
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Tableau par défaut si aucun type détecté */}
+          {!isConteneur && !isConventionnel && !isIndependant && (
+            <table className="w-full mb-4 text-xs border-collapse border">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                  <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
+                  <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="h-6">
+                  <td className="py-1.5 px-2 border-r border-b text-muted-foreground text-center" colSpan={3}>
+                    Aucune ligne
                   </td>
                 </tr>
-              ))}
-              {/* Lignes vides pour remplir (min 10 lignes) */}
-              {Array.from({ length: Math.max(0, 10 - lignes.length) }).map((_, i) => (
-                <tr key={`empty-${i}`} className="h-6">
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-b">&nbsp;</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          )}
 
           {/* Totaux et Paiement */}
           <div className="flex justify-between mb-4 gap-4">
