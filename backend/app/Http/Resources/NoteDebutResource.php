@@ -30,12 +30,19 @@ class NoteDebutResource extends JsonResource
             'tarif_journalier' => round($this->tarif_journalier ?? 0, 2),
             
             // Montants (AUCUNE taxe sur les notes de début)
-            'montant_ht' => round($this->montant_ht, 2),
+            'montant_ht' => round($this->montant_ht ?? 0, 2),
             'montant_tva' => 0, // Toujours 0 pour notes de début
             'montant_css' => 0, // Toujours 0 pour notes de début
-            'montant_ttc' => round($this->montant_ht, 2), // TTC = HT (pas de taxes)
+            'montant_ttc' => round($this->montant_ht ?? 0, 2), // TTC = HT (pas de taxes)
+            'montant_total' => round($this->montant_ht ?? 0, 2),
             'taux_tva' => 0,
             'taux_css' => 0,
+            
+            // Paiements et statut
+            'montant_paye' => round($this->montant_paye ?? 0, 2),
+            'montant_avance' => round($this->montant_avance ?? 0, 2),
+            'statut' => $this->statut ?? 'en_attente',
+            'client_id' => $this->client_id,
             
             'description' => $this->description,
             'notes' => $this->notes,
