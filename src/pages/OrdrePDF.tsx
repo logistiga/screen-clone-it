@@ -180,8 +180,8 @@ export default function OrdrePDFPage() {
       <div className="container py-8 print:py-0 flex justify-center animate-fade-in">
         <Card 
           ref={contentRef} 
-          className="bg-white print:shadow-none print:border-none relative"
-          style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
+          className="bg-white print:shadow-none print:border-none relative flex flex-col"
+          style={{ width: '210mm', minHeight: '297mm', padding: '8mm' }}
         >
           {/* Watermark si annulé */}
           {isAnnule && (
@@ -192,177 +192,183 @@ export default function OrdrePDFPage() {
             </div>
           )}
 
-          {/* Header avec logo et QR code */}
-          <div className="flex justify-between items-start mb-3 border-b-2 border-primary pb-2">
-            <div className="flex items-center gap-3">
-              <img src={logoLogistiga} alt="LOGISTIGA" className="h-12 w-auto" />
+          {/* Contenu principal - grandit pour pousser le footer en bas */}
+          <div className="flex-1">
+            {/* Header avec logo et QR code */}
+            <div className="flex justify-between items-start mb-2 border-b-2 border-primary pb-2">
+              <div className="flex items-center gap-2">
+                <img src={logoLogistiga} alt="LOGISTIGA" className="h-10 w-auto" />
+                <div>
+                  <p className="text-[9px] text-primary font-semibold">TRANSPORT-STOCKAGE</p>
+                  <p className="text-[9px] text-primary font-semibold">-MANUTENTION</p>
+                </div>
+              </div>
+              <div className="text-center">
+                <h1 className="text-base font-bold text-primary">CONNAISSEMENT</h1>
+                <p className="text-[10px] font-semibold">{ordre.numero}</p>
+              </div>
+              <div className="flex flex-col items-end gap-0.5">
+                <QRCodeSVG value={qrData} size={40} level="M" />
+                <p className="text-[6px] text-muted-foreground">Scannez pour vérifier</p>
+              </div>
+            </div>
+
+            {/* Infos document */}
+            <div className="flex justify-between text-[9px] mb-2">
               <div>
-                <p className="text-[10px] text-primary font-semibold">TRANSPORT-STOCKAGE</p>
-                <p className="text-[10px] text-primary font-semibold">-MANUTENTION</p>
+                <p><span className="font-semibold">Date:</span> {formatDate(ordre.date || ordre.created_at)}</p>
+                <p><span className="font-semibold">Type:</span> {getTypeOperationLabel(ordre.type_document)}</p>
+                {ordre.bl_numero && (
+                  <p><span className="font-semibold">N° BL:</span> {ordre.bl_numero}</p>
+                )}
               </div>
             </div>
-            <div className="text-center">
-              <h1 className="text-lg font-bold text-primary">CONNAISSEMENT</h1>
-              <p className="text-xs font-semibold">{ordre.numero}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <QRCodeSVG value={qrData} size={50} level="M" />
-              <p className="text-[7px] text-muted-foreground">Scannez pour vérifier</p>
-            </div>
-          </div>
 
-          {/* Infos document */}
-          <div className="flex justify-between text-[10px] mb-3">
-            <div>
-              <p><span className="font-semibold">Date:</span> {formatDate(ordre.date || ordre.created_at)}</p>
-              <p><span className="font-semibold">Type:</span> {getTypeOperationLabel(ordre.type_document)}</p>
-              {ordre.bl_numero && (
-                <p><span className="font-semibold">N° BL:</span> {ordre.bl_numero}</p>
-              )}
+            {/* Client - compact */}
+            <div className="mb-2 border p-1.5 rounded">
+              <h3 className="text-[9px] font-bold text-primary mb-0.5">CLIENT</h3>
+              <p className="font-semibold text-[10px]">{client?.nom}</p>
+              <p className="text-[8px] text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+              <p className="text-[8px] text-muted-foreground">
+                Tél: {client?.telephone} | Email: {client?.email}
+              </p>
             </div>
-          </div>
 
-          {/* Client */}
-          <div className="mb-3 border p-2 rounded">
-            <h3 className="text-[10px] font-bold text-primary mb-0.5">CLIENT</h3>
-            <p className="font-semibold text-xs">{client?.nom}</p>
-            <p className="text-[10px] text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-            <p className="text-[10px] text-muted-foreground">
-              Tél: {client?.telephone} | Email: {client?.email}
-            </p>
-          </div>
-
-          {/* Tableau des lignes */}
-          <table className="w-full mb-3 text-[10px] border-collapse border">
-            <thead>
-              <tr className="bg-primary text-primary-foreground">
-                <th className="text-left py-1.5 px-2 font-semibold w-8 border-r">N°</th>
-                <th className="text-left py-1.5 px-2 font-semibold border-r">Description</th>
-                <th className="text-center py-1.5 px-2 font-semibold w-12 border-r">Qté</th>
-                <th className="text-right py-1.5 px-2 font-semibold w-20 border-r">Prix unit.</th>
-                <th className="text-right py-1.5 px-2 font-semibold w-24">Montant HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lignes.map((ligne, index) => (
-                <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-1 px-2 border-r border-b">{index + 1}</td>
-                  <td className="py-1 px-2 border-r border-b">{ligne.description}</td>
-                  <td className="text-center py-1 px-2 border-r border-b">{ligne.quantite}</td>
-                  <td className="text-right py-1 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-1 px-2 font-medium border-b">
-                    {formatMontant(ligne.montantHT)}
-                  </td>
+            {/* Tableau des lignes - compact */}
+            <table className="w-full mb-2 text-[9px] border-collapse border">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-1 px-1.5 font-semibold w-6 border-r">N°</th>
+                  <th className="text-left py-1 px-1.5 font-semibold border-r">Description</th>
+                  <th className="text-center py-1 px-1.5 font-semibold w-10 border-r">Qté</th>
+                  <th className="text-right py-1 px-1.5 font-semibold w-16 border-r">Prix unit.</th>
+                  <th className="text-right py-1 px-1.5 font-semibold w-20">Montant</th>
                 </tr>
-              ))}
-              {/* Lignes vides pour remplir (min 8 lignes) */}
-              {Array.from({ length: Math.max(0, 8 - lignes.length) }).map((_, i) => (
-                <tr key={`empty-${i}`} className="h-5">
-                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1 px-2 border-b">&nbsp;</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {lignes.map((ligne, index) => (
+                  <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-0.5 px-1.5 border-r border-b">{index + 1}</td>
+                    <td className="py-0.5 px-1.5 border-r border-b">{ligne.description}</td>
+                    <td className="text-center py-0.5 px-1.5 border-r border-b">{ligne.quantite}</td>
+                    <td className="text-right py-0.5 px-1.5 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
+                    <td className="text-right py-0.5 px-1.5 font-medium border-b">
+                      {formatMontant(ligne.montantHT)}
+                    </td>
+                  </tr>
+                ))}
+                {/* Lignes vides pour remplir (min 6 lignes) */}
+                {Array.from({ length: Math.max(0, 6 - lignes.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="h-4">
+                    <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
+                    <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
+                    <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
+                    <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
+                    <td className="py-0.5 px-1.5 border-b">&nbsp;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {/* Totaux */}
-          <div className="flex justify-end mb-3">
-            <div className="w-48 border text-[10px]">
-              <div className="flex justify-between py-0.5 px-2 border-b">
-                <span>Total HT</span>
-                <span className="font-medium">{formatMontant(ordre.montant_ht)}</span>
-              </div>
-              <div className="flex justify-between py-0.5 px-2 border-b">
-                <span>
-                  TVA ({ordre.taux_tva || 18}%)
-                  {ordre.exonere_tva && <span className="text-amber-600 ml-1 text-[8px]">(Exonéré)</span>}
-                </span>
-                <span className={ordre.exonere_tva ? "line-through text-muted-foreground" : ""}>
-                  {formatMontant(ordre.exonere_tva ? 0 : ordre.montant_tva)}
-                </span>
-              </div>
-              <div className="flex justify-between py-0.5 px-2 border-b">
-                <span>
-                  CSS ({ordre.taux_css || 1}%)
-                  {ordre.exonere_css && <span className="text-amber-600 ml-1 text-[8px]">(Exonéré)</span>}
-                </span>
-                <span className={ordre.exonere_css ? "line-through text-muted-foreground" : ""}>
-                  {formatMontant(ordre.exonere_css ? 0 : ordre.montant_css)}
-                </span>
-              </div>
-              <div className="flex justify-between py-1 px-2 bg-primary text-primary-foreground font-bold border-b">
-                <span>Total TTC</span>
-                <span>{formatMontant(ordre.montant_ttc)}</span>
-              </div>
-              <div className="flex justify-between py-0.5 px-2 border-b">
-                <span>Payé</span>
-                <span className="text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
-              </div>
-              <div className="flex justify-between py-1 px-2 font-bold">
-                <span>Reste à payer</span>
-                <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
-                  {formatMontant(resteAPayer)}
-                </span>
+            {/* Totaux - à droite */}
+            <div className="flex justify-end mb-2">
+              <div className="w-44 border text-[9px]">
+                <div className="flex justify-between py-0.5 px-1.5 border-b">
+                  <span>Total HT</span>
+                  <span className="font-medium">{formatMontant(ordre.montant_ht)}</span>
+                </div>
+                <div className="flex justify-between py-0.5 px-1.5 border-b">
+                  <span>
+                    TVA ({ordre.taux_tva || 18}%)
+                    {ordre.exonere_tva && <span className="text-amber-600 ml-1 text-[7px]">(Exo)</span>}
+                  </span>
+                  <span className={ordre.exonere_tva ? "line-through text-muted-foreground" : ""}>
+                    {formatMontant(ordre.exonere_tva ? 0 : ordre.montant_tva)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-0.5 px-1.5 border-b">
+                  <span>
+                    CSS ({ordre.taux_css || 1}%)
+                    {ordre.exonere_css && <span className="text-amber-600 ml-1 text-[7px]">(Exo)</span>}
+                  </span>
+                  <span className={ordre.exonere_css ? "line-through text-muted-foreground" : ""}>
+                    {formatMontant(ordre.exonere_css ? 0 : ordre.montant_css)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-0.5 px-1.5 bg-primary text-primary-foreground font-bold border-b">
+                  <span>Total TTC</span>
+                  <span>{formatMontant(ordre.montant_ttc)}</span>
+                </div>
+                <div className="flex justify-between py-0.5 px-1.5 border-b">
+                  <span>Payé</span>
+                  <span className="text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
+                </div>
+                <div className="flex justify-between py-0.5 px-1.5 font-bold">
+                  <span>Reste à payer</span>
+                  <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
+                    {formatMontant(resteAPayer)}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Motif d'exonération */}
+            {ordre.motif_exoneration && (
+              <div className="mb-2 p-1.5 bg-amber-50 border border-amber-200 rounded text-[8px]">
+                <strong className="text-amber-700">Exonération:</strong>{" "}
+                <span className="text-amber-600">{ordre.motif_exoneration}</span>
+              </div>
+            )}
+
+            {/* Notes */}
+            {ordre.notes && (
+              <div className="mb-2 border p-1.5 rounded">
+                <h3 className="text-[8px] font-bold mb-0.5">NOTES</h3>
+                <p className="text-[7px]">{ordre.notes}</p>
+              </div>
+            )}
           </div>
 
-          {/* Motif d'exonération */}
-          {ordre.motif_exoneration && (
-            <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded text-[9px]">
-              <strong className="text-amber-700">Exonération:</strong>{" "}
-              <span className="text-amber-600">{ordre.motif_exoneration}</span>
+          {/* Section fixée en bas de page */}
+          <div className="mt-auto">
+            {/* DECLARATION CLIENT & CONDITIONS DE TRANSPORT */}
+            <div className="border mb-2">
+              <div className="grid grid-cols-2">
+                {/* Déclaration Client */}
+                <div className="border-r p-1.5">
+                  <h4 className="font-bold text-[8px] border-b pb-0.5 mb-1">DECLARATION CLIENT</h4>
+                  <p className="text-[6px] leading-tight text-justify">
+                    JE DECLARE QUE le contenu de cette expédition est complètement et correctement décrit ci-dessus avec la 
+                    désignation officielle de transport, qu'il est classé et empaqueté correctement, que les indications de danger 
+                    pour les produits dangereux sont correctement appliquées ou affichées, et qu'il est, à tous les égards, en bon état pour 
+                    être transporté selon les Règlements sur le transport des marchandises dangereuses. I HEREBY DECLARE that the 
+                    contents of this consignment are fully and accurately described above by the proper shipping name, are properly 
+                    classified and packaged, have dangerous goods safety marks properly affixed or displayed on them, and are in all 
+                    respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
+                    to have accepted the conditions of transport
+                  </p>
+                  <p className="text-[7px] font-semibold mt-1">Signature et cachet :</p>
+                </div>
+                
+                {/* Conditions de Transport */}
+                <div className="p-1.5">
+                  <h4 className="font-bold text-[8px] border-b pb-0.5 mb-1">CONDITIONS DE TRANSPORT</h4>
+                  <p className="text-[6px] leading-tight text-justify">
+                    En acceptant le présent document, vous acceptez, sans limitation, les conditions juridiques suivantes : à tout moment et sans préavis, 
+                    LOGISTIGA peut modifier les présents termes et conditions juridiques. Logistiga n'est pas responsable de "Surtaxes et Détentions aux quais des Installations 
+                    Portuaires" ni de "Surestaries de Détention à l'Import ou à l'Export". Logistiga n'est pas responsable de détention en cas de grève dans la zone 
+                    portuaire/Logistiga N'EST PAS RESPONSABLE de la marchandise en cas d'émeute ou mouvements populaires ou les catastrophes naturelles. Logistiga 
+                    n'est pas responsable de tout dommage que le conteneur en cas de sinistre déclaré pendant le transport ou le stockage. Logistiga a une assurance de 
+                    transport plafonnée à 50 millions XAF par voyage. Une déclaration est obligatoire en cas de dépassement. Le client est le seul responsable de la 
+                    marchandise et du matériel lié à la livraison à l'un des lieux inaccessibles.
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* DECLARATION CLIENT & CONDITIONS DE TRANSPORT */}
-          <div className="border mb-2">
-            <div className="grid grid-cols-2">
-              {/* Déclaration Client */}
-              <div className="border-r p-2">
-                <h4 className="font-bold text-[9px] border-b pb-1 mb-1">DECLARATION CLIENT</h4>
-                <p className="text-[7px] leading-tight text-justify">
-                  JE DECLARE QUE le contenu de cette expédition est complètement et correctement décrit ci-dessus avec la 
-                  désignation officielle de transport, qu'il est classé et empaqueté correctement, que les indications de danger 
-                  pour les produits dangereux sont correctement appliquées ou affichées, et qu'il est, à tous les égards, en bon état pour 
-                  être transporté selon les Règlements sur le transport des marchandises dangereuses. I HEREBY DECLARE that the 
-                  contents of this consignment are fully and accurately described above by the proper shipping name, are properly 
-                  classified and packaged, have dangerous goods safety marks properly affixed or displayed on them, and are in all 
-                  respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
-                  to have accepted the conditions of transport
-                </p>
-                <p className="text-[8px] font-semibold mt-2">Signature et cachet :</p>
-              </div>
-              
-              {/* Conditions de Transport */}
-              <div className="p-2">
-                <h4 className="font-bold text-[9px] border-b pb-1 mb-1">CONDITIONS DE TRANSPORT</h4>
-                <p className="text-[7px] leading-tight text-justify">
-                  En acceptant le présent document, vous acceptez, sans limitation, les conditions juridiques suivantes : à tout moment et sans préavis, 
-                  LOGISTIGA peut modifier les présents termes et conditions juridiques. Logistiga n'est pas responsable de "Surtaxes et Détentions aux quais des Installations 
-                  Portuaires" ni de "Surestaries de Détention à l'Import ou à l'Export". Logistiga n'est pas responsable de détention en cas de grève dans la zone 
-                  portuaire/Logistiga N'EST PAS RESPONSABLE de la marchandise en cas d'émeute ou mouvements populaires ou les catastrophes naturelles. Logistiga 
-                  n'est pas responsable de tout dommage que le conteneur en cas de sinistre déclaré pendant le transport ou le stockage. Logistiga a une assurance de 
-                  transport plafonnée à 50 millions XAF par voyage. Une déclaration est obligatoire en cas de dépassement. Le client est le seul responsable de la 
-                  marchandise et du matériel lié à la livraison à l'un des lieux inaccessibles. Le client est le responsable du matériel en cas de dégât.
-                </p>
-              </div>
-            </div>
+            {/* Footer */}
+            <DocumentFooter />
           </div>
-
-          {/* Notes */}
-          {ordre.notes && (
-            <div className="mb-2 border p-2 rounded">
-              <h3 className="text-[9px] font-bold mb-0.5">NOTES</h3>
-              <p className="text-[8px]">{ordre.notes}</p>
-            </div>
-          )}
-
-          {/* Footer */}
-          <DocumentFooter />
         </Card>
       </div>
 
