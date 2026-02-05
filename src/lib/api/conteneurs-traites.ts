@@ -91,7 +91,28 @@ export interface AnomaliesStats {
   };
 }
 
+export interface OpsHealthResponse {
+  success: boolean;
+  message: string;
+  debug?: {
+    host?: string;
+    database?: string;
+    host_configured?: boolean;
+    database_configured?: boolean;
+    tables_count?: number;
+    error?: string;
+  };
+}
+
 export const conteneursTraitesApi = {
+  /**
+   * Teste la connexion à la base OPS
+   */
+  healthOps: async (): Promise<OpsHealthResponse> => {
+    const response = await api.get('/sync-diagnostic/health-ops');
+    return response.data;
+  },
+
   /**
    * Liste des conteneurs traités avec filtres
    */
