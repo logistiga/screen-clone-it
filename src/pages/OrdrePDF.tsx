@@ -197,13 +197,7 @@ export default function OrdrePDFPage() {
           <div className="flex-1">
             {/* Header avec logo et QR code */}
             <div className="flex justify-between items-start mb-2 border-b-2 border-primary pb-2">
-              <div className="flex items-center gap-2">
-                <img src={logoLogistiga} alt="LOGISTIGA" className="h-10 w-auto" />
-                <div>
-                  <p className="text-[9px] text-primary font-semibold">TRANSPORT-STOCKAGE</p>
-                  <p className="text-[9px] text-primary font-semibold">-MANUTENTION</p>
-                </div>
-              </div>
+              <img src={logoLogistiga} alt="LOGISTIGA" className="h-16 w-auto" />
               <div className="text-center">
                 <h1 className="text-base font-bold text-primary">CONNAISSEMENT</h1>
                 <p className="text-[10px] font-semibold">{ordre.numero}</p>

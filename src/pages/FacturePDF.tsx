@@ -183,13 +183,7 @@ export default function FacturePDFPage() {
 
           {/* Header avec logo et QR code */}
           <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
-            <div className="flex items-center gap-3">
-              <img src={logoLogistiga} alt="LOGISTIGA" className="h-14 w-auto" />
-              <div>
-                <p className="text-xs text-primary font-semibold">TRANSPORT-STOCKAGE</p>
-                <p className="text-xs text-primary font-semibold">-MANUTENTION</p>
-              </div>
-            </div>
+            <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
             <div className="text-center">
               <h1 className="text-xl font-bold text-primary">FACTURE</h1>
               <p className="text-sm font-semibold">{facture.numero}</p>
