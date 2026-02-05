@@ -121,8 +121,8 @@ export default function DevisPDFPage() {
   
   const lignesAffichage = getLignesAffichage();
   
-  // URL pour le QR code - encode les données essentielles directement
-  const baseUrl = window.location.origin;
+  // URL pour le QR code - toujours pointer vers la production
+  const baseUrl = "https://facturation.logistiga.pro";
   const qrPayload = {
     t: "devis",
     n: devisData.numero,
