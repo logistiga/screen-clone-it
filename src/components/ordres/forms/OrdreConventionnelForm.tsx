@@ -127,6 +127,13 @@ export default function OrdreConventionnelForm({
     }
   };
 
+  // Convertit une valeur avec virgule en nombre
+  const parseDecimalInput = (value: string): number => {
+    // Remplace la virgule par un point pour le parsing
+    const normalized = value.replace(',', '.');
+    return parseFloat(normalized) || 0;
+  };
+
   const handleLotChange = (id: string, field: keyof LigneLot, value: string | number) => {
     const newLots = lots.map(l => {
       if (l.id === id) {
@@ -252,10 +259,11 @@ export default function OrdreConventionnelForm({
                   <div className="space-y-2">
                     <Label>Quantité *</Label>
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="1"
                       value={lot.quantite}
-                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseDecimalInput(e.target.value))}
                       onBlur={() => handleBlur(`lots.${index}.quantite`)}
                       className={cn(getFieldError(`lots.${index}.quantite`) && "border-destructive")}
                     />
