@@ -85,6 +85,7 @@ export const NotificationCenter = forwardRef<HTMLDivElement, React.ComponentProp
     deleteNotification,
     clearAll,
     refresh,
+    isUsingLocalData,
   } = useNotificationCenter();
   
   // Détecteur de nouvelles notifications (affiche un toast)
@@ -149,6 +150,11 @@ export const NotificationCenter = forwardRef<HTMLDivElement, React.ComponentProp
         <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm">Notifications</h4>
+            {isUsingLocalData && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-medium text-warning border-warning/50">
+                Démo
+              </Badge>
+            )}
             {unreadCount > 0 && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 font-medium">
                 {unreadCount} nouvelle{unreadCount > 1 ? 's' : ''}
