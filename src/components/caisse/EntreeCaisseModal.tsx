@@ -37,13 +37,9 @@ export function EntreeCaisseModal({
   const { toast } = useToast();
   const [montant, setMontant] = useState<number>(0);
   const [description, setDescription] = useState("");
-  const [categorie, setCategorie] = useState("");
   const [source, setSource] = useState("");
 
-  const { data: categoriesData } = useCategoriesDepenses({ type: 'Entrée', actif: true });
   const createMouvement = useCreateMouvementCaisse();
-
-  const categories = categoriesData?.data || [];
 
   const handleSubmit = async () => {
     if (montant <= 0) {
