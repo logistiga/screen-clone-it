@@ -11,16 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ArrowDownCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateMouvementCaisse, useCategoriesDepenses } from "@/hooks/use-commercial";
+import { useCreateMouvementCaisse } from "@/hooks/use-commercial";
 import { formatMontant } from "@/data/mockData";
 
 interface EntreeCaisseModalProps {
@@ -37,13 +30,9 @@ export function EntreeCaisseModal({
   const { toast } = useToast();
   const [montant, setMontant] = useState<number>(0);
   const [description, setDescription] = useState("");
-  const [categorie, setCategorie] = useState("");
   const [source, setSource] = useState("");
 
-  const { data: categoriesData } = useCategoriesDepenses({ type: 'Entrée', actif: true });
   const createMouvement = useCreateMouvementCaisse();
-
-  const categories = categoriesData?.data || [];
 
   const handleSubmit = async () => {
     if (montant <= 0) {
@@ -64,14 +53,6 @@ export function EntreeCaisseModal({
       return;
     }
 
-    if (!categorie) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner une catégorie.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     try {
       await createMouvement.mutateAsync({
@@ -79,7 +60,7 @@ export function EntreeCaisseModal({
         source: 'caisse',
         montant,
         description,
-        categorie,
+        categorie: 'Entrée manuelle',
         beneficiaire: source || undefined,
       });
 
@@ -99,7 +80,6 @@ export function EntreeCaisseModal({
   const resetForm = () => {
     setMontant(0);
     setDescription("");
-    setCategorie("");
     setSource("");
   };
 
@@ -120,29 +100,6 @@ export function EntreeCaisseModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Catégorie */}
-          <div className="space-y-2">
-            <Label>Catégorie *</Label>
-            <Select value={categorie} onValueChange={setCategorie}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground text-center">
-                    Aucune catégorie d'entrée disponible
-                  </div>
-                ) : (
-                  categories.map((cat: any) => (
-                    <SelectItem key={cat.id} value={cat.nom}>
-                      {cat.nom}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Montant */}
           <div className="space-y-2">
             <Label htmlFor="montant">Montant (FCFA) *</Label>
