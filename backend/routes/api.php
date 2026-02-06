@@ -628,15 +628,15 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.voir');
         Route::get('creances', [ReportingController::class, 'creances'])
             ->middleware('permission:reporting.voir');
-        Route::get('rentabilite-clients', [ReportingController::class, 'rentabiliteClients'])
+        Route::get('rentabilite-clients', [ReportingController::class, 'rentabilite'])
             ->middleware('permission:reporting.voir');
-        Route::get('evolution-mensuelle', [ReportingController::class, 'evolutionMensuelle'])
+        Route::get('evolution-mensuelle', [ReportingController::class, 'chiffreAffaires'])
             ->middleware('permission:reporting.voir');
-        Route::get('comparaison-periodes', [ReportingController::class, 'comparaisonPeriodes'])
+        Route::get('comparaison-periodes', [ReportingController::class, 'comparatif'])
             ->middleware('permission:reporting.voir');
-        Route::get('top-clients', [ReportingController::class, 'topClients'])
+        Route::get('top-clients', [ReportingController::class, 'activiteClients'])
             ->middleware('permission:reporting.voir');
-        Route::get('analyse-operations', [ReportingController::class, 'analyseOperations'])
+        Route::get('analyse-operations', [ReportingController::class, 'statistiquesDocuments'])
             ->middleware('permission:reporting.voir');
         Route::get('tresorerie', [ReportingController::class, 'tresorerie'])
             ->middleware('permission:reporting.voir');
