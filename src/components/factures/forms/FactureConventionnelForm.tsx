@@ -249,7 +249,7 @@ export default function FactureConventionnelForm({
                         type="number"
                         min="1"
                         value={lot.quantite}
-                        onChange={(e) => handleLotChange(lot.id, 'quantite', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleLotChange(lot.id, 'quantite', parseFloat(e.target.value) || 0)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -259,7 +259,7 @@ export default function FactureConventionnelForm({
                         min="0"
                         placeholder="0"
                         value={lot.prixUnitaire || ""}
-                        onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
                       />
                     </div>
                     <div className="space-y-2">
