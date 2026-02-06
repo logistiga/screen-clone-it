@@ -640,7 +640,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.voir');
         Route::get('tresorerie', [ReportingController::class, 'tresorerie'])
             ->middleware('permission:reporting.voir');
-        Route::get('synthese', [ReportingController::class, 'synthese'])
+        Route::get('synthese', [ReportingController::class, 'dashboard'])
             ->middleware('permission:reporting.voir');
     });
 
