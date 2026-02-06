@@ -252,12 +252,10 @@ export default function OrdreConventionnelForm({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Quantité *</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
+                    <DecimalInput
                       placeholder="1"
                       value={lot.quantite}
-                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseDecimalInput(e.target.value))}
+                      onChange={(v) => handleLotChange(lot.id, 'quantite', v)}
                       onBlur={() => handleBlur(`lots.${index}.quantite`)}
                       className={cn(getFieldError(`lots.${index}.quantite`) && "border-destructive")}
                     />
@@ -265,12 +263,10 @@ export default function OrdreConventionnelForm({
                   </div>
                   <div className="space-y-2">
                     <Label>Prix unitaire (FCFA)</Label>
-                    <Input
-                      type="number"
-                      min="0"
+                    <DecimalInput
                       placeholder="0"
-                      value={lot.prixUnitaire || ""}
-                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                      value={lot.prixUnitaire}
+                      onChange={(v) => handleLotChange(lot.id, 'prixUnitaire', v)}
                     />
                   </div>
                   <div className="space-y-2">
