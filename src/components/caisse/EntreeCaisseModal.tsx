@@ -67,7 +67,7 @@ export function EntreeCaisseModal({
         source: 'caisse',
         montant,
         description,
-        categorie,
+        categorie: 'Entrée manuelle',
         beneficiaire: source || undefined,
       });
 
