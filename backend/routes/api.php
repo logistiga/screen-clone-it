@@ -448,22 +448,29 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // PRÉVISIONS
     // ============================================
     Route::prefix('previsions')->middleware('audit')->group(function () {
+        // Routes statiques AVANT les routes paramétrées
+        Route::get('stats-mensuelles', [PrevisionController::class, 'statsMensuelles'])
+            ->middleware(['permission:previsions.voir']);
+        Route::get('historique', [PrevisionController::class, 'historique'])
+            ->middleware(['permission:previsions.voir']);
+        Route::get('categories', [PrevisionController::class, 'categories'])
+            ->middleware(['permission:previsions.voir']);
+        Route::get('export-mois', [PrevisionController::class, 'exportMois'])
+            ->middleware(['permission:previsions.voir']);
+        Route::post('sync-realise', [PrevisionController::class, 'syncRealise'])
+            ->middleware(['permission:previsions.modifier']);
+
+        // Routes CRUD
         Route::get('/', [PrevisionController::class, 'index'])
             ->middleware('permission:previsions.voir');
         Route::post('/', [PrevisionController::class, 'store'])
             ->middleware('permission:previsions.creer');
-        Route::get('stats', [PrevisionController::class, 'stats'])
-            ->middleware(['permission:previsions.voir', 'throttle:stats']);
-        Route::get('dashboard', [PrevisionController::class, 'dashboard'])
-            ->middleware(['permission:previsions.voir', 'throttle:stats']);
         Route::get('{prevision}', [PrevisionController::class, 'show'])
             ->middleware('permission:previsions.voir');
         Route::put('{prevision}', [PrevisionController::class, 'update'])
             ->middleware('permission:previsions.modifier');
         Route::delete('{prevision}', [PrevisionController::class, 'destroy'])
             ->middleware('permission:previsions.supprimer');
-        Route::post('{prevision}/realiser', [PrevisionController::class, 'realiser'])
-            ->middleware('permission:previsions.realiser');
     });
 
     // ============================================
