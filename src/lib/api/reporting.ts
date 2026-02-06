@@ -672,7 +672,7 @@ export interface ExportFilters {
 export const exportApi = {
   // Export générique CSV
   exportCSV: async (type: ExportType, filters: ExportFilters = {}): Promise<Blob> => {
-    const response = await api.get(`/exports/${type}`, {
+    const response = await api.get(`/export/${type}`, {
       params: filters,
       responseType: 'blob',
     });
