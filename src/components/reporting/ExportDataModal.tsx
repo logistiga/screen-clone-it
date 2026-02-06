@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -190,6 +191,7 @@ const modesPaiement = [
 ];
 
 export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportDataModalProps) {
+  const navigate = useNavigate();
   const [selectedExports, setSelectedExports] = useState<ExportType[]>(['factures']);
   const [format, setFormat] = useState<FormatExport>("excel");
   const [dateDebut, setDateDebut] = useState(() => {
@@ -221,10 +223,23 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
     return statutsFacture;
   };
 
+  // Types de reporting qui utilisent le PDF client-side
+  const pdfReportingTypes: ExportType[] = ['tableau-de-bord', 'chiffre-affaires', 'activite-globale', 'tresorerie', 'creances'];
+
   const handleExport = async () => {
     if (selectedExports.length === 0) {
       toast.error("Veuillez sélectionner au moins un type de données");
       return;
+    }
+
+    // Si format PDF et type reporting → naviguer vers la page PDF dédiée
+    if (format === 'pdf') {
+      const hasReportingType = selectedExports.some(e => pdfReportingTypes.includes(e));
+      if (hasReportingType) {
+        onOpenChange(false);
+        navigate(`/reporting/pdf?annee=${annee}`);
+        return;
+      }
     }
 
     setIsExporting(true);
