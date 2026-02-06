@@ -579,11 +579,11 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // EMAIL & NOTIFICATIONS
     // ============================================
     Route::prefix('notifications')->middleware('audit')->group(function () {
-        Route::post('factures/{facture}/send', [NotificationController::class, 'sendFacture'])
+        Route::post('factures/{facture}/send', [NotificationController::class, 'envoyerFacture'])
             ->middleware('permission:factures.modifier');
-        Route::post('devis/{devis}/send', [NotificationController::class, 'sendDevis'])
+        Route::post('devis/{devis}/send', [NotificationController::class, 'envoyerDevis'])
             ->middleware('permission:devis.modifier');
-        Route::post('ordres/{ordre}/send', [NotificationController::class, 'sendOrdreTravail'])
+        Route::post('ordres/{ordre}/send', [NotificationController::class, 'envoyerOrdre'])
             ->middleware('permission:ordres.modifier');
     });
 
