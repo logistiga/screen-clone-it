@@ -440,95 +440,148 @@ const normalizeTableauDeBord = (raw: any, annee?: number): TableauDeBordData => 
   };
 };
 
+// ===== File d'attente séquentielle pour éviter les 429 =====
+const reportingQueue: {
+  pending: Promise<void>;
+} = { pending: Promise.resolve() };
+
+const DELAY_BETWEEN_CALLS_MS = 400; // Délai entre chaque appel
+const MAX_RETRIES_429 = 3;
+
+const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
 // Helper pour logger les appels reporting et propager les erreurs réelles
-const reportingCall = async <T>(
+const reportingCallInternal = async <T>(
   endpoint: string,
   params: Record<string, unknown>,
   normalizer: (raw: unknown, ...args: unknown[]) => T,
   ...normalizerArgs: unknown[]
 ): Promise<T> => {
-  const startTime = performance.now();
-  console.log(`[Reporting] ➡️ GET /reporting/${endpoint}`, { params });
+  let lastError: Error | null = null;
 
-  try {
-    const response = await api.get(`/reporting/${endpoint}`, { params });
-    const duration = Math.round(performance.now() - startTime);
-
-    // Vérifier que la réponse est du JSON valide
-    const contentType = response.headers?.['content-type'] || '';
-    if (contentType && !contentType.includes('application/json')) {
-      console.error(`[Reporting] ❌ /reporting/${endpoint} — Réponse non-JSON reçue`, {
-        contentType,
-        status: response.status,
-        dataPreview: typeof response.data === 'string' ? response.data.substring(0, 300) : response.data,
-      });
-      throw new Error(
-        `L'API /reporting/${endpoint} a renvoyé du contenu non-JSON (${contentType}). ` +
-        `Cela peut indiquer une erreur serveur ou une redirection.`
-      );
+  for (let attempt = 0; attempt <= MAX_RETRIES_429; attempt++) {
+    if (attempt > 0) {
+      const retryDelay = attempt * 2000; // 2s, 4s, 6s backoff
+      console.warn(`[Reporting] 🔄 Retry ${attempt}/${MAX_RETRIES_429} pour /reporting/${endpoint} dans ${retryDelay}ms...`);
+      await delay(retryDelay);
     }
 
-    console.log(`[Reporting] ✅ /reporting/${endpoint} — ${duration}ms`, {
-      status: response.status,
-      dataKeys: response.data ? Object.keys(response.data) : [],
-      dataPreview: JSON.stringify(response.data).substring(0, 200),
-    });
+    const startTime = performance.now();
+    console.log(`[Reporting] ➡️ GET /reporting/${endpoint}${attempt > 0 ? ` (retry ${attempt})` : ''}`, { params });
 
-    const normalized = normalizer(response.data, ...normalizerArgs);
-    console.log(`[Reporting] 📊 /reporting/${endpoint} — Données normalisées:`, {
-      keys: Object.keys(normalized as Record<string, unknown>),
-    });
+    try {
+      const response = await api.get(`/reporting/${endpoint}`, { params });
+      const duration = Math.round(performance.now() - startTime);
 
-    return normalized;
-  } catch (error: unknown) {
-    const duration = Math.round(performance.now() - startTime);
-    const axiosError = error as { response?: { status: number; data: unknown; headers?: Record<string, string> }; message?: string };
+      // Vérifier que la réponse est du JSON valide
+      const contentType = response.headers?.['content-type'] || '';
+      if (contentType && !contentType.includes('application/json')) {
+        console.error(`[Reporting] ❌ /reporting/${endpoint} — Réponse non-JSON reçue`, {
+          contentType,
+          status: response.status,
+          dataPreview: typeof response.data === 'string' ? response.data.substring(0, 300) : response.data,
+        });
+        throw new Error(
+          `L'API /reporting/${endpoint} a renvoyé du contenu non-JSON (${contentType}). ` +
+          `Cela peut indiquer une erreur serveur ou une redirection.`
+        );
+      }
 
-    if (axiosError.response) {
-      const { status, data, headers } = axiosError.response;
-      const contentType = headers?.['content-type'] || '';
-      const isHtml = contentType.includes('text/html') || 
-                     (typeof data === 'string' && (data.trim().startsWith('<!') || data.includes('<html')));
+      console.log(`[Reporting] ✅ /reporting/${endpoint} — ${duration}ms`, {
+        status: response.status,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        dataPreview: JSON.stringify(response.data).substring(0, 200),
+      });
 
-      console.error(`[Reporting] ❌ /reporting/${endpoint} — HTTP ${status} en ${duration}ms`, {
-        status,
-        contentType,
-        isHtmlResponse: isHtml,
-        errorData: isHtml 
-          ? `[HTML Response - ${(typeof data === 'string' ? data : '').substring(0, 200)}]`
-          : data,
+      const normalized = normalizer(response.data, ...normalizerArgs);
+      console.log(`[Reporting] 📊 /reporting/${endpoint} — Données normalisées:`, {
+        keys: Object.keys(normalized as Record<string, unknown>),
+      });
+
+      return normalized;
+    } catch (error: unknown) {
+      const duration = Math.round(performance.now() - startTime);
+      const axiosError = error as { response?: { status: number; data: unknown; headers?: Record<string, string> }; message?: string };
+
+      if (axiosError.response) {
+        const { status, data, headers } = axiosError.response;
+        const contentType = headers?.['content-type'] || '';
+        const isHtml = contentType.includes('text/html') || 
+                       (typeof data === 'string' && (data.trim().startsWith('<!') || data.includes('<html')));
+
+        console.error(`[Reporting] ❌ /reporting/${endpoint} — HTTP ${status} en ${duration}ms`, {
+          status,
+          contentType,
+          isHtmlResponse: isHtml,
+          errorData: isHtml 
+            ? `[HTML Response - ${(typeof data === 'string' ? data : '').substring(0, 200)}]`
+            : data,
+          params,
+        });
+
+        // Si 429 et qu'on peut retry, on continue la boucle
+        if (status === 429 && attempt < MAX_RETRIES_429) {
+          const retryAfter = typeof data === 'object' && data !== null && 'retry_after' in data
+            ? (data as { retry_after: number }).retry_after
+            : null;
+          if (retryAfter) {
+            console.warn(`[Reporting] ⏳ Serveur demande d'attendre ${retryAfter}s pour /reporting/${endpoint}`);
+          }
+          lastError = new Error(`429 - Rate limited sur /reporting/${endpoint}`);
+          continue; // Retry avec backoff
+        }
+
+        // Message d'erreur clair pour l'utilisateur
+        const serverMessage = typeof data === 'object' && data !== null && 'message' in data 
+          ? (data as { message: string }).message 
+          : null;
+
+        throw new Error(
+          serverMessage || 
+          `Erreur ${status} sur /reporting/${endpoint}. ${
+            status === 500 ? 'Erreur interne du serveur — vérifiez les logs backend (storage/logs/laravel.log).' :
+            status === 401 ? 'Session expirée — reconnectez-vous.' :
+            status === 403 ? 'Permission insuffisante pour accéder au reporting.' :
+            status === 429 ? 'Trop de requêtes — patientez 30s avant de réessayer.' :
+            status === 404 ? 'Endpoint non trouvé — vérifiez la configuration des routes backend.' :
+            'Erreur inattendue.'
+          }`
+        );
+      }
+
+      // Erreur réseau ou autre
+      console.error(`[Reporting] 🔴 /reporting/${endpoint} — Erreur réseau en ${duration}ms`, {
+        message: axiosError.message || String(error),
         params,
       });
 
-      // Message d'erreur clair pour l'utilisateur
-      const serverMessage = typeof data === 'object' && data !== null && 'message' in data 
-        ? (data as { message: string }).message 
-        : null;
-
       throw new Error(
-        serverMessage || 
-        `Erreur ${status} sur /reporting/${endpoint}. ${
-          status === 500 ? 'Erreur interne du serveur — vérifiez les logs backend (storage/logs/laravel.log).' :
-          status === 401 ? 'Session expirée — reconnectez-vous.' :
-          status === 403 ? 'Permission insuffisante pour accéder au reporting.' :
-          status === 429 ? 'Trop de requêtes — patientez avant de réessayer.' :
-          status === 404 ? 'Endpoint non trouvé — vérifiez la configuration des routes backend.' :
-          'Erreur inattendue.'
-        }`
+        `Impossible de joindre l'API reporting (/reporting/${endpoint}). ` +
+        `Vérifiez votre connexion et que le serveur backend est accessible.`
       );
     }
-
-    // Erreur réseau ou autre
-    console.error(`[Reporting] 🔴 /reporting/${endpoint} — Erreur réseau en ${duration}ms`, {
-      message: axiosError.message || String(error),
-      params,
-    });
-
-    throw new Error(
-      `Impossible de joindre l'API reporting (/reporting/${endpoint}). ` +
-      `Vérifiez votre connexion et que le serveur backend est accessible.`
-    );
   }
+
+  // Si on arrive ici, tous les retries ont échoué
+  throw lastError || new Error(`Échec après ${MAX_RETRIES_429} tentatives sur /reporting/${endpoint}`);
+};
+
+// Wrapper qui sérialise les appels via une file d'attente
+const reportingCall = <T>(
+  endpoint: string,
+  params: Record<string, unknown>,
+  normalizer: (raw: unknown, ...args: unknown[]) => T,
+  ...normalizerArgs: unknown[]
+): Promise<T> => {
+  // Chaîner chaque appel après le précédent avec un délai
+  const result = reportingQueue.pending
+    .then(() => delay(DELAY_BETWEEN_CALLS_MS))
+    .then(() => reportingCallInternal<T>(endpoint, params, normalizer, ...normalizerArgs));
+
+  // Mettre à jour la file: le prochain appel attend que celui-ci finisse (succès ou échec)
+  reportingQueue.pending = result.then(() => {}, () => {});
+
+  return result;
 };
 
 export const reportingApi = {
