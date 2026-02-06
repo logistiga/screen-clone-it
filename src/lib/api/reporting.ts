@@ -440,65 +440,145 @@ const normalizeTableauDeBord = (raw: any, annee?: number): TableauDeBordData => 
   };
 };
 
+// Helper pour logger les appels reporting et propager les erreurs réelles
+const reportingCall = async <T>(
+  endpoint: string,
+  params: Record<string, unknown>,
+  normalizer: (raw: unknown, ...args: unknown[]) => T,
+  ...normalizerArgs: unknown[]
+): Promise<T> => {
+  const startTime = performance.now();
+  console.log(`[Reporting] ➡️ GET /reporting/${endpoint}`, { params });
+
+  try {
+    const response = await api.get(`/reporting/${endpoint}`, { params });
+    const duration = Math.round(performance.now() - startTime);
+
+    // Vérifier que la réponse est du JSON valide
+    const contentType = response.headers?.['content-type'] || '';
+    if (contentType && !contentType.includes('application/json')) {
+      console.error(`[Reporting] ❌ /reporting/${endpoint} — Réponse non-JSON reçue`, {
+        contentType,
+        status: response.status,
+        dataPreview: typeof response.data === 'string' ? response.data.substring(0, 300) : response.data,
+      });
+      throw new Error(
+        `L'API /reporting/${endpoint} a renvoyé du contenu non-JSON (${contentType}). ` +
+        `Cela peut indiquer une erreur serveur ou une redirection.`
+      );
+    }
+
+    console.log(`[Reporting] ✅ /reporting/${endpoint} — ${duration}ms`, {
+      status: response.status,
+      dataKeys: response.data ? Object.keys(response.data) : [],
+      dataPreview: JSON.stringify(response.data).substring(0, 200),
+    });
+
+    const normalized = normalizer(response.data, ...normalizerArgs);
+    console.log(`[Reporting] 📊 /reporting/${endpoint} — Données normalisées:`, {
+      keys: Object.keys(normalized as Record<string, unknown>),
+    });
+
+    return normalized;
+  } catch (error: unknown) {
+    const duration = Math.round(performance.now() - startTime);
+    const axiosError = error as { response?: { status: number; data: unknown; headers?: Record<string, string> }; message?: string };
+
+    if (axiosError.response) {
+      const { status, data, headers } = axiosError.response;
+      const contentType = headers?.['content-type'] || '';
+      const isHtml = contentType.includes('text/html') || 
+                     (typeof data === 'string' && (data.trim().startsWith('<!') || data.includes('<html')));
+
+      console.error(`[Reporting] ❌ /reporting/${endpoint} — HTTP ${status} en ${duration}ms`, {
+        status,
+        contentType,
+        isHtmlResponse: isHtml,
+        errorData: isHtml 
+          ? `[HTML Response - ${(typeof data === 'string' ? data : '').substring(0, 200)}]`
+          : data,
+        params,
+      });
+
+      // Message d'erreur clair pour l'utilisateur
+      const serverMessage = typeof data === 'object' && data !== null && 'message' in data 
+        ? (data as { message: string }).message 
+        : null;
+
+      throw new Error(
+        serverMessage || 
+        `Erreur ${status} sur /reporting/${endpoint}. ${
+          status === 500 ? 'Erreur interne du serveur — vérifiez les logs backend (storage/logs/laravel.log).' :
+          status === 401 ? 'Session expirée — reconnectez-vous.' :
+          status === 403 ? 'Permission insuffisante pour accéder au reporting.' :
+          status === 429 ? 'Trop de requêtes — patientez avant de réessayer.' :
+          status === 404 ? 'Endpoint non trouvé — vérifiez la configuration des routes backend.' :
+          'Erreur inattendue.'
+        }`
+      );
+    }
+
+    // Erreur réseau ou autre
+    console.error(`[Reporting] 🔴 /reporting/${endpoint} — Erreur réseau en ${duration}ms`, {
+      message: axiosError.message || String(error),
+      params,
+    });
+
+    throw new Error(
+      `Impossible de joindre l'API reporting (/reporting/${endpoint}). ` +
+      `Vérifiez votre connexion et que le serveur backend est accessible.`
+    );
+  }
+};
+
 export const reportingApi = {
   // Tableau de bord
   getTableauDeBord: async (annee?: number): Promise<TableauDeBordData> => {
-    const params = annee ? { annee } : {};
-    const response = await api.get('/reporting/synthese', { params });
-    return normalizeTableauDeBord(response.data, annee);
+    const params: Record<string, unknown> = {};
+    if (annee) params.annee = annee;
+    return reportingCall('synthese', params, normalizeTableauDeBord, annee);
   },
 
   // Chiffre d'affaires
   getChiffreAffaires: async (annee?: number, mois?: number): Promise<ChiffreAffairesData> => {
-    const params: Record<string, number> = {};
+    const params: Record<string, unknown> = {};
     if (annee) params.annee = annee;
     if (mois) params.mois = mois;
-    const response = await api.get('/reporting/chiffre-affaires', { params });
-    return normalizeChiffreAffaires(response.data, annee, mois);
+    return reportingCall('chiffre-affaires', params, normalizeChiffreAffaires, annee, mois);
   },
 
   // Rentabilité
   getRentabilite: async (annee?: number): Promise<RentabiliteData> => {
-    const params = annee ? { annee } : {};
-    const response = await api.get('/reporting/rentabilite-clients', { params });
-    return normalizeRentabilite(response.data, annee);
+    const params: Record<string, unknown> = {};
+    if (annee) params.annee = annee;
+    return reportingCall('rentabilite-clients', params, normalizeRentabilite, annee);
   },
 
   // Créances
   getCreances: async (): Promise<CreancesData> => {
-    const response = await api.get('/reporting/creances');
-    return normalizeCreances(response.data);
+    return reportingCall('creances', {}, normalizeCreances);
   },
 
   // Trésorerie
   getTresorerie: async (dateDebut: string, dateFin: string): Promise<TresorerieData> => {
-    const response = await api.get('/reporting/tresorerie', {
-      params: { date_debut: dateDebut, date_fin: dateFin }
-    });
-    return normalizeTresorerie(response.data, dateDebut, dateFin);
+    return reportingCall('tresorerie', { date_debut: dateDebut, date_fin: dateFin }, normalizeTresorerie, dateDebut, dateFin);
   },
 
   // Comparatif annuel
   getComparatif: async (annee1: number, annee2: number): Promise<ComparatifData> => {
-    const response = await api.get('/reporting/comparaison-periodes', {
-      params: { annee1, annee2 }
-    });
-    return normalizeComparatif(response.data, annee1, annee2);
+    return reportingCall('comparaison-periodes', { annee1, annee2 }, normalizeComparatif, annee1, annee2);
   },
 
   // Activité clients
   getActiviteClients: async (dateDebut: string, dateFin: string, limit?: number): Promise<ActiviteClientsData> => {
-    const response = await api.get('/reporting/top-clients', {
-      params: { date_debut: dateDebut, date_fin: dateFin, limit }
-    });
-    return normalizeActiviteClients(response.data, dateDebut, dateFin);
+    return reportingCall('top-clients', { date_debut: dateDebut, date_fin: dateFin, limit }, normalizeActiviteClients, dateDebut, dateFin);
   },
 
   // Statistiques documents
   getStatistiquesDocuments: async (annee?: number): Promise<StatistiquesDocumentsData> => {
-    const params = annee ? { annee } : {};
-    const response = await api.get('/reporting/analyse-operations', { params });
-    return normalizeStatistiquesDocuments(response.data, annee);
+    const params: Record<string, unknown> = {};
+    if (annee) params.annee = annee;
+    return reportingCall('analyse-operations', params, normalizeStatistiquesDocuments, annee);
   },
 };
 
