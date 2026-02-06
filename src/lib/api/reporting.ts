@@ -670,9 +670,16 @@ export interface ExportFilters {
 // ============ API CALLS EXPORTS ============
 
 export const exportApi = {
-  // Export générique CSV
+  // Export générique — route les types vers les bons endpoints backend
   exportCSV: async (type: ExportType, filters: ExportFilters = {}): Promise<Blob> => {
-    const response = await api.get(`/export/${type}`, {
+    // Types avec endpoints directs: /export/factures, /export/paiements, /export/clients
+    // Tous les autres passent par: /export/reporting/{type}
+    const directEndpoints: ExportType[] = ['factures', 'paiements', 'clients'];
+    const endpoint = directEndpoints.includes(type) 
+      ? `/export/${type}` 
+      : `/export/reporting/${type}`;
+    
+    const response = await api.get(endpoint, {
       params: filters,
       responseType: 'blob',
     });
