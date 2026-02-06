@@ -107,29 +107,6 @@ export function EntreeCaisseModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Catégorie */}
-          <div className="space-y-2">
-            <Label>Catégorie *</Label>
-            <Select value={categorie} onValueChange={setCategorie}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground text-center">
-                    Aucune catégorie d'entrée disponible
-                  </div>
-                ) : (
-                  categories.map((cat: any) => (
-                    <SelectItem key={cat.id} value={cat.nom}>
-                      {cat.nom}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Montant */}
           <div className="space-y-2">
             <Label htmlFor="montant">Montant (FCFA) *</Label>
