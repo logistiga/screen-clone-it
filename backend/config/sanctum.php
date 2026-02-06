@@ -8,9 +8,6 @@ return [
     |--------------------------------------------------------------------------
     | Routes
     |--------------------------------------------------------------------------
-    |
-    | Active les routes Sanctum (/sanctum/csrf-cookie)
-    |
     */
 
     'routes' => true,
@@ -21,14 +18,22 @@ return [
     |--------------------------------------------------------------------------
     |
     | Requests from the following domains / hosts will receive stateful API
-    | authentication cookies. Typically, these should include your local
-    | and production domains which access your API via a frontend SPA.
+    | authentication cookies. Includes Lovable preview/published domains
+    | and production domain.
     |
     */
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s',
+        '%s,%s%s',
+        // Développement local
         'localhost,localhost:3000,localhost:5173,127.0.0.1,127.0.0.1:8000,::1',
+        // Lovable preview & published + production
+        'id-preview--60f20667-59d2-4f14-ba17-f1acde63f098.lovable.app,'
+        . '60f20667-59d2-4f14-ba17-f1acde63f098.lovableproject.com,'
+        . 'screen-clone-it.lovable.app,'
+        . 'facturation.logistiga.pro,'
+        . 'facturation.logistiga.com',
+        // APP_URL host
         env('APP_URL') ? ',' . parse_url(env('APP_URL'), PHP_URL_HOST) : ''
     ))),
 
@@ -36,12 +41,6 @@ return [
     |--------------------------------------------------------------------------
     | Sanctum Guards
     |--------------------------------------------------------------------------
-    |
-    | This array contains the authentication guards that will be checked when
-    | Sanctum is trying to authenticate a request. If none of these guards
-    | are able to authenticate the request, Sanctum will use the bearer
-    | token that's present on an incoming request for authentication.
-    |
     */
 
     'guard' => ['web'],
@@ -50,10 +49,6 @@ return [
     |--------------------------------------------------------------------------
     | Expiration Minutes
     |--------------------------------------------------------------------------
-    |
-    | This value controls the number of minutes until an issued token will be
-    | considered expired. This will override any values set in the token's
-    | "expires_at" attribute, but first-party sessions are not affected.
     |
     | Recommended: 10080 minutes = 7 days (avec refresh automatique côté frontend)
     | Le middleware SessionActivityTracker gère aussi l'idle timeout (60 min)
@@ -66,10 +61,6 @@ return [
     |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
-    |
-    | Sanctum can prefix new tokens in order to take advantage of numerous
-    | temporary revocation mechanisms available in tools like GitHub.
-    |
     */
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
@@ -78,11 +69,6 @@ return [
     |--------------------------------------------------------------------------
     | Sanctum Middleware
     |--------------------------------------------------------------------------
-    |
-    | When authenticating your first-party SPA with Sanctum you may need to
-    | customize some of the middleware Sanctum uses while processing the
-    | request. You may change the middleware listed below as required.
-    |
     */
 
     'middleware' => [
