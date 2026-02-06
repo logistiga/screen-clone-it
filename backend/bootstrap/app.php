@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // IMPORTANT: Ne JAMAIS rediriger vers une route 'login' (API-only backend)
+        // Renvoyer null force Laravel à lancer AuthenticationException → JSON 401
+        $middleware->redirectGuestsTo(fn (Request $request) => null);
+
         // Alias des middlewares personnalisés
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
