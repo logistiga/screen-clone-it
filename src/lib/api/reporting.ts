@@ -445,7 +445,7 @@ const reportingQueue: {
   pending: Promise<void>;
 } = { pending: Promise.resolve() };
 
-const DELAY_BETWEEN_CALLS_MS = 400; // Délai entre chaque appel
+const DELAY_BETWEEN_CALLS_MS = 1500; // Délai entre chaque appel (1.5s pour éviter le rate limit)
 const MAX_RETRIES_429 = 3;
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
