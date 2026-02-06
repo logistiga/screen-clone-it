@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-error";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import {
   LigneLot,
   getInitialLot,
