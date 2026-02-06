@@ -230,7 +230,7 @@ export default function DevisConventionnelForm({ onDataChange, initialData }: De
                       min="0"
                       placeholder="0"
                       value={lot.prixUnitaire || ""}
-                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
                     />
                   </div>
                   <div className="space-y-2">
