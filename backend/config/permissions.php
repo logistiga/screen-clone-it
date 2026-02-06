@@ -265,6 +265,13 @@ return [
             'global_actions' => ['voir', 'creer'],
             'specific_actions' => [],
         ],
+        'previsions' => [
+            'label' => 'Prévisions',
+            'description' => 'Gestion des prévisions budgétaires',
+            'category' => 'finance',
+            'global_actions' => ['voir', 'creer', 'modifier', 'supprimer'],
+            'specific_actions' => ['exporter'],
+        ],
     ],
 
     /**
@@ -307,6 +314,8 @@ return [
                 'notes.voir', 'notes.creer', 'notes.modifier', 'notes.valider', 'notes.exporter', 'notes.imprimer', 'notes.envoyer', 'notes.paiement', 'notes.telecharger',
                 // Taxes
                 'taxes.voir', 'taxes.modifier', 'taxes.exporter', 'taxes.cloturer',
+                // Prévisions
+                'previsions.voir', 'previsions.creer', 'previsions.modifier', 'previsions.supprimer', 'previsions.exporter',
                 // Reporting & Dashboard
                 'reporting.voir', 'reporting.exporter',
                 'dashboard.voir',
