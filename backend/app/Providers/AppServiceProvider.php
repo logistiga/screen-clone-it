@@ -16,6 +16,7 @@ use App\Services\AnnulationService;
 use App\Services\ReportingService;
 use App\Services\ExportService;
 use App\Services\NotificationService;
+use App\Services\AlertNotificationService;
 
 // Services spécialisés par type - Devis
 use App\Services\Devis\DevisConteneursService;
@@ -79,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AnnulationService::class);
         $this->app->singleton(ReportingService::class);
         $this->app->singleton(NotificationService::class);
+        $this->app->singleton(AlertNotificationService::class);
 
         // PaiementService utilise les Factories
         $this->app->singleton(PaiementService::class, function ($app) {
