@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-error";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import {
   LigneLot,
   getInitialLot,
@@ -125,13 +126,6 @@ export default function OrdreConventionnelForm({
       setLots(newLots);
       updateParent(newLots);
     }
-  };
-
-  // Convertit une valeur avec virgule en nombre
-  const parseDecimalInput = (value: string): number => {
-    // Remplace la virgule par un point pour le parsing
-    const normalized = value.replace(',', '.');
-    return parseFloat(normalized) || 0;
   };
 
   const handleLotChange = (id: string, field: keyof LigneLot, value: string | number) => {
@@ -258,12 +252,10 @@ export default function OrdreConventionnelForm({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Quantité *</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
+                    <DecimalInput
                       placeholder="1"
                       value={lot.quantite}
-                      onChange={(e) => handleLotChange(lot.id, 'quantite', parseDecimalInput(e.target.value))}
+                      onChange={(v) => handleLotChange(lot.id, 'quantite', v)}
                       onBlur={() => handleBlur(`lots.${index}.quantite`)}
                       className={cn(getFieldError(`lots.${index}.quantite`) && "border-destructive")}
                     />
@@ -271,12 +263,10 @@ export default function OrdreConventionnelForm({
                   </div>
                   <div className="space-y-2">
                     <Label>Prix unitaire (FCFA)</Label>
-                    <Input
-                      type="number"
-                      min="0"
+                    <DecimalInput
                       placeholder="0"
-                      value={lot.prixUnitaire || ""}
-                      onChange={(e) => handleLotChange(lot.id, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                      value={lot.prixUnitaire}
+                      onChange={(v) => handleLotChange(lot.id, 'prixUnitaire', v)}
                     />
                   </div>
                   <div className="space-y-2">

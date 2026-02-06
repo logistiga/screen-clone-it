@@ -1,6 +1,7 @@
 import { FileText, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -60,20 +61,18 @@ export default function LignesOrdreForm({
               </div>
               <div className="md:col-span-2 space-y-2">
                 <Label>Quantité</Label>
-                <Input
-                  type="number"
-                  min="1"
+                <DecimalInput
+                  placeholder="1"
                   value={ligne.quantite}
-                  onChange={(e) => onChange(ligne.id, "quantite", parseInt(e.target.value) || 1)}
+                  onChange={(v) => onChange(ligne.id, "quantite", v)}
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
                 <Label>Prix unitaire</Label>
-                <Input
-                  type="number"
-                  min="0"
+                <DecimalInput
+                  placeholder="0"
                   value={ligne.prixUnitaire}
-                  onChange={(e) => onChange(ligne.id, "prixUnitaire", parseFloat(e.target.value) || 0)}
+                  onChange={(v) => onChange(ligne.id, "prixUnitaire", v)}
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
