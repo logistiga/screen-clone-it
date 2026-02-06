@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowDownCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateMouvementCaisse, useCategoriesDepenses } from "@/hooks/use-commercial";
+import { useCreateMouvementCaisse } from "@/hooks/use-commercial";
 import { formatMontant } from "@/data/mockData";
 
 interface EntreeCaisseModalProps {
