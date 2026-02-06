@@ -60,14 +60,6 @@ export function EntreeCaisseModal({
       return;
     }
 
-    if (!categorie) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner une catégorie.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     try {
       await createMouvement.mutateAsync({
