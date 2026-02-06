@@ -128,13 +128,6 @@ export default function OrdreConventionnelForm({
     }
   };
 
-  // Convertit une valeur avec virgule en nombre
-  const parseDecimalInput = (value: string): number => {
-    // Remplace la virgule par un point pour le parsing
-    const normalized = value.replace(',', '.');
-    return parseFloat(normalized) || 0;
-  };
-
   const handleLotChange = (id: string, field: keyof LigneLot, value: string | number) => {
     const newLots = lots.map(l => {
       if (l.id === id) {
