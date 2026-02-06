@@ -87,7 +87,6 @@ export function EntreeCaisseModal({
   const resetForm = () => {
     setMontant(0);
     setDescription("");
-    setCategorie("");
     setSource("");
   };
 
