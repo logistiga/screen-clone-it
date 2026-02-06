@@ -647,12 +647,38 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('export')->middleware(['audit', 'throttle:exports'])->group(function () {
         Route::get('factures', [ExportController::class, 'factures'])
             ->middleware('permission:factures.voir');
+        Route::get('devis', [ExportController::class, 'devis'])
+            ->middleware('permission:devis.voir');
+        Route::get('ordres-travail', [ExportController::class, 'ordres'])
+            ->middleware('permission:ordres.voir');
         Route::get('paiements', [ExportController::class, 'paiements'])
             ->middleware('permission:paiements.voir');
         Route::get('clients', [ExportController::class, 'clients'])
             ->middleware('permission:clients.voir');
-        Route::get('reporting/{type}', [ExportController::class, 'reporting'])
+        Route::get('primes', [ExportController::class, 'primes'])
+            ->middleware('permission:paiements.voir');
+        Route::get('caisse', [ExportController::class, 'caisse'])
+            ->middleware('permission:caisse.voir');
+        Route::get('caisse-especes', [ExportController::class, 'caisseEspeces'])
+            ->middleware('permission:caisse.voir');
+        Route::get('caisse-globale', [ExportController::class, 'caisseGlobale'])
+            ->middleware('permission:caisse.voir');
+        Route::get('creances', [ExportController::class, 'creances'])
             ->middleware('permission:reporting.voir');
+        Route::get('tresorerie', [ExportController::class, 'tresorerie'])
+            ->middleware('permission:reporting.voir');
+        Route::get('credits', [ExportController::class, 'credits'])
+            ->middleware('permission:credits.voir');
+        Route::get('annulations', [ExportController::class, 'annulations'])
+            ->middleware('permission:factures.voir');
+        Route::get('chiffre-affaires', [ExportController::class, 'chiffreAffaires'])
+            ->middleware('permission:reporting.voir');
+        Route::get('activite-globale', [ExportController::class, 'activiteGlobale'])
+            ->middleware('permission:reporting.voir');
+        Route::get('tableau-de-bord', [ExportController::class, 'tableauDeBord'])
+            ->middleware('permission:reporting.voir');
+        Route::get('roles', [ExportController::class, 'roles'])
+            ->middleware('permission:utilisateurs.voir');
     });
 
     // ============================================
