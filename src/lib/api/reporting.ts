@@ -460,7 +460,7 @@ export const reportingApi = {
   // Rentabilité
   getRentabilite: async (annee?: number): Promise<RentabiliteData> => {
     const params = annee ? { annee } : {};
-    const response = await api.get('/reporting/rentabilite', { params });
+    const response = await api.get('/reporting/rentabilite-clients', { params });
     return normalizeRentabilite(response.data, annee);
   },
 
@@ -480,7 +480,7 @@ export const reportingApi = {
 
   // Comparatif annuel
   getComparatif: async (annee1: number, annee2: number): Promise<ComparatifData> => {
-    const response = await api.get('/reporting/comparatif', {
+    const response = await api.get('/reporting/comparaison-periodes', {
       params: { annee1, annee2 }
     });
     return normalizeComparatif(response.data, annee1, annee2);
@@ -488,7 +488,7 @@ export const reportingApi = {
 
   // Activité clients
   getActiviteClients: async (dateDebut: string, dateFin: string, limit?: number): Promise<ActiviteClientsData> => {
-    const response = await api.get('/reporting/activite-clients', {
+    const response = await api.get('/reporting/top-clients', {
       params: { date_debut: dateDebut, date_fin: dateFin, limit }
     });
     return normalizeActiviteClients(response.data, dateDebut, dateFin);
@@ -497,7 +497,7 @@ export const reportingApi = {
   // Statistiques documents
   getStatistiquesDocuments: async (annee?: number): Promise<StatistiquesDocumentsData> => {
     const params = annee ? { annee } : {};
-    const response = await api.get('/reporting/statistiques-documents', { params });
+    const response = await api.get('/reporting/analyse-operations', { params });
     return normalizeStatistiquesDocuments(response.data, annee);
   },
 };
