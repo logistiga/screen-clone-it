@@ -444,7 +444,7 @@ export const reportingApi = {
   // Tableau de bord
   getTableauDeBord: async (annee?: number): Promise<TableauDeBordData> => {
     const params = annee ? { annee } : {};
-    const response = await api.get('/reporting', { params });
+    const response = await api.get('/reporting/synthese', { params });
     return normalizeTableauDeBord(response.data, annee);
   },
 
