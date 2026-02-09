@@ -45,6 +45,7 @@ interface ExportOption {
   hasStatutFilter?: boolean;
   hasModePaiementFilter?: boolean;
   hasCategorieFilter?: boolean;
+  hasDocumentTypeFilter?: boolean;
 }
 
 const exportOptions: ExportOption[] = [
