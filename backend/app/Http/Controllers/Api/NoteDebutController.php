@@ -214,7 +214,26 @@ class NoteDebutController extends Controller
             $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
 
-            $typeConfig = $this->getTypeConfig($noteDebut->type);
+            // Fallback si client null
+            if (!$client) {
+                $client = (object) [
+                    'raison_sociale' => $noteDebut->client_nom ?? 'Client inconnu',
+                    'nom' => $noteDebut->client_nom ?? 'Client inconnu',
+                    'nom_complet' => $noteDebut->client_nom ?? 'Client inconnu',
+                    'adresse' => null,
+                    'telephone' => null,
+                    'email' => null,
+                ];
+            }
+
+            $typeConfig = $this->getTypeConfig($noteDebut->type ?? 'detention');
+
+            Log::info("Génération PDF note de début", [
+                'note_id' => $noteDebut->id,
+                'numero' => $noteDebut->numero,
+                'type' => $noteDebut->type,
+                'client' => $client->raison_sociale ?? $client->nom ?? '-',
+            ]);
 
             $pdf = Pdf::loadView('pdf.note-debut', [
                 'note' => $noteDebut,
@@ -228,10 +247,16 @@ class NoteDebutController extends Controller
             return $pdf->download("Note_{$noteDebut->numero}.pdf");
 
         } catch (\Exception $e) {
+            Log::error("Erreur PDF note de début", [
+                'note_id' => $noteDebut->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'message' => 'Erreur lors de la génération du PDF',
                 'error' => $e->getMessage(),
-            ], 500);
+            ], 422);
         }
     }
 
