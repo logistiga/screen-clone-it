@@ -273,6 +273,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
             if (statut !== 'tous') params.statut = statut;
             if (modePaiement !== 'tous') params.mode_paiement = modePaiement;
             if (categorie !== 'tous') params.categorie = categorie;
+            if (documentType !== 'tous') params.document_type = documentType;
           }
 
           const response = await api.get(endpoint, {
