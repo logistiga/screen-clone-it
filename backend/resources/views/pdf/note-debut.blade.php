@@ -95,7 +95,7 @@
         .info-box .name {
             font-size: 13px;
             font-weight: bold;
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
         }
         .info-box p { margin: 2px 0; font-size: 10px; }
 
