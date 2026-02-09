@@ -68,13 +68,17 @@ class ReportingController extends Controller
                     "{$annee}-12-31",
                     10
                 );
-                $topClients = collect($clientsData['top_clients'] ?? [])->map(fn($c) => [
-                    'client_nom' => $c['nom'] ?? $c['raison_sociale'] ?? $c['client_nom'] ?? 'Inconnu',
-                    'ca_total' => $c['factures_sum_montant_ttc'] ?? $c['ca_total'] ?? 0,
-                    'nb_factures' => $c['factures_count'] ?? $c['nb_factures'] ?? 0,
-                    'paiements' => $c['paiements_sum_montant'] ?? $c['paiements'] ?? 0,
-                    'solde_du' => $c['solde'] ?? $c['solde_du'] ?? 0,
-                ])->toArray();
+                $topClients = collect($clientsData['top_clients'] ?? [])->map(function($c) {
+                    // Gérer aussi bien les objets Eloquent que les arrays
+                    $item = is_object($c) ? (method_exists($c, 'toArray') ? $c->toArray() : (array) $c) : $c;
+                    return [
+                        'client_nom' => $item['raison_sociale'] ?? $item['nom'] ?? $item['client_nom'] ?? $item['name'] ?? 'Inconnu',
+                        'ca_total' => $item['factures_sum_montant_ttc'] ?? $item['ca_total'] ?? $item['total_ca'] ?? 0,
+                        'nb_factures' => $item['factures_count'] ?? $item['nb_factures'] ?? 0,
+                        'paiements' => $item['paiements_sum_montant'] ?? $item['paiements'] ?? $item['total_paiements'] ?? 0,
+                        'solde_du' => $item['solde'] ?? $item['solde_du'] ?? 0,
+                    ];
+                })->toArray();
             } catch (\Throwable $e) {
                 Log::warning('PDF Reporting: top clients indisponible - ' . $e->getMessage());
             }

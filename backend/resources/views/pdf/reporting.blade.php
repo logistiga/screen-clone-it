@@ -232,7 +232,19 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $totalCaClients = 0;
+                $totalFacturesClients = 0;
+                $totalPaiementsClients = 0;
+                $totalSoldeClients = 0;
+            @endphp
             @foreach(collect($topClients)->slice(0, 10)->values() as $i => $c)
+            @php
+                $totalCaClients += $c['ca_total'] ?? 0;
+                $totalFacturesClients += $c['nb_factures'] ?? 0;
+                $totalPaiementsClients += $c['paiements'] ?? 0;
+                $totalSoldeClients += $c['solde_du'] ?? 0;
+            @endphp
             <tr class="{{ $i % 2 === 1 ? 'row-alt' : '' }}">
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $c['client_nom'] ?? 'Inconnu' }}</td>
@@ -242,6 +254,13 @@
                 <td class="text-right {{ ($c['solde_du'] ?? 0) > 0 ? 'text-red' : '' }}">{{ number_format($c['solde_du'] ?? 0, 0, ',', ' ') }} FCFA</td>
             </tr>
             @endforeach
+            <tr class="row-total">
+                <td colspan="2">TOTAL</td>
+                <td class="text-right text-red">{{ number_format($totalCaClients, 0, ',', ' ') }} FCFA</td>
+                <td class="text-center">{{ $totalFacturesClients }}</td>
+                <td class="text-right text-green">{{ number_format($totalPaiementsClients, 0, ',', ' ') }} FCFA</td>
+                <td class="text-right {{ $totalSoldeClients > 0 ? 'text-red' : '' }}">{{ number_format($totalSoldeClients, 0, ',', ' ') }} FCFA</td>
+            </tr>
         </tbody>
     </table>
     @endif
