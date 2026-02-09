@@ -114,25 +114,31 @@ class AuthController extends Controller
         $token = $sessionData['plainTextToken'];
         $sessionTokenId = $sessionData['accessToken']->id ?? null;
 
-        // Détecter les connexions suspectes (IP inhabituelle ou hors Gabon)
-        $loginAnalysis = $this->suspiciousLoginDetector->analyzeLogin(
-            $user,
-            $request->ip(),
-            $request->userAgent() ?? ''
-        );
+        // Les administrateurs/directeurs ne sont pas soumis à la vérification de connexion suspecte
+        $isAdminUser = $user->hasAnyRole(['administrateur', 'admin', 'directeur']);
 
+        $loginAnalysis = ['is_suspicious' => false, 'reasons' => [], 'ip_address' => $request->ip()];
         $suspiciousLoginId = null;
 
-        // Envoyer alerte à l'admin si connexion suspecte (avec ID de session pour révocation)
-        if ($loginAnalysis['is_suspicious']) {
-            $suspiciousLogin = $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis, $sessionTokenId);
-            $suspiciousLoginId = $suspiciousLogin?->id;
-            
-            Audit::log('suspicious_login', 'security', 'Connexion suspecte détectée', null, [
-                'ip_address' => $loginAnalysis['ip_address'],
-                'country' => $loginAnalysis['country'] ?? 'inconnu',
-                'reasons' => $loginAnalysis['reasons'],
-            ]);
+        if (!$isAdminUser) {
+            // Détecter les connexions suspectes (IP inhabituelle ou hors Gabon)
+            $loginAnalysis = $this->suspiciousLoginDetector->analyzeLogin(
+                $user,
+                $request->ip(),
+                $request->userAgent() ?? ''
+            );
+
+            // Envoyer alerte à l'admin si connexion suspecte (avec ID de session pour révocation)
+            if ($loginAnalysis['is_suspicious']) {
+                $suspiciousLogin = $this->suspiciousLoginDetector->sendAlertIfSuspicious($user, $loginAnalysis, $sessionTokenId);
+                $suspiciousLoginId = $suspiciousLogin?->id;
+                
+                Audit::log('suspicious_login', 'security', 'Connexion suspecte détectée', null, [
+                    'ip_address' => $loginAnalysis['ip_address'],
+                    'country' => $loginAnalysis['country'] ?? 'inconnu',
+                    'reasons' => $loginAnalysis['reasons'],
+                ]);
+            }
         }
 
         // Obtenir les stats de session pour informer l'utilisateur
