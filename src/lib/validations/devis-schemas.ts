@@ -71,7 +71,7 @@ const dateOptionalSchema = z
 
 export const devisOperationConteneurSchema = z.object({
   id: z.string(),
-  type: z.enum(["arrivee", "stockage", "depotage", "double_relevage", "sortie", "transport", "manutention"], {
+  type: z.enum(["arrivee", "stockage", "depotage", "double_relevage", "sortie", "transport", "manutention", "escorte"], {
     errorMap: () => ({ message: "Type d'opération invalide" }),
   }),
   description: descriptionSchema,
