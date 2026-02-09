@@ -141,6 +141,7 @@ class NoteDebutController extends Controller
         ]);
 
         try {
+            $noteDebut = NoteDebut::findOrFail($id);
             // Charger les relations nécessaires
             $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
