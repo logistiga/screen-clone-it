@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import api from "@/lib/api";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailNoteModal } from "@/components/notes/EmailNoteModal";
 import { useNotesDebut, useDeleteNoteDebut } from "@/hooks/use-notes-debut";
