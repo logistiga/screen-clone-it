@@ -252,7 +252,17 @@
     <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <img src="{{ public_path('images/logistiga-logo.png') }}" alt="Logistiga">
+            @php
+                $logoPath = public_path('images/logistiga-logo.png');
+                if (!file_exists($logoPath)) {
+                    $logoPath = public_path('images/logo-logistiga.png');
+                }
+            @endphp
+            @if(file_exists($logoPath))
+                <img src="{{ $logoPath }}" alt="Logistiga">
+            @else
+                <div style="font-size: 20px; font-weight: bold; color: {{ $couleurPrimaire }};">LOGISTIGA</div>
+            @endif
         </div>
         <div class="header-right">
             <div class="doc-title">{{ $titre }}</div>
