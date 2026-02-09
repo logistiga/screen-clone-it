@@ -167,15 +167,15 @@
         .totals-table .label { color: #6b7280; }
         .totals-table .value { text-align: right; font-weight: 600; }
         .totals-table .total-row {
-            border-top: 2px solid {{ $couleur ?? '#dc2626' }};
+            border-top: 2px solid {{ $couleurPrimaire }};
         }
         .totals-table .total-row .label {
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
             font-weight: bold;
             font-size: 12px;
         }
         .totals-table .total-row .value {
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
             font-size: 14px;
         }
         .totals-table .paye-row .value { color: #16a34a; }
