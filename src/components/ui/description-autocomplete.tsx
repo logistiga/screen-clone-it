@@ -3,6 +3,42 @@ import { Input } from "@/components/ui/input";
 import { searchDescriptions } from "@/lib/api/descriptions";
 import { cn } from "@/lib/utils";
 
+// Descriptions courantes par défaut (fallback si l'API n'est pas disponible)
+const LOCAL_DESCRIPTIONS: Record<string, string[]> = {
+  conteneur: [
+    "Transport conteneur 20'",
+    "Transport conteneur 40'",
+    "Transport conteneur frigorifique",
+    "Transfert conteneur port-entrepôt",
+    "Dépotage conteneur",
+    "Empotage conteneur",
+    "Stockage conteneur",
+    "Manutention conteneur",
+    "Double relevage conteneur",
+    "Escorte conteneur",
+    "Pesage conteneur",
+    "Branchement conteneur frigorifique",
+  ],
+  lot: [
+    "Transport marchandises diverses",
+    "Manutention colis lourds",
+    "Chargement/Déchargement vrac",
+    "Transport matériaux de construction",
+    "Transport produits alimentaires",
+    "Stockage marchandises",
+    "Transport bois en grumes",
+    "Transport équipements industriels",
+  ],
+};
+
+function getLocalSuggestions(query: string, type: string): string[] {
+  const q = query.toLowerCase();
+  const sources = type === 'all'
+    ? [...LOCAL_DESCRIPTIONS.conteneur, ...LOCAL_DESCRIPTIONS.lot]
+    : LOCAL_DESCRIPTIONS[type] || [];
+  return sources.filter(d => d.toLowerCase().includes(q));
+}
+
 interface DescriptionAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
@@ -35,13 +71,20 @@ export function DescriptionAutocomplete({
     }
     try {
       const results = await searchDescriptions(query, type);
-      setSuggestions(results);
-      setIsOpen(results.length > 0);
-      setHighlightedIndex(-1);
+      if (results.length > 0) {
+        setSuggestions(results);
+        setIsOpen(true);
+        setHighlightedIndex(-1);
+        return;
+      }
     } catch {
-      setSuggestions([]);
-      setIsOpen(false);
+      // API indisponible — on utilise le fallback local
     }
+    // Fallback local
+    const local = getLocalSuggestions(query, type);
+    setSuggestions(local);
+    setIsOpen(local.length > 0);
+    setHighlightedIndex(-1);
   }, [type]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
