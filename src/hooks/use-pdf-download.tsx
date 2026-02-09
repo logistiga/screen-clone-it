@@ -48,23 +48,59 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
   const contentRef = useRef<HTMLDivElement>(null);
 
   const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
-    if (!contentRef.current) return null;
+    const el = contentRef.current;
+    if (!el) {
+      console.error("[PDF] contentRef is null");
+      return null;
+    }
 
     try {
-      // 1️⃣ attendre DOM réellement prêt
-      await waitForImages(contentRef.current);
-      await waitForFonts();
-      await new Promise((r) => setTimeout(r, 500));
+      // 1️⃣ Diagnostic: dimensions de l'élément source
+      const rect = el.getBoundingClientRect();
+      console.log("[PDF] Element rect:", { width: rect.width, height: rect.height, top: rect.top, left: rect.left });
+      console.log("[PDF] Element offsetHeight:", el.offsetHeight, "scrollHeight:", el.scrollHeight);
 
-      // 2️⃣ capture haute résolution
-      const canvas = await html2canvas(contentRef.current, {
+      if (rect.width === 0 || rect.height === 0) {
+        console.error("[PDF] Element has zero dimensions — aborting");
+        return null;
+      }
+
+      // 2️⃣ Attendre images
+      const images = Array.from(el.querySelectorAll("img"));
+      console.log("[PDF] Found", images.length, "images, states:", images.map(img => ({
+        src: img.src?.substring(0, 80),
+        complete: img.complete,
+        naturalWidth: img.naturalWidth,
+      })));
+      await waitForImages(el);
+      await waitForFonts();
+
+      // 3️⃣ Attendre le layout — délai généreux
+      await new Promise((r) => setTimeout(r, 1500));
+
+      // 4️⃣ Capture haute résolution
+      console.log("[PDF] Starting html2canvas...");
+      const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#ffffff",
-        logging: false,
+        logging: true,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
       });
 
-      // 3️⃣ création PDF A4
+      console.log("[PDF] Canvas size:", canvas.width, "x", canvas.height);
+
+      // Vérifier que le canvas n'est pas vide
+      if (canvas.width === 0 || canvas.height === 0) {
+        console.error("[PDF] Canvas is empty (0x0)");
+        return null;
+      }
+
+      // 5️⃣ Création PDF A4
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -74,17 +110,14 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
       const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
       const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
 
-      // dimensions canvas (px)
       const imgWidthPx = canvas.width;
       const imgHeightPx = canvas.height;
 
-      // conversion px → mm (standard CSS)
       const pxToMm = (px: number) => px * 0.264583;
 
       const imgWidthMm = pxToMm(imgWidthPx);
       const imgHeightMm = pxToMm(imgHeightPx);
 
-      // scale unique pour tenir dans la page
       const scale = Math.min(pageWidth / imgWidthMm, pageHeight / imgHeightMm);
 
       const finalWidth = imgWidthMm * scale;
@@ -94,11 +127,16 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
       const yOffset = margin;
 
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      console.log("[PDF] Image data length:", imgData.length, "chars");
+
       pdf.addImage(imgData, "JPEG", xOffset, yOffset, finalWidth, finalHeight);
 
-      return pdf.output("blob");
+      const blob = pdf.output("blob");
+      console.log("[PDF] Final blob size:", blob.size, "bytes");
+
+      return blob;
     } catch (error) {
-      console.error("PDF generation error:", error);
+      console.error("[PDF] Generation error:", error);
       return null;
     }
   }, [margin]);
