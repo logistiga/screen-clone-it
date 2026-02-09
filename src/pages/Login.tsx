@@ -56,7 +56,7 @@ const LoginPage = forwardRef<HTMLDivElement, object>(function LoginPage(_props, 
     setIsLoading(true);
     const result = await login(email, password);
     if (result.success) {
-      // Si connexion suspecte, rediriger vers la page d'attente
+      // Les admins/directeurs bypass la vérification de connexion suspecte (géré côté backend)
       if (result.suspiciousLogin) {
         toast({
           title: "Vérification de sécurité",
