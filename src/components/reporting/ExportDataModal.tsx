@@ -79,6 +79,7 @@ const exportOptions: ExportOption[] = [
     description: 'Historique des paiements',
     icon: Wallet,
     hasModePaiementFilter: true,
+    hasDocumentTypeFilter: true,
   },
   { 
     id: 'clients', 
