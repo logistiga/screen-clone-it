@@ -28,18 +28,26 @@ export default function NoteDebutPDF() {
   const handleDownloadPdf = async () => {
     if (!id || isDownloading) return;
     setIsDownloading(true);
+    console.log(`[PDF] Début téléchargement note ID: ${id}`);
+    console.log(`[PDF] URL appelée: /notes-debit/${id}/pdf`);
     try {
       const response = await api.get(`/notes-debit/${id}/pdf`, {
         responseType: 'blob',
       });
       
+      console.log(`[PDF] Réponse reçue - Status: ${response.status}, Content-Type: ${response.headers['content-type']}, Size: ${(response.data as Blob)?.size || 'unknown'}`);
+      
       // Vérifier si la réponse est un JSON d'erreur au lieu d'un PDF
       const contentType = response.headers['content-type'] || '';
-      if (contentType.includes('application/json')) {
+      if (contentType.includes('application/json') || (response.data as Blob)?.size < 500) {
         const text = await (response.data as Blob).text();
-        const errorData = JSON.parse(text);
-        console.error("Erreur PDF backend:", errorData);
-        toast.error(errorData.error || errorData.message || "Erreur serveur lors de la génération du PDF");
+        console.error("[PDF] Réponse non-PDF:", text);
+        try {
+          const errorData = JSON.parse(text);
+          toast.error(errorData.error || errorData.message || "Erreur serveur lors de la génération du PDF");
+        } catch {
+          toast.error("Réponse inattendue du serveur: " + text.substring(0, 200));
+        }
         return;
       }
 
@@ -52,22 +60,30 @@ export default function NoteDebutPDF() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
+      console.log("[PDF] Téléchargement lancé avec succès");
       toast.success("PDF téléchargé avec succès");
     } catch (err: any) {
-      console.error("Erreur téléchargement PDF:", err);
+      console.error("[PDF] Erreur complète:", err);
+      console.error("[PDF] Status:", err.response?.status);
+      console.error("[PDF] Headers:", err.response?.headers);
+      
       // Tenter de lire le message d'erreur du blob
       if (err.response?.data instanceof Blob) {
         try {
           const text = await err.response.data.text();
-          const errorData = JSON.parse(text);
-          console.error("Détail erreur backend:", errorData);
-          toast.error(errorData.error || errorData.message || "Erreur serveur");
+          console.error("[PDF] Body erreur:", text);
+          try {
+            const errorData = JSON.parse(text);
+            toast.error(errorData.error || errorData.message || "Erreur serveur");
+          } catch {
+            toast.error("Erreur serveur: " + text.substring(0, 200));
+          }
         } catch {
           toast.error("Erreur lors du téléchargement du PDF");
         }
       } else {
-        const msg = err.response?.data?.error || err.response?.data?.message || "Erreur lors du téléchargement du PDF";
-        console.error("Erreur détail:", err.response?.data);
+        const msg = err.response?.data?.error || err.response?.data?.message || err.message || "Erreur lors du téléchargement du PDF";
+        console.error("[PDF] Erreur détail:", err.response?.data);
         toast.error(msg);
       }
     } finally {
