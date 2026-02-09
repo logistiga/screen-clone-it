@@ -679,16 +679,16 @@ export const exportApi = {
     return response.data;
   },
 
-  // Télécharger un export
-  downloadExport: async (type: ExportType, filters: ExportFilters = {}, format: 'csv' | 'pdf' = 'csv'): Promise<void> => {
+  // Télécharger un export — TOUJOURS en CSV car le backend ne génère que du CSV
+  downloadExport: async (type: ExportType, filters: ExportFilters = {}, _format: 'csv' | 'pdf' = 'csv'): Promise<void> => {
     try {
       const blob = await exportApi.exportCSV(type, filters);
       
-      // Créer un lien de téléchargement
+      // Toujours .csv — le backend ne produit pas de PDF
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${type}_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'pdf'}`;
+      a.download = `${type}_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
