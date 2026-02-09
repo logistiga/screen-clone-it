@@ -442,7 +442,7 @@ export default function NotesDebut() {
                               <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier" onClick={() => navigate(`/notes-debut/${note.id}/modifier`)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" title="PDF" onClick={() => toast.info(`Génération du PDF ${note.numero}...`)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="PDF" onClick={() => navigate(`/notes-debut/${note.id}/pdf`)}>
                                 <Download className="h-4 w-4" />
                               </Button>
                               <Button 
