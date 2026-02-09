@@ -259,14 +259,19 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         toast.success('Rapport PDF téléchargé avec succès');
         onOpenChange(false);
       } catch (error: any) {
-        const errorData = error?.response?.data;
-        console.error('[Export PDF] Erreur:', {
-          status: error?.response?.status,
-          message: errorData?.message,
-          error: errorData?.error,
-          fullResponse: errorData,
-        });
-        toast.error(errorData?.message || "Erreur lors de la génération du PDF de reporting");
+        let errorMessage = "Erreur lors de la génération du PDF de reporting";
+        try {
+          const blob = error?.response?.data;
+          if (blob instanceof Blob) {
+            const text = await blob.text();
+            const parsed = JSON.parse(text);
+            console.error('[Export PDF] Erreur backend:', parsed);
+            errorMessage = parsed?.message || errorMessage;
+          }
+        } catch {
+          console.error('[Export PDF] Réponse non-JSON, status:', error?.response?.status);
+        }
+        toast.error(errorMessage);
       } finally {
         setIsExporting(false);
       }
