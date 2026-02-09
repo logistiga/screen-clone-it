@@ -654,6 +654,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     });
 
     Route::prefix('export')->middleware(['audit', 'throttle:exports'])->group(function () {
+        // CSV exports
         Route::get('factures', [ExportController::class, 'factures'])
             ->middleware('permission:factures.voir');
         Route::get('devis', [ExportController::class, 'devis'])
@@ -688,6 +689,30 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:reporting.voir');
         Route::get('roles', [ExportController::class, 'roles'])
             ->middleware('permission:utilisateurs.voir');
+
+        // PDF exports (per type)
+        Route::get('factures/pdf', [ExportController::class, 'facturesPdf'])
+            ->middleware('permission:factures.voir');
+        Route::get('devis/pdf', [ExportController::class, 'devisPdf'])
+            ->middleware('permission:devis.voir');
+        Route::get('ordres-travail/pdf', [ExportController::class, 'ordresPdf'])
+            ->middleware('permission:ordres.voir');
+        Route::get('paiements/pdf', [ExportController::class, 'paiementsPdf'])
+            ->middleware('permission:paiements.voir');
+        Route::get('clients/pdf', [ExportController::class, 'clientsPdf'])
+            ->middleware('permission:clients.voir');
+        Route::get('primes/pdf', [ExportController::class, 'primesPdf'])
+            ->middleware('permission:paiements.voir');
+        Route::get('caisse/pdf', [ExportController::class, 'caissePdf'])
+            ->middleware('permission:caisse.voir');
+        Route::get('creances/pdf', [ExportController::class, 'creancesPdf'])
+            ->middleware('permission:reporting.voir');
+        Route::get('annulations/pdf', [ExportController::class, 'annulationsPdf'])
+            ->middleware('permission:factures.voir');
+        Route::get('credits/pdf', [ExportController::class, 'creditsPdf'])
+            ->middleware('permission:credits.voir');
+        Route::get('activite-globale/pdf', [ExportController::class, 'activiteGlobalePdf'])
+            ->middleware('permission:reporting.voir');
     });
 
     // ============================================
