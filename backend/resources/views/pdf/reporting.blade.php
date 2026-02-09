@@ -232,7 +232,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach(array_slice($topClients, 0, 10) as $i => $c)
+            @foreach(collect($topClients)->slice(0, 10)->values() as $i => $c)
             <tr class="{{ $i % 2 === 1 ? 'row-alt' : '' }}">
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $c['client_nom'] ?? 'Inconnu' }}</td>
