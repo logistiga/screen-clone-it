@@ -223,8 +223,23 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
     return statutsFacture;
   };
 
-  // Types de reporting qui utilisent le PDF client-side
-  const pdfReportingTypes: ExportType[] = ['tableau-de-bord', 'chiffre-affaires', 'activite-globale', 'tresorerie', 'creances'];
+  // Types qui utilisent le rapport consolidé (reporting/pdf)
+  const reportingConsolidatedTypes: ExportType[] = ['tableau-de-bord', 'chiffre-affaires', 'tresorerie'];
+
+  // Mapping type → endpoint PDF dédié
+  const pdfEndpointMap: Partial<Record<ExportType, string>> = {
+    'factures': '/export/factures/pdf',
+    'devis': '/export/devis/pdf',
+    'ordres-travail': '/export/ordres-travail/pdf',
+    'paiements': '/export/paiements/pdf',
+    'clients': '/export/clients/pdf',
+    'primes': '/export/primes/pdf',
+    'caisse': '/export/caisse/pdf',
+    'creances': '/export/creances/pdf',
+    'annulations': '/export/annulations/pdf',
+    'credits': '/export/credits/pdf',
+    'activite-globale': '/export/activite-globale/pdf',
+  };
 
   const handleExport = async () => {
     if (selectedExports.length === 0) {
@@ -232,34 +247,55 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
       return;
     }
 
-    // Si format PDF → toujours générer le rapport PDF consolidé depuis le backend
     if (format === 'pdf') {
       setIsExporting(true);
       try {
         const { default: api } = await import('@/lib/api');
-        const response = await api.get('/reporting/pdf', {
-          params: { annee },
-          responseType: 'blob',
-        });
-        
-        // Vérifier que la réponse est bien un PDF
-        const contentType = response.headers['content-type'] || '';
-        if (!contentType.includes('pdf')) {
-          throw new Error('Le serveur n\'a pas retourné un fichier PDF');
+
+        for (const exportType of selectedExports) {
+          const pdfEndpoint = pdfEndpointMap[exportType];
+          
+          // Si c'est un type reporting consolidé OU pas de template dédié, utiliser /reporting/pdf
+          const endpoint = pdfEndpoint || '/reporting/pdf';
+          
+          const params: Record<string, any> = {};
+          if (!pdfEndpoint) {
+            // Reporting consolidé
+            params.annee = annee;
+          } else {
+            // Template dédié: envoyer les filtres
+            params.date_debut = dateDebut;
+            params.date_fin = dateFin;
+            if (clientId !== 'tous') params.client_id = clientId;
+            if (statut !== 'tous') params.statut = statut;
+            if (modePaiement !== 'tous') params.mode_paiement = modePaiement;
+            if (categorie !== 'tous') params.categorie = categorie;
+          }
+
+          const response = await api.get(endpoint, {
+            params,
+            responseType: 'blob',
+          });
+
+          const contentType = response.headers['content-type'] || '';
+          if (!contentType.includes('pdf')) {
+            throw new Error('Le serveur n\'a pas retourné un fichier PDF');
+          }
+
+          const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${exportType}_${dateDebut}_${dateFin}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
         }
-        
-        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Reporting_${annee}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success('Rapport PDF téléchargé avec succès');
+
+        toast.success(`${selectedExports.length} rapport(s) PDF téléchargé(s) avec succès`);
         onOpenChange(false);
       } catch (error: any) {
-        let errorMessage = "Erreur lors de la génération du PDF de reporting";
+        let errorMessage = "Erreur lors de la génération du PDF";
         try {
           const blob = error?.response?.data;
           if (blob instanceof Blob) {
