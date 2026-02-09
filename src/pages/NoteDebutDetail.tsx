@@ -152,8 +152,51 @@ export default function NoteDebutDetail() {
     }
   };
 
-  const handleDownloadPDF = () => {
-    navigate(`/notes-debut/${id}/pdf`);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!id || isDownloadingPdf) return;
+    setIsDownloadingPdf(true);
+    try {
+      const { default: api } = await import("@/lib/api");
+      const response = await api.get(`/notes-debit/${id}/pdf`, { responseType: 'blob' });
+      const contentType = response.headers['content-type'] || '';
+      
+      if (contentType.includes('application/json') || (response.data as Blob)?.size < 500) {
+        const text = await (response.data as Blob).text();
+        try {
+          const errorData = JSON.parse(text);
+          toast.error(errorData.error || errorData.message || "Erreur PDF");
+        } catch {
+          toast.error("Erreur serveur: " + text.substring(0, 200));
+        }
+        return;
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Note_${note?.numero || id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("PDF téléchargé");
+    } catch (err: any) {
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const errorData = JSON.parse(text);
+          toast.error(errorData.error || errorData.message || "Erreur PDF");
+        } catch {
+          toast.error("Erreur lors du téléchargement");
+        }
+      } else {
+        toast.error(err.response?.data?.message || "Erreur lors du téléchargement");
+      }
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const handlePaiementSuccess = () => {

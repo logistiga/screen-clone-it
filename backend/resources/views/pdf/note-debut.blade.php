@@ -3,6 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ $titre ?? 'Note de Début' }} - {{ $note->numero }}</title>
+    @php
+        // Couleurs Logistiga basées sur le logo
+        $logistigaRouge = '#E63946';   // Rouge primaire
+        $logistigaGris = '#4A4A4A';    // Gris foncé
+        $logistigaRougeClair = '#FEE2E8'; // Rouge clair pour badges
+        
+        // Utiliser les couleurs du logo comme base, avec accent par type
+        $couleurPrimaire = $logistigaRouge;
+        $couleurAccent = $couleur ?? $logistigaRouge;
+        $badgeBg = $badge_bg ?? $logistigaRougeClair;
+    @endphp
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
