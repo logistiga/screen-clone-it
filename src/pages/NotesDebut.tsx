@@ -442,7 +442,26 @@ export default function NotesDebut() {
                               <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier" onClick={() => navigate(`/notes-debut/${note.id}/modifier`)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" title="PDF" onClick={() => navigate(`/notes-debut/${note.id}/pdf`)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="PDF" onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  toast.info(`Génération du PDF ${note.numero}...`);
+                                  const response = await api.get(`/notes-debit/${note.id}/pdf`, { responseType: 'blob' });
+                                  const ct = response.headers['content-type'] || '';
+                                  if (ct.includes('application/json') || (response.data as Blob)?.size < 500) {
+                                    const text = await (response.data as Blob).text();
+                                    try { const d = JSON.parse(text); toast.error(d.error || d.message || "Erreur PDF"); } catch { toast.error("Erreur serveur"); }
+                                    return;
+                                  }
+                                  const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                                  const a = document.createElement('a'); a.href = url; a.download = `Note_${note.numero}.pdf`;
+                                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(url);
+                                  toast.success("PDF téléchargé");
+                                } catch (err: any) {
+                                  toast.error(err.response?.data?.message || "Erreur téléchargement PDF");
+                                }
+                              }}>
                                 <Download className="h-4 w-4" />
                               </Button>
                               <Button 

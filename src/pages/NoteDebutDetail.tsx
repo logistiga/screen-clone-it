@@ -264,9 +264,9 @@ export default function NoteDebutDetail() {
               <Edit className="h-4 w-4 mr-2" />
               Modifier
             </Button>
-            <Button variant="outline" onClick={handleDownloadPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              PDF
+            <Button variant="outline" onClick={handleDownloadPDF} disabled={isDownloadingPdf}>
+              {isDownloadingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              {isDownloadingPdf ? 'Téléchargement...' : 'PDF'}
             </Button>
             <Button variant="outline" onClick={() => setShowEmailModal(true)}>
               <Mail className="h-4 w-4 mr-2" />
