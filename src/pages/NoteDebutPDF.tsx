@@ -33,6 +33,16 @@ export default function NoteDebutPDF() {
         responseType: 'blob',
       });
       
+      // Vérifier si la réponse est un JSON d'erreur au lieu d'un PDF
+      const contentType = response.headers['content-type'] || '';
+      if (contentType.includes('application/json')) {
+        const text = await (response.data as Blob).text();
+        const errorData = JSON.parse(text);
+        console.error("Erreur PDF backend:", errorData);
+        toast.error(errorData.error || errorData.message || "Erreur serveur lors de la génération du PDF");
+        return;
+      }
+
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;
@@ -43,9 +53,23 @@ export default function NoteDebutPDF() {
       window.URL.revokeObjectURL(url);
       
       toast.success("PDF téléchargé avec succès");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erreur téléchargement PDF:", err);
-      toast.error("Erreur lors du téléchargement du PDF");
+      // Tenter de lire le message d'erreur du blob
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const errorData = JSON.parse(text);
+          console.error("Détail erreur backend:", errorData);
+          toast.error(errorData.error || errorData.message || "Erreur serveur");
+        } catch {
+          toast.error("Erreur lors du téléchargement du PDF");
+        }
+      } else {
+        const msg = err.response?.data?.error || err.response?.data?.message || "Erreur lors du téléchargement du PDF";
+        console.error("Erreur détail:", err.response?.data);
+        toast.error(msg);
+      }
     } finally {
       setIsDownloading(false);
     }
