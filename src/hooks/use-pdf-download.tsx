@@ -8,40 +8,64 @@ interface UsePdfDownloadOptions {
 }
 
 /**
- * Attend le chargement de toutes les images contenues dans l’élément
+ * Convertit toutes les images d'un élément en base64 inline
+ * pour éviter les problèmes CORS avec html2canvas
  */
-async function waitForImages(element: HTMLElement, timeout = 10000): Promise<void> {
+async function inlineImagesToBase64(element: HTMLElement, timeout = 10000): Promise<void> {
   const images = Array.from(element.querySelectorAll("img"));
   if (images.length === 0) return;
 
-  const promises = images.map((img) => {
-    if (img.complete && img.naturalWidth > 0) {
-      return Promise.resolve();
+  const convertOne = async (img: HTMLImageElement): Promise<void> => {
+    // Déjà en base64
+    if (img.src.startsWith("data:")) return;
+
+    // Attendre le chargement
+    if (!img.complete || img.naturalWidth === 0) {
+      await new Promise<void>((resolve) => {
+        img.addEventListener("load", () => resolve(), { once: true });
+        img.addEventListener("error", () => resolve(), { once: true });
+      });
     }
 
-    return new Promise<void>((resolve) => {
-      img.addEventListener("load", () => resolve(), { once: true });
-      img.addEventListener("error", () => resolve(), { once: true });
-    });
-  });
+    // Convertir en base64 via un canvas temporaire
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL("image/png");
+        img.src = dataUrl;
+      }
+    } catch {
+      // CORS : on ignore silencieusement
+      console.warn("[PDF] Could not inline image:", img.src.substring(0, 60));
+    }
+  };
 
-  await Promise.race([Promise.all(promises), new Promise<void>((resolve) => setTimeout(resolve, timeout))]);
+  await Promise.race([
+    Promise.all(images.map(convertOne)),
+    new Promise<void>((r) => setTimeout(r, timeout)),
+  ]);
 }
 
 /**
- * Attend que les fonts soient prêtes (si supporté)
+ * Attend que les fonts soient prêtes
  */
 async function waitForFonts(timeout = 5000): Promise<void> {
   if (!("fonts" in document)) return;
-
-  await Promise.race([(document as any).fonts.ready, new Promise<void>((resolve) => setTimeout(resolve, timeout))]);
+  await Promise.race([
+    (document as any).fonts.ready,
+    new Promise<void>((r) => setTimeout(r, timeout)),
+  ]);
 }
 
 /**
  * Hook PDF fiable (html2canvas + jsPDF)
- * - attend images + fonts
- * - conversion px → mm correcte
- * - aucun calcul hasardeux
+ * - convertit les images en base64 pour éliminer les problèmes CORS
+ * - attend fonts
+ * - capture haute résolution
  * - PDF A4 net et valide
  */
 export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) {
@@ -55,84 +79,74 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
     }
 
     try {
-      // 1️⃣ Diagnostic: dimensions de l'élément source
+      // 1️⃣ Vérifier les dimensions
       const rect = el.getBoundingClientRect();
-      console.log("[PDF] Element rect:", { width: rect.width, height: rect.height, top: rect.top, left: rect.left });
-      console.log("[PDF] Element offsetHeight:", el.offsetHeight, "scrollHeight:", el.scrollHeight);
+      console.log("[PDF] Element dimensions:", Math.round(rect.width), "x", Math.round(rect.height));
 
       if (rect.width === 0 || rect.height === 0) {
         console.error("[PDF] Element has zero dimensions — aborting");
         return null;
       }
 
-      // 2️⃣ Attendre images
-      const images = Array.from(el.querySelectorAll("img"));
-      console.log("[PDF] Found", images.length, "images, states:", images.map(img => ({
-        src: img.src?.substring(0, 80),
-        complete: img.complete,
-        naturalWidth: img.naturalWidth,
-      })));
-      await waitForImages(el);
+      // 2️⃣ Convertir les images en base64 inline (élimine tout problème CORS)
+      await inlineImagesToBase64(el);
       await waitForFonts();
 
-      // 3️⃣ Attendre le layout — délai généreux
-      await new Promise((r) => setTimeout(r, 1500));
+      // 3️⃣ Attendre le repaint après conversion des images
+      await new Promise((r) => setTimeout(r, 500));
 
-      // 4️⃣ Capture haute résolution
+      // 4️⃣ Capture — PAS de allowTaint, PAS de windowWidth/Height custom
       console.log("[PDF] Starting html2canvas...");
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
         backgroundColor: "#ffffff",
-        logging: true,
-        width: el.scrollWidth,
-        height: el.scrollHeight,
-        windowWidth: el.scrollWidth,
-        windowHeight: el.scrollHeight,
+        logging: false,
       });
 
-      console.log("[PDF] Canvas size:", canvas.width, "x", canvas.height);
+      console.log("[PDF] Canvas:", canvas.width, "x", canvas.height);
 
-      // Vérifier que le canvas n'est pas vide
       if (canvas.width === 0 || canvas.height === 0) {
         console.error("[PDF] Canvas is empty (0x0)");
         return null;
       }
 
-      // 5️⃣ Création PDF A4
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      // 5️⃣ Vérifier que toDataURL fonctionne
+      let imgData: string;
+      try {
+        imgData = canvas.toDataURL("image/jpeg", 0.95);
+      } catch (e) {
+        console.error("[PDF] toDataURL failed (tainted canvas?):", e);
+        return null;
+      }
 
-      const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-      const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
+      console.log("[PDF] Image data:", imgData.length, "chars");
 
-      const imgWidthPx = canvas.width;
-      const imgHeightPx = canvas.height;
+      if (imgData.length < 1000) {
+        console.error("[PDF] Image data suspiciously small — canvas likely blank");
+        return null;
+      }
+
+      // 6️⃣ Création PDF A4
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      const pageW = pdf.internal.pageSize.getWidth() - margin * 2;
+      const pageH = pdf.internal.pageSize.getHeight() - margin * 2;
 
       const pxToMm = (px: number) => px * 0.264583;
+      const imgWmm = pxToMm(canvas.width);
+      const imgHmm = pxToMm(canvas.height);
 
-      const imgWidthMm = pxToMm(imgWidthPx);
-      const imgHeightMm = pxToMm(imgHeightPx);
+      const s = Math.min(pageW / imgWmm, pageH / imgHmm);
+      const finalW = imgWmm * s;
+      const finalH = imgHmm * s;
 
-      const scale = Math.min(pageWidth / imgWidthMm, pageHeight / imgHeightMm);
+      const xOff = margin + (pageW - finalW) / 2;
 
-      const finalWidth = imgWidthMm * scale;
-      const finalHeight = imgHeightMm * scale;
-
-      const xOffset = margin + (pageWidth - finalWidth) / 2;
-      const yOffset = margin;
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      console.log("[PDF] Image data length:", imgData.length, "chars");
-
-      pdf.addImage(imgData, "JPEG", xOffset, yOffset, finalWidth, finalHeight);
+      pdf.addImage(imgData, "JPEG", xOff, margin, finalW, finalH);
 
       const blob = pdf.output("blob");
-      console.log("[PDF] Final blob size:", blob.size, "bytes");
+      console.log("[PDF] Final blob:", blob.size, "bytes");
 
       return blob;
     } catch (error) {
