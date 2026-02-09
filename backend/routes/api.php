@@ -624,6 +624,9 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // REPORTING & EXPORT
     // ============================================
     Route::prefix('reporting')->middleware(['audit', 'throttle:reporting'])->group(function () {
+        // PDF export — AVANT les routes paramétrées
+        Route::get('pdf', [ReportingController::class, 'exportPdf'])
+            ->middleware('permission:reporting.voir');
         Route::get('chiffre-affaires', [ReportingController::class, 'chiffreAffaires'])
             ->middleware('permission:reporting.voir');
         Route::get('creances', [ReportingController::class, 'creances'])
