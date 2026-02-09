@@ -240,6 +240,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         navigate(`/reporting/pdf?annee=${annee}`);
         return;
       }
+      // Pour les types non-reporting, le backend ne génère que du CSV
+      // On informe l'utilisateur et on force le CSV
+      toast.info("Le format PDF n'est pas disponible pour ce type de données. Export en CSV.");
     }
 
     setIsExporting(true);
@@ -267,7 +270,8 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
           filters.annee = annee;
         }
 
-        await exportApi.downloadExport(exportType, filters, format === 'excel' ? 'csv' : 'pdf');
+        // Toujours CSV pour les exports backend
+        await exportApi.downloadExport(exportType, filters, 'csv');
       }
 
       toast.success(`Export ${format.toUpperCase()} généré avec succès`, {
