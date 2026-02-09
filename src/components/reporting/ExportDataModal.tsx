@@ -232,37 +232,39 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
       return;
     }
 
-    // Si format PDF et type reporting → télécharger depuis l'API backend
+    // Si format PDF → toujours générer le rapport PDF consolidé depuis le backend
     if (format === 'pdf') {
-      const hasReportingType = selectedExports.some(e => pdfReportingTypes.includes(e));
-      if (hasReportingType) {
-        setIsExporting(true);
-        try {
-          const { default: api } = await import('@/lib/api');
-          const response = await api.get('/reporting/pdf', {
-            params: { annee },
-            responseType: 'blob',
-          });
-          const url = window.URL.createObjectURL(response.data);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `Reporting_${annee}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-          toast.success('PDF de reporting téléchargé');
-          onOpenChange(false);
-        } catch (error) {
-          console.error('[Export PDF]', error);
-          toast.error("Erreur lors de la génération du PDF de reporting");
-        } finally {
-          setIsExporting(false);
+      setIsExporting(true);
+      try {
+        const { default: api } = await import('@/lib/api');
+        const response = await api.get('/reporting/pdf', {
+          params: { annee },
+          responseType: 'blob',
+        });
+        
+        // Vérifier que la réponse est bien un PDF
+        const contentType = response.headers['content-type'] || '';
+        if (!contentType.includes('pdf')) {
+          throw new Error('Le serveur n\'a pas retourné un fichier PDF');
         }
-        return;
+        
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Reporting_${annee}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success('Rapport PDF téléchargé avec succès');
+        onOpenChange(false);
+      } catch (error) {
+        console.error('[Export PDF]', error);
+        toast.error("Erreur lors de la génération du PDF de reporting");
+      } finally {
+        setIsExporting(false);
       }
-      // Pour les types non-reporting, le backend ne génère que du CSV
-      toast.info("Le format PDF n'est pas disponible pour ce type de données. Export en CSV.");
+      return;
     }
 
     setIsExporting(true);
