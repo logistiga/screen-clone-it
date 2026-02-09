@@ -440,6 +440,13 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:notes_debit.voir');
         Route::post('/', [NoteDebutController::class, 'store'])
             ->middleware('permission:notes_debit.creer');
+        
+        // Routes statiques AVANT les routes paramétrées
+        Route::get('{noteDebit}/pdf', [NoteDebutController::class, 'downloadPdf'])
+            ->middleware('permission:notes_debit.voir');
+        Route::post('{noteDebit}/envoyer-email', [NoteDebutController::class, 'sendEmail'])
+            ->middleware('permission:notes_debit.voir');
+        
         Route::get('{noteDebit}', [NoteDebutController::class, 'show'])
             ->middleware('permission:notes_debit.voir');
         Route::put('{noteDebit}', [NoteDebutController::class, 'update'])
