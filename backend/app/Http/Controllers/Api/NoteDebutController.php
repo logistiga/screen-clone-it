@@ -132,7 +132,7 @@ class NoteDebutController extends Controller
     /**
      * Envoyer la note par email avec PDF en pièce jointe
      */
-    public function sendEmail(Request $request, NoteDebut $noteDebut): JsonResponse
+    public function sendEmail(Request $request, $id): JsonResponse
     {
         $request->validate([
             'destinataire' => 'required|email',
@@ -141,6 +141,7 @@ class NoteDebutController extends Controller
         ]);
 
         try {
+            $noteDebut = NoteDebut::findOrFail($id);
             // Charger les relations nécessaires
             $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
@@ -208,9 +209,11 @@ class NoteDebutController extends Controller
     /**
      * Générer et télécharger le PDF
      */
-    public function downloadPdf(NoteDebut $noteDebut)
+    public function downloadPdf($id)
     {
         try {
+            // Résolution manuelle pour éviter les problèmes de Route Model Binding
+            $noteDebut = NoteDebut::findOrFail($id);
             $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
 
@@ -246,9 +249,15 @@ class NoteDebutController extends Controller
 
             return $pdf->download("Note_{$noteDebut->numero}.pdf");
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error("Note de début non trouvée pour PDF", ['id' => $id]);
+            return response()->json([
+                'message' => 'Note non trouvée',
+                'error' => "Aucune note avec l'ID {$id}",
+            ], 404);
         } catch (\Exception $e) {
             Log::error("Erreur PDF note de début", [
-                'note_id' => $noteDebut->id ?? null,
+                'id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -257,6 +266,22 @@ class NoteDebutController extends Controller
                 'message' => 'Erreur lors de la génération du PDF',
                 'error' => $e->getMessage(),
             ], 422);
+        }
+    }
+
+    /**
+     * Valider une note (changer statut)
+     */
+    public function valider(NoteDebut $noteDebut): JsonResponse
+    {
+        try {
+            $noteDebut->update(['statut' => 'en_attente']);
+            
+            Audit::log('validate', 'note', "Note validée: {$noteDebut->numero}", $noteDebut->id);
+
+            return response()->json(new NoteDebutResource($noteDebut->fresh(['client', 'transitaire', 'armateur'])));
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erreur lors de la validation', 'error' => $e->getMessage()], 500);
         }
     }
 
