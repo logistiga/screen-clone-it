@@ -208,6 +208,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const [categorie, setCategorie] = useState("tous");
   const [isExporting, setIsExporting] = useState(false);
   const [annee, setAnnee] = useState(new Date().getFullYear());
+  const [documentType, setDocumentType] = useState("tous");
 
   const toggleExport = (exportId: ExportType) => {
     setSelectedExports(prev => 
