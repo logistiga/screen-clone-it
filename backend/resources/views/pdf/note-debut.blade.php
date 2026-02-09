@@ -239,13 +239,13 @@
 
         /* Section specifique */
         .section-specific {
-            background: {{ $badge_bg ?? '#fee2e2' }};
-            border-left: 3px solid {{ $couleur ?? '#dc2626' }};
+            background: {{ $badgeBg }};
+            border-left: 3px solid {{ $couleurAccent }};
             padding: 8px 12px;
             margin-bottom: 15px;
             font-size: 10px;
         }
-        .section-specific strong { color: {{ $couleur ?? '#dc2626' }}; }
+        .section-specific strong { color: {{ $couleurAccent }}; }
     </style>
 </head>
 <body>
