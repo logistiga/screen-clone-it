@@ -7,6 +7,7 @@ use App\Services\ReportingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportingController extends Controller
 {
@@ -15,6 +16,73 @@ class ReportingController extends Controller
     public function __construct(ReportingService $reportingService)
     {
         $this->reportingService = $reportingService;
+    }
+
+    /**
+     * Export PDF du rapport d'activité annuel
+     */
+    public function exportPdf(Request $request)
+    {
+        try {
+            $annee = (int) $request->get('annee', date('Y'));
+
+            // Récupérer les données du tableau de bord (KPIs)
+            $dashboard = $this->reportingService->getTableauDeBord($annee);
+            $kpis = $dashboard['kpis'] ?? [];
+
+            // Rentabilité
+            try {
+                $rentabilite = $this->reportingService->getRentabilite($annee);
+            } catch (\Throwable $e) {
+                Log::warning('PDF Reporting: rentabilité indisponible - ' . $e->getMessage());
+                $rentabilite = [];
+            }
+
+            // Évolution mensuelle du CA
+            try {
+                $caData = $this->reportingService->getChiffreAffaires($annee);
+                $evolution = $caData['mensuel'] ?? [];
+            } catch (\Throwable $e) {
+                Log::warning('PDF Reporting: évolution CA indisponible - ' . $e->getMessage());
+                $evolution = [];
+            }
+
+            // Top clients
+            try {
+                $clientsData = $this->reportingService->getActiviteClients(
+                    "{$annee}-01-01",
+                    "{$annee}-12-31",
+                    10
+                );
+                $topClients = $clientsData['top_clients'] ?? [];
+            } catch (\Throwable $e) {
+                Log::warning('PDF Reporting: top clients indisponible - ' . $e->getMessage());
+                $topClients = [];
+            }
+
+            // Créances
+            try {
+                $creances = $this->reportingService->getCreances();
+            } catch (\Throwable $e) {
+                Log::warning('PDF Reporting: créances indisponible - ' . $e->getMessage());
+                $creances = [];
+            }
+
+            $data = compact('annee', 'kpis', 'rentabilite', 'evolution', 'topClients', 'creances');
+
+            $pdf = Pdf::loadView('pdf.reporting', $data)
+                ->setPaper('a4', 'portrait')
+                ->setOptions(['isRemoteEnabled' => true, 'defaultFont' => 'DejaVu Sans']);
+
+            return $pdf->download("Reporting_{$annee}.pdf");
+
+        } catch (\Throwable $e) {
+            Log::error('PDF Reporting error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'Erreur lors de la génération du PDF de reporting: ' . $e->getMessage(),
+                'error' => 'reporting_error',
+            ], 422);
+        }
     }
 
     public function dashboard(Request $request): JsonResponse
