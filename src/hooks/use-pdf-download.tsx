@@ -56,13 +56,11 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
 
     try {
       // Wait for all images and fonts to be fully loaded
-      await Promise.all([
-        waitForImages(contentRef.current),
-        waitForFonts(),
-      ]);
+      await waitForImages(contentRef.current);
+      await waitForFonts();
 
-      // Extra frame to let browser finish layout/paint
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // Explicit delay for layout/paint to settle (more reliable than rAF alone)
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // A4 dimensions in mm
       const A4_WIDTH_MM = 210;
