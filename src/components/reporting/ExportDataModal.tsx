@@ -296,7 +296,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         await exportApi.downloadExport(exportType, filters, 'csv');
       }
 
-      toast.success(`Export ${format.toUpperCase()} généré avec succès`, {
+      toast.success(`Export CSV généré avec succès`, {
         description: `${selectedExports.length} fichier(s) téléchargé(s)`
       });
 
