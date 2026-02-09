@@ -258,9 +258,15 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         window.URL.revokeObjectURL(url);
         toast.success('Rapport PDF téléchargé avec succès');
         onOpenChange(false);
-      } catch (error) {
-        console.error('[Export PDF]', error);
-        toast.error("Erreur lors de la génération du PDF de reporting");
+      } catch (error: any) {
+        const errorData = error?.response?.data;
+        console.error('[Export PDF] Erreur:', {
+          status: error?.response?.status,
+          message: errorData?.message,
+          error: errorData?.error,
+          fullResponse: errorData,
+        });
+        toast.error(errorData?.message || "Erreur lors de la génération du PDF de reporting");
       } finally {
         setIsExporting(false);
       }
