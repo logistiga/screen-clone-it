@@ -26,10 +26,9 @@
         vertical-align: middle;
         text-align: right;
     }
-    .logo {
-        font-size: 22px;
-        font-weight: bold;
-        color: #dc2626;
+    .logo img {
+        height: 50px;
+        max-width: 200px;
     }
     .logo-subtitle {
         font-size: 8px;
