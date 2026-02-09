@@ -3,6 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ $titre ?? 'Note de Début' }} - {{ $note->numero }}</title>
+    @php
+        // Couleurs Logistiga basées sur le logo
+        $logistigaRouge = '#E63946';   // Rouge primaire
+        $logistigaGris = '#4A4A4A';    // Gris foncé
+        $logistigaRougeClair = '#FEE2E8'; // Rouge clair pour badges
+        
+        // Utiliser les couleurs du logo comme base, avec accent par type
+        $couleurPrimaire = $logistigaRouge;
+        $couleurAccent = $couleur ?? $logistigaRouge;
+        $badgeBg = $badge_bg ?? $logistigaRougeClair;
+    @endphp
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -17,7 +28,7 @@
         .header {
             display: table;
             width: 100%;
-            border-bottom: 3px solid {{ $couleur ?? '#dc2626' }};
+            border-bottom: 3px solid {{ $couleurPrimaire }};
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
@@ -26,7 +37,7 @@
             width: 40%;
             vertical-align: middle;
         }
-        .header-left img { height: 50px; }
+        .header-left img { height: 60px; }
         .header-right {
             display: table-cell;
             width: 60%;
@@ -36,7 +47,7 @@
         .doc-title {
             font-size: 18px;
             font-weight: bold;
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
             text-transform: uppercase;
         }
         .doc-numero {
@@ -51,8 +62,8 @@
         }
         .type-badge {
             display: inline-block;
-            background-color: {{ $badge_bg ?? '#fee2e2' }};
-            color: {{ $couleur ?? '#dc2626' }};
+            background-color: {{ $badgeBg }};
+            color: {{ $couleurAccent }};
             padding: 4px 12px;
             border-radius: 10px;
             font-weight: bold;
@@ -84,7 +95,7 @@
         .info-box .name {
             font-size: 13px;
             font-weight: bold;
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
         }
         .info-box p { margin: 2px 0; font-size: 10px; }
 
@@ -156,15 +167,15 @@
         .totals-table .label { color: #6b7280; }
         .totals-table .value { text-align: right; font-weight: 600; }
         .totals-table .total-row {
-            border-top: 2px solid {{ $couleur ?? '#dc2626' }};
+            border-top: 2px solid {{ $couleurPrimaire }};
         }
         .totals-table .total-row .label {
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
             font-weight: bold;
             font-size: 12px;
         }
         .totals-table .total-row .value {
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
             font-size: 14px;
         }
         .totals-table .paye-row .value { color: #16a34a; }
@@ -228,13 +239,13 @@
 
         /* Section specifique */
         .section-specific {
-            background: {{ $badge_bg ?? '#fee2e2' }};
-            border-left: 3px solid {{ $couleur ?? '#dc2626' }};
+            background: {{ $badgeBg }};
+            border-left: 3px solid {{ $couleurAccent }};
             padding: 8px 12px;
             margin-bottom: 15px;
             font-size: 10px;
         }
-        .section-specific strong { color: {{ $couleur ?? '#dc2626' }}; }
+        .section-specific strong { color: {{ $couleurAccent }}; }
     </style>
 </head>
 <body>
