@@ -445,9 +445,9 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::post('/', [NoteDebutController::class, 'store'])
             ->middleware('permission:notes_debit.creer');
         
-        Route::get('{noteDebut}/pdf', [NoteDebutController::class, 'downloadPdf'])
+        Route::get('{id}/pdf', [NoteDebutController::class, 'downloadPdf'])
             ->middleware('permission:notes_debit.voir');
-        Route::post('{noteDebut}/envoyer-email', [NoteDebutController::class, 'sendEmail'])
+        Route::post('{id}/envoyer-email', [NoteDebutController::class, 'sendEmail'])
             ->middleware('permission:notes_debit.voir');
         
         Route::get('{noteDebut}', [NoteDebutController::class, 'show'])
@@ -458,6 +458,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             ->middleware('permission:notes_debit.supprimer');
         Route::post('{noteDebut}/valider', [NoteDebutController::class, 'valider'])
             ->middleware('permission:notes_debit.valider');
+        Route::post('{noteDebut}/duplicate', [NoteDebutController::class, 'duplicate'])
+            ->middleware('permission:notes_debit.creer');
     });
 
     // ============================================
