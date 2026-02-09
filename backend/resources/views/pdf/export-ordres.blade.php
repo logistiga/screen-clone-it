@@ -43,8 +43,6 @@
                 <th>Date</th>
                 <th>Client</th>
                 <th>Catégorie</th>
-                <th>Navire</th>
-                <th>BL</th>
                 <th class="text-right">Montant HT</th>
                 <th class="text-right">Montant TTC</th>
                 <th class="text-center">Statut</th>
