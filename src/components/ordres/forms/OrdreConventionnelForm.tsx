@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-error";
 import { DecimalInput } from "@/components/ui/decimal-input";
+import { DescriptionAutocomplete } from "@/components/ui/description-autocomplete";
 import {
   LigneLot,
   getInitialLot,
@@ -239,12 +240,12 @@ export default function OrdreConventionnelForm({
                   </div>
                   <div className="space-y-2">
                     <Label>Description *</Label>
-                    <Input
-                      placeholder="Description de la marchandise"
+                    <DescriptionAutocomplete
                       value={lot.description}
-                      onChange={(e) => handleLotChange(lot.id, 'description', e.target.value)}
+                      onChange={(v) => handleLotChange(lot.id, 'description', v)}
                       onBlur={() => handleBlur(`lots.${index}.description`)}
                       className={cn(getFieldError(`lots.${index}.description`) && "border-destructive")}
+                      type="lot"
                     />
                     <FormError message={getFieldError(`lots.${index}.description`)} />
                   </div>

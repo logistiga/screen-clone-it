@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Container, FileText, Plus, Trash2, AlertTriangle, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DescriptionAutocomplete } from "@/components/ui/description-autocomplete";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -574,10 +575,10 @@ export default function OrdreConteneursForm({
                         </Popover>
                       )}
                     </Label>
-                    <Input
-                      placeholder="Description de la marchandise"
+                    <DescriptionAutocomplete
                       value={conteneur.description}
-                      onChange={(e) => handleConteneurChange(conteneur.id, 'description', e.target.value)}
+                      onChange={(v) => handleConteneurChange(conteneur.id, 'description', v)}
+                      type="conteneur"
                     />
                   </div>
                   <div className="space-y-2">

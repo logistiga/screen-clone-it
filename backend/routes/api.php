@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\ReportingController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PrimeController;
+use App\Http\Controllers\Api\DescriptionSuggestionController;
 use App\Http\Controllers\Api\NoteDebutController;
 use App\Http\Controllers\Api\CategorieDepenseController;
 use App\Http\Controllers\Api\EmailTemplateController;
@@ -87,6 +88,11 @@ Route::prefix('security')->group(function () {
 // Routes protégées par authentification
 Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     
+    // ============================================
+    // SUGGESTIONS DESCRIPTIONS
+    // ============================================
+    Route::get('descriptions/suggestions', [DescriptionSuggestionController::class, 'search']);
+
     // ============================================
     // AUTH & PROFIL
     // ============================================
