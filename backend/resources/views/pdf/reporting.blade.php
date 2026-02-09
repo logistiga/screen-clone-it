@@ -269,7 +269,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach(array_slice($creances['top_debiteurs'], 0, 10) as $i => $d)
+            @foreach(collect($creances['top_debiteurs'])->slice(0, 10)->values() as $i => $d)
             <tr class="{{ $i % 2 === 1 ? 'row-alt' : '' }}">
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $d['client_nom'] ?? 'Inconnu' }}</td>
