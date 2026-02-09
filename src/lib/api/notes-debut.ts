@@ -180,7 +180,7 @@ export const notesDebutApi = {
   },
 
   sendEmail: async (id: string, data: { destinataire: string; sujet: string; message: string }): Promise<void> => {
-    const response = await api.post(`/notes-debit/${id}/send-email`, data);
+    const response = await api.post(`/notes-debit/${id}/envoyer-email`, data);
     return response.data;
   },
 };
