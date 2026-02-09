@@ -208,9 +208,11 @@ class NoteDebutController extends Controller
     /**
      * Générer et télécharger le PDF
      */
-    public function downloadPdf(NoteDebut $noteDebut)
+    public function downloadPdf($id)
     {
         try {
+            // Résolution manuelle pour éviter les problèmes de Route Model Binding
+            $noteDebut = NoteDebut::findOrFail($id);
             $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
 
@@ -246,9 +248,15 @@ class NoteDebutController extends Controller
 
             return $pdf->download("Note_{$noteDebut->numero}.pdf");
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error("Note de début non trouvée pour PDF", ['id' => $id]);
+            return response()->json([
+                'message' => 'Note non trouvée',
+                'error' => "Aucune note avec l'ID {$id}",
+            ], 404);
         } catch (\Exception $e) {
             Log::error("Erreur PDF note de début", [
-                'note_id' => $noteDebut->id ?? null,
+                'id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
