@@ -303,12 +303,21 @@ class ExportController extends Controller
     public function paiementsPdf(Request $request)
     {
         try {
-            $filters = $request->only(['date_debut', 'date_fin', 'mode_paiement']);
-            $query = Paiement::with(['facture.client', 'ordre.client', 'client']);
+            $filters = $request->only(['date_debut', 'date_fin', 'mode_paiement', 'document_type']);
+            $query = Paiement::with(['facture.client', 'ordre.client', 'client', 'noteDebut']);
 
             if (!empty($filters['date_debut'])) $query->where('date', '>=', $filters['date_debut']);
             if (!empty($filters['date_fin'])) $query->where('date', '<=', $filters['date_fin']);
             if (!empty($filters['mode_paiement'])) $query->where('mode_paiement', $filters['mode_paiement']);
+
+            // Filtre par type de document
+            if (!empty($filters['document_type'])) {
+                if ($filters['document_type'] === 'facture') {
+                    $query->whereNotNull('facture_id');
+                } elseif ($filters['document_type'] === 'ordre') {
+                    $query->whereNotNull('ordre_id')->whereNull('facture_id');
+                }
+            }
 
             $paiements = $query->orderBy('date', 'desc')->get();
 
@@ -326,6 +335,7 @@ class ExportController extends Controller
                 'date_fin' => $filters['date_fin'] ?? '-',
                 'periode' => ($filters['date_debut'] ?? '') . ' — ' . ($filters['date_fin'] ?? ''),
                 'mode_label' => !empty($filters['mode_paiement']) ? ucfirst($filters['mode_paiement']) : null,
+                'document_type_label' => !empty($filters['document_type']) ? ($filters['document_type'] === 'facture' ? 'Factures' : 'Ordres de Travail') : null,
             ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'DejaVu Sans']);
 
             return $pdf->download('paiements-' . now()->format('Y-m-d') . '.pdf');

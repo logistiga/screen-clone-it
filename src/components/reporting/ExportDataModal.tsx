@@ -45,6 +45,7 @@ interface ExportOption {
   hasStatutFilter?: boolean;
   hasModePaiementFilter?: boolean;
   hasCategorieFilter?: boolean;
+  hasDocumentTypeFilter?: boolean;
 }
 
 const exportOptions: ExportOption[] = [
@@ -78,6 +79,7 @@ const exportOptions: ExportOption[] = [
     description: 'Historique des paiements',
     icon: Wallet,
     hasModePaiementFilter: true,
+    hasDocumentTypeFilter: true,
   },
   { 
     id: 'clients', 
@@ -206,6 +208,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const [categorie, setCategorie] = useState("tous");
   const [isExporting, setIsExporting] = useState(false);
   const [annee, setAnnee] = useState(new Date().getFullYear());
+  const [documentType, setDocumentType] = useState("tous");
 
   const toggleExport = (exportId: ExportType) => {
     setSelectedExports(prev => 
@@ -270,6 +273,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
             if (statut !== 'tous') params.statut = statut;
             if (modePaiement !== 'tous') params.mode_paiement = modePaiement;
             if (categorie !== 'tous') params.categorie = categorie;
+            if (documentType !== 'tous') params.document_type = documentType;
           }
 
           const response = await api.get(endpoint, {
@@ -370,6 +374,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const showCategorieFilter = selectedExports.some(e => 
     exportOptions.find(o => o.id === e)?.hasCategorieFilter
   );
+  const showDocumentTypeFilter = selectedExports.some(e => 
+    exportOptions.find(o => o.id === e)?.hasDocumentTypeFilter
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -465,7 +472,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
           </div>
 
           {/* Filtres conditionnels */}
-          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter) && (
+          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter || showDocumentTypeFilter) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Filtres</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -537,6 +544,22 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
                             {c.label}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {showDocumentTypeFilter && (
+                  <div className="space-y-2">
+                    <Label>Type de document</Label>
+                    <Select value={documentType} onValueChange={setDocumentType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tous">Tous (Ordres + Factures)</SelectItem>
+                        <SelectItem value="ordre">Ordres de Travail</SelectItem>
+                        <SelectItem value="facture">Factures</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
