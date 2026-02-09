@@ -107,22 +107,22 @@ export default function NouvelleNoteRelache() {
     const dateCreation = new Date().toISOString().slice(0, 10);
 
     try {
-      // Create one note for each valid ligne
-      for (const ligne of lignesValides) {
-        await createNote.mutateAsync({
-          type: "Relache",
-          client_id: clientId,
+      // Envoyer tous les conteneurs comme lignes d'une seule note
+      await createNote.mutateAsync({
+        type: "Relache",
+        client_id: clientId,
+        description: notesGenerales || undefined,
+        date_creation: dateCreation,
+        date_debut: dateCreation,
+        date_fin: dateCreation,
+        lignes: lignesValides.map((ligne) => ({
           conteneur_numero: ligne.numeroConteneur,
-          montant_ht: ligne.montant,
-          description: ligne.description || notesGenerales || undefined,
-          date_creation: dateCreation,
-          // For relache, we don't use dates or tarif journalier
           date_debut: dateCreation,
           date_fin: dateCreation,
-          nombre_jours: 1,
           tarif_journalier: ligne.montant,
-        });
-      }
+          observations: ligne.description || undefined,
+        })),
+      });
 
       navigate("/notes-debut");
     } catch (error) {
