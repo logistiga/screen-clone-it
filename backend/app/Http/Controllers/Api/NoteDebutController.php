@@ -261,6 +261,22 @@ class NoteDebutController extends Controller
     }
 
     /**
+     * Valider une note (changer statut)
+     */
+    public function valider(NoteDebut $noteDebut): JsonResponse
+    {
+        try {
+            $noteDebut->update(['statut' => 'en_attente']);
+            
+            Audit::log('validate', 'note', "Note validée: {$noteDebut->numero}", $noteDebut->id);
+
+            return response()->json(new NoteDebutResource($noteDebut->fresh(['client', 'transitaire', 'armateur'])));
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erreur lors de la validation', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Configuration par type de note
      */
     protected function getTypeConfig(string $type): array
