@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Package, FileText, Plus, Trash2, MapPin } from "lucide-react";
 import { DecimalInput } from "@/components/ui/decimal-input";
+import { DescriptionAutocomplete } from "@/components/ui/description-autocomplete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -233,12 +234,12 @@ export default function FactureConventionnelForm({
                     </div>
                     <div className="space-y-2">
                       <Label>Description *</Label>
-                      <Input
-                        placeholder="Description de la marchandise"
+                      <DescriptionAutocomplete
                         value={lot.description}
-                        onChange={(e) => handleLotChange(lot.id, 'description', e.target.value)}
+                        onChange={(v) => handleLotChange(lot.id, 'description', v)}
                         onBlur={() => handleBlur(descriptionFieldName, lot.description)}
                         className={touched[descriptionFieldName] && errors[descriptionFieldName] ? "border-destructive" : ""}
+                        type="lot"
                       />
                       <FormError message={touched[descriptionFieldName] ? errors[descriptionFieldName] : undefined} />
                     </div>
