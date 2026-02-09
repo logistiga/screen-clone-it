@@ -548,6 +548,22 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
                     </Select>
                   </div>
                 )}
+
+                {showDocumentTypeFilter && (
+                  <div className="space-y-2">
+                    <Label>Type de document</Label>
+                    <Select value={documentType} onValueChange={setDocumentType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tous">Tous (Ordres + Factures)</SelectItem>
+                        <SelectItem value="ordre">Ordres de Travail</SelectItem>
+                        <SelectItem value="facture">Factures</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
           )}
