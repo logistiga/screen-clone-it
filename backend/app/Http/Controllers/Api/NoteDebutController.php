@@ -142,30 +142,23 @@ class NoteDebutController extends Controller
 
         try {
             // Charger les relations nécessaires
-            $noteDebut->load(['client', 'transitaire', 'armateur']);
+            $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
 
             if (!$client) {
                 return response()->json(['message' => 'Client non trouvé pour cette note'], 400);
             }
 
-            // Ajouter type_label pour le template
-            $typeLabels = [
-                'ouverture_port' => 'Ouverture de port',
-                'Ouverture Port' => 'Ouverture de port',
-                'detention' => 'Détention',
-                'Detention' => 'Détention',
-                'reparation' => 'Réparation conteneur',
-                'Reparation' => 'Réparation conteneur',
-                'relache' => 'Relâche',
-                'Relache' => 'Relâche',
-            ];
-            $noteDebut->type_label = $typeLabels[$noteDebut->type] ?? $noteDebut->type;
+            $typeConfig = $this->getTypeConfig($noteDebut->type);
 
             // Générer le PDF
             $pdf = Pdf::loadView('pdf.note-debut', [
                 'note' => $noteDebut,
                 'client' => $client,
+                'titre' => $typeConfig['titre'],
+                'type_label' => $typeConfig['label'],
+                'couleur' => $typeConfig['couleur'],
+                'badge_bg' => $typeConfig['badge_bg'],
             ]);
 
             $pdfContent = $pdf->output();
