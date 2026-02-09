@@ -374,6 +374,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const showCategorieFilter = selectedExports.some(e => 
     exportOptions.find(o => o.id === e)?.hasCategorieFilter
   );
+  const showDocumentTypeFilter = selectedExports.some(e => 
+    exportOptions.find(o => o.id === e)?.hasDocumentTypeFilter
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
