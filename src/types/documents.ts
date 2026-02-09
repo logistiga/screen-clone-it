@@ -9,7 +9,7 @@ export type TypeOperation = "import" | "export";
 export type TypeOperationIndep = "location" | "transport" | "manutention" | "double_relevage" | "stockage";
 
 // Types d'opérations disponibles pour conteneurs
-export type TypeOperationConteneur = "arrivee" | "stockage" | "depotage" | "double_relevage" | "sortie" | "transport" | "manutention";
+export type TypeOperationConteneur = "arrivee" | "stockage" | "depotage" | "double_relevage" | "sortie" | "transport" | "manutention" | "escorte";
 
 // Interfaces
 export interface OperationConteneur {
@@ -56,6 +56,7 @@ export const typesOperationConteneur: Record<TypeOperationConteneur, { label: st
   sortie: { label: "Sortie", prixDefaut: 40000 },
   transport: { label: "Transport", prixDefaut: 150000 },
   manutention: { label: "Manutention", prixDefaut: 30000 },
+  escorte: { label: "Escorte", prixDefaut: 50000 },
 };
 
 // Mock data pour armateurs, transitaires et représentants
