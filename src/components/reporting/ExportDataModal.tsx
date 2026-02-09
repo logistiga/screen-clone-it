@@ -232,16 +232,36 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
       return;
     }
 
-    // Si format PDF et type reporting → naviguer vers la page PDF dédiée
+    // Si format PDF et type reporting → télécharger depuis l'API backend
     if (format === 'pdf') {
       const hasReportingType = selectedExports.some(e => pdfReportingTypes.includes(e));
       if (hasReportingType) {
-        onOpenChange(false);
-        navigate(`/reporting/pdf?annee=${annee}`);
+        setIsExporting(true);
+        try {
+          const { default: api } = await import('@/lib/api');
+          const response = await api.get('/reporting/pdf', {
+            params: { annee },
+            responseType: 'blob',
+          });
+          const url = window.URL.createObjectURL(response.data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Reporting_${annee}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          toast.success('PDF de reporting téléchargé');
+          onOpenChange(false);
+        } catch (error) {
+          console.error('[Export PDF]', error);
+          toast.error("Erreur lors de la génération du PDF de reporting");
+        } finally {
+          setIsExporting(false);
+        }
         return;
       }
       // Pour les types non-reporting, le backend ne génère que du CSV
-      // On informe l'utilisateur et on force le CSV
       toast.info("Le format PDF n'est pas disponible pour ce type de données. Export en CSV.");
     }
 
