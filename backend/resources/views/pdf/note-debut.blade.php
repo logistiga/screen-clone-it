@@ -214,7 +214,7 @@
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="logo">LOGISTIGA SAS</div>
+        <div class="logo"><img src="{{ public_path('images/logistiga-logo.png') }}" alt="Logistiga" style="height:50px;"></div>
         <div class="company-info">
             Owendo SETRAG – GABON | Tel: (+241) 011 70 14 35 | Email: info@logistiga.com
         </div>

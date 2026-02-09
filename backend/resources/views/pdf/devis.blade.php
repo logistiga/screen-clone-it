@@ -254,8 +254,7 @@
     <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <div class="logo">LOGISTIGA</div>
-            <div class="logo-subtitle">TRANSPORT-STOCKAGE-MANUTENTION</div>
+            <div class="logo"><img src="{{ public_path('images/logistiga-logo.png') }}" alt="Logistiga"></div>
         </div>
         <div class="header-center">
             <div class="document-title">DEVIS</div>
