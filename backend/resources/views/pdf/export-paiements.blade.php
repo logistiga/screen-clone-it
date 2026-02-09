@@ -20,6 +20,7 @@
     <div class="filter-info">
         <span><strong>Période:</strong> {{ $date_debut ?? '-' }} au {{ $date_fin ?? '-' }}</span>
         @if(!empty($mode_label))<span><strong>Mode:</strong> {{ $mode_label }}</span>@endif
+        @if(!empty($document_type_label))<span><strong>Documents:</strong> {{ $document_type_label }}</span>@endif
     </div>
 
     <table class="kpi-table">

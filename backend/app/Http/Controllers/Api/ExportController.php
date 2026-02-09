@@ -335,6 +335,7 @@ class ExportController extends Controller
                 'date_fin' => $filters['date_fin'] ?? '-',
                 'periode' => ($filters['date_debut'] ?? '') . ' — ' . ($filters['date_fin'] ?? ''),
                 'mode_label' => !empty($filters['mode_paiement']) ? ucfirst($filters['mode_paiement']) : null,
+                'document_type_label' => !empty($filters['document_type']) ? ($filters['document_type'] === 'facture' ? 'Factures' : 'Ordres de Travail') : null,
             ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'DejaVu Sans']);
 
             return $pdf->download('paiements-' . now()->format('Y-m-d') . '.pdf');
