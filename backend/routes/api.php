@@ -436,24 +436,27 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // NOTE DE DÉBIT
     // ============================================
     Route::prefix('notes-debit')->middleware('audit')->group(function () {
+        // Routes statiques AVANT les routes paramétrées
+        Route::get('stats', [NoteDebutController::class, 'stats'])
+            ->middleware(['permission:notes_debit.voir', 'throttle:stats']);
+        
         Route::get('/', [NoteDebutController::class, 'index'])
             ->middleware('permission:notes_debit.voir');
         Route::post('/', [NoteDebutController::class, 'store'])
             ->middleware('permission:notes_debit.creer');
         
-        // Routes statiques AVANT les routes paramétrées
-        Route::get('{noteDebit}/pdf', [NoteDebutController::class, 'downloadPdf'])
+        Route::get('{noteDebut}/pdf', [NoteDebutController::class, 'downloadPdf'])
             ->middleware('permission:notes_debit.voir');
-        Route::post('{noteDebit}/envoyer-email', [NoteDebutController::class, 'sendEmail'])
+        Route::post('{noteDebut}/envoyer-email', [NoteDebutController::class, 'sendEmail'])
             ->middleware('permission:notes_debit.voir');
         
-        Route::get('{noteDebit}', [NoteDebutController::class, 'show'])
+        Route::get('{noteDebut}', [NoteDebutController::class, 'show'])
             ->middleware('permission:notes_debit.voir');
-        Route::put('{noteDebit}', [NoteDebutController::class, 'update'])
+        Route::put('{noteDebut}', [NoteDebutController::class, 'update'])
             ->middleware('permission:notes_debit.modifier');
-        Route::delete('{noteDebit}', [NoteDebutController::class, 'destroy'])
+        Route::delete('{noteDebut}', [NoteDebutController::class, 'destroy'])
             ->middleware('permission:notes_debit.supprimer');
-        Route::post('{noteDebit}/valider', [NoteDebutController::class, 'valider'])
+        Route::post('{noteDebut}/valider', [NoteDebutController::class, 'valider'])
             ->middleware('permission:notes_debit.valider');
     });
 
