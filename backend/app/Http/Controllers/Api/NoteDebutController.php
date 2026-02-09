@@ -132,7 +132,7 @@ class NoteDebutController extends Controller
     /**
      * Envoyer la note par email avec PDF en pièce jointe
      */
-    public function sendEmail(Request $request, NoteDebut $noteDebut): JsonResponse
+    public function sendEmail(Request $request, $id): JsonResponse
     {
         $request->validate([
             'destinataire' => 'required|email',
