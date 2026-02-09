@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
-import html2pdf from "html2pdf.js";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface UsePdfDownloadOptions {
   filename: string;
@@ -7,12 +8,12 @@ interface UsePdfDownloadOptions {
 }
 
 /**
- * Hook PDF utilisant html2pdf.js
- * - Clone l'élément en interne (pas de problème CORS)
- * - Gère automatiquement images, fonts, layout
- * - Produit un PDF A4 fiable
+ * Hook PDF robuste
+ * - Utilise onclone pour forcer des dimensions pixel explicites
+ * - PNG au lieu de JPEG pour éviter les artefacts
+ * - Logging détaillé à chaque étape
  */
-export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) {
+export function usePdfDownload({ filename, margin = 10 }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
@@ -23,71 +24,128 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
     }
 
     try {
-      const rect = el.getBoundingClientRect();
-      console.log("[PDF] Element:", Math.round(rect.width), "x", Math.round(rect.height));
+      // 1️⃣ Dimensions réelles en pixels
+      const elWidth = el.scrollWidth || el.offsetWidth;
+      const elHeight = el.scrollHeight || el.offsetHeight;
+      console.log("[PDF] Step 1 — Source element:", elWidth, "x", elHeight, "px");
 
-      if (rect.width === 0 || rect.height === 0) {
-        console.error("[PDF] Element has zero dimensions");
+      if (elWidth < 10 || elHeight < 10) {
+        console.error("[PDF] Element too small, aborting");
         return null;
       }
 
-      const opt = {
-        margin: margin,
-        filename: `${filename}.pdf`,
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait" as const,
-        },
-        pagebreak: { mode: ["avoid-all"] },
-      };
+      // 2️⃣ Attendre que les images soient chargées
+      const imgs = Array.from(el.querySelectorAll("img"));
+      console.log("[PDF] Step 2 — Waiting for", imgs.length, "images...");
+      
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          return new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.onload = done;
+            img.onerror = done;
+            setTimeout(done, 5000);
+          });
+        })
+      );
 
-      const blob: Blob = await html2pdf().set(opt).from(el).outputPdf("blob");
-      console.log("[PDF] Blob size:", blob.size, "bytes");
+      // 3️⃣ Attendre fonts + repaint
+      if ("fonts" in document) {
+        await (document as any).fonts.ready.catch(() => {});
+      }
+      await new Promise((r) => setTimeout(r, 800));
+
+      // 4️⃣ Capturer avec onclone pour fixer les dimensions
+      console.log("[PDF] Step 4 — html2canvas starting...");
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: true,
+        width: elWidth,
+        height: elHeight,
+        onclone: (clonedDoc, clonedEl) => {
+          // Forcer des dimensions explicites en px sur le clone
+          clonedEl.style.width = elWidth + "px";
+          clonedEl.style.height = elHeight + "px";
+          clonedEl.style.minHeight = "unset";
+          clonedEl.style.overflow = "visible";
+          clonedEl.style.position = "relative";
+          clonedEl.style.transform = "none";
+          console.log("[PDF] onclone — clone dimensions forced to", elWidth, "x", elHeight, "px");
+        },
+      });
+
+      console.log("[PDF] Step 5 — Canvas:", canvas.width, "x", canvas.height);
+
+      if (canvas.width < 20 || canvas.height < 20) {
+        console.error("[PDF] Canvas too small:", canvas.width, "x", canvas.height);
+        return null;
+      }
+
+      // 5️⃣ Extraire image PNG
+      let imgData: string;
+      try {
+        imgData = canvas.toDataURL("image/png");
+      } catch (e) {
+        console.error("[PDF] toDataURL failed:", e);
+        return null;
+      }
+
+      console.log("[PDF] Step 6 — PNG data:", imgData.length, "chars");
+
+      if (imgData.length < 5000) {
+        console.error("[PDF] PNG data too small — blank canvas suspected");
+        return null;
+      }
+
+      // 6️⃣ Créer le PDF A4
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 190; // A4 width minus 10mm margins
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageHeight = 277; // A4 height minus 10mm margins
+
+      let heightLeft = imgHeight;
+      let position = margin;
+
+      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Multi-page si nécessaire
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + margin;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const blob = pdf.output("blob");
+      console.log("[PDF] ✅ Final PDF:", blob.size, "bytes (" + Math.round(blob.size / 1024) + " KB)");
 
       return blob;
     } catch (error) {
-      console.error("[PDF] Generation error:", error);
+      console.error("[PDF] ❌ Fatal error:", error);
       return null;
     }
-  }, [margin, filename]);
+  }, [margin]);
 
   const downloadPdf = useCallback(async () => {
-    const el = contentRef.current;
-    if (!el) return;
-
-    try {
-      const opt = {
-        margin: margin,
-        filename: `${filename}.pdf`,
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait" as const,
-        },
-        pagebreak: { mode: ["avoid-all"] },
-      };
-
-      await html2pdf().set(opt).from(el).save();
-      console.log("[PDF] Download triggered");
-    } catch (error) {
-      console.error("[PDF] Download error:", error);
+    const blob = await generatePdfBlob();
+    if (!blob) {
+      console.error("[PDF] No blob generated — download aborted");
+      return;
     }
-  }, [margin, filename]);
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${filename}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [generatePdfBlob, filename]);
 
   return {
     contentRef,
