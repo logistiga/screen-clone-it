@@ -60,10 +60,8 @@
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $o->numero }}</td>
                 <td>{{ $o->date_creation ? $o->date_creation->format('d/m/Y') : '-' }}</td>
-                <td>{{ $o->client->raison_sociale ?? $o->client->nom_complet ?? '-' }}</td>
+                <td>{{ $o->client->raison_sociale ?? $o->client->nom ?? $o->client->nom_complet ?? '-' }}</td>
                 <td>{{ ucfirst($o->categorie ?? '-') }}</td>
-                <td>{{ $o->navire ?? '-' }}</td>
-                <td>{{ $o->bl ?? '-' }}</td>
                 <td class="text-right">{{ number_format($ht, 0, ',', ' ') }}</td>
                 <td class="text-right">{{ number_format($ttc, 0, ',', ' ') }}</td>
                 <td class="text-center">{{ ucfirst(str_replace('_', ' ', $o->statut)) }}</td>
