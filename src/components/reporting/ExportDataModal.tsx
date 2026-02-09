@@ -472,7 +472,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
           </div>
 
           {/* Filtres conditionnels */}
-          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter) && (
+          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter || showDocumentTypeFilter) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Filtres</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
