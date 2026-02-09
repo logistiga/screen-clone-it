@@ -28,7 +28,7 @@
         .header {
             display: table;
             width: 100%;
-            border-bottom: 3px solid {{ $couleur ?? '#dc2626' }};
+            border-bottom: 3px solid {{ $couleurPrimaire }};
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
@@ -37,7 +37,7 @@
             width: 40%;
             vertical-align: middle;
         }
-        .header-left img { height: 50px; }
+        .header-left img { height: 60px; }
         .header-right {
             display: table-cell;
             width: 60%;
@@ -47,7 +47,7 @@
         .doc-title {
             font-size: 18px;
             font-weight: bold;
-            color: {{ $couleur ?? '#dc2626' }};
+            color: {{ $couleurPrimaire }};
             text-transform: uppercase;
         }
         .doc-numero {
@@ -62,8 +62,8 @@
         }
         .type-badge {
             display: inline-block;
-            background-color: {{ $badge_bg ?? '#fee2e2' }};
-            color: {{ $couleur ?? '#dc2626' }};
+            background-color: {{ $badgeBg }};
+            color: {{ $couleurAccent }};
             padding: 4px 12px;
             border-radius: 10px;
             font-weight: bold;
