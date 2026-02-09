@@ -304,7 +304,7 @@ class ExportController extends Controller
     {
         try {
             $filters = $request->only(['date_debut', 'date_fin', 'mode_paiement']);
-            $query = Paiement::with(['facture.client']);
+            $query = Paiement::with(['facture.client', 'ordre.client', 'client']);
 
             if (!empty($filters['date_debut'])) $query->where('date', '>=', $filters['date_debut']);
             if (!empty($filters['date_fin'])) $query->where('date', '<=', $filters['date_fin']);

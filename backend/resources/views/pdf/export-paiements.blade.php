@@ -38,8 +38,9 @@
                 <th style="width:15px">#</th>
                 <th>Référence</th>
                 <th>Date</th>
-                <th>Facture</th>
                 <th>Client</th>
+                <th>Document</th>
+                <th>N° Document</th>
                 <th class="text-right">Montant</th>
                 <th class="text-center">Mode</th>
                 <th>Observations</th>
@@ -48,20 +49,47 @@
         <tbody>
             @php $total = 0; @endphp
             @foreach($paiements as $i => $p)
-            @php $total += $p->montant ?? 0; @endphp
+            @php
+                $total += $p->montant ?? 0;
+
+                // Résolution du nom client : direct > facture > ordre
+                $clientName = '-';
+                if ($p->client) {
+                    $clientName = $p->client->raison_sociale ?? $p->client->nom ?? $p->client->nom_complet ?? '-';
+                } elseif ($p->facture && $p->facture->client) {
+                    $clientName = $p->facture->client->raison_sociale ?? $p->facture->client->nom ?? '-';
+                } elseif ($p->ordre && $p->ordre->client) {
+                    $clientName = $p->ordre->client->raison_sociale ?? $p->ordre->client->nom ?? '-';
+                }
+
+                // Type et numéro de document
+                $docType = '-';
+                $docNumero = '-';
+                if ($p->facture_id && $p->facture) {
+                    $docType = 'Facture';
+                    $docNumero = $p->facture->numero ?? '-';
+                } elseif ($p->ordre_id && $p->ordre) {
+                    $docType = 'Ordre';
+                    $docNumero = $p->ordre->numero ?? '-';
+                } elseif ($p->note_debut_id) {
+                    $docType = 'Note Débit';
+                    $docNumero = $p->noteDebut->numero ?? '-';
+                }
+            @endphp
             <tr class="{{ $i % 2 === 1 ? 'row-alt' : '' }}">
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $p->reference ?? '-' }}</td>
                 <td>{{ $p->date ? $p->date->format('d/m/Y') : '-' }}</td>
-                <td>{{ $p->facture->numero ?? '-' }}</td>
-                <td>{{ $p->facture->client->raison_sociale ?? $p->facture->client->nom_complet ?? '-' }}</td>
+                <td>{{ $clientName }}</td>
+                <td class="text-center">{{ $docType }}</td>
+                <td>{{ $docNumero }}</td>
                 <td class="text-right text-green">{{ number_format($p->montant ?? 0, 0, ',', ' ') }}</td>
                 <td class="text-center">{{ ucfirst($p->mode_paiement ?? '-') }}</td>
                 <td>{{ \Illuminate\Support\Str::limit($p->notes ?? '-', 30) }}</td>
             </tr>
             @endforeach
             <tr class="row-total">
-                <td colspan="5">TOTAL</td>
+                <td colspan="6">TOTAL</td>
                 <td class="text-right text-green">{{ number_format($total, 0, ',', ' ') }} FCFA</td>
                 <td colspan="2"></td>
             </tr>
