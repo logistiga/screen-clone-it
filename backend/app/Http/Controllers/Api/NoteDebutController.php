@@ -218,26 +218,19 @@ class NoteDebutController extends Controller
     public function downloadPdf(NoteDebut $noteDebut)
     {
         try {
-            $noteDebut->load(['client', 'transitaire', 'armateur']);
+            $noteDebut->load(['client', 'transitaire', 'armateur', 'lignes']);
             $client = $noteDebut->client;
 
-            // Ajouter type_label
-            $typeLabels = [
-                'ouverture_port' => 'Ouverture de port',
-                'Ouverture Port' => 'Ouverture de port',
-                'detention' => 'Détention',
-                'Detention' => 'Détention',
-                'reparation' => 'Réparation conteneur',
-                'Reparation' => 'Réparation conteneur',
-                'relache' => 'Relâche',
-                'Relache' => 'Relâche',
-            ];
-            $noteDebut->type_label = $typeLabels[$noteDebut->type] ?? $noteDebut->type;
+            $typeConfig = $this->getTypeConfig($noteDebut->type);
 
             $pdf = Pdf::loadView('pdf.note-debut', [
                 'note' => $noteDebut,
                 'client' => $client,
-            ]);
+                'titre' => $typeConfig['titre'],
+                'type_label' => $typeConfig['label'],
+                'couleur' => $typeConfig['couleur'],
+                'badge_bg' => $typeConfig['badge_bg'],
+            ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'DejaVu Sans']);
 
             return $pdf->download("Note_{$noteDebut->numero}.pdf");
 
@@ -247,5 +240,69 @@ class NoteDebutController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Configuration par type de note
+     */
+    protected function getTypeConfig(string $type): array
+    {
+        $configs = [
+            'detention' => [
+                'titre' => 'Note de Détention',
+                'label' => 'Détention',
+                'couleur' => '#dc2626',
+                'badge_bg' => '#fee2e2',
+            ],
+            'Detention' => [
+                'titre' => 'Note de Détention',
+                'label' => 'Détention',
+                'couleur' => '#dc2626',
+                'badge_bg' => '#fee2e2',
+            ],
+            'ouverture_port' => [
+                'titre' => 'Note d\'Ouverture de Port',
+                'label' => 'Ouverture de Port',
+                'couleur' => '#2563eb',
+                'badge_bg' => '#dbeafe',
+            ],
+            'Ouverture Port' => [
+                'titre' => 'Note d\'Ouverture de Port',
+                'label' => 'Ouverture de Port',
+                'couleur' => '#2563eb',
+                'badge_bg' => '#dbeafe',
+            ],
+            'reparation' => [
+                'titre' => 'Note de Réparation',
+                'label' => 'Réparation',
+                'couleur' => '#d97706',
+                'badge_bg' => '#fef3c7',
+            ],
+            'Reparation' => [
+                'titre' => 'Note de Réparation',
+                'label' => 'Réparation',
+                'couleur' => '#d97706',
+                'badge_bg' => '#fef3c7',
+            ],
+            'relache' => [
+                'titre' => 'Note de Relâche',
+                'label' => 'Relâche',
+                'couleur' => '#059669',
+                'badge_bg' => '#d1fae5',
+            ],
+            'Relache' => [
+                'titre' => 'Note de Relâche',
+                'label' => 'Relâche',
+                'couleur' => '#059669',
+                'badge_bg' => '#d1fae5',
+            ],
+        ];
+
+        return $configs[$type] ?? [
+            'titre' => 'Note de Début',
+            'label' => ucfirst($type),
+            'couleur' => '#dc2626',
+            'badge_bg' => '#fee2e2',
+        ];
     }
 }
