@@ -1,7 +1,5 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,56 +16,50 @@ interface DocumentStatCardProps {
     isPositive: boolean;
   };
   delay?: number;
+  compact?: boolean;
 }
 
 const variantStyles: Record<DocumentStatVariant, {
-  gradient: string;
   iconBg: string;
   iconColor: string;
   valueColor: string;
   borderColor: string;
 }> = {
   default: {
-    gradient: "from-muted/50 to-muted/30",
     iconBg: "bg-muted",
     iconColor: "text-muted-foreground",
     valueColor: "text-foreground",
-    borderColor: "border-l-muted-foreground",
+    borderColor: "border-border",
   },
   primary: {
-    gradient: "from-primary/10 to-primary/5",
-    iconBg: "bg-primary/20",
+    iconBg: "bg-primary/10",
     iconColor: "text-primary",
     valueColor: "text-primary",
-    borderColor: "border-l-primary",
+    borderColor: "border-primary/30",
   },
   success: {
-    gradient: "from-emerald-500/10 to-emerald-500/5",
-    iconBg: "bg-emerald-500/20",
+    iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-600 dark:text-emerald-400",
     valueColor: "text-emerald-600 dark:text-emerald-400",
-    borderColor: "border-l-emerald-500",
+    borderColor: "border-emerald-500/30",
   },
   warning: {
-    gradient: "from-amber-500/10 to-amber-500/5",
-    iconBg: "bg-amber-500/20",
+    iconBg: "bg-amber-500/10",
     iconColor: "text-amber-600 dark:text-amber-400",
     valueColor: "text-amber-600 dark:text-amber-400",
-    borderColor: "border-l-amber-500",
+    borderColor: "border-amber-500/30",
   },
   danger: {
-    gradient: "from-red-500/10 to-red-500/5",
-    iconBg: "bg-red-500/20",
+    iconBg: "bg-red-500/10",
     iconColor: "text-red-600 dark:text-red-400",
     valueColor: "text-red-600 dark:text-red-400",
-    borderColor: "border-l-red-500",
+    borderColor: "border-red-500/30",
   },
   info: {
-    gradient: "from-blue-500/10 to-blue-500/5",
-    iconBg: "bg-blue-500/20",
+    iconBg: "bg-blue-500/10",
     iconColor: "text-blue-600 dark:text-blue-400",
     valueColor: "text-blue-600 dark:text-blue-400",
-    borderColor: "border-l-blue-500",
+    borderColor: "border-blue-500/30",
   },
 };
 
@@ -82,52 +74,55 @@ export const DocumentStatCard = React.forwardRef<
   subtitle,
   trend,
   delay = 0,
+  compact = false,
 }, ref) => {
   const styles = variantStyles[variant];
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      ref={ref}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4 }}
+      transition={{ delay, duration: 0.3 }}
     >
-      <Card className={cn(
-        "relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
-        "bg-gradient-to-br border-l-4",
-        styles.gradient,
-        styles.borderColor
+      <div className={cn(
+        "relative bg-card rounded-xl border p-4 transition-all duration-200 hover:shadow-md",
+        styles.borderColor,
+        compact && "p-3"
       )}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {title}
-          </CardTitle>
-          <div className={cn("p-2.5 rounded-xl transition-transform group-hover:scale-110", styles.iconBg)}>
-            <Icon className={cn("h-4 w-4", styles.iconColor)} />
+          </span>
+          <div className={cn("p-1.5 rounded-lg", styles.iconBg)}>
+            <Icon className={cn("h-3.5 w-3.5", styles.iconColor)} />
           </div>
-        </CardHeader>
-        <CardContent>
-          <motion.div
-            className={cn("text-2xl md:text-3xl font-bold tracking-tight", styles.valueColor)}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: delay + 0.2, duration: 0.3 }}
-          >
-            {value}
-          </motion.div>
-          {subtitle && (
-            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+        </div>
+        <motion.div
+          className={cn(
+            "font-bold tracking-tight leading-none",
+            styles.valueColor,
+            compact ? "text-lg" : "text-xl"
           )}
-          {trend && (
-            <div className={cn(
-              "flex items-center gap-1 text-xs font-medium mt-2",
-              trend.isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-            )}>
-              <span>{trend.isPositive ? "↑" : "↓"}</span>
-              <span>{Math.abs(trend.value)}%</span>
-              <span className="text-muted-foreground">vs mois dernier</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: delay + 0.15, duration: 0.25 }}
+        >
+          {value}
+        </motion.div>
+        {subtitle && (
+          <p className="text-[11px] text-muted-foreground mt-1.5">{subtitle}</p>
+        )}
+        {trend && (
+          <div className={cn(
+            "flex items-center gap-1 text-[11px] font-medium mt-1.5",
+            trend.isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+          )}>
+            <span>{trend.isPositive ? "↑" : "↓"}</span>
+            <span>{Math.abs(trend.value)}%</span>
+            <span className="text-muted-foreground">vs mois dernier</span>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 });
@@ -135,15 +130,12 @@ DocumentStatCard.displayName = "DocumentStatCard";
 
 export function DocumentStatCardSkeleton() {
   return (
-    <Card className="overflow-hidden border-l-4 border-l-muted">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-10 w-10 rounded-xl" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-3 w-20 mt-2" />
-      </CardContent>
-    </Card>
+    <div className="bg-card rounded-xl border p-4 animate-pulse">
+      <div className="flex items-center justify-between mb-2">
+        <div className="h-3 w-16 bg-muted rounded" />
+        <div className="h-7 w-7 bg-muted rounded-lg" />
+      </div>
+      <div className="h-6 w-24 bg-muted rounded mt-1" />
+    </div>
   );
 }
