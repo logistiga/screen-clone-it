@@ -43,8 +43,6 @@
                 <th>Date</th>
                 <th>Client</th>
                 <th>Catégorie</th>
-                <th>Navire</th>
-                <th>BL</th>
                 <th class="text-right">Montant HT</th>
                 <th class="text-right">Montant TTC</th>
                 <th class="text-center">Statut</th>
@@ -62,17 +60,15 @@
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $o->numero }}</td>
                 <td>{{ $o->date_creation ? $o->date_creation->format('d/m/Y') : '-' }}</td>
-                <td>{{ $o->client->raison_sociale ?? $o->client->nom_complet ?? '-' }}</td>
+                <td>{{ $o->client->raison_sociale ?? $o->client->nom ?? $o->client->nom_complet ?? '-' }}</td>
                 <td>{{ ucfirst($o->categorie ?? '-') }}</td>
-                <td>{{ $o->navire ?? '-' }}</td>
-                <td>{{ $o->bl ?? '-' }}</td>
                 <td class="text-right">{{ number_format($ht, 0, ',', ' ') }}</td>
                 <td class="text-right">{{ number_format($ttc, 0, ',', ' ') }}</td>
                 <td class="text-center">{{ ucfirst(str_replace('_', ' ', $o->statut)) }}</td>
             </tr>
             @endforeach
             <tr class="row-total">
-                <td colspan="7">TOTAUX</td>
+                <td colspan="5">TOTAUX</td>
                 <td class="text-right">{{ number_format($totHT, 0, ',', ' ') }}</td>
                 <td class="text-right text-red">{{ number_format($totTTC, 0, ',', ' ') }}</td>
                 <td></td>
