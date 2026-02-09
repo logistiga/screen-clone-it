@@ -174,32 +174,27 @@ export default function ReportingPage() {
   return (
     <MainLayout title="Reporting Commercial">
       <motion.div 
-        className="space-y-6"
+        className="space-y-5"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
         {/* Header */}
         <motion.div 
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
           variants={itemVariants}
         >
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <PieChartIcon className="h-6 w-6 text-primary" />
-              </div>
-              Reporting Commercial
-            </h1>
-            <p className="text-muted-foreground mt-1">Tableaux de bord et analyses</p>
+            <h1 className="text-xl font-semibold tracking-tight">Reporting Commercial</h1>
+            <p className="text-sm text-muted-foreground">Vue d'ensemble de l'activité — {anneeSelectionnee}</p>
           </div>
           <div className="flex gap-2 items-center">
             <Select 
               value={String(anneeSelectionnee)} 
               onValueChange={(v) => setAnneeSelectionnee(Number(v))}
             >
-              <SelectTrigger className="w-[120px]">
-                <Calendar className="h-4 w-4 mr-2" />
+              <SelectTrigger className="w-[110px] h-9 text-sm">
+                <Calendar className="h-3.5 w-3.5 mr-1.5" />
                 <SelectValue placeholder="Année" />
               </SelectTrigger>
               <SelectContent>
@@ -208,21 +203,21 @@ export default function ReportingPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={handleRefresh}>
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
-            <Button onClick={() => setExportModalOpen(true)} className="gap-2">
-              <Download className="h-4 w-4" />
+            <Button size="sm" className="h-9 gap-1.5" onClick={() => setExportModalOpen(true)}>
+              <Download className="h-3.5 w-3.5" />
               Exporter
             </Button>
           </div>
         </motion.div>
 
-        {/* KPIs globaux */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
+        {/* KPIs — 4 principaux en haut */}
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           {loadingTableau ? (
             <>
-              {[...Array(8)].map((_, i) => <DocumentStatCardSkeleton key={i} />)}
+              {[...Array(4)].map((_, i) => <DocumentStatCardSkeleton key={i} />)}
             </>
           ) : (
             <>
@@ -234,7 +229,7 @@ export default function ReportingPage() {
                 delay={0}
               />
               <DocumentStatCard
-                title="CA Mois"
+                title="CA Mois Courant"
                 value={formatMontant(tableauDeBord?.kpis?.ca_mois_courant || 0)}
                 icon={Calendar}
                 variant="info"
@@ -254,12 +249,25 @@ export default function ReportingPage() {
                 variant="success"
                 delay={0.15}
               />
+            </>
+          )}
+        </div>
+
+        {/* KPIs secondaires — compteurs */}
+        <div className="grid gap-3 grid-cols-4">
+          {loadingTableau ? (
+            <>
+              {[...Array(4)].map((_, i) => <DocumentStatCardSkeleton key={i} />)}
+            </>
+          ) : (
+            <>
               <DocumentStatCard
                 title="Factures"
                 value={tableauDeBord?.kpis?.nb_factures || 0}
                 icon={FileCheck}
                 variant="default"
                 delay={0.2}
+                compact
               />
               <DocumentStatCard
                 title="Devis"
@@ -267,6 +275,7 @@ export default function ReportingPage() {
                 icon={FileText}
                 variant="default"
                 delay={0.25}
+                compact
               />
               <DocumentStatCard
                 title="Ordres"
@@ -274,6 +283,7 @@ export default function ReportingPage() {
                 icon={BarChart3}
                 variant="default"
                 delay={0.3}
+                compact
               />
               <DocumentStatCard
                 title="Clients"
@@ -281,6 +291,7 @@ export default function ReportingPage() {
                 icon={Users}
                 variant="default"
                 delay={0.35}
+                compact
               />
             </>
           )}
@@ -289,21 +300,20 @@ export default function ReportingPage() {
         {/* Alertes */}
         {tableauDeBord?.alertes && tableauDeBord.alertes.length > 0 && (
           <motion.div 
-            className="grid gap-3 md:grid-cols-2 lg:grid-cols-4"
+            className="flex flex-wrap gap-2"
             variants={itemVariants}
           >
             {tableauDeBord.alertes.map((alerte: any, index: number) => (
-              <Card key={index} className="border-amber-500/50 bg-amber-500/5 border-l-4 border-l-amber-500">
-                <CardContent className="flex items-center gap-3 py-3">
-                  <div className="p-2 rounded-lg bg-amber-500/20">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{alerte.message}</p>
-                    <p className="text-xs text-muted-foreground">{alerte.count} élément(s)</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div 
+                key={index} 
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-sm"
+              >
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="font-medium text-amber-800 dark:text-amber-300">{alerte.message}</span>
+                <Badge variant="secondary" className="text-[10px] bg-amber-200/50 dark:bg-amber-800/50 text-amber-700 dark:text-amber-300">
+                  {alerte.count}
+                </Badge>
+              </div>
             ))}
           </motion.div>
         )}
@@ -311,33 +321,33 @@ export default function ReportingPage() {
         {/* Tabs */}
         <motion.div variants={itemVariants}>
           <Tabs defaultValue="chiffre-affaires" className="space-y-4">
-            <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
-              <TabsTrigger value="chiffre-affaires" className="gap-1">
-                <Receipt className="h-4 w-4" />
+            <TabsList className="flex-wrap h-auto gap-0.5 bg-muted/40 p-0.5 rounded-lg border">
+              <TabsTrigger value="chiffre-affaires" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <Receipt className="h-3.5 w-3.5" />
                 Chiffre d'Affaires
               </TabsTrigger>
-              <TabsTrigger value="creances" className="gap-1">
-                <TrendingDown className="h-4 w-4" />
+              <TabsTrigger value="creances" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <TrendingDown className="h-3.5 w-3.5" />
                 Créances
               </TabsTrigger>
-              <TabsTrigger value="rentabilite" className="gap-1">
-                <TrendingUp className="h-4 w-4" />
+              <TabsTrigger value="rentabilite" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <TrendingUp className="h-3.5 w-3.5" />
                 Rentabilité
               </TabsTrigger>
-              <TabsTrigger value="tresorerie" className="gap-1">
-                <Wallet className="h-4 w-4" />
+              <TabsTrigger value="tresorerie" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <Wallet className="h-3.5 w-3.5" />
                 Trésorerie
               </TabsTrigger>
-              <TabsTrigger value="documents" className="gap-1">
-                <FileText className="h-4 w-4" />
+              <TabsTrigger value="documents" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <FileText className="h-3.5 w-3.5" />
                 Documents
               </TabsTrigger>
-              <TabsTrigger value="clients" className="gap-1">
-                <Users className="h-4 w-4" />
+              <TabsTrigger value="clients" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <Users className="h-3.5 w-3.5" />
                 Clients
               </TabsTrigger>
-              <TabsTrigger value="comparatif" className="gap-1">
-                <BarChart3 className="h-4 w-4" />
+              <TabsTrigger value="comparatif" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
+                <BarChart3 className="h-3.5 w-3.5" />
                 Comparatif
               </TabsTrigger>
             </TabsList>
@@ -345,15 +355,15 @@ export default function ReportingPage() {
             {/* Chiffre d'Affaires */}
             <TabsContent value="chiffre-affaires" className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-3">
-                <Card className="lg:col-span-2 border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
-                    <CardTitle className="flex items-center gap-2">
-                      <Receipt className="h-5 w-5 text-primary" />
+                <Card className="lg:col-span-2 rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <Receipt className="h-4 w-4 text-primary" />
                       Évolution mensuelle du CA
                     </CardTitle>
-                    <CardDescription>Chiffre d'affaires TTC par mois en {anneeSelectionnee}</CardDescription>
+                    <CardDescription className="text-xs">Chiffre d'affaires TTC par mois en {anneeSelectionnee}</CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-4">
                     {loadingCA ? (
                       <Skeleton className="h-[300px] w-full" />
                     ) : evolutionMensuelle.length === 0 ? (
@@ -394,11 +404,11 @@ export default function ReportingPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
-                    <CardTitle>Récapitulatif Annuel</CardTitle>
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="text-sm font-semibold">Récapitulatif Annuel</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 pt-6">
+                  <CardContent className="space-y-3 pt-4">
                     {loadingCA ? (
                       <Skeleton className="h-32 w-full" />
                     ) : (
@@ -458,15 +468,15 @@ export default function ReportingPage() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-red-500/5 to-transparent border-b">
-                    <CardTitle className="flex items-center gap-2">
-                      <PieChartIcon className="h-5 w-5 text-red-500" />
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <PieChartIcon className="h-4 w-4 text-destructive" />
                       Créances par ancienneté
                     </CardTitle>
-                    <CardDescription>Répartition des impayés par tranche de jours</CardDescription>
+                    <CardDescription className="text-xs">Répartition des impayés par tranche de jours</CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-4">
                     {loadingCreances ? (
                       <Skeleton className="h-[300px] w-full" />
                     ) : dataCreancesParTranche.length === 0 ? (
@@ -501,13 +511,13 @@ export default function ReportingPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-red-500/5 to-transparent border-b">
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-red-500" />
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <Users className="h-4 w-4 text-destructive" />
                       Top 10 Débiteurs
                     </CardTitle>
-                    <CardDescription>Clients avec le plus d'impayés</CardDescription>
+                    <CardDescription className="text-xs">Clients avec le plus d'impayés</CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
                     {loadingCreances ? (
@@ -584,14 +594,14 @@ export default function ReportingPage() {
                 />
               </div>
 
-              <Card className="border-0 shadow-lg overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-emerald-500/5 to-transparent border-b">
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+              <Card className="rounded-xl border shadow-sm overflow-hidden">
+                <CardHeader className="pb-2 border-b bg-muted/20">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     Évolution de la Rentabilité
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent className="pt-4">
                   {loadingRentabilite ? (
                     <Skeleton className="h-[300px] w-full" />
                   ) : rentabiliteMensuelle.length === 0 ? (
@@ -653,15 +663,15 @@ export default function ReportingPage() {
                 />
               </div>
 
-              <Card className="border-0 shadow-lg overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-500/5 to-transparent border-b">
+              <Card className="rounded-xl border shadow-sm overflow-hidden">
+                <CardHeader className="pb-2 border-b bg-muted/20">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-blue-500" />
+                      <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         Flux de Trésorerie
                       </CardTitle>
-                      <CardDescription>Entrées et sorties de fonds</CardDescription>
+                      <CardDescription className="text-xs">Entrées et sorties de fonds</CardDescription>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
@@ -718,16 +728,14 @@ export default function ReportingPage() {
             <TabsContent value="documents" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 {/* Devis */}
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-blue-500/5 to-transparent border-b">
-                    <CardTitle className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-blue-500/20">
-                        <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       Devis
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 pt-6">
+                  <CardContent className="space-y-2 pt-4">
                     {loadingStats ? (
                       <Skeleton className="h-32 w-full" />
                     ) : (
@@ -766,16 +774,14 @@ export default function ReportingPage() {
                 </Card>
 
                 {/* Ordres */}
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-amber-500/5 to-transparent border-b">
-                    <CardTitle className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-amber-500/20">
-                        <BarChart3 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <BarChart3 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       Ordres de Travail
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 pt-6">
+                  <CardContent className="space-y-2 pt-4">
                     {loadingStats ? (
                       <Skeleton className="h-32 w-full" />
                     ) : (
@@ -810,16 +816,14 @@ export default function ReportingPage() {
                 </Card>
 
                 {/* Factures */}
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-emerald-500/5 to-transparent border-b">
-                    <CardTitle className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-emerald-500/20">
-                        <Receipt className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <Receipt className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       Factures
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 pt-6">
+                  <CardContent className="space-y-2 pt-4">
                     {loadingStats ? (
                       <Skeleton className="h-32 w-full" />
                     ) : (
@@ -861,13 +865,13 @@ export default function ReportingPage() {
 
             {/* Clients */}
             <TabsContent value="clients" className="space-y-4">
-              <Card className="border-0 shadow-lg overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
+              <Card className="rounded-xl border shadow-sm overflow-hidden">
+                <CardHeader className="pb-2 border-b bg-muted/20">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <Users className="h-4 w-4 text-primary" />
                     Top Clients par Chiffre d'Affaires
                   </CardTitle>
-                  <CardDescription>Année {anneeSelectionnee}</CardDescription>
+                  <CardDescription className="text-xs">Année {anneeSelectionnee}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   {loadingClients ? (
@@ -927,10 +931,10 @@ export default function ReportingPage() {
             {/* Comparatif */}
             <TabsContent value="comparatif" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b pb-2">
-                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Receipt className="h-4 w-4" />
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                      <Receipt className="h-3.5 w-3.5" />
                       Chiffre d'Affaires
                     </CardTitle>
                   </CardHeader>
@@ -958,10 +962,10 @@ export default function ReportingPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-blue-500/5 to-transparent border-b pb-2">
-                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-                      <FileCheck className="h-4 w-4" />
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                      <FileCheck className="h-3.5 w-3.5" />
                       Nombre de Factures
                     </CardTitle>
                   </CardHeader>
@@ -989,10 +993,10 @@ export default function ReportingPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-emerald-500/5 to-transparent border-b pb-2">
-                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Users className="h-4 w-4" />
+                <Card className="rounded-xl border shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2 border-b bg-muted/20">
+                    <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5" />
                       Clients Actifs
                     </CardTitle>
                   </CardHeader>
