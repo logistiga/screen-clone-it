@@ -8,8 +8,44 @@ interface UsePdfDownloadOptions {
 }
 
 /**
+ * Wait for all images inside an element to finish loading.
+ */
+async function waitForImages(element: HTMLElement, timeout = 10000): Promise<void> {
+  const images = element.querySelectorAll('img');
+  if (images.length === 0) return;
+
+  const promises = Array.from(images).map((img) => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      img.addEventListener('load', () => resolve(), { once: true });
+      img.addEventListener('error', () => resolve(), { once: true });
+    });
+  });
+
+  await Promise.race([
+    Promise.all(promises),
+    new Promise<void>((resolve) => setTimeout(resolve, timeout)),
+  ]);
+}
+
+/**
+ * Wait for document fonts to be ready.
+ */
+async function waitForFonts(timeout = 5000): Promise<void> {
+  try {
+    await Promise.race([
+      document.fonts.ready,
+      new Promise<void>((resolve) => setTimeout(resolve, timeout)),
+    ]);
+  } catch {
+    // fonts.ready not supported — continue
+  }
+}
+
+/**
  * Hook for PDF download using html2canvas + jsPDF.
  * Forces content to fit on a single A4 page.
+ * Waits for images and fonts before capturing.
  */
 export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -19,6 +55,15 @@ export function usePdfDownload({ filename, margin = 5 }: UsePdfDownloadOptions) 
     if (!contentRef.current) return null;
 
     try {
+      // Wait for all images and fonts to be fully loaded
+      await Promise.all([
+        waitForImages(contentRef.current),
+        waitForFonts(),
+      ]);
+
+      // Extra frame to let browser finish layout/paint
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
       // A4 dimensions in mm
       const A4_WIDTH_MM = 210;
       const A4_HEIGHT_MM = 297;
