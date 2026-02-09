@@ -26,46 +26,65 @@ class ReportingController extends Controller
         try {
             $annee = (int) $request->get('annee', date('Y'));
 
-            // Récupérer les données du tableau de bord (KPIs)
-            $dashboard = $this->reportingService->getTableauDeBord($annee);
-            $kpis = $dashboard['kpis'] ?? [];
+            // Récupérer les données du tableau de bord (KPIs) — résilient
+            $kpis = [];
+            try {
+                $dashboard = $this->reportingService->getTableauDeBord($annee);
+                $kpis = $dashboard['kpis'] ?? [];
+            } catch (\Throwable $e) {
+                Log::warning('PDF Reporting: tableau de bord indisponible - ' . $e->getMessage());
+            }
 
             // Rentabilité
+            $rentabilite = [];
             try {
                 $rentabilite = $this->reportingService->getRentabilite($annee);
             } catch (\Throwable $e) {
                 Log::warning('PDF Reporting: rentabilité indisponible - ' . $e->getMessage());
-                $rentabilite = [];
             }
 
             // Évolution mensuelle du CA
+            $evolution = [];
             try {
                 $caData = $this->reportingService->getChiffreAffaires($annee);
-                $evolution = $caData['mensuel'] ?? [];
+                $evolution = $caData['par_mois'] ?? $caData['mensuel'] ?? [];
+                // Convertir en array si c'est une Collection
+                if ($evolution instanceof \Illuminate\Support\Collection) {
+                    $evolution = $evolution->map(fn($m) => [
+                        'mois' => $m->mois ?? $m['mois'] ?? 0,
+                        'total_ttc' => $m->total_ttc ?? $m['total_ttc'] ?? 0,
+                        'nb_factures' => $m->nombre_factures ?? $m['nombre_factures'] ?? 0,
+                    ])->toArray();
+                }
             } catch (\Throwable $e) {
                 Log::warning('PDF Reporting: évolution CA indisponible - ' . $e->getMessage());
-                $evolution = [];
             }
 
             // Top clients
+            $topClients = [];
             try {
                 $clientsData = $this->reportingService->getActiviteClients(
                     "{$annee}-01-01",
                     "{$annee}-12-31",
                     10
                 );
-                $topClients = $clientsData['top_clients'] ?? [];
+                $topClients = collect($clientsData['top_clients'] ?? [])->map(fn($c) => [
+                    'client_nom' => $c['nom'] ?? $c['raison_sociale'] ?? $c['client_nom'] ?? 'Inconnu',
+                    'ca_total' => $c['factures_sum_montant_ttc'] ?? $c['ca_total'] ?? 0,
+                    'nb_factures' => $c['factures_count'] ?? $c['nb_factures'] ?? 0,
+                    'paiements' => $c['paiements_sum_montant'] ?? $c['paiements'] ?? 0,
+                    'solde_du' => $c['solde'] ?? $c['solde_du'] ?? 0,
+                ])->toArray();
             } catch (\Throwable $e) {
                 Log::warning('PDF Reporting: top clients indisponible - ' . $e->getMessage());
-                $topClients = [];
             }
 
             // Créances
+            $creances = [];
             try {
                 $creances = $this->reportingService->getCreances();
             } catch (\Throwable $e) {
                 Log::warning('PDF Reporting: créances indisponible - ' . $e->getMessage());
-                $creances = [];
             }
 
             $data = compact('annee', 'kpis', 'rentabilite', 'evolution', 'topClients', 'creances');
