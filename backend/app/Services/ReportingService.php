@@ -276,7 +276,7 @@ class ReportingService
     {
         $clients = Client::withCount([
             'factures' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
-            'ordres' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
+            'ordresTravail' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
             'devis' => fn($q) => $q->whereBetween('date_creation', [$dateDebut, $dateFin]),
         ])
         ->withSum([
