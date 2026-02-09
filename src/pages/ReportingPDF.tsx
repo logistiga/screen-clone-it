@@ -35,8 +35,8 @@ export default function ReportingPDFPage() {
   const { data: rentabilite, isLoading: loadingRentabilite } = useRentabilite(annee);
   const { data: activiteClients, isLoading: loadingClients } = useActiviteClients(dateDebutAnnee, dateFinAnnee, 10);
 
-  // Ne pas bloquer le PDF si certaines queries échouent — seul tableauDeBord est requis
-  const isLoading = loadingTableau;
+  // Attendre que TOUTES les données soient chargées avant de permettre la génération
+  const isLoading = loadingTableau || loadingCA || loadingCreances || loadingRentabilite || loadingClients;
   const [autoDownloaded, setAutoDownloaded] = useState(false);
 
   const evolutionMensuelle = useMemo(() => {
@@ -66,14 +66,18 @@ export default function ReportingPDFPage() {
     }));
   }, [creances]);
 
-  // Auto-download PDF once main data is loaded (don't wait for all queries)
+  // Auto-download PDF once ALL data is loaded and DOM is fully rendered
   useEffect(() => {
     if (!isLoading && tableauDeBord && !autoDownloaded) {
-      // Wait a bit for optional queries to finish, then download regardless
-      const timer = setTimeout(() => {
-        downloadPdf();
+      // Wait for the DOM to settle after data renders (images, fonts, tables)
+      const timer = setTimeout(async () => {
+        try {
+          await downloadPdf();
+        } catch (e) {
+          console.error('Auto-download PDF failed:', e);
+        }
         setAutoDownloaded(true);
-      }, 1500);
+      }, 2000); // 2s after ALL queries done for DOM paint
       return () => clearTimeout(timer);
     }
   }, [isLoading, tableauDeBord, downloadPdf, autoDownloaded]);
