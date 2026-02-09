@@ -68,7 +68,7 @@
             </tr>
             @endforeach
             <tr class="row-total">
-                <td colspan="7">TOTAUX</td>
+                <td colspan="5">TOTAUX</td>
                 <td class="text-right">{{ number_format($totHT, 0, ',', ' ') }}</td>
                 <td class="text-right text-red">{{ number_format($totTTC, 0, ',', ' ') }}</td>
                 <td></td>
