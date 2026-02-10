@@ -172,7 +172,7 @@ export const userService = {
 
   // Liste des rôles disponibles
   async getRoles(): Promise<UserRole[]> {
-    const response = await api.get('/utilisateurs/roles');
+    const response = await api.get('/admin/roles');
     return response.data;
   },
 
