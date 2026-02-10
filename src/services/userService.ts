@@ -127,7 +127,7 @@ export const userService = {
 
   // Détail d'un utilisateur
   async getUser(id: number): Promise<UserDetail> {
-    const response = await api.get(`/utilisateurs/${id}`);
+    const response = await api.get(`/admin/users/${id}`);
     return response.data;
   },
 
