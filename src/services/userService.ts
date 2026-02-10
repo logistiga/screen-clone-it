@@ -84,7 +84,7 @@ export const userService = {
     if (filters?.per_page) params.append('per_page', filters.per_page.toString());
     if (filters?.page) params.append('page', filters.page.toString());
     
-    const response = await api.get(`/utilisateurs?${params.toString()}`);
+    const response = await api.get(`/admin/users?${params.toString()}`);
     return response.data;
   },
 
