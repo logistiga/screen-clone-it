@@ -148,7 +148,7 @@ export const userService = {
     // eslint-disable-next-line no-console
     console.log('payload.nom length:', payload.nom.length);
 
-    const response = await api.post('/utilisateurs', payload);
+    const response = await api.post('/admin/users', payload);
     return response.data;
   },
 
