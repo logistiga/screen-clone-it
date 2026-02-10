@@ -760,6 +760,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::prefix('admin/roles')->middleware(['audit', 'role:administrateur|directeur'])->group(function () {
         Route::get('/', [RoleController::class, 'index']);
         Route::post('/', [RoleController::class, 'store']);
+        Route::get('stats', [RoleController::class, 'stats']);
         Route::get('permissions', [RoleController::class, 'permissions']);
         Route::get('{role}', [RoleController::class, 'show']);
         Route::put('{role}', [RoleController::class, 'update']);
