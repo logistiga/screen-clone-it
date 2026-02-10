@@ -87,7 +87,7 @@ export const roleService = {
     if (filters?.sort_by) params.append('sort_by', filters.sort_by);
     if (filters?.sort_order) params.append('sort_order', filters.sort_order);
     
-    const response = await api.get(`/roles?${params.toString()}`);
+    const response = await api.get(`/admin/roles?${params.toString()}`);
     return response.data;
   },
 
