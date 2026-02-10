@@ -166,7 +166,7 @@ export const userService = {
 
   // Activer/Désactiver un utilisateur
   async toggleActif(id: number): Promise<{ message: string; user: User }> {
-    const response = await api.patch(`/utilisateurs/${id}/toggle-actif`);
+    const response = await api.post(`/admin/users/${id}/toggle-active`);
     return response.data;
   },
 
