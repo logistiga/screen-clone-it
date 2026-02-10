@@ -160,7 +160,7 @@ export const userService = {
 
   // Supprimer un utilisateur
   async deleteUser(id: number): Promise<{ message: string }> {
-    const response = await api.delete(`/utilisateurs/${id}`);
+    const response = await api.delete(`/admin/users/${id}`);
     return response.data;
   },
 
