@@ -744,7 +744,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ADMINISTRATION - UTILISATEURS
     // ============================================
-    Route::prefix('admin/users')->middleware(['audit', 'role:admin'])->group(function () {
+    Route::prefix('admin/users')->middleware(['audit', 'role:administrateur|directeur'])->group(function () {
         Route::get('/', [UserController::class, 'index']);
         Route::post('/', [UserController::class, 'store']);
         Route::get('{user}', [UserController::class, 'show']);
@@ -757,9 +757,10 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ADMINISTRATION - RÔLES & PERMISSIONS
     // ============================================
-    Route::prefix('admin/roles')->middleware(['audit', 'role:admin'])->group(function () {
+    Route::prefix('admin/roles')->middleware(['audit', 'role:administrateur|directeur'])->group(function () {
         Route::get('/', [RoleController::class, 'index']);
         Route::post('/', [RoleController::class, 'store']);
+        Route::get('stats', [RoleController::class, 'stats']);
         Route::get('permissions', [RoleController::class, 'permissions']);
         Route::get('{role}', [RoleController::class, 'show']);
         Route::put('{role}', [RoleController::class, 'update']);
