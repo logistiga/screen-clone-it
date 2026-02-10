@@ -138,7 +138,7 @@ export const roleService = {
 
   // Dupliquer un rôle
   async duplicateRole(id: number): Promise<{ message: string; role: Role }> {
-    const response = await api.post(`/roles/${id}/duplicate`);
+    const response = await api.post(`/admin/roles/${id}/duplicate`);
     return response.data;
   },
 
