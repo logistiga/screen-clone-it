@@ -146,7 +146,7 @@ export const roleService = {
   async getAvailableUsers(roleId: number, search?: string): Promise<{ data: { id: number; name: string; email: string; actif: boolean; current_role: string | null }[]; total: number }> {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
-    const response = await api.get(`/roles/${roleId}/available-users?${params.toString()}`);
+    const response = await api.get(`/admin/roles/${roleId}/available-users?${params.toString()}`);
     return response.data;
   },
 
