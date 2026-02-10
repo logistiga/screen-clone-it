@@ -152,7 +152,7 @@ export const roleService = {
 
   // Assigner des utilisateurs à un rôle
   async assignUsers(roleId: number, userIds: number[]): Promise<{ message: string; assigned_count: number }> {
-    const response = await api.post(`/roles/${roleId}/assign-users`, { user_ids: userIds });
+    const response = await api.post(`/admin/roles/${roleId}/assign-users`, { user_ids: userIds });
     return response.data;
   },
 
