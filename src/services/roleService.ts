@@ -126,7 +126,7 @@ export const roleService = {
 
   // Mettre à jour un rôle
   async updateRole(id: number, data: Partial<RoleFormData>): Promise<{ message: string; role: Role }> {
-    const response = await api.put(`/roles/${id}`, data);
+    const response = await api.put(`/admin/roles/${id}`, data);
     return response.data;
   },
 
