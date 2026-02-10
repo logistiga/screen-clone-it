@@ -154,7 +154,7 @@ export const userService = {
 
   // Mettre à jour un utilisateur
   async updateUser(id: number, data: UpdateUserData): Promise<User> {
-    const response = await api.put(`/utilisateurs/${id}`, data);
+    const response = await api.put(`/admin/users/${id}`, data);
     return response.data;
   },
 
