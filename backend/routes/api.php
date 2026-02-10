@@ -757,7 +757,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ADMINISTRATION - RÔLES & PERMISSIONS
     // ============================================
-    Route::prefix('admin/roles')->middleware(['audit', 'role:admin'])->group(function () {
+    Route::prefix('admin/roles')->middleware(['audit', 'role:administrateur|directeur'])->group(function () {
         Route::get('/', [RoleController::class, 'index']);
         Route::post('/', [RoleController::class, 'store']);
         Route::get('permissions', [RoleController::class, 'permissions']);
