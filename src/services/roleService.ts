@@ -158,7 +158,7 @@ export const roleService = {
 
   // Désassigner un utilisateur d'un rôle
   async unassignUser(roleId: number, userId: number): Promise<{ message: string }> {
-    const response = await api.delete(`/roles/${roleId}/users/${userId}`);
+    const response = await api.delete(`/admin/roles/${roleId}/users/${userId}`);
     return response.data;
   },
 };
