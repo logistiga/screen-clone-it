@@ -132,7 +132,7 @@ export const roleService = {
 
   // Supprimer un rôle
   async deleteRole(id: number): Promise<{ message: string }> {
-    const response = await api.delete(`/roles/${id}`);
+    const response = await api.delete(`/admin/roles/${id}`);
     return response.data;
   },
 
