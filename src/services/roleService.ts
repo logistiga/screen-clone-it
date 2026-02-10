@@ -120,7 +120,7 @@ export const roleService = {
 
   // Créer un rôle
   async createRole(data: RoleFormData): Promise<{ message: string; role: Role }> {
-    const response = await api.post('/roles', data);
+    const response = await api.post('/admin/roles', data);
     return response.data;
   },
 
