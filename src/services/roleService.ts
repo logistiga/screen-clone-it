@@ -87,25 +87,25 @@ export const roleService = {
     if (filters?.sort_by) params.append('sort_by', filters.sort_by);
     if (filters?.sort_order) params.append('sort_order', filters.sort_order);
     
-    const response = await api.get(`/roles?${params.toString()}`);
+    const response = await api.get(`/admin/roles?${params.toString()}`);
     return response.data;
   },
 
   // Statistiques
   async getStats(): Promise<RoleStats> {
-    const response = await api.get('/roles/stats');
+    const response = await api.get('/admin/roles/stats');
     return response.data;
   },
 
   // Liste des permissions disponibles
   async getPermissions(): Promise<{ data: PermissionModule[]; total: number }> {
-    const response = await api.get('/roles/permissions');
+    const response = await api.get('/admin/roles/permissions');
     return response.data;
   },
 
   // Détail d'un rôle
   async getRole(id: number): Promise<RoleDetail> {
-    const response = await api.get(`/roles/${id}`);
+    const response = await api.get(`/admin/roles/${id}`);
     const data = response.data;
     
     // Normaliser les permissions (peuvent être des objets ou des chaînes)
@@ -120,25 +120,25 @@ export const roleService = {
 
   // Créer un rôle
   async createRole(data: RoleFormData): Promise<{ message: string; role: Role }> {
-    const response = await api.post('/roles', data);
+    const response = await api.post('/admin/roles', data);
     return response.data;
   },
 
   // Mettre à jour un rôle
   async updateRole(id: number, data: Partial<RoleFormData>): Promise<{ message: string; role: Role }> {
-    const response = await api.put(`/roles/${id}`, data);
+    const response = await api.put(`/admin/roles/${id}`, data);
     return response.data;
   },
 
   // Supprimer un rôle
   async deleteRole(id: number): Promise<{ message: string }> {
-    const response = await api.delete(`/roles/${id}`);
+    const response = await api.delete(`/admin/roles/${id}`);
     return response.data;
   },
 
   // Dupliquer un rôle
   async duplicateRole(id: number): Promise<{ message: string; role: Role }> {
-    const response = await api.post(`/roles/${id}/duplicate`);
+    const response = await api.post(`/admin/roles/${id}/duplicate`);
     return response.data;
   },
 
@@ -146,19 +146,19 @@ export const roleService = {
   async getAvailableUsers(roleId: number, search?: string): Promise<{ data: { id: number; name: string; email: string; actif: boolean; current_role: string | null }[]; total: number }> {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
-    const response = await api.get(`/roles/${roleId}/available-users?${params.toString()}`);
+    const response = await api.get(`/admin/roles/${roleId}/available-users?${params.toString()}`);
     return response.data;
   },
 
   // Assigner des utilisateurs à un rôle
   async assignUsers(roleId: number, userIds: number[]): Promise<{ message: string; assigned_count: number }> {
-    const response = await api.post(`/roles/${roleId}/assign-users`, { user_ids: userIds });
+    const response = await api.post(`/admin/roles/${roleId}/assign-users`, { user_ids: userIds });
     return response.data;
   },
 
   // Désassigner un utilisateur d'un rôle
   async unassignUser(roleId: number, userId: number): Promise<{ message: string }> {
-    const response = await api.delete(`/roles/${roleId}/users/${userId}`);
+    const response = await api.delete(`/admin/roles/${roleId}/users/${userId}`);
     return response.data;
   },
 };
