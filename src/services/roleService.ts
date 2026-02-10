@@ -93,7 +93,7 @@ export const roleService = {
 
   // Statistiques
   async getStats(): Promise<RoleStats> {
-    const response = await api.get('/roles/stats');
+    const response = await api.get('/admin/roles/stats');
     return response.data;
   },
 
