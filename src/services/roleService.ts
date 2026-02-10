@@ -99,7 +99,7 @@ export const roleService = {
 
   // Liste des permissions disponibles
   async getPermissions(): Promise<{ data: PermissionModule[]; total: number }> {
-    const response = await api.get('/roles/permissions');
+    const response = await api.get('/admin/roles/permissions');
     return response.data;
   },
 
