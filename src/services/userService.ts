@@ -91,7 +91,7 @@ export const userService = {
   // Statistiques des utilisateurs
   async getStats(): Promise<UserStats> {
     // On va calculer les stats côté client depuis les données
-    const allUsers = await api.get('/utilisateurs?per_page=1000');
+    const allUsers = await api.get('/admin/users?per_page=1000');
     const users: User[] = allUsers.data.data;
     
     const actifs = users.filter(u => u.actif).length;
