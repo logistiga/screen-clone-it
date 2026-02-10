@@ -84,14 +84,14 @@ export const userService = {
     if (filters?.per_page) params.append('per_page', filters.per_page.toString());
     if (filters?.page) params.append('page', filters.page.toString());
     
-    const response = await api.get(`/utilisateurs?${params.toString()}`);
+    const response = await api.get(`/admin/users?${params.toString()}`);
     return response.data;
   },
 
   // Statistiques des utilisateurs
   async getStats(): Promise<UserStats> {
     // On va calculer les stats côté client depuis les données
-    const allUsers = await api.get('/utilisateurs?per_page=1000');
+    const allUsers = await api.get('/admin/users?per_page=1000');
     const users: User[] = allUsers.data.data;
     
     const actifs = users.filter(u => u.actif).length;
@@ -127,7 +127,7 @@ export const userService = {
 
   // Détail d'un utilisateur
   async getUser(id: number): Promise<UserDetail> {
-    const response = await api.get(`/utilisateurs/${id}`);
+    const response = await api.get(`/admin/users/${id}`);
     return response.data;
   },
 
@@ -148,31 +148,31 @@ export const userService = {
     // eslint-disable-next-line no-console
     console.log('payload.nom length:', payload.nom.length);
 
-    const response = await api.post('/utilisateurs', payload);
+    const response = await api.post('/admin/users', payload);
     return response.data;
   },
 
   // Mettre à jour un utilisateur
   async updateUser(id: number, data: UpdateUserData): Promise<User> {
-    const response = await api.put(`/utilisateurs/${id}`, data);
+    const response = await api.put(`/admin/users/${id}`, data);
     return response.data;
   },
 
   // Supprimer un utilisateur
   async deleteUser(id: number): Promise<{ message: string }> {
-    const response = await api.delete(`/utilisateurs/${id}`);
+    const response = await api.delete(`/admin/users/${id}`);
     return response.data;
   },
 
   // Activer/Désactiver un utilisateur
   async toggleActif(id: number): Promise<{ message: string; user: User }> {
-    const response = await api.patch(`/utilisateurs/${id}/toggle-actif`);
+    const response = await api.post(`/admin/users/${id}/toggle-active`);
     return response.data;
   },
 
   // Liste des rôles disponibles
   async getRoles(): Promise<UserRole[]> {
-    const response = await api.get('/utilisateurs/roles');
+    const response = await api.get('/admin/roles');
     return response.data;
   },
 
