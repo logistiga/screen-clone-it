@@ -744,7 +744,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // ============================================
     // ADMINISTRATION - UTILISATEURS
     // ============================================
-    Route::prefix('admin/users')->middleware(['audit', 'role:admin'])->group(function () {
+    Route::prefix('admin/users')->middleware(['audit', 'role:administrateur|directeur'])->group(function () {
         Route::get('/', [UserController::class, 'index']);
         Route::post('/', [UserController::class, 'store']);
         Route::get('{user}', [UserController::class, 'show']);
