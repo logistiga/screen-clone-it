@@ -105,7 +105,7 @@ export const roleService = {
 
   // Détail d'un rôle
   async getRole(id: number): Promise<RoleDetail> {
-    const response = await api.get(`/roles/${id}`);
+    const response = await api.get(`/admin/roles/${id}`);
     const data = response.data;
     
     // Normaliser les permissions (peuvent être des objets ou des chaînes)
