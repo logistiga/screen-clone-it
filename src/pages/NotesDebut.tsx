@@ -276,7 +276,43 @@ export default function NotesDebut() {
           </Button>
         </div>
 
-        {/* Stats */}
+        {/* Récap par type */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(['ouverture_port', 'detention', 'reparation', 'relache'] as const).map((type, i) => {
+            const config = typeConfig[type] || { label: type, icon: FileText, color: '' };
+            const TypeIcon = config.icon;
+            const typeNotes = notes.filter((n) => {
+              const t = (n.type || '').toLowerCase().replace(/\s+/g, '_');
+              return t === type || t === type.replace('_', ' ');
+            });
+            const somme = typeNotes.reduce((acc, n) => acc + getNoteAmount(n), 0);
+            return (
+              <motion.div
+                key={type}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <Card className="border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${config.color}`}>
+                        <TypeIcon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground truncate">{config.label}</p>
+                        <p className="text-lg font-bold text-foreground">{formatMontant(somme)}</p>
+                        <p className="text-xs text-muted-foreground">{typeNotes.length} note{typeNotes.length > 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Stats générales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <DocumentStatCard
             title="Total notes"
