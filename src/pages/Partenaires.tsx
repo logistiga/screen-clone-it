@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { formatMontant } from "@/data/mockData";
 import { NouveauTransitaireModal } from "@/components/NouveauTransitaireModal";
 import { NouveauRepresentantModal } from "@/components/NouveauRepresentantModal";
-import { NouvelArmateurModal } from "@/components/NouvelArmateurModal";
+
 import { TablePagination } from "@/components/TablePagination";
 import { 
   useTransitaires, 
@@ -37,7 +38,7 @@ import {
   useArmateurs,
   useDeleteTransitaire,
   useDeleteRepresentant,
-  useDeleteArmateur
+  useSyncArmateurs
 } from "@/hooks/use-commercial";
 import {
   PartenaireAvatar,
@@ -56,7 +57,7 @@ export default function PartenairesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nom: string; type: string } | null>(null);
   const [showTransitaireModal, setShowTransitaireModal] = useState(false);
   const [showRepresentantModal, setShowRepresentantModal] = useState(false);
-  const [showArmateurModal, setShowArmateurModal] = useState(false);
+  
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   
   // Pagination states
@@ -139,7 +140,7 @@ export default function PartenairesPage() {
   // Delete mutations
   const deleteTransitaireMutation = useDeleteTransitaire();
   const deleteRepresentantMutation = useDeleteRepresentant();
-  const deleteArmateurMutation = useDeleteArmateur();
+  const syncArmateursMutation = useSyncArmateurs();
 
   // Filtrage
   const filteredTransitaires = transitaires.filter(t =>
@@ -195,7 +196,7 @@ export default function PartenairesPage() {
       } else if (deleteConfirm.type === "Représentant") {
         deleteRepresentantMutation.mutate(deleteConfirm.id);
       } else if (deleteConfirm.type === "Armateur") {
-        deleteArmateurMutation.mutate(deleteConfirm.id);
+        toast.error("Les armateurs sont synchronisés depuis OPS. Suppression désactivée.");
       }
       setDeleteConfirm(null);
     }
@@ -750,11 +751,15 @@ export default function PartenairesPage() {
               )}
             </div>
 
-            {/* Actions */}
+            {/* Actions - Sync instead of create */}
             <div className="flex justify-end">
-              <Button className="gap-2 shadow-sm" onClick={() => setShowArmateurModal(true)}>
-                <Plus className="h-4 w-4" />
-                Nouvel armateur
+              <Button 
+                className="gap-2 shadow-sm" 
+                onClick={() => syncArmateursMutation.mutate()}
+                disabled={syncArmateursMutation.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 ${syncArmateursMutation.isPending ? 'animate-spin' : ''}`} />
+                {syncArmateursMutation.isPending ? 'Synchronisation...' : 'Synchroniser depuis OPS'}
               </Button>
             </div>
 
@@ -820,17 +825,13 @@ export default function PartenairesPage() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" title="Modifier">
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
                                     <Button 
                                       variant="ghost" 
                                       size="icon" 
-                                      className="text-destructive"
-                                      title="Supprimer"
-                                      onClick={() => setDeleteConfirm({ id: armateur.id, nom: armateur.nom, type: "Armateur" })}
+                                      title="Voir"
+                                      onClick={() => navigate(`/partenaires/armateurs/${armateur.id}`)}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Eye className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 </TableCell>
@@ -876,7 +877,7 @@ export default function PartenairesPage() {
                           adresse={armateur.adresse}
                           actif={armateur.actif !== false}
                           type="armateur"
-                          onDelete={() => setDeleteConfirm({ id: armateur.id, nom: armateur.nom, type: "Armateur" })}
+                          onView={() => navigate(`/partenaires/armateurs/${armateur.id}`)}
                         />
                       ))}
                     </div>
@@ -903,10 +904,6 @@ export default function PartenairesPage() {
         <NouveauRepresentantModal
           open={showRepresentantModal}
           onOpenChange={setShowRepresentantModal}
-        />
-        <NouvelArmateurModal
-          open={showArmateurModal}
-          onOpenChange={setShowArmateurModal}
         />
 
         {/* Dialog de confirmation de suppression */}

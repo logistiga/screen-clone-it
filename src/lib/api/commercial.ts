@@ -531,19 +531,13 @@ export const armateursApi = {
     const response = await api.get<{ data: Armateur }>(`/armateurs/${id}`);
     return response.data.data;
   },
-  
-  create: async (data: Partial<Armateur>) => {
-    const response = await api.post<{ data: Armateur }>('/armateurs', data);
-    return response.data.data;
-  },
-  
-  update: async (id: string, data: Partial<Armateur>) => {
-    const response = await api.put<{ data: Armateur }>(`/armateurs/${id}`, data);
-    return response.data.data;
-  },
-  
-  delete: async (id: string) => {
-    await api.delete(`/armateurs/${id}`);
+
+  /**
+   * Synchroniser les armateurs depuis la base OPS/TC
+   */
+  syncFromOps: async () => {
+    const response = await api.post('/sync-diagnostic/sync-armateurs');
+    return response.data;
   },
 };
 
