@@ -156,30 +156,28 @@ class SyncDiagnosticController extends Controller
         $imported = 0;
         $skipped = 0;
 
-        // Lecture depuis sorties_conteneurs avec le schéma réel
+        // Lecture depuis sortie_conteneurs (base logiwkuh_tc)
+        // Jointures pour résoudre les FK client_id, armateur_id, transitaire_id
         $opsConteneurs = DB::connection('ops')
-            ->table('sorties_conteneurs')
+            ->table('sortie_conteneurs as sc')
+            ->leftJoin('clients as c', 'sc.client_id', '=', 'c.id')
+            ->leftJoin('armateurs as a', 'sc.armateur_id', '=', 'a.id')
+            ->leftJoin('transitaires as t', 'sc.transitaire_id', '=', 't.id')
             ->select([
-                'id as sortie_id_externe',
-                'numero_conteneur',
-                'type_conteneur',
-                'numero_bl',
-                'code_armateur',
-                'nom_client',
-                'adresse_client',
-                'nom_transitaire',
-                'date_sortie',
-                'date_retour',
-                'camion_id',
-                'remorque_id',
-                'prime_chauffeur',
-                'destination',
-                'type_destination',
-                'statut as statut_ops',
+                'sc.id as sortie_id_externe',
+                'sc.numero_conteneur',
+                'sc.numero_bl',
+                'sc.type_conteneur',
+                'c.nom as nom_client',
+                'a.code as code_armateur',
+                'a.nom as armateur_nom',
+                't.nom as nom_transitaire',
+                'sc.camion_id',
+                'sc.remorque_id',
+                'sc.type_transport',
+                'sc.type_detention',
+                'sc.jours_gratuits',
             ])
-            // Conteneurs terminés: retournés au port ou livrés
-            ->whereIn('statut', ['retourne_port', 'livre_client', 'a_la_base'])
-            ->whereNull('deleted_at')
             ->get();
 
         foreach ($opsConteneurs as $opsConteneur) {
@@ -191,37 +189,30 @@ class SyncDiagnosticController extends Controller
                 continue;
             }
 
-            // Récupérer le nom de l'armateur depuis le code
-            $armateur = DB::connection('ops')
-                ->table('armateurs')
-                ->where('code', $opsConteneur->code_armateur)
-                ->first();
-
             // Insérer dans conteneurs_traites
             \App\Models\ConteneurTraite::create([
                 'sortie_id_externe' => $opsConteneur->sortie_id_externe,
                 'numero_conteneur' => $opsConteneur->numero_conteneur,
                 'numero_bl' => $opsConteneur->numero_bl,
                 'armateur_code' => $opsConteneur->code_armateur,
-                'armateur_nom' => $armateur->nom ?? null,
+                'armateur_nom' => $opsConteneur->armateur_nom,
                 'client_nom' => $opsConteneur->nom_client,
-                'client_adresse' => $opsConteneur->adresse_client,
+                'client_adresse' => null,
                 'transitaire_nom' => $opsConteneur->nom_transitaire,
-                'date_sortie' => $opsConteneur->date_sortie,
-                'date_retour' => $opsConteneur->date_retour,
+                'date_sortie' => null,
+                'date_retour' => null,
                 'camion_id_externe' => $opsConteneur->camion_id,
                 'remorque_id_externe' => $opsConteneur->remorque_id,
-                'prime_chauffeur' => $opsConteneur->prime_chauffeur,
-                'destination_type' => $opsConteneur->type_destination,
+                'prime_chauffeur' => null,
+                'destination_type' => $opsConteneur->type_detention,
                 'destination_adresse' => null,
-                'statut_ops' => $opsConteneur->statut_ops,
+                'statut_ops' => null,
                 'statut' => 'en_attente',
                 'source_system' => 'logistiga_ops',
                 'synced_at' => now(),
             ]);
 
             $imported++;
-        }
 
         Log::info('[SyncDiagnostic] Sync conteneurs terminée', [
             'imported' => $imported,
