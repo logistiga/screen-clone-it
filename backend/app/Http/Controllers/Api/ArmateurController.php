@@ -76,11 +76,9 @@ class ArmateurController extends Controller
 
     public function store(StoreArmateurRequest $request): JsonResponse
     {
-        $armateur = Armateur::create($request->validated());
-
-        Audit::log('create', 'armateur', "Armateur créé: {$armateur->nom}", $armateur);
-
-        return response()->json(['data' => new ArmateurResource($armateur)], 201);
+        return response()->json([
+            'message' => 'Les armateurs sont synchronisés depuis l\'application OPS. La création manuelle est désactivée.'
+        ], 403);
     }
 
     public function show(Armateur $armateur): JsonResponse
@@ -100,27 +98,16 @@ class ArmateurController extends Controller
 
     public function update(UpdateArmateurRequest $request, Armateur $armateur): JsonResponse
     {
-        $armateur->update($request->validated());
-
-        Audit::log('update', 'armateur', "Armateur modifié: {$armateur->nom}", $armateur);
-
-        return response()->json(['data' => new ArmateurResource($armateur)]);
+        return response()->json([
+            'message' => 'Les armateurs sont synchronisés depuis l\'application OPS. La modification manuelle est désactivée.'
+        ], 403);
     }
 
     public function destroy(Armateur $armateur): JsonResponse
     {
-        // Vérifier les factures associées
-        if ($armateur->factures()->count() > 0) {
-            return response()->json([
-                'message' => 'Impossible de supprimer cet armateur car il a des factures associées'
-            ], 422);
-        }
-
-        Audit::log('delete', 'armateur', "Armateur supprimé: {$armateur->nom}", $armateur);
-
-        $armateur->delete();
-
-        return response()->json(['message' => 'Armateur supprimé avec succès']);
+        return response()->json([
+            'message' => 'Les armateurs sont synchronisés depuis l\'application OPS. La suppression manuelle est désactivée.'
+        ], 403);
     }
 
     /**

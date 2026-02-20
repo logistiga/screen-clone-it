@@ -263,31 +263,61 @@ class SyncDiagnosticController extends Controller
                 ], 503);
             }
 
-            // Exécuter la commande Artisan
-            $exitCode = Artisan::call('sync:from-ops', [
-                '--armateurs' => true,
-            ]);
+            // Lire les armateurs depuis logiwkuh_tc
+            $opsArmateurs = DB::connection('ops')
+                ->table('armateurs')
+                ->select(['id', 'nom', 'code'])
+                ->get();
 
-            $output = Artisan::output();
+            $imported = 0;
+            $updated = 0;
+            $errors = [];
 
-            if ($exitCode === 0) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Synchronisation des armateurs réussie',
-                    'debug' => [
-                        'output' => $output,
-                    ]
-                ]);
+            foreach ($opsArmateurs as $opsArm) {
+                try {
+                    $existing = \App\Models\Armateur::withTrashed()
+                        ->where('nom', $opsArm->nom)
+                        ->first();
+
+                    if ($existing) {
+                        // Restaurer si supprimé
+                        if ($existing->trashed()) {
+                            $existing->restore();
+                        }
+                        $existing->update([
+                            'code' => $opsArm->code,
+                            'actif' => true,
+                        ]);
+                        $updated++;
+                    } else {
+                        \App\Models\Armateur::create([
+                            'nom' => $opsArm->nom,
+                            'code' => $opsArm->code,
+                            'actif' => true,
+                        ]);
+                        $imported++;
+                    }
+                } catch (\Exception $e) {
+                    $errors[] = "Armateur {$opsArm->nom}: {$e->getMessage()}";
+                }
             }
 
+            Log::info('[SyncDiagnostic] Sync armateurs terminée', [
+                'total_ops' => $opsArmateurs->count(),
+                'imported' => $imported,
+                'updated' => $updated,
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Échec de la synchronisation des armateurs',
-                'debug' => [
-                    'exit_code' => $exitCode,
-                    'output' => $output,
+                'success' => true,
+                'message' => "Synchronisation réussie: {$imported} ajoutés, {$updated} mis à jour",
+                'data' => [
+                    'armateurs_trouves_ops' => $opsArmateurs->count(),
+                    'armateurs_importes' => $imported,
+                    'armateurs_mis_a_jour' => $updated,
+                    'erreurs' => $errors,
                 ]
-            ], 500);
+            ]);
 
         } catch (\Exception $e) {
             Log::error('[SyncDiagnostic] Erreur sync armateurs', [

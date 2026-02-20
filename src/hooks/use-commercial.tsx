@@ -543,13 +543,23 @@ export function useArmateurs() {
 export function useCreateArmateur() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: armateursApi.create,
-    onSuccess: () => {
+    mutationFn: () => Promise.reject(new Error('Création désactivée - les armateurs sont synchronisés depuis OPS')),
+    onError: (error: any) => {
+      toast.error(error.message || 'Création désactivée');
+    },
+  });
+}
+
+export function useSyncArmateurs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: armateursApi.syncFromOps,
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['armateurs'] });
-      toast.success('Armateur créé avec succès');
+      toast.success(data?.message || 'Armateurs synchronisés avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la création de l\'armateur');
+      toast.error(error.response?.data?.message || 'Erreur lors de la synchronisation des armateurs');
     },
   });
 }
@@ -567,13 +577,9 @@ export function useArmateurById(id: string | undefined) {
 export function useDeleteArmateur() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: armateursApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['armateurs'] });
-      toast.success('Armateur supprimé avec succès');
-    },
+    mutationFn: () => Promise.reject(new Error('Suppression désactivée - les armateurs sont synchronisés depuis OPS')),
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la suppression de l\'armateur');
+      toast.error(error.message || 'Suppression désactivée');
     },
   });
 }
@@ -1200,17 +1206,12 @@ export function useSendFactureEmail() {
   });
 }
 
-// Update armateur
 export function useUpdateArmateur() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Armateur> }) => armateursApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['armateurs'] });
-      toast.success('Armateur modifié avec succès');
-    },
+    mutationFn: () => Promise.reject(new Error('Modification désactivée - les armateurs sont synchronisés depuis OPS')),
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la modification de l\'armateur');
+      toast.error(error.message || 'Modification désactivée');
     },
   });
 }

@@ -1,18 +1,11 @@
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { useCreateArmateur } from "@/hooks/use-commercial";
-import { Loader2 } from "lucide-react";
+import { Ship } from "lucide-react";
 
 interface NouvelArmateurModalProps {
   open: boolean;
@@ -20,140 +13,19 @@ interface NouvelArmateurModalProps {
 }
 
 export function NouvelArmateurModal({ open, onOpenChange }: NouvelArmateurModalProps) {
-  const { toast } = useToast();
-  const createArmateur = useCreateArmateur();
-  const [formData, setFormData] = useState({
-    nom: "",
-    code: "",
-    email: "",
-    telephone: "",
-    adresse: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.nom.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Le nom est requis",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    createArmateur.mutate(formData, {
-      onSuccess: () => {
-        toast({
-          title: "Armateur créé",
-          description: `${formData.nom} a été ajouté avec succès.`,
-        });
-        setFormData({ nom: "", code: "", email: "", telephone: "", adresse: "" });
-        onOpenChange(false);
-      },
-      onError: (error: unknown) => {
-        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
-        const status = axiosError?.response?.status;
-        let message = "Une erreur est survenue lors de la création.";
-        
-        if (status === 401) {
-          message = "Session expirée. Veuillez vous reconnecter.";
-        } else if (status === 403) {
-          message = "Vous n'avez pas les permissions pour créer un armateur.";
-        } else if (status === 422) {
-          message = axiosError?.response?.data?.message || "Données invalides.";
-        } else if (status === 500) {
-          message = "Erreur serveur. Veuillez réessayer plus tard.";
-        }
-        
-        toast({
-          title: "Erreur",
-          description: message,
-          variant: "destructive",
-        });
-      }
-    });
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nouvel armateur</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Ship className="h-5 w-5" />
+            Armateurs
+          </DialogTitle>
           <DialogDescription>
-            Ajoutez un nouvel armateur partenaire.
+            Les armateurs sont synchronisés automatiquement depuis l'application OPS.
+            La création manuelle est désactivée.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="nom">Nom *</Label>
-              <Input
-                id="nom"
-                value={formData.nom}
-                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                placeholder="Nom de l'armateur (ex: MSC, MAERSK)"
-                disabled={createArmateur.isPending}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="code">Code</Label>
-              <Input
-                id="code"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="Code unique (ex: MSC, MAE)"
-                disabled={createArmateur.isPending}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@exemple.com"
-                disabled={createArmateur.isPending}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="telephone">Téléphone</Label>
-              <Input
-                id="telephone"
-                value={formData.telephone}
-                onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                placeholder="+241 XX XX XX XX"
-                disabled={createArmateur.isPending}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="adresse">Adresse</Label>
-              <Input
-                id="adresse"
-                value={formData.adresse}
-                onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-                placeholder="Adresse complète"
-                disabled={createArmateur.isPending}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createArmateur.isPending}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={createArmateur.isPending}>
-              {createArmateur.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                "Créer"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
       </DialogContent>
     </Dialog>
   );
