@@ -1,85 +1,88 @@
 
-# Correction des arrondis : Backend + Frontend
 
-## Résumé des corrections
+# Connexion de la synchronisation à la base `logiwkuh_tc`
 
-Appliquer une règle d'arrondi simple et cohérente sur les deux couches :
-- **Arrondi mathématique standard à l'entier** (Math.round / round sans décimales)
-- 3.6 → 4 | 3.4 → 3
+## Probleme identifie
 
----
+Le code actuel de synchronisation est ecrit pour le schema de `logiwkuh_ops`, mais la base cible est `logiwkuh_tc` qui a un schema completement different :
 
-## 1. Backend (Priorité absolue)
+| Aspect | Code actuel (ops) | Base reelle (tc) |
+|---|---|---|
+| Table | `sorties_conteneurs` | `sortie_conteneurs` |
+| Client | `nom_client` (texte) | `client_id` (FK) |
+| Armateur | `code_armateur` (texte) | `armateur_id` (FK) |
+| Transitaire | `nom_transitaire` (texte) | `transitaire_id` (FK) |
+| Statut | colonne `statut` | absente |
+| Dates | `date_sortie`, `date_retour` | absentes |
+| Specifique | -- | `type_detention`, `jours_gratuits`, `type_transport` |
 
-### Fichier : `backend/app/Traits/CalculeTotauxTrait.php`
+## Plan de correction
 
-| Ligne | Avant | Après |
-|-------|-------|-------|
-| 171 | `round($montantHTApresRemise * ($taxe['taux'] / 100), 2)` | `round($montantHTApresRemise * ($taxe['taux'] / 100))` |
-| 224-225 | `round($remiseMontant, 2)` | `round($remiseMontant)` |
-| 259 | `round($montantHTApresRemise, 2)` | `round($montantHTApresRemise)` |
-| 260 | `round($remiseMontant, 2)` | `round($remiseMontant)` |
-| 261 | `round($taxes['tva'], 2)` | `round($taxes['tva'])` |
-| 262 | `round($taxes['css'], 2)` | `round($taxes['css'])` |
-| 263 | `round($montantTTC, 2)` | `round($montantTTC)` |
+### 1. Configuration de la connexion (`.env` serveur)
 
-**Résultat** : Tous les montants enregistrés en base seront des entiers.
+Mettre a jour la variable `OPS_DB_DATABASE` sur le serveur de production :
 
----
-
-## 2. Frontend
-
-### 2.1 Ajouter helper centralisé
-
-**Fichier : `src/lib/utils.ts`**
-
-```typescript
-/**
- * Arrondi mathématique standard pour montants XAF
- * - ≥ 0.5 → supérieur (3.6 → 4)
- * - < 0.5 → inférieur (3.4 → 3)
- */
-export function roundMoney(amount: number): number {
-  return Math.round(amount);
-}
+```
+OPS_DB_DATABASE=logiwkuh_tc
 ```
 
-### 2.2 Corriger parseInt → parseFloat
+Puis executer `php artisan config:clear` sur le serveur.
 
-| Fichier | Ligne | Champ | Correction |
-|---------|-------|-------|------------|
-| `OrdreConteneursForm.tsx` | 672 | quantité opération | `parseInt` → `parseFloat` |
-| `OrdreConteneursForm.tsx` | 682 | prix opération | `parseInt` → `parseFloat` |
-| `OrdreConventionnelForm.tsx` | 258 | quantité lot | `parseInt` → `parseFloat` |
-| `OrdreConventionnelForm.tsx` | 271 | prix lot | `parseInt` → `parseFloat` |
+### 2. Adapter `SyncDiagnosticController::executeSyncConteneurs()`
 
-### 2.3 Utiliser roundMoney dans useDocumentTaxes
+Reecrire la methode pour :
 
-**Fichier : `src/hooks/useDocumentTaxes.ts`** (ligne ~187)
+- Utiliser la table `sortie_conteneurs` (singulier)
+- Faire des **jointures** avec les tables `clients`, `armateurs`, `transitaires` de `logiwkuh_tc` pour recuperer les noms a partir des IDs
+- Supprimer les filtres sur `statut` et `deleted_at` (colonnes inexistantes)
+- Mapper les nouvelles colonnes (`type_detention`, `jours_gratuits`, `type_transport`)
 
-Le code actuel utilise déjà `Math.round`, ce qui est correct. On peut optionnellement importer `roundMoney` pour cohérence.
+La requete deviendra quelque chose comme :
 
----
+```php
+DB::connection('ops')
+    ->table('sortie_conteneurs as sc')
+    ->leftJoin('clients as c', 'sc.client_id', '=', 'c.id')
+    ->leftJoin('armateurs as a', 'sc.armateur_id', '=', 'a.id')
+    ->leftJoin('transitaires as t', 'sc.transitaire_id', '=', 't.id')
+    ->select([
+        'sc.id as sortie_id_externe',
+        'sc.numero_conteneur',
+        'sc.numero_bl',
+        'sc.type_conteneur',
+        'c.nom as nom_client',
+        'a.code as code_armateur',
+        'a.nom as armateur_nom',
+        't.nom as nom_transitaire',
+        'sc.camion_id',
+        'sc.remorque_id',
+        'sc.type_transport',
+        'sc.type_detention',
+        'sc.jours_gratuits',
+    ])
+    ->get();
+```
 
-## Fichiers modifiés
+### 3. Adapter le mapping d'insertion
 
-| Fichier | Modifications |
-|---------|---------------|
-| `backend/app/Traits/CalculeTotauxTrait.php` | Retirer tous les `, 2` des appels `round()` |
-| `src/lib/utils.ts` | Ajouter fonction `roundMoney()` |
-| `src/components/ordres/forms/OrdreConteneursForm.tsx` | 2× `parseInt` → `parseFloat` |
-| `src/components/ordres/forms/OrdreConventionnelForm.tsx` | 2× `parseInt` → `parseFloat` |
+Mettre a jour le bloc `ConteneurTraite::create()` pour :
+- Utiliser les colonnes disponibles dans TC
+- Mettre `null` pour les champs absents (`date_sortie`, `date_retour`, `prime_chauffeur`)
+- Stocker `type_detention` dans `destination_type` (ou un champ adapte)
+- Ne plus filtrer par `statut` OPS (importer tous les conteneurs)
 
----
+### 4. Adapter la synchronisation des armateurs
 
-## Résultat attendu
+La methode `syncArmateurs` utilise la commande Artisan `sync:from-ops`. Il faudra verifier que cette commande utilise aussi le bon nom de table `armateurs` (visible dans le sidebar de votre screenshot, donc OK).
 
-**Exemple : 120 000 XAF HT avec TVA 18% + CSS 1%**
-- TVA = 120 000 × 0.18 = 21 600 → **21 600**
-- CSS = 120 000 × 0.01 = 1 200 → **1 200**
-- TTC = 120 000 + 21 600 + 1 200 = **142 800 XAF** ✓
+## Section technique
 
-**Exemple : 123 456 XAF HT**
-- TVA = 123 456 × 0.18 = 22 222.08 → **22 222**
-- CSS = 123 456 × 0.01 = 1 234.56 → **1 235**
-- TTC = 123 456 + 22 222 + 1 235 = **146 913 XAF** ✓
+**Fichiers a modifier :**
+- `backend/app/Http/Controllers/Api/SyncDiagnosticController.php` : methode `executeSyncConteneurs()` - reecrire la requete et le mapping
+- Aucun changement cote frontend necessaire (les colonnes affichees restent les memes)
+
+**Risque :** aucun risque de perte de donnees, on modifie uniquement la lecture depuis la base externe.
+
+**Action manuelle requise sur le serveur :**
+1. Modifier `.env` : `OPS_DB_DATABASE=logiwkuh_tc`
+2. Executer : `php artisan config:clear`
