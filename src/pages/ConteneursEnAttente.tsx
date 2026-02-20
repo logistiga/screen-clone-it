@@ -83,7 +83,7 @@ export default function ConteneursEnAttentePage() {
   const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [statutFilter, setStatutFilter] = useState<string>("en_attente");
+  const [statutFilter, setStatutFilter] = useState<string>("all");
   const [selectedConteneur, setSelectedConteneur] = useState<ConteneurTraite | null>(null);
   const [isAffecterDialogOpen, setIsAffecterDialogOpen] = useState(false);
   const [selectedOrdreId, setSelectedOrdreId] = useState<string>("");
