@@ -463,7 +463,7 @@ export default function ConteneursEnAttentePage() {
                         <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
                         <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
                         <TableCell>
-                          {(conteneur.statut === 'en_attente' || conteneur.statut === 'affecte') && (
+                          {conteneur.statut !== 'facture' ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm" className="gap-1">
@@ -480,6 +480,12 @@ export default function ConteneursEnAttentePage() {
                                   <LinkIcon className="h-4 w-4 mr-2" />
                                   Affecter à un ordre
                                 </DropdownMenuItem>
+                                {conteneur.ordre_travail && (
+                                  <DropdownMenuItem onClick={() => navigate(`/ordres/${conteneur.ordre_travail_id}`)}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    Voir OT {conteneur.ordre_travail.numero}
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem 
                                   onClick={() => ignorerMutation.mutate(conteneur.id)}
                                   className="text-destructive focus:text-destructive"
@@ -489,20 +495,8 @@ export default function ConteneursEnAttentePage() {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          )}
-                          {conteneur.statut === 'affecte' && conteneur.ordre_travail && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => navigate(`/ordres/${conteneur.ordre_travail_id}`)}
-                            >
-                              <FileText className="h-4 w-4" />
-                              {conteneur.ordre_travail.numero}
-                            </Button>
-                          )}
-                          {conteneur.statut === 'facture' && (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
+                          ) : (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Terminé
                             </Badge>

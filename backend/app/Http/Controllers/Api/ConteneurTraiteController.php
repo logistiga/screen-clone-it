@@ -31,52 +31,11 @@ class ConteneurTraiteController extends Controller
         if ($request->filled('statut')) {
             if ($request->statut === 'non_traites') {
                 $query->nonTraites();
-            } elseif ($request->statut === 'en_attente') {
-                // Statut en_attente = exclure ceux déjà existants dans OT
-                $query->where('statut', 'en_attente')
-                      ->whereNotExists(function ($subquery) {
-                          $subquery->select(DB::raw(1))
-                              ->from('ordres_travail as ot')
-                              ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
-                              ->join('clients as c', 'c.id', '=', 'ot.client_id')
-                              ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
-                              ->where(function ($q) {
-                                  // BL identique OU les deux sont null
-                                  $q->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
-                                    ->orWhere(function ($q2) {
-                                        $q2->whereNull('ot.numero_bl')
-                                           ->whereNull('conteneurs_traites.numero_bl');
-                                    });
-                              })
-                              ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
-                      });
             } else {
                 $query->where('statut', $request->statut);
             }
-        } else {
-            // Par défaut, appliquer aussi le filtre d'exclusion pour les "en_attente"
-            $query->where(function ($q) {
-                $q->where('statut', '!=', 'en_attente')
-                  ->orWhere(function ($subQ) {
-                      $subQ->where('statut', 'en_attente')
-                           ->whereNotExists(function ($existsQ) {
-                               $existsQ->select(DB::raw(1))
-                                   ->from('ordres_travail as ot')
-                                   ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
-                                   ->join('clients as c', 'c.id', '=', 'ot.client_id')
-                                   ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
-                                   ->where(function ($blQ) {
-                                       $blQ->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
-                                           ->orWhere(function ($nullQ) {
-                                               $nullQ->whereNull('ot.numero_bl')
-                                                     ->whereNull('conteneurs_traites.numero_bl');
-                                           });
-                                   })
-                                   ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
-                           });
-                  });
-            });
         }
+        // Sans filtre statut = retourner tout
 
         // Recherche
         if ($request->filled('search')) {
