@@ -155,6 +155,7 @@ class SyncDiagnosticController extends Controller
     {
         $imported = 0;
         $skipped = 0;
+        $errors = [];
 
         // Lecture depuis sortie_conteneurs (base logiwkuh_tc)
         // Jointures pour résoudre les FK client_id, armateur_id, transitaire_id
@@ -174,13 +175,13 @@ class SyncDiagnosticController extends Controller
                 't.nom as nom_transitaire',
                 'sc.camion_id',
                 'sc.remorque_id',
-                'sc.prime_chauffeur',
-                'sc.destination',
                 'sc.type_transport',
                 'sc.type_detention',
                 'sc.jours_gratuits',
             ])
             ->get();
+
+        Log::info('[SyncDiagnostic] Conteneurs trouvés dans OPS', ['count' => $opsConteneurs->count()]);
 
         foreach ($opsConteneurs as $opsConteneur) {
             // Vérifier si déjà synchronisé
@@ -191,40 +192,52 @@ class SyncDiagnosticController extends Controller
                 continue;
             }
 
-            // Insérer dans conteneurs_traites
-            \App\Models\ConteneurTraite::create([
-                'sortie_id_externe' => $opsConteneur->sortie_id_externe,
-                'numero_conteneur' => $opsConteneur->numero_conteneur,
-                'numero_bl' => $opsConteneur->numero_bl,
-                'armateur_code' => $opsConteneur->code_armateur,
-                'armateur_nom' => $opsConteneur->armateur_nom,
-                'client_nom' => $opsConteneur->nom_client,
-                'client_adresse' => null,
-                'transitaire_nom' => $opsConteneur->nom_transitaire,
-                'date_sortie' => null,
-                'date_retour' => null,
-                'camion_id_externe' => $opsConteneur->camion_id,
-                'remorque_id_externe' => $opsConteneur->remorque_id,
-                'prime_chauffeur' => $opsConteneur->prime_chauffeur,
-                'destination_type' => $opsConteneur->type_detention,
-                'destination_adresse' => $opsConteneur->destination,
-                'statut_ops' => null,
-                'statut' => 'en_attente',
-                'source_system' => 'logistiga_ops',
-                'synced_at' => now(),
-            ]);
+            try {
+                // Insérer dans conteneurs_traites
+                \App\Models\ConteneurTraite::create([
+                    'sortie_id_externe' => $opsConteneur->sortie_id_externe,
+                    'numero_conteneur' => $opsConteneur->numero_conteneur,
+                    'numero_bl' => $opsConteneur->numero_bl,
+                    'armateur_code' => $opsConteneur->code_armateur,
+                    'armateur_nom' => $opsConteneur->armateur_nom,
+                    'client_nom' => $opsConteneur->nom_client,
+                    'client_adresse' => null,
+                    'transitaire_nom' => $opsConteneur->nom_transitaire,
+                    'date_sortie' => null,
+                    'date_retour' => null,
+                    'camion_id_externe' => $opsConteneur->camion_id,
+                    'remorque_id_externe' => $opsConteneur->remorque_id,
+                    'prime_chauffeur' => null,
+                    'destination_type' => $opsConteneur->type_detention,
+                    'destination_adresse' => null,
+                    'statut_ops' => null,
+                    'statut' => 'en_attente',
+                    'source_system' => 'logistiga_ops',
+                    'synced_at' => now(),
+                ]);
 
-            $imported++;
+                $imported++;
+            } catch (\Exception $e) {
+                $errors[] = "Conteneur {$opsConteneur->numero_conteneur}: {$e->getMessage()}";
+                Log::error('[SyncDiagnostic] Erreur insertion conteneur', [
+                    'conteneur' => $opsConteneur->numero_conteneur,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         Log::info('[SyncDiagnostic] Sync conteneurs terminée', [
+            'total_ops' => $opsConteneurs->count(),
             'imported' => $imported,
             'skipped' => $skipped,
+            'errors' => count($errors),
         ]);
 
         return [
+            'conteneurs_trouves_ops' => $opsConteneurs->count(),
             'conteneurs_importes' => $imported,
             'conteneurs_ignores' => $skipped,
+            'erreurs' => $errors,
         ];
     }
 
