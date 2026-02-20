@@ -82,7 +82,7 @@ export function GestionTaxes({ onRefresh }: GestionTaxesProps) {
   const deleteMutation = useDeleteTaxe();
   const toggleActiveMutation = useToggleTaxeActive();
 
-  const taxes = taxesData?.data || [];
+  const taxes = Array.isArray(taxesData) ? taxesData : Array.isArray((taxesData as any)?.data) ? (taxesData as any).data : [];
 
   const handleOpenCreate = () => {
     setEditingTaxe(null);
