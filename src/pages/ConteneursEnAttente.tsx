@@ -439,9 +439,7 @@ export default function ConteneursEnAttentePage() {
                       <TableHead>N° BL</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead>Armateur</TableHead>
-                      <TableHead>Date Sortie</TableHead>
-                      <TableHead>Véhicule</TableHead>
-                      <TableHead>Chauffeur</TableHead>
+                      <TableHead>Transitaire</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead className="w-48">Actions</TableHead>
                     </TableRow>
@@ -462,31 +460,10 @@ export default function ConteneursEnAttentePage() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                            {formatDate(conteneur.date_sortie)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {conteneur.camion_plaque ? (
-                            <div className="flex items-center gap-1.5">
-                              <Truck className="h-3.5 w-3.5 text-muted-foreground" />
-                              {conteneur.camion_plaque}
-                            </div>
-                          ) : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {conteneur.chauffeur_nom ? (
-                            <div className="flex items-center gap-1.5">
-                              <User className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="truncate max-w-[100px]">{conteneur.chauffeur_nom}</span>
-                            </div>
-                          ) : "-"}
-                        </TableCell>
+                        <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
                         <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
                         <TableCell>
-                          {conteneur.statut === 'en_attente' && (
+                          {(conteneur.statut === 'en_attente' || conteneur.statut === 'affecte') && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm" className="gap-1">
