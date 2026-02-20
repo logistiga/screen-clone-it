@@ -69,8 +69,9 @@ export default function NouveauDevisPage() {
       ? (representantsData as any).data
       : [];
   
-  const tvaTax = taxesData?.data?.find((t: any) => t.code === 'TVA' || t.nom?.toLowerCase().includes('tva'));
-  const cssTax = taxesData?.data?.find((t: any) => t.code === 'CSS' || t.nom?.toLowerCase().includes('css'));
+  const taxesList = Array.isArray(taxesData) ? taxesData : Array.isArray((taxesData as any)?.data) ? (taxesData as any).data : [];
+  const tvaTax = taxesList.find((t: any) => t.code === 'TVA' || t.nom?.toLowerCase().includes('tva'));
+  const cssTax = taxesList.find((t: any) => t.code === 'CSS' || t.nom?.toLowerCase().includes('css'));
   const TAUX_TVA = tvaTax?.taux ? parseFloat(tvaTax.taux) / 100 : 0.18;
   const TAUX_CSS = cssTax?.taux ? parseFloat(cssTax.taux) / 100 : 0.01;
   
