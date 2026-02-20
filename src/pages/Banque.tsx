@@ -46,6 +46,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { SortieBancaireModal } from "@/components/SortieBancaireModal";
+import { EntreeBancaireModal } from "@/components/EntreeBancaireModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +74,7 @@ export default function BanquePage() {
   
   // Modals & Tabs
   const [showSortieModal, setShowSortieModal] = useState(false);
+  const [showEntreeModal, setShowEntreeModal] = useState(false);
   const [deletingMouvement, setDeletingMouvement] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("mouvements");
 
@@ -309,10 +311,16 @@ export default function BanquePage() {
                 Comptes bancaires
               </TabsTrigger>
             </TabsList>
-            <Button onClick={() => setShowSortieModal(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nouvelle sortie bancaire
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowEntreeModal(true)} variant="outline" className="gap-2 text-success border-success hover:bg-success/10">
+                <ArrowDownCircle className="h-4 w-4" />
+                Nouvelle entrée bancaire
+              </Button>
+              <Button onClick={() => setShowSortieModal(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nouvelle sortie bancaire
+              </Button>
+            </div>
           </div>
 
           {/* Onglet Mouvements */}
@@ -666,6 +674,15 @@ export default function BanquePage() {
       <SortieBancaireModal
         open={showSortieModal}
         onOpenChange={setShowSortieModal}
+        onSuccess={() => {
+          refetchDecaissements();
+        }}
+      />
+
+      {/* Modal Entrée Bancaire */}
+      <EntreeBancaireModal
+        open={showEntreeModal}
+        onOpenChange={setShowEntreeModal}
         onSuccess={() => {
           refetchDecaissements();
         }}
