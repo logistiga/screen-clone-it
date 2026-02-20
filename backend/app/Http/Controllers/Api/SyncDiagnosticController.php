@@ -174,10 +174,18 @@ class SyncDiagnosticController extends Controller
                 't.nom as nom_transitaire',
                 'sc.camion_id',
                 'sc.remorque_id',
+                'sc.date_sortie',
+                'sc.date_retour',
+                'sc.date_retour_prevue',
+                'sc.prime_chauffeur',
+                'sc.destination',
                 'sc.type_transport',
                 'sc.type_detention',
                 'sc.jours_gratuits',
+                'sc.statut as statut_ops',
             ])
+            // Ne synchroniser que les conteneurs actifs (pas les archives)
+            ->whereIn('sc.statut', ['en_cours', 'livre', 'retourne'])
             ->get();
 
         foreach ($opsConteneurs as $opsConteneur) {
@@ -199,20 +207,21 @@ class SyncDiagnosticController extends Controller
                 'client_nom' => $opsConteneur->nom_client,
                 'client_adresse' => null,
                 'transitaire_nom' => $opsConteneur->nom_transitaire,
-                'date_sortie' => null,
-                'date_retour' => null,
+                'date_sortie' => $opsConteneur->date_sortie,
+                'date_retour' => $opsConteneur->date_retour,
                 'camion_id_externe' => $opsConteneur->camion_id,
                 'remorque_id_externe' => $opsConteneur->remorque_id,
-                'prime_chauffeur' => null,
+                'prime_chauffeur' => $opsConteneur->prime_chauffeur,
                 'destination_type' => $opsConteneur->type_detention,
-                'destination_adresse' => null,
-                'statut_ops' => null,
+                'destination_adresse' => $opsConteneur->destination,
+                'statut_ops' => $opsConteneur->statut_ops,
                 'statut' => 'en_attente',
                 'source_system' => 'logistiga_ops',
                 'synced_at' => now(),
             ]);
 
             $imported++;
+        }
 
         Log::info('[SyncDiagnostic] Sync conteneurs terminée', [
             'imported' => $imported,
