@@ -339,43 +339,13 @@ class SyncDiagnosticController extends Controller
                     ->table('armateurs')
                     ->select(['id', 'nom', 'code'])
                     ->get();
-                // Ajouter propriété vide
                 foreach ($opsArmateurs as $arm) {
                     $arm->type_conteneur = null;
                 }
             }
 
-            // Enrichir type_conteneur depuis sortie_conteneurs
-            try {
-                $typesFromSorties = DB::connection('ops')
-                    ->table('sortie_conteneurs as sc')
-                    ->join('armateurs as a', 'sc.armateur_id', '=', 'a.id')
-                    ->whereNotNull('sc.type_conteneur')
-                    ->where('sc.type_conteneur', '!=', '')
-                    ->selectRaw('a.code, sc.type_conteneur')
-                    ->groupBy('a.code', 'sc.type_conteneur')
-                    ->get()
-                    ->groupBy('code')
-                    ->map(fn($group) => $group->first()->type_conteneur);
-
-                Log::info('[SyncDiagnostic] Types conteneurs depuis sorties', [
-                    'types_trouves' => $typesFromSorties->toArray(),
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('[SyncDiagnostic] Impossible de lire types depuis sortie_conteneurs', [
-                    'error' => $e->getMessage(),
-                ]);
-                $typesFromSorties = collect();
-            }
-
-            foreach ($opsArmateurs as $opsArm) {
-                if (empty($opsArm->type_conteneur) && isset($typesFromSorties[$opsArm->code])) {
-                    $opsArm->type_conteneur = $typesFromSorties[$opsArm->code];
-                }
-            }
-
-            Log::info('[SyncDiagnostic] Armateurs OPS bruts après enrichissement', [
-                'armateurs' => $opsArmateurs->map(fn($a) => ['code' => $a->code, 'nom' => $a->nom, 'type' => $a->type_conteneur])->toArray(),
+            Log::info('[SyncDiagnostic] Armateurs OPS bruts', [
+                'armateurs' => $opsArmateurs->map(fn($a) => ['code' => $a->code, 'nom' => $a->nom, 'type' => $a->type_conteneur ?? null])->toArray(),
             ]);
 
             $imported = 0;
