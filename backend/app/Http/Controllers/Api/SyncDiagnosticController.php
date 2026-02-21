@@ -416,6 +416,11 @@ class SyncDiagnosticController extends Controller
                     'armateurs_mis_a_jour' => $updated,
                     'armateurs_supprimes' => $deleted,
                     'erreurs' => $errors,
+                    'debug_ops_brut' => $opsArmateurs->map(fn($a) => [
+                        'code' => $a->code,
+                        'nom' => $a->nom,
+                        'type_conteneur' => $a->type_conteneur ?? '(NULL)',
+                    ])->toArray(),
                 ],
                 'created' => $imported,
                 'nouveaux' => $imported,
