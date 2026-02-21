@@ -330,6 +330,24 @@ class SyncDiagnosticController extends Controller
                 ->select(['id', 'nom', 'code', 'type_conteneur'])
                 ->get();
 
+            // Enrichir type_conteneur depuis sortie_conteneurs si vide dans la table armateurs
+            $typesFromSorties = DB::connection('ops')
+                ->table('sortie_conteneurs as sc')
+                ->join('armateurs as a', 'sc.armateur_id', '=', 'a.id')
+                ->whereNotNull('sc.type_conteneur')
+                ->where('sc.type_conteneur', '!=', '')
+                ->selectRaw('a.code, sc.type_conteneur')
+                ->groupBy('a.code', 'sc.type_conteneur')
+                ->get()
+                ->groupBy('code')
+                ->map(fn($group) => $group->first()->type_conteneur);
+
+            foreach ($opsArmateurs as $opsArm) {
+                if (empty($opsArm->type_conteneur) && isset($typesFromSorties[$opsArm->code])) {
+                    $opsArm->type_conteneur = $typesFromSorties[$opsArm->code];
+                }
+            }
+
             $imported = 0;
             $updated = 0;
             $errors = [];
