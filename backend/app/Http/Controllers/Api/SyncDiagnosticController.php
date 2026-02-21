@@ -337,7 +337,7 @@ class SyncDiagnosticController extends Controller
             foreach ($opsArmateurs as $opsArm) {
                 try {
                     $existing = \App\Models\Armateur::withTrashed()
-                        ->where('nom', $opsArm->nom)
+                        ->where('code', $opsArm->code)
                         ->first();
 
                     if ($existing) {
@@ -345,14 +345,12 @@ class SyncDiagnosticController extends Controller
                         if ($existing->trashed()) {
                             $existing->restore();
                         }
-                        $updateData = [
+                        $existing->update([
+                            'nom' => $opsArm->nom,
                             'code' => $opsArm->code,
+                            'type_conteneur' => $opsArm->type_conteneur,
                             'actif' => true,
-                        ];
-                        if (!empty($opsArm->type_conteneur)) {
-                            $updateData['type_conteneur'] = $opsArm->type_conteneur;
-                        }
-                        $existing->update($updateData);
+                        ]);
                         $updated++;
                     } else {
                         \App\Models\Armateur::create([
@@ -364,20 +362,17 @@ class SyncDiagnosticController extends Controller
                         $imported++;
                     }
                 } catch (\Exception $e) {
-                    $errors[] = "Armateur {$opsArm->nom}: {$e->getMessage()}";
+                    $errors[] = "Armateur {$opsArm->code}: {$e->getMessage()}";
                 }
             }
 
-            // Supprimer les armateurs locaux qui n'existent plus dans OPS
-            $opsNoms = $opsArmateurs->pluck('nom')->map(fn($n) => trim($n))->toArray();
-            $opsCodes = $opsArmateurs->pluck('code')->filter()->toArray();
+            // Supprimer les armateurs locaux dont le code n'existe plus dans OPS
+            $opsCodes = $opsArmateurs->pluck('code')->filter()->map(fn($c) => trim($c))->toArray();
             $deleted = 0;
 
-            $localArmateurs = \App\Models\Armateur::whereNotNull('id')->get();
+            $localArmateurs = \App\Models\Armateur::whereNotNull('code')->get();
             foreach ($localArmateurs as $local) {
-                $matchByNom = in_array(trim($local->nom), $opsNoms);
-                $matchByCode = !empty($local->code) && in_array($local->code, $opsCodes);
-                if (!$matchByNom && !$matchByCode) {
+                if (!in_array(trim($local->code), $opsCodes)) {
                     $local->delete(); // soft-delete
                     $deleted++;
                 }
