@@ -226,10 +226,14 @@ class SyncDiagnosticController extends Controller
             }
         }
 
+        // Auto-ignorer les conteneurs qui existent déjà dans un OT avec même client + BL + numéro conteneur
+        $autoIgnored = $this->autoIgnorerConteneursExistants();
+
         Log::info('[SyncDiagnostic] Sync conteneurs terminée', [
             'total_ops' => $opsConteneurs->count(),
             'imported' => $imported,
             'skipped' => $skipped,
+            'auto_ignored' => $autoIgnored,
             'errors' => count($errors),
         ]);
 
@@ -237,13 +241,54 @@ class SyncDiagnosticController extends Controller
             'conteneurs_trouves_ops' => $opsConteneurs->count(),
             'conteneurs_importes' => $imported,
             'conteneurs_ignores' => $skipped,
+            'auto_ignored' => $autoIgnored,
             'erreurs' => $errors,
         ];
     }
 
     /**
-     * Déclenche la synchronisation des armateurs depuis OPS
+     * Auto-marquer comme affectés les conteneurs en_attente qui existent déjà dans un OT
+     * avec même numéro conteneur + même BL + même client
      */
+    private function autoIgnorerConteneursExistants(): int
+    {
+        $conteneursAIgnorer = \App\Models\ConteneurTraite::where('statut', 'en_attente')
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('ordres_travail as ot')
+                    ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
+                    ->join('clients as c', 'c.id', '=', 'ot.client_id')
+                    ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
+                    ->where(function ($blQ) {
+                        $blQ->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
+                            ->orWhere(function ($nullQ) {
+                                $nullQ->whereNull('ot.numero_bl')
+                                      ->whereNull('conteneurs_traites.numero_bl');
+                            });
+                    })
+                    ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
+            })
+            ->get();
+
+        $count = 0;
+        foreach ($conteneursAIgnorer as $conteneur) {
+            $conteneur->update([
+                'statut' => 'affecte',
+                'processed_at' => now(),
+            ]);
+            $count++;
+        }
+
+        if ($count > 0) {
+            Log::info('[SyncDiagnostic] Conteneurs auto-marqués comme affectés', ['count' => $count]);
+        }
+
+        return $count;
+    }
+
+    /**
+      * Déclenche la synchronisation des armateurs depuis OPS
+      */
     public function syncArmateurs()
     {
         try {
