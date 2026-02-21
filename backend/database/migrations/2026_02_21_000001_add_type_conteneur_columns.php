@@ -13,9 +13,9 @@ return new class extends Migration
             $table->string('type_conteneur', 50)->nullable()->after('numero_bl');
         });
 
-        // Ajouter types_conteneurs (JSON) à armateurs
+        // Ajouter type_conteneur (string) à armateurs
         Schema::table('armateurs', function (Blueprint $table) {
-            $table->json('types_conteneurs')->nullable()->after('code');
+            $table->string('type_conteneur', 50)->nullable()->after('code');
         });
     }
 
@@ -26,7 +26,7 @@ return new class extends Migration
         });
 
         Schema::table('armateurs', function (Blueprint $table) {
-            $table->dropColumn('types_conteneurs');
+            $table->dropColumn('type_conteneur');
         });
     }
 };

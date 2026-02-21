@@ -308,18 +308,16 @@ export function PartenaireDetailContent({
                   </>
                 ) : (
                   <>
-                    {type === 'armateur' && isArmateur(partenaire!) && (partenaire as Armateur).types_conteneurs && (partenaire as Armateur).types_conteneurs!.length > 0 && (
+                    {type === 'armateur' && isArmateur(partenaire!) && (partenaire as Armateur).type_conteneur && (
                       <Card className="p-4">
                         <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                           <Ship className="h-4 w-4" />
-                          Types de conteneurs
+                          Type de conteneur
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
-                          {(partenaire as Armateur).types_conteneurs!.map((tc) => (
-                            <Badge key={tc} variant="outline" className="text-xs">
-                              {tc}
-                            </Badge>
-                          ))}
+                          <Badge variant="outline" className="text-xs">
+                            {(partenaire as Armateur).type_conteneur}
+                          </Badge>
                         </div>
                       </Card>
                     )}

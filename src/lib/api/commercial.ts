@@ -163,7 +163,7 @@ export interface Armateur {
   id: string;
   nom: string;
   code?: string;
-  types_conteneurs?: string[];
+  type_conteneur?: string;
   email?: string;
   telephone?: string;
   adresse?: string;

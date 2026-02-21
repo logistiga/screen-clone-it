@@ -125,7 +125,7 @@ export interface Representant extends PartenaireBase {
 
 export interface Armateur extends PartenaireBase {
   code?: string;
-  types_conteneurs?: string[];
+  type_conteneur?: string;
   chiffre_affaires?: number;
   montant_ordres?: number;
   ordres_travail?: OrdreTravail[];

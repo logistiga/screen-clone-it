@@ -179,7 +179,7 @@ class SyncFromOps extends Command
                         'actif' => $opsArmateur->actif ?? true,
                     ];
                     if (!empty($opsArmateur->type_conteneur)) {
-                        $updateData['types_conteneurs'] = [$opsArmateur->type_conteneur];
+                        $updateData['type_conteneur'] = $opsArmateur->type_conteneur;
                     }
                     $existing->update($updateData);
                     $this->armateursUpdated++;
@@ -188,7 +188,7 @@ class SyncFromOps extends Command
                 Armateur::create([
                     'nom' => $opsArmateur->nom,
                     'code' => $opsArmateur->code,
-                    'types_conteneurs' => !empty($opsArmateur->type_conteneur) ? [$opsArmateur->type_conteneur] : [],
+                    'type_conteneur' => $opsArmateur->type_conteneur,
                     'actif' => $opsArmateur->actif ?? true,
                 ]);
                 $this->armateursImported++;
@@ -286,12 +286,8 @@ class SyncFromOps extends Command
             // Enrichir les types de conteneurs par armateur
             if (!empty($opsConteneur->type_conteneur) && !empty($opsConteneur->code_armateur)) {
                 $armateur = Armateur::where('code', $opsConteneur->code_armateur)->first();
-                if ($armateur) {
-                    $types = $armateur->types_conteneurs ?? [];
-                    if (!in_array($opsConteneur->type_conteneur, $types)) {
-                        $types[] = $opsConteneur->type_conteneur;
-                        $armateur->update(['types_conteneurs' => array_values(array_unique($types))]);
-                    }
+                if ($armateur && !empty($opsConteneur->type_conteneur)) {
+                    $armateur->update(['type_conteneur' => $opsConteneur->type_conteneur]);
                 }
             }
 

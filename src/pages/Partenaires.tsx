@@ -817,12 +817,10 @@ export default function PartenairesPage() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex flex-wrap gap-1">
-                                    {armateur.types_conteneurs && armateur.types_conteneurs.length > 0 ? (
-                                      armateur.types_conteneurs.map((tc) => (
-                                        <Badge key={tc} variant="outline" className="text-xs">
-                                          {tc}
-                                        </Badge>
-                                      ))
+                                    {armateur.type_conteneur ? (
+                                      <Badge variant="outline" className="text-xs">
+                                        {armateur.type_conteneur}
+                                      </Badge>
                                     ) : (
                                       <span className="text-xs text-muted-foreground">—</span>
                                     )}
