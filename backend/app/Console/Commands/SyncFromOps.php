@@ -157,7 +157,7 @@ class SyncFromOps extends Command
 
         $opsArmateurs = DB::connection('ops')
             ->table('armateurs')
-            ->select(['id', 'nom', 'code', 'actif', 'created_at', 'updated_at'])
+            ->select(['id', 'nom', 'code', 'type_conteneur', 'actif', 'created_at', 'updated_at'])
             ->get();
 
         $bar = $this->output->createProgressBar($opsArmateurs->count());
@@ -174,16 +174,21 @@ class SyncFromOps extends Command
 
             if ($existing) {
                 if ($opsArmateur->updated_at > $existing->updated_at) {
-                    $existing->update([
+                    $updateData = [
                         'nom' => $opsArmateur->nom,
                         'actif' => $opsArmateur->actif ?? true,
-                    ]);
+                    ];
+                    if (!empty($opsArmateur->type_conteneur)) {
+                        $updateData['types_conteneurs'] = [$opsArmateur->type_conteneur];
+                    }
+                    $existing->update($updateData);
                     $this->armateursUpdated++;
                 }
             } else {
                 Armateur::create([
                     'nom' => $opsArmateur->nom,
                     'code' => $opsArmateur->code,
+                    'types_conteneurs' => !empty($opsArmateur->type_conteneur) ? [$opsArmateur->type_conteneur] : [],
                     'actif' => $opsArmateur->actif ?? true,
                 ]);
                 $this->armateursImported++;
