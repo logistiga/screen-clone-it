@@ -155,10 +155,21 @@ class SyncFromOps extends Command
     {
         $this->info('📦 Synchronisation des armateurs...');
 
-        $opsArmateurs = DB::connection('ops')
-            ->table('armateurs')
-            ->select(['id', 'nom', 'code', 'type_conteneur', 'actif', 'created_at', 'updated_at'])
-            ->get();
+        try {
+            $opsArmateurs = DB::connection('ops')
+                ->table('armateurs')
+                ->select(['id', 'nom', 'code', 'type_conteneur', 'actif', 'created_at', 'updated_at'])
+                ->get();
+        } catch (\Exception $e) {
+            Log::warning('[SyncFromOps] Colonne type_conteneur absente, lecture sans', ['error' => $e->getMessage()]);
+            $opsArmateurs = DB::connection('ops')
+                ->table('armateurs')
+                ->select(['id', 'nom', 'code', 'actif', 'created_at', 'updated_at'])
+                ->get();
+            foreach ($opsArmateurs as $arm) {
+                $arm->type_conteneur = null;
+            }
+        }
 
         $bar = $this->output->createProgressBar($opsArmateurs->count());
         $bar->start();
