@@ -382,6 +382,11 @@ class SyncDiagnosticController extends Controller
                     'armateurs_importes' => $imported,
                     'armateurs_mis_a_jour' => $updated,
                     'erreurs' => $errors,
+                    'debug_ops_sample' => $opsArmateurs->take(3)->map(fn($a) => [
+                        'nom' => $a->nom,
+                        'code' => $a->code,
+                        'type_conteneur' => $a->type_conteneur ?? '(null)',
+                    ])->toArray(),
                 ]
             ]);
 
