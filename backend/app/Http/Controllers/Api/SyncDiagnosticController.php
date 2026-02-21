@@ -252,38 +252,45 @@ class SyncDiagnosticController extends Controller
      */
     private function autoIgnorerConteneursExistants(): int
     {
-        $conteneursAIgnorer = \App\Models\ConteneurTraite::where('statut', 'en_attente')
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('ordres_travail as ot')
-                    ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
-                    ->join('clients as c', 'c.id', '=', 'ot.client_id')
-                    ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
-                    ->where(function ($blQ) {
-                        $blQ->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
-                            ->orWhere(function ($nullQ) {
-                                $nullQ->whereNull('ot.numero_bl')
-                                      ->whereNull('conteneurs_traites.numero_bl');
-                            });
-                    })
-                    ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
-            })
-            ->get();
+        try {
+            $conteneursAIgnorer = \App\Models\ConteneurTraite::where('statut', 'en_attente')
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('ordres_travail as ot')
+                        ->join('conteneurs_ordres as co', 'co.ordre_id', '=', 'ot.id')
+                        ->join('clients as c', 'c.id', '=', 'ot.client_id')
+                        ->whereColumn('co.numero', 'conteneurs_traites.numero_conteneur')
+                        ->where(function ($blQ) {
+                            $blQ->whereColumn('ot.numero_bl', 'conteneurs_traites.numero_bl')
+                                ->orWhere(function ($nullQ) {
+                                    $nullQ->whereNull('ot.numero_bl')
+                                          ->whereNull('conteneurs_traites.numero_bl');
+                                });
+                        })
+                        ->whereRaw('UPPER(TRIM(c.nom)) = UPPER(TRIM(conteneurs_traites.client_nom))');
+                })
+                ->get();
 
-        $count = 0;
-        foreach ($conteneursAIgnorer as $conteneur) {
-            $conteneur->update([
-                'statut' => 'affecte',
-                'processed_at' => now(),
+            $count = 0;
+            foreach ($conteneursAIgnorer as $conteneur) {
+                $conteneur->update([
+                    'statut' => 'affecte',
+                    'processed_at' => now(),
+                ]);
+                $count++;
+            }
+
+            if ($count > 0) {
+                Log::info('[SyncDiagnostic] Conteneurs auto-marqués comme affectés', ['count' => $count]);
+            }
+
+            return $count;
+        } catch (\Exception $e) {
+            Log::warning('[SyncDiagnostic] Erreur auto-ignore conteneurs (non bloquant)', [
+                'error' => $e->getMessage(),
             ]);
-            $count++;
+            return 0;
         }
-
-        if ($count > 0) {
-            Log::info('[SyncDiagnostic] Conteneurs auto-marqués comme affectés', ['count' => $count]);
-        }
-
-        return $count;
     }
 
     /**
