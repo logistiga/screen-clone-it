@@ -16,6 +16,7 @@ class ConteneurTraite extends Model
         'sortie_id_externe',
         'numero_conteneur',
         'numero_bl',
+        'type_conteneur',
         'armateur_code',
         'armateur_nom',
         'client_nom',

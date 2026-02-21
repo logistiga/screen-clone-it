@@ -436,6 +436,7 @@ export default function ConteneursEnAttentePage() {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>Conteneur</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>N° BL</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead>Armateur</TableHead>
@@ -449,6 +450,13 @@ export default function ConteneursEnAttentePage() {
                       <TableRow key={conteneur.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell className="font-medium font-mono">
                           {conteneur.numero_conteneur}
+                        </TableCell>
+                        <TableCell>
+                          {conteneur.type_conteneur ? (
+                            <Badge variant="outline" className="text-xs font-normal">
+                              {conteneur.type_conteneur}
+                            </Badge>
+                          ) : "-"}
                         </TableCell>
                         <TableCell>{conteneur.numero_bl || "-"}</TableCell>
                         <TableCell className="max-w-[150px] truncate">{conteneur.client_nom || "-"}</TableCell>

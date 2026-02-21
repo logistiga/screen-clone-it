@@ -259,6 +259,7 @@ class SyncFromOps extends Command
                 'sortie_id_externe' => $opsConteneur->sortie_id_externe,
                 'numero_conteneur' => $opsConteneur->numero_conteneur,
                 'numero_bl' => $opsConteneur->numero_bl,
+                'type_conteneur' => $opsConteneur->type_conteneur,
                 'armateur_code' => $opsConteneur->code_armateur,
                 'armateur_nom' => $opsConteneur->armateur_nom,
                 'client_nom' => $opsConteneur->nom_client,
@@ -276,6 +277,18 @@ class SyncFromOps extends Command
                 'source_system' => 'logistiga_ops',
                 'synced_at' => now(),
             ]);
+
+            // Enrichir les types de conteneurs par armateur
+            if (!empty($opsConteneur->type_conteneur) && !empty($opsConteneur->code_armateur)) {
+                $armateur = Armateur::where('code', $opsConteneur->code_armateur)->first();
+                if ($armateur) {
+                    $types = $armateur->types_conteneurs ?? [];
+                    if (!in_array($opsConteneur->type_conteneur, $types)) {
+                        $types[] = $opsConteneur->type_conteneur;
+                        $armateur->update(['types_conteneurs' => array_values(array_unique($types))]);
+                    }
+                }
+            }
 
             $this->conteneursImported++;
             $bar->advance();
