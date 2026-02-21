@@ -44,18 +44,24 @@ function notifyUser(title: string, body: string, type: 'success' | 'info' = 'inf
 
 async function syncArmateurs(): Promise<SyncResult | null> {
   try {
+    console.log('[AutoSync] Début sync armateurs...');
     const response = await api.post('/sync-diagnostic/sync-armateurs');
+    console.log('[AutoSync] Sync armateurs OK:', response.data);
     return response.data;
-  } catch {
+  } catch (error: any) {
+    console.error('[AutoSync] Échec sync armateurs:', error?.response?.status, error?.response?.data || error?.message);
     return null;
   }
 }
 
 async function syncConteneurs(): Promise<SyncResult | null> {
   try {
+    console.log('[AutoSync] Début sync conteneurs...');
     const response = await api.post('/sync-diagnostic/sync-conteneurs');
+    console.log('[AutoSync] Sync conteneurs OK:', response.data);
     return response.data;
-  } catch {
+  } catch (error: any) {
+    console.error('[AutoSync] Échec sync conteneurs:', error?.response?.status, error?.response?.data || error?.message);
     return null;
   }
 }
