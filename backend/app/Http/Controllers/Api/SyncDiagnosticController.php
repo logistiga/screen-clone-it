@@ -331,7 +331,7 @@ class SyncDiagnosticController extends Controller
             // Lire les armateurs depuis logiwkuh_tc
             $opsArmateurs = DB::connection('ops')
                 ->table('armateurs')
-                ->select(['id', 'nom', 'code'])
+                ->select(['id', 'nom', 'code', 'type_conteneur'])
                 ->get();
 
             $imported = 0;
@@ -349,15 +349,20 @@ class SyncDiagnosticController extends Controller
                         if ($existing->trashed()) {
                             $existing->restore();
                         }
-                        $existing->update([
+                        $updateData = [
                             'code' => $opsArm->code,
                             'actif' => true,
-                        ]);
+                        ];
+                        if (!empty($opsArm->type_conteneur)) {
+                            $updateData['types_conteneurs'] = [$opsArm->type_conteneur];
+                        }
+                        $existing->update($updateData);
                         $updated++;
                     } else {
                         \App\Models\Armateur::create([
                             'nom' => $opsArm->nom,
                             'code' => $opsArm->code,
+                            'types_conteneurs' => !empty($opsArm->type_conteneur) ? [$opsArm->type_conteneur] : [],
                             'actif' => true,
                         ]);
                         $imported++;
