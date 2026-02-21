@@ -22,7 +22,7 @@ class ArmateurResource extends JsonResource
             'id' => $this->id,
             'nom' => $this->nom,
             'code' => $this->code,
-            'types_conteneurs' => $this->types_conteneurs ?? [],
+            'type_conteneur' => $this->type_conteneur,
             'email' => $this->email,
             'telephone' => $this->telephone,
             'adresse' => $this->adresse,
