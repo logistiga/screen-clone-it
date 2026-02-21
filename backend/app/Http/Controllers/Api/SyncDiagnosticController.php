@@ -368,26 +368,40 @@ class SyncDiagnosticController extends Controller
                 }
             }
 
+            // Supprimer les armateurs locaux qui n'existent plus dans OPS
+            $opsNoms = $opsArmateurs->pluck('nom')->map(fn($n) => trim($n))->toArray();
+            $opsCodes = $opsArmateurs->pluck('code')->filter()->toArray();
+            $deleted = 0;
+
+            $localArmateurs = \App\Models\Armateur::whereNotNull('id')->get();
+            foreach ($localArmateurs as $local) {
+                $matchByNom = in_array(trim($local->nom), $opsNoms);
+                $matchByCode = !empty($local->code) && in_array($local->code, $opsCodes);
+                if (!$matchByNom && !$matchByCode) {
+                    $local->delete(); // soft-delete
+                    $deleted++;
+                }
+            }
+
             Log::info('[SyncDiagnostic] Sync armateurs terminée', [
                 'total_ops' => $opsArmateurs->count(),
                 'imported' => $imported,
                 'updated' => $updated,
+                'deleted' => $deleted,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Synchronisation réussie: {$imported} ajoutés, {$updated} mis à jour",
+                'message' => "Synchronisation réussie: {$imported} ajoutés, {$updated} mis à jour, {$deleted} supprimés",
                 'data' => [
                     'armateurs_trouves_ops' => $opsArmateurs->count(),
                     'armateurs_importes' => $imported,
                     'armateurs_mis_a_jour' => $updated,
+                    'armateurs_supprimes' => $deleted,
                     'erreurs' => $errors,
-                    'debug_ops_sample' => $opsArmateurs->take(3)->map(fn($a) => [
-                        'nom' => $a->nom,
-                        'code' => $a->code,
-                        'type_conteneur' => $a->type_conteneur ?? '(null)',
-                    ])->toArray(),
-                ]
+                ],
+                'created' => $imported,
+                'nouveaux' => $imported,
             ]);
 
         } catch (\Exception $e) {

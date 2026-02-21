@@ -774,12 +774,13 @@ export default function PartenairesPage() {
                   {isLoadingArmateurs ? (
                     <Table>
                       <TableHeader>
-                         <TableRow className="bg-muted/50">
-                           <TableHead>Nom</TableHead>
-                           <TableHead>Types de conteneurs</TableHead>
-                           <TableHead>Statut</TableHead>
-                           <TableHead className="w-32">Actions</TableHead>
-                         </TableRow>
+                          <TableRow className="bg-muted/50">
+                             <TableHead>Code</TableHead>
+                             <TableHead>Nom</TableHead>
+                             <TableHead>Type de conteneur</TableHead>
+                             <TableHead>Statut</TableHead>
+                             <TableHead className="w-32">Actions</TableHead>
+                           </TableRow>
                       </TableHeader>
                       <TableBody>
                         <PartenaireTableSkeleton rows={5} />
@@ -790,8 +791,9 @@ export default function PartenairesPage() {
                       <Table>
                         <TableHeader>
                            <TableRow className="bg-muted/50">
+                             <TableHead>Code</TableHead>
                              <TableHead>Nom</TableHead>
-                             <TableHead>Types de conteneurs</TableHead>
+                             <TableHead>Type de conteneur</TableHead>
                              <TableHead>Statut</TableHead>
                              <TableHead className="w-32">Actions</TableHead>
                            </TableRow>
@@ -799,7 +801,7 @@ export default function PartenairesPage() {
                         <TableBody>
                           {paginatedArmateurs.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                              <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                                 <Ship className="h-12 w-12 mx-auto mb-3 opacity-20" />
                                 <p>Aucun armateur trouvé</p>
                               </TableCell>
@@ -807,6 +809,11 @@ export default function PartenairesPage() {
                           ) : (
                             paginatedArmateurs.map((armateur) => (
                               <TableRow key={armateur.id} className="group hover:bg-muted/50">
+                                <TableCell>
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    {armateur.code || '—'}
+                                  </span>
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-3">
                                     <PartenaireAvatar nom={armateur.nom} />
