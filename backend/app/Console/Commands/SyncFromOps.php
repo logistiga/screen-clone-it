@@ -174,11 +174,15 @@ class SyncFromOps extends Command
 
             if ($existing) {
                 if ($opsArmateur->updated_at > $existing->updated_at) {
-                    $existing->update([
+                    $updateData = [
                         'nom' => $opsArmateur->nom,
-                        'type_conteneur' => $opsArmateur->type_conteneur,
                         'actif' => $opsArmateur->actif ?? true,
-                    ]);
+                    ];
+                    // Ne pas écraser type_conteneur avec NULL
+                    if (!empty($opsArmateur->type_conteneur)) {
+                        $updateData['type_conteneur'] = $opsArmateur->type_conteneur;
+                    }
+                    $existing->update($updateData);
                     $this->armateursUpdated++;
                 }
             } else {
