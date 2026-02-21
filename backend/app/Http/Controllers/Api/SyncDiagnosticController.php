@@ -393,12 +393,16 @@ class SyncDiagnosticController extends Controller
                         if ($existing->trashed()) {
                             $existing->restore();
                         }
-                        $existing->update([
+                        $updateData = [
                             'nom' => $opsArm->nom,
                             'code' => $opsArm->code,
-                            'type_conteneur' => $opsArm->type_conteneur,
                             'actif' => true,
-                        ]);
+                        ];
+                        // Ne pas écraser type_conteneur avec NULL
+                        if (!empty($opsArm->type_conteneur)) {
+                            $updateData['type_conteneur'] = $opsArm->type_conteneur;
+                        }
+                        $existing->update($updateData);
                         $updated++;
                     } else {
                         \App\Models\Armateur::create([
