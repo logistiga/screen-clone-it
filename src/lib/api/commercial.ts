@@ -534,6 +534,14 @@ export const armateursApi = {
   },
 
   /**
+   * Mettre à jour le type de conteneur (champ libre, éditable localement)
+   */
+  updateTypeConteneur: async (id: number | string, type_conteneur: string) => {
+    const response = await api.put<{ data: Armateur }>(`/armateurs/${id}`, { type_conteneur });
+    return response.data.data;
+  },
+
+  /**
    * Synchroniser les armateurs depuis la base OPS/TC
    */
   syncFromOps: async () => {

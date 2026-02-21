@@ -38,7 +38,8 @@ import {
   useArmateurs,
   useDeleteTransitaire,
   useDeleteRepresentant,
-  useSyncArmateurs
+  useSyncArmateurs,
+  useUpdateArmateurTypeConteneur
 } from "@/hooks/use-commercial";
 import {
   PartenaireAvatar,
@@ -73,6 +74,8 @@ export default function PartenairesPage() {
   const { data: transitairesData, isLoading: isLoadingTransitaires, error: errorTransitaires, refetch: refetchTransitaires } = useTransitaires();
   const { data: representantsData, isLoading: isLoadingRepresentants, error: errorRepresentants, refetch: refetchRepresentants } = useRepresentants();
   const { data: armateursData, isLoading: isLoadingArmateurs, error: errorArmateurs, refetch: refetchArmateurs } = useArmateurs();
+  const updateTypeConteneur = useUpdateArmateurTypeConteneur();
+  const [editingTypeConteneur, setEditingTypeConteneur] = useState<{ id: number | string; value: string } | null>(null);
 
   // Garantir que ce sont des tableaux
   const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
@@ -823,15 +826,40 @@ export default function PartenairesPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex flex-wrap gap-1">
-                                    {armateur.type_conteneur ? (
-                                      <Badge variant="outline" className="text-xs">
-                                        {armateur.type_conteneur}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground">—</span>
-                                    )}
-                                  </div>
+                                  {editingTypeConteneur?.id === armateur.id ? (
+                                    <Input
+                                      autoFocus
+                                      className="h-7 text-xs w-40"
+                                      defaultValue={editingTypeConteneur.value}
+                                      onBlur={(e) => {
+                                        const val = e.target.value.trim();
+                                        if (val !== (armateur.type_conteneur || '')) {
+                                          updateTypeConteneur.mutate({ id: armateur.id, type_conteneur: val });
+                                        }
+                                        setEditingTypeConteneur(null);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                        if (e.key === 'Escape') setEditingTypeConteneur(null);
+                                      }}
+                                      placeholder="Ex: 20', 40', 40'HC..."
+                                    />
+                                  ) : (
+                                    <div
+                                      className="flex items-center gap-1 cursor-pointer group/type min-h-[28px] rounded px-1 -mx-1 hover:bg-muted"
+                                      onClick={() => setEditingTypeConteneur({ id: armateur.id, value: armateur.type_conteneur || '' })}
+                                      title="Cliquer pour modifier"
+                                    >
+                                      {armateur.type_conteneur ? (
+                                        <Badge variant="outline" className="text-xs">
+                                          {armateur.type_conteneur}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground italic">Cliquer pour définir</span>
+                                      )}
+                                      <Edit className="h-3 w-3 text-muted-foreground opacity-0 group-hover/type:opacity-100 transition-opacity" />
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                    <Badge 

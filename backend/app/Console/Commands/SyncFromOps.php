@@ -189,10 +189,7 @@ class SyncFromOps extends Command
                         'nom' => $opsArmateur->nom,
                         'actif' => $opsArmateur->actif ?? true,
                     ];
-                    // Ne pas écraser type_conteneur avec NULL
-                    if (!empty($opsArmateur->type_conteneur)) {
-                        $updateData['type_conteneur'] = $opsArmateur->type_conteneur;
-                    }
+                    // type_conteneur est géré localement, ne jamais écraser depuis OPS
                     $existing->update($updateData);
                     $this->armateursUpdated++;
                 }

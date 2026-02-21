@@ -98,9 +98,21 @@ class ArmateurController extends Controller
 
     public function update(UpdateArmateurRequest $request, Armateur $armateur): JsonResponse
     {
+        // Seul type_conteneur est modifiable localement (champ libre)
+        $allowed = $request->only(['type_conteneur']);
+
+        if (empty($allowed)) {
+            return response()->json([
+                'message' => 'Seul le champ type_conteneur est modifiable localement. Les autres champs sont synchronisés depuis OPS.'
+            ], 403);
+        }
+
+        $armateur->update($allowed);
+
         return response()->json([
-            'message' => 'Les armateurs sont synchronisés depuis l\'application OPS. La modification manuelle est désactivée.'
-        ], 403);
+            'data' => new ArmateurResource($armateur->fresh()),
+            'message' => 'Type de conteneur mis à jour.',
+        ]);
     }
 
     public function destroy(Armateur $armateur): JsonResponse
