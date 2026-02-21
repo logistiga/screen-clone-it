@@ -13,6 +13,7 @@ class Armateur extends Model
     protected $fillable = [
         'nom',
         'code',
+        'types_conteneurs',
         'email',
         'telephone',
         'adresse',
@@ -21,6 +22,7 @@ class Armateur extends Model
 
     protected $casts = [
         'actif' => 'boolean',
+        'types_conteneurs' => 'array',
     ];
 
     // Relations

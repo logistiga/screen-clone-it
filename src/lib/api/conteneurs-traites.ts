@@ -5,6 +5,7 @@ export interface ConteneurTraite {
   sortie_id_externe: string | null;
   numero_conteneur: string;
   numero_bl: string | null;
+  type_conteneur: string | null;
   armateur_code: string | null;
   armateur_nom: string | null;
   client_nom: string | null;
