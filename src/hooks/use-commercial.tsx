@@ -564,6 +564,21 @@ export function useSyncArmateurs() {
   });
 }
 
+export function useUpdateArmateurTypeConteneur() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, type_conteneur }: { id: number | string; type_conteneur: string }) =>
+      armateursApi.updateTypeConteneur(id, type_conteneur),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['armateurs'] });
+      toast.success('Type de conteneur mis à jour');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour');
+    },
+  });
+}
+
 export function useArmateurById(id: string | undefined) {
   return useQuery({
     queryKey: ['armateurs', id],

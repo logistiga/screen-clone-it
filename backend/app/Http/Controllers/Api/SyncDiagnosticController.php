@@ -368,10 +368,7 @@ class SyncDiagnosticController extends Controller
                             'code' => $opsArm->code,
                             'actif' => true,
                         ];
-                        // Ne pas écraser type_conteneur avec NULL
-                        if (!empty($opsArm->type_conteneur)) {
-                            $updateData['type_conteneur'] = $opsArm->type_conteneur;
-                        }
+                        // type_conteneur est géré localement, ne jamais écraser depuis OPS
                         $existing->update($updateData);
                         $updated++;
                     } else {
