@@ -774,11 +774,12 @@ export default function PartenairesPage() {
                   {isLoadingArmateurs ? (
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>Nom</TableHead>
-                          <TableHead>Statut</TableHead>
-                          <TableHead className="w-32">Actions</TableHead>
-                        </TableRow>
+                         <TableRow className="bg-muted/50">
+                           <TableHead>Nom</TableHead>
+                           <TableHead>Types de conteneurs</TableHead>
+                           <TableHead>Statut</TableHead>
+                           <TableHead className="w-32">Actions</TableHead>
+                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         <PartenaireTableSkeleton rows={5} />
@@ -788,16 +789,17 @@ export default function PartenairesPage() {
                     <>
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Nom</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead className="w-32">Actions</TableHead>
-                          </TableRow>
+                           <TableRow className="bg-muted/50">
+                             <TableHead>Nom</TableHead>
+                             <TableHead>Types de conteneurs</TableHead>
+                             <TableHead>Statut</TableHead>
+                             <TableHead className="w-32">Actions</TableHead>
+                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {paginatedArmateurs.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={3} className="text-center py-12 text-muted-foreground">
+                              <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
                                 <Ship className="h-12 w-12 mx-auto mb-3 opacity-20" />
                                 <p>Aucun armateur trouvé</p>
                               </TableCell>
@@ -814,15 +816,28 @@ export default function PartenairesPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge 
-                                    variant={armateur.actif !== false ? "default" : "secondary"}
-                                    className={cn(
-                                      armateur.actif !== false && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                  <div className="flex flex-wrap gap-1">
+                                    {armateur.types_conteneurs && armateur.types_conteneurs.length > 0 ? (
+                                      armateur.types_conteneurs.map((tc) => (
+                                        <Badge key={tc} variant="outline" className="text-xs">
+                                          {tc}
+                                        </Badge>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">—</span>
                                     )}
-                                  >
-                                    {armateur.actif !== false ? "Actif" : "Inactif"}
-                                  </Badge>
+                                  </div>
                                 </TableCell>
+                                <TableCell>
+                                   <Badge 
+                                     variant={armateur.actif !== false ? "default" : "secondary"}
+                                     className={cn(
+                                       armateur.actif !== false && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                     )}
+                                   >
+                                     {armateur.actif !== false ? "Actif" : "Inactif"}
+                                   </Badge>
+                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
                                     <Button 
