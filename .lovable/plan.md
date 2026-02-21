@@ -1,70 +1,56 @@
 
 
-## Lier le type de conteneur aux armateurs et l'afficher dans les conteneurs en attente
+## Corriger la synchronisation pour recuperer le type de conteneur des armateurs
 
-### Contexte
+### Probleme
 
-Le champ `type_conteneur` est deja recupere depuis la base OPS lors de la synchronisation, mais il n'est ni stocke ni affiche. L'utilisateur souhaite que ce champ soit visible dans la liste des conteneurs en attente, et qu'il soit lie a l'entite Armateur dans la page partenaires.
+La table `armateurs` dans la base OPS contient une colonne `type_conteneur` (ex: "20 pieds", "40 pieds"), mais les deux endroits qui synchronisent les armateurs ne lisent pas ce champ :
+- `SyncDiagnosticController.php` : select `id, nom, code` seulement
+- `SyncFromOps.php` : select `id, nom, code, actif, created_at, updated_at` seulement
 
-### Approche
+Le champ `type_conteneur` de la source OPS n'est jamais recupere ni stocke dans le champ local `types_conteneurs` (JSON).
 
-Deux axes de travail :
-1. **Stocker et afficher le type de conteneur** dans les conteneurs en attente (donnee venant d'OPS)
-2. **Associer les types de conteneurs aux armateurs** dans la page partenaires pour reference
+### Corrections
 
----
+**Fichier 1 : `backend/app/Http/Controllers/Api/SyncDiagnosticController.php`**
+- Ajouter `type_conteneur` dans le `select` de la requete armateurs (ligne 334)
+- Lors du `create` et `update`, convertir la valeur `type_conteneur` en tableau JSON et la stocker dans `types_conteneurs`
 
-### Etape 1 : Stocker le type de conteneur depuis OPS
+**Fichier 2 : `backend/app/Console/Commands/SyncFromOps.php`**
+- Ajouter `type_conteneur` dans le `select` de la requete armateurs (ligne 160)
+- Lors du `create` et `update`, stocker `type_conteneur` dans `types_conteneurs` sous forme de tableau
 
-**Fichiers concernes :**
-- `backend/database/migrations/` -- nouvelle migration pour ajouter la colonne `type_conteneur` a la table `conteneurs_traites`
-- `backend/app/Models/ConteneurTraite.php` -- ajouter `type_conteneur` aux fillable
-- `backend/app/Http/Controllers/Api/SyncDiagnosticController.php` -- stocker `sc.type_conteneur` lors de l'import
-- `backend/app/Console/Commands/SyncFromOps.php` -- idem pour la commande Artisan
+### Logique de mapping
 
-### Etape 2 : Afficher le type de conteneur dans la liste
-
-**Fichiers concernes :**
-- `src/lib/api/conteneurs-traites.ts` -- ajouter `type_conteneur` a l'interface `ConteneurTraite`
-- `src/pages/ConteneursEnAttente.tsx` -- ajouter la colonne "Type" dans le tableau, entre "Conteneur" et "N BL"
-
-### Etape 3 : Gerer les types de conteneurs par armateur
-
-**Fichiers concernes :**
-- `backend/database/migrations/` -- nouvelle migration pour creer une table `armateur_types_conteneurs` (ou ajouter un champ JSON `types_conteneurs` sur la table `armateurs`)
-- `backend/app/Models/Armateur.php` -- ajouter la relation ou le cast JSON
-- `backend/app/Http/Controllers/Api/ArmateurController.php` -- exposer les types dans l'API
-- `src/types/partenaires.ts` -- ajouter `types_conteneurs` a l'interface `Armateur`
-- `src/pages/ArmateurDetail.tsx` / page partenaires -- afficher les types de conteneurs associes a chaque armateur
-
-### Etape 4 : Enrichir la sync pour alimenter les types par armateur
-
-Lors de la synchronisation des conteneurs, si un nouveau couple (armateur, type_conteneur) est detecte, l'ajouter automatiquement a la liste des types de cet armateur. Cela permet de construire progressivement le referentiel des types par armateur.
-
----
+La base OPS stocke un seul `type_conteneur` (string), tandis que le local utilise `types_conteneurs` (JSON array). Le mapping sera :
+- OPS : `type_conteneur = "20 pieds"` devient local : `types_conteneurs = ["20 pieds"]`
+- Si la valeur est null ou vide, on laisse le champ tel quel
 
 ### Details techniques
 
-**Migration conteneurs_traites :**
-```sql
-ALTER TABLE conteneurs_traites ADD COLUMN type_conteneur VARCHAR(50) NULL AFTER numero_bl;
-```
-
-**Migration armateurs (option champ JSON) :**
-```sql
-ALTER TABLE armateurs ADD COLUMN types_conteneurs JSON NULL AFTER code;
-```
-Stockera un tableau comme `["20' DRY", "40' DRY", "40' HC", "20' REEFER"]`.
-
-**Sync - mapping du champ :**
-Dans `executeSyncConteneurs()`, ajouter :
+SyncDiagnosticController (ligne ~332-364) :
 ```php
-'type_conteneur' => $opsConteneur->type_conteneur,
+// Avant
+->select(['id', 'nom', 'code'])
+
+// Apres
+->select(['id', 'nom', 'code', 'type_conteneur'])
+
+// Dans create/update, ajouter :
+'types_conteneurs' => !empty($opsArm->type_conteneur) ? [$opsArm->type_conteneur] : [],
 ```
 
-**Frontend - colonne tableau :**
-Ajout d'une colonne "Type" dans le `TableHeader` de la page ConteneursEnAttente, affichant le type du conteneur (ex: "20' DRY").
+SyncFromOps (ligne ~158-190) :
+```php
+// Avant
+->select(['id', 'nom', 'code', 'actif', 'created_at', 'updated_at'])
 
-**Page Armateur Detail :**
-Afficher une section "Types de conteneurs" listant les types associes a cet armateur sous forme de badges.
+// Apres
+->select(['id', 'nom', 'code', 'type_conteneur', 'actif', 'created_at', 'updated_at'])
+
+// Dans create/update, ajouter :
+'types_conteneurs' => !empty($opsArmateur->type_conteneur) ? [$opsArmateur->type_conteneur] : [],
+```
+
+Aucune modification frontend necessaire -- les badges sont deja affiches dans la page Partenaires.
 
