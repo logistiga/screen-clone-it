@@ -287,6 +287,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userResponse.data);
         updateLastActivity();
 
+        // Synchroniser les armateurs depuis OPS en arrière-plan (fire & forget)
+        api.post('/sync-diagnostic/sync-armateurs').catch(() => {
+          // Silencieux - ne pas bloquer la connexion si la sync échoue
+        });
+
         // Si connexion suspecte, retourner les infos pour redirection
         if (securityInfo?.suspicious && suspiciousLoginId) {
           return { 
