@@ -1,56 +1,42 @@
 
 
-## Corriger la synchronisation pour recuperer le type de conteneur des armateurs
+# Ajouter un champ Description pour les OT Conventionnels
 
-### Probleme
+## Ce qui va changer
 
-La table `armateurs` dans la base OPS contient une colonne `type_conteneur` (ex: "20 pieds", "40 pieds"), mais les deux endroits qui synchronisent les armateurs ne lisent pas ce champ :
-- `SyncDiagnosticController.php` : select `id, nom, code` seulement
-- `SyncFromOps.php` : select `id, nom, code, actif, created_at, updated_at` seulement
+Un champ texte libre "Description" sera ajout dans le formulaire de creation et modification des ordres de travail de type Conventionnel. Ce champ permettra de decrire globalement la marchandise ou l'operation (ex: "Riz en vrac - 500 tonnes", "Bois debite pour export").
 
-Le champ `type_conteneur` de la source OPS n'est jamais recupere ni stocke dans le champ local `types_conteneurs` (JSON).
+## Modifications prevues
 
-### Corrections
+### 1. Formulaire OT Conventionnel
+- Ajout d'un champ `Textarea` "Description" dans la section "Informations du lot", entre le numero BL et les lieux de chargement/dechargement
+- Champ optionnel, texte libre
 
-**Fichier 1 : `backend/app/Http/Controllers/Api/SyncDiagnosticController.php`**
-- Ajouter `type_conteneur` dans le `select` de la requete armateurs (ligne 334)
-- Lors du `create` et `update`, convertir la valeur `type_conteneur` en tableau JSON et la stocker dans `types_conteneurs`
+### 2. Interface TypeScript
+- Ajout de `description: string` dans `OrdreConventionnelData`
 
-**Fichier 2 : `backend/app/Console/Commands/SyncFromOps.php`**
-- Ajouter `type_conteneur` dans le `select` de la requete armateurs (ligne 160)
-- Lors du `create` et `update`, stocker `type_conteneur` dans `types_conteneurs` sous forme de tableau
+### 3. Schema de validation
+- Ajout du champ `description` (optionnel, max 500 caracteres) dans `ordreConventionnelSchema`
 
-### Logique de mapping
+### 4. Envoi au backend
+- Le champ `description` sera envoye dans le payload comme `notes` (champ existant dans le modele `OrdreTravail`)
+- Fichier `NouvelOrdre.tsx` et `ModifierOrdre.tsx` : mapper `conventionnelData.description` vers le champ `notes` du payload API
 
-La base OPS stocke un seul `type_conteneur` (string), tandis que le local utilise `types_conteneurs` (JSON array). Le mapping sera :
-- OPS : `type_conteneur = "20 pieds"` devient local : `types_conteneurs = ["20 pieds"]`
-- Si la valeur est null ou vide, on laisse le champ tel quel
+### 5. Apercu (OrdrePreview)
+- Affichage de la description dans le panneau de previsualisation quand elle est renseignee
 
-### Details techniques
+### 6. Page de modification
+- Pre-remplissage du champ description depuis les donnees existantes (`notes` de l'OT)
 
-SyncDiagnosticController (ligne ~332-364) :
-```php
-// Avant
-->select(['id', 'nom', 'code'])
+---
 
-// Apres
-->select(['id', 'nom', 'code', 'type_conteneur'])
+## Details techniques
 
-// Dans create/update, ajouter :
-'types_conteneurs' => !empty($opsArm->type_conteneur) ? [$opsArm->type_conteneur] : [],
-```
+**Fichiers modifies :**
+- `src/components/ordres/forms/OrdreConventionnelForm.tsx` — ajout du champ Textarea
+- `src/lib/validations/ordre-schemas.ts` — ajout dans le schema Zod
+- `src/pages/NouvelOrdre.tsx` — mapping vers le payload API
+- `src/pages/ModifierOrdre.tsx` — pre-remplissage + mapping
+- `src/components/ordres/shared/OrdrePreview.tsx` — affichage dans l'apercu
 
-SyncFromOps (ligne ~158-190) :
-```php
-// Avant
-->select(['id', 'nom', 'code', 'actif', 'created_at', 'updated_at'])
-
-// Apres
-->select(['id', 'nom', 'code', 'type_conteneur', 'actif', 'created_at', 'updated_at'])
-
-// Dans create/update, ajouter :
-'types_conteneurs' => !empty($opsArmateur->type_conteneur) ? [$opsArmateur->type_conteneur] : [],
-```
-
-Aucune modification frontend necessaire -- les badges sont deja affiches dans la page Partenaires.
-
+Aucune modification backend necessaire : le champ `notes` existe deja dans le modele `OrdreTravail` et est accepte par les requetes Store/Update.
