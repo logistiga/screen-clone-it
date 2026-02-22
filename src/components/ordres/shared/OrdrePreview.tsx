@@ -30,6 +30,7 @@ interface OrdrePreviewProps {
   lots?: { description: string; quantite: number }[];
   prestations?: { description: string; quantite: number }[];
   notes?: string;
+  descriptionConventionnel?: string;
   currentStep?: number;
   // Nouvelles props pour affichage dynamique des taxes
   selectedTaxCodes?: string[];
@@ -50,6 +51,7 @@ export function OrdrePreview({
   lots = [],
   prestations = [],
   notes,
+  descriptionConventionnel,
   currentStep = 4,
   selectedTaxCodes = [],
   taxesDetails = [],
@@ -175,6 +177,23 @@ export function OrdrePreview({
                 <Hash className="h-4 w-4 text-muted-foreground" />
                 <span className="font-mono">{numeroBL}</span>
               </div>
+            </motion.div>
+          )}
+
+          {/* Description conventionnel */}
+          {descriptionConventionnel && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.17 }}
+              className="space-y-2"
+            >
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Description
+              </span>
+              <p className="text-sm text-muted-foreground italic line-clamp-3">
+                {descriptionConventionnel}
+              </p>
             </motion.div>
           )}
 

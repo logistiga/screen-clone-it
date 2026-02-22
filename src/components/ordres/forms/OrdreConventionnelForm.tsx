@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-error";
+import { Textarea } from "@/components/ui/textarea";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { DescriptionAutocomplete } from "@/components/ui/description-autocomplete";
 import {
@@ -22,6 +23,7 @@ interface OrdreConventionnelFormProps {
 
 export interface OrdreConventionnelData {
   numeroBL: string;
+  description: string;
   lieuChargement: string;
   lieuDechargement: string;
   lots: LigneLot[];
@@ -38,6 +40,7 @@ export default function OrdreConventionnelForm({
 }: OrdreConventionnelFormProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [numeroBL, setNumeroBL] = useState("");
+  const [description, setDescription] = useState("");
   const [lieuChargement, setLieuChargement] = useState("");
   const [lieuDechargement, setLieuDechargement] = useState("");
   const [lots, setLots] = useState<LigneLot[]>([getInitialLot()]);
@@ -50,6 +53,7 @@ export default function OrdreConventionnelForm({
   useEffect(() => {
     if (initialData && !isInitialized) {
       if (initialData.numeroBL) setNumeroBL(initialData.numeroBL);
+      if (initialData.description) setDescription(initialData.description);
       if (initialData.lieuChargement) setLieuChargement(initialData.lieuChargement);
       if (initialData.lieuDechargement) setLieuDechargement(initialData.lieuDechargement);
       if (initialData.lots && initialData.lots.length > 0) {
@@ -63,6 +67,7 @@ export default function OrdreConventionnelForm({
   const validateField = useCallback((fieldPath: string) => {
     const data = {
       numeroBL,
+      description,
       lieuChargement,
       lieuDechargement,
       lots,
@@ -88,7 +93,7 @@ export default function OrdreConventionnelForm({
         return next;
       });
     }
-  }, [numeroBL, lieuChargement, lieuDechargement, lots]);
+  }, [numeroBL, description, lieuChargement, lieuDechargement, lots]);
 
   const handleBlur = (fieldPath: string) => {
     setTouched(prev => ({ ...prev, [fieldPath]: true }));
@@ -103,6 +108,7 @@ export default function OrdreConventionnelForm({
     const montantHT = calculateTotalLots(newLots);
     onDataChange({
       numeroBL,
+      description,
       lieuChargement,
       lieuDechargement,
       lots: newLots,
@@ -113,7 +119,7 @@ export default function OrdreConventionnelForm({
   // Met à jour le parent quand les champs header changent
   useEffect(() => {
     updateParent(lots);
-  }, [numeroBL, lieuChargement, lieuDechargement]);
+  }, [numeroBL, description, lieuChargement, lieuDechargement]);
 
   const handleAddLot = () => {
     const newLots = [...lots, { ...getInitialLot(), id: String(Date.now()) }];
@@ -167,6 +173,17 @@ export default function OrdreConventionnelForm({
               className={cn("font-mono", getFieldError('numeroBL') && "border-destructive")}
             />
             <FormError message={getFieldError('numeroBL')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              placeholder="Ex: Riz en vrac - 500 tonnes, Bois débité pour export..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[60px] resize-none"
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground">{description.length}/500 caractères</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
             <div className="space-y-2">
