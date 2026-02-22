@@ -140,6 +140,7 @@ export const ligneLotSchema = z.object({
 
 export const ordreConventionnelSchema = z.object({
   numeroBL: numeroBLSchema,
+  description: descriptionSchema,
   lieuChargement: lieuSchema,
   lieuDechargement: lieuSchema,
   lots: z

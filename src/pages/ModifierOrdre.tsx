@@ -184,6 +184,7 @@ export default function ModifierOrdrePage() {
     if (!ordreData || !Array.isArray(ordreData.lots) || ordreData.lots.length === 0) return undefined;
     return {
       numeroBL: ordreData.numero_bl || "",
+      description: ordreData.notes || "",
       lieuChargement: (ordreData as any).lieu_chargement || "",
       lieuDechargement: (ordreData as any).lieu_dechargement || "",
       lots: ordreData.lots.map((l: any) => ({
@@ -547,7 +548,7 @@ export default function ModifierOrdrePage() {
 
     const data: any = {
       client_id: parseInt(clientId),
-      notes: notes || null,
+      notes: (categorie === "conventionnel" && conventionnelData?.description) ? conventionnelData.description : (notes || null),
       // Données d'exonération
       ...apiPayload,
     };
@@ -915,9 +916,10 @@ export default function ModifierOrdrePage() {
                 typeOperation={conteneursData?.typeOperation || ordreData?.type_operation}
                 typeOperationIndep={independantData?.typeOperationIndep || (ordreData as any)?.type_operation_indep}
                 conteneurs={conteneursData?.conteneurs || (Array.isArray(ordreData?.conteneurs) ? ordreData.conteneurs.map((c: any) => ({ numero: c.numero, taille: c.taille })) : undefined)}
-                lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || (Array.isArray(ordreData?.lots) ? ordreData.lots.map((l: any) => ({ description: l.designation, quantite: l.quantite })) : undefined)}
-                prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || (Array.isArray(ordreData?.lignes) ? ordreData.lignes.map((l: any) => ({ description: l.description, quantite: l.quantite })) : undefined)}
-                notes={notes}
+              lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || (Array.isArray(ordreData?.lots) ? ordreData.lots.map((l: any) => ({ description: l.designation, quantite: l.quantite })) : undefined)}
+              prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || (Array.isArray(ordreData?.lignes) ? ordreData.lignes.map((l: any) => ({ description: l.description, quantite: l.quantite })) : undefined)}
+              notes={notes}
+              descriptionConventionnel={conventionnelData?.description || (categorie === 'conventionnel' ? ordreData?.notes : undefined)}
                 currentStep={currentStep}
                 selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
               />

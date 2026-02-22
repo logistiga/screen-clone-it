@@ -601,7 +601,7 @@ export default function NouvelOrdrePage() {
       remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
       // Exonérations - basées sur la nouvelle structure
      ...toApiPayload(taxesSelectionData),
-      notes,
+      notes: (categorie === "conventionnel" && conventionnelData?.description) ? conventionnelData.description : notes,
       lignes: lignesData,
       conteneurs: conteneursDataApi,
       lots: lotsData,
@@ -919,6 +919,7 @@ export default function NouvelOrdrePage() {
               lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite }))}
               prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
               notes={notes}
+              descriptionConventionnel={conventionnelData?.description}
               currentStep={currentStep}
               selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
             />
