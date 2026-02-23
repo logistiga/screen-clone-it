@@ -220,6 +220,16 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
           ` : ''}
         </table>
 
+        <!-- Solde Caisse -->
+        <table style="margin-top: 20px; margin-left: auto; border: 2px solid #333; border-radius: 4px; border-collapse: collapse;">
+          <tr>
+            <td style="font-size: 13px; font-weight: bold; padding: 12px 30px 12px 20px; color: #333;">SOLDE CAISSE :</td>
+            <td style="font-size: 15px; font-weight: bold; padding: 12px 20px 12px 0; color: ${solde >= 0 ? '#16a34a' : '#dc2626'};">
+              ${solde >= 0 ? '+' : ''}${formatMontant(solde)}
+            </td>
+          </tr>
+        </table>
+
         <!-- Footer -->
         <table style="width: 100%; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
           <tr>
