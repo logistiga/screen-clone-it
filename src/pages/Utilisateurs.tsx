@@ -107,7 +107,7 @@ export default function UtilisateursPage() {
   const users = usersData?.data || [];
   const totalPages = usersData?.last_page || 1;
   const totalUsers = usersData?.total || 0;
-  const roles = rolesData || [];
+  const roles = Array.isArray(rolesData) ? rolesData : [];
 
   // Stats
   const stats = useMemo(() => {
