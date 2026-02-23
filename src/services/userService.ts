@@ -173,7 +173,9 @@ export const userService = {
   // Liste des rôles disponibles
   async getRoles(): Promise<UserRole[]> {
     const response = await api.get('/admin/roles');
-    return response.data;
+    const data = response.data;
+    // L'API retourne soit un tableau, soit un objet paginé { data: [...] }
+    return Array.isArray(data) ? data : (data?.data || []);
   },
 
   // Profil de l'utilisateur connecté
