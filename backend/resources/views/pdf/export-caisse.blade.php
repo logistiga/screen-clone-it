@@ -73,6 +73,18 @@
         </tbody>
     </table>
 
+    <div style="margin-top: 20px; border: 2px solid #333; border-radius: 4px; padding: 12px 20px; display: inline-block; float: right;">
+        <table style="border-collapse: collapse;">
+            <tr>
+                <td style="font-size: 13px; font-weight: bold; padding-right: 30px; color: #333;">SOLDE CAISSE :</td>
+                <td style="font-size: 15px; font-weight: bold; color: {{ ($totEntrees - $totSorties) >= 0 ? '#16a34a' : '#dc2626' }};">
+                    {{ number_format($totEntrees - $totSorties, 0, ',', ' ') }} FCFA
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div style="clear: both;"></div>
+
     <div class="footer">
         <p><strong>LOGISTIGA SAS</strong> au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</p>
         <p>Tel : (+241) 011 70 14 35 / 011 70 14 34 / 011 70 88 50 / 011 70 95 03 | B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</p>
