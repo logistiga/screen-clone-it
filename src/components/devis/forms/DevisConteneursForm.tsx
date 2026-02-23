@@ -252,8 +252,9 @@ export default function DevisConteneursForm({
                   setTimeout(handleHeaderChange, 0);
                 }}
                 placeholder="Sélectionner"
-                searchPlaceholder="Rechercher un armateur..."
+                searchPlaceholder="Rechercher par code armateur..."
                 emptyMessage="Aucun armateur trouvé."
+                displayByCode
               />
             </div>
           </div>

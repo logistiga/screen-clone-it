@@ -37,6 +37,8 @@ interface PartenaireComboboxProps {
   isLoading?: boolean;
   className?: string;
   triggerClassName?: string;
+  /** Display code as primary label instead of name (useful for armateurs) */
+  displayByCode?: boolean;
 }
 
 export function PartenaireCombobox({
@@ -50,6 +52,7 @@ export function PartenaireCombobox({
   isLoading = false,
   className,
   triggerClassName,
+  displayByCode = false,
 }: PartenaireComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -62,11 +65,14 @@ export function PartenaireCombobox({
   // Display name for selected option
   const displayName = React.useMemo(() => {
     if (!selectedOption) return null;
+    if (displayByCode && selectedOption.code) {
+      return `${selectedOption.code} — ${selectedOption.nom}`;
+    }
     if (selectedOption.prenom) {
       return `${selectedOption.prenom} ${selectedOption.nom}`;
     }
     return selectedOption.nom;
-  }, [selectedOption]);
+  }, [selectedOption, displayByCode]);
 
   // Filtrage local performant
   const filteredOptions = React.useMemo(() => {
@@ -83,6 +89,9 @@ export function PartenaireCombobox({
   }, [options, searchQuery]);
 
   const getOptionLabel = (option: PartenaireOption) => {
+    if (displayByCode && option.code) {
+      return option.code;
+    }
     if (option.prenom) {
       return `${option.prenom} ${option.nom}`;
     }
@@ -144,8 +153,12 @@ export function PartenaireCombobox({
                     )}
                   />
                   <div className="flex-1 truncate">
-                    <span className="font-medium">{getOptionLabel(option)}</span>
-                    {(option.email || option.code) && (
+                    <span className={cn("font-medium", displayByCode && "font-mono")}>{getOptionLabel(option)}</span>
+                    {displayByCode ? (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {option.nom}
+                      </span>
+                    ) : (option.email || option.code) && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         {option.code || option.email}
                       </span>
