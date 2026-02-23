@@ -123,7 +123,7 @@ class UserController extends Controller
         return response()->json(['message' => 'Utilisateur supprimé avec succès']);
     }
 
-    public function toggleActif(User $user): JsonResponse
+    public function toggleActive(User $user): JsonResponse
     {
         if ($user->email === 'admin@logistiga.com') {
             return response()->json([
