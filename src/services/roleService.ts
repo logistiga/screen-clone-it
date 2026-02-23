@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { normalizeArrayResponse, normalizePaginatedResponse } from '@/lib/api-normalize';
 
 // Types
 export interface Permission {
@@ -88,7 +89,7 @@ export const roleService = {
     if (filters?.sort_order) params.append('sort_order', filters.sort_order);
     
     const response = await api.get(`/admin/roles?${params.toString()}`);
-    return response.data;
+    return normalizePaginatedResponse<Role>(response.data);
   },
 
   // Statistiques

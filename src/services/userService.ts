@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { normalizeArrayResponse, normalizePaginatedResponse } from '@/lib/api-normalize';
 
 // Types
 export interface UserRole {
@@ -85,7 +86,7 @@ export const userService = {
     if (filters?.page) params.append('page', filters.page.toString());
     
     const response = await api.get(`/admin/users?${params.toString()}`);
-    return response.data;
+    return normalizePaginatedResponse<User>(response.data);
   },
 
   // Statistiques des utilisateurs
@@ -173,9 +174,7 @@ export const userService = {
   // Liste des rôles disponibles
   async getRoles(): Promise<UserRole[]> {
     const response = await api.get('/admin/roles');
-    const data = response.data;
-    // L'API retourne soit un tableau, soit un objet paginé { data: [...] }
-    return Array.isArray(data) ? data : (data?.data || []);
+    return normalizeArrayResponse<UserRole>(response.data);
   },
 
   // Profil de l'utilisateur connecté
