@@ -534,7 +534,7 @@ export default function UtilisateursPage() {
                                     <Switch
                                       checked={user.actif}
                                       onCheckedChange={() => handleToggleActif(user)}
-                                      disabled={toggleActif.isPending}
+                                      disabled={toggleActif.isPending || user.email === 'admin@logistiga.com'}
                                     />
                                     <Badge 
                                       className={user.actif 
