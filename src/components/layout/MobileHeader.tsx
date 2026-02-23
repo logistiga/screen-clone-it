@@ -12,16 +12,18 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ title }: MobileHeaderProps) {
   return (
-    <header className="flex h-14 items-center justify-between px-3 bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2">
-        <img src={logo} alt="Logistiga" className="h-8 w-auto" />
-        <h1 className="text-base font-semibold text-sidebar-foreground truncate max-w-[180px]">{title}</h1>
-      </div>
+    <header className="flex flex-col bg-sidebar text-sidebar-foreground safe-area-top">
+      <div className="flex h-14 items-center justify-between px-3">
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="Logistiga" className="h-8 w-auto" />
+          <h1 className="text-base font-semibold text-sidebar-foreground truncate max-w-[180px]">{title}</h1>
+        </div>
 
-      <div className="flex items-center gap-1">
-        <GlobalSearch />
-        <NotificationCenter />
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <GlobalSearch />
+          <NotificationCenter />
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
