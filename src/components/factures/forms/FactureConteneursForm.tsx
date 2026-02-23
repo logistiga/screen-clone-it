@@ -336,8 +336,9 @@ export default function FactureConteneursForm({
                   handleBlur("armateurId", v);
                 }}
                 placeholder="Sélectionner"
-                searchPlaceholder="Rechercher un armateur..."
+                searchPlaceholder="Rechercher par code armateur..."
                 emptyMessage="Aucun armateur trouvé."
+                displayByCode
                 triggerClassName={touched.armateurId && errors.armateurId ? "border-destructive" : ""}
               />
               <FormError message={touched.armateurId ? errors.armateurId : undefined} />

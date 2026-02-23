@@ -414,8 +414,9 @@ export default function OrdreConteneursForm({
                 value={armateurId}
                 onChange={setArmateurId}
                 placeholder="Sélectionner"
-                searchPlaceholder="Rechercher un armateur..."
+                searchPlaceholder="Rechercher par code armateur..."
                 emptyMessage="Aucun armateur trouvé."
+                displayByCode
               />
             </div>
           </div>
