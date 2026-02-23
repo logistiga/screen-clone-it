@@ -183,7 +183,11 @@ export default function UtilisateursPage() {
   };
 
   const handleToggleActif = async (user: User) => {
-    await toggleActif.mutateAsync(user.id);
+    try {
+      await toggleActif.mutateAsync(user.id);
+    } catch {
+      // Error already handled by onError in useToggleUserActif
+    }
   };
 
   const validateForm = (): boolean => {
