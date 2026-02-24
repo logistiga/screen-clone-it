@@ -1,42 +1,34 @@
 
+## Correction de l'arrondi des montants "Reste a payer"
 
-# Ajouter un champ Description pour les OT Conventionnels
+### Le probleme
 
-## Ce qui va changer
+Quand le systeme calcule `montant_ttc - montant_paye`, le resultat peut etre un nombre decimal (ex: 11.9 au lieu de 12). L'affichage arrondit visuellement a "12 FCFA" mais le champ de saisie du paiement recoit la valeur brute 11.9, ce qui cree une incoherence.
 
-Un champ texte libre "Description" sera ajout dans le formulaire de creation et modification des ordres de travail de type Conventionnel. Ce champ permettra de decrire globalement la marchandise ou l'operation (ex: "Riz en vrac - 500 tonnes", "Bois debite pour export").
+### La cause
 
-## Modifications prevues
+La fonction `roundMoney()` (arrondi mathematique standard pour les montants XAF) existe deja dans `src/lib/utils.ts` mais n'est pas appliquee lors du calcul du reste a payer.
 
-### 1. Formulaire OT Conventionnel
-- Ajout d'un champ `Textarea` "Description" dans la section "Informations du lot", entre le numero BL et les lieux de chargement/dechargement
-- Champ optionnel, texte libre
+### Corrections a apporter
 
-### 2. Interface TypeScript
-- Ajout de `description: string` dans `OrdreConventionnelData`
+**1. `src/pages/OrdreDetail.tsx` (ligne 86)**
+- Appliquer `roundMoney` au calcul : `const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));`
 
-### 3. Schema de validation
-- Ajout du champ `description` (optionnel, max 500 caracteres) dans `ordreConventionnelSchema`
+**2. `src/pages/FactureDetail.tsx`**
+- Meme correction sur le calcul du reste a payer des factures
 
-### 4. Envoi au backend
-- Le champ `description` sera envoye dans le payload comme `notes` (champ existant dans le modele `OrdreTravail`)
-- Fichier `NouvelOrdre.tsx` et `ModifierOrdre.tsx` : mapper `conventionnelData.description` vers le champ `notes` du payload API
+**3. `src/pages/NotesDebut.tsx`**
+- Meme correction pour les notes de debit
 
-### 5. Apercu (OrdrePreview)
-- Affichage de la description dans le panneau de previsualisation quand elle est renseignee
+**4. `src/pages/NoteDebutDetail.tsx`**
+- Meme correction pour le detail note de debit
 
-### 6. Page de modification
-- Pre-remplissage du champ description depuis les donnees existantes (`notes` de l'OT)
+**5. `src/components/PaiementGlobalOrdresModal.tsx` (ligne 94)**
+- Arrondir `montantRestant: roundMoney(o.montant_ttc - (o.montant_paye || 0))`
 
----
+**6. `src/components/PaiementModal.tsx` (ligne 136)**
+- Arrondir le resultat du calcul dynamique d'exoneration : `return roundMoney(Math.max(0, montantEffectif - montantDejaPaye));`
 
-## Details techniques
+### Resultat attendu
 
-**Fichiers modifies :**
-- `src/components/ordres/forms/OrdreConventionnelForm.tsx` — ajout du champ Textarea
-- `src/lib/validations/ordre-schemas.ts` — ajout dans le schema Zod
-- `src/pages/NouvelOrdre.tsx` — mapping vers le payload API
-- `src/pages/ModifierOrdre.tsx` — pre-remplissage + mapping
-- `src/components/ordres/shared/OrdrePreview.tsx` — affichage dans l'apercu
-
-Aucune modification backend necessaire : le champ `notes` existe deja dans le modele `OrdreTravail` et est accepte par les requetes Store/Update.
+Le champ "Montant du paiement" affichera toujours un entier coherent avec le "Reste a payer" affiche dans l'en-tete du modal (12 au lieu de 11.9).
