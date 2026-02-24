@@ -52,8 +52,11 @@ Route::prefix('admin/roles')->middleware(['audit', 'role:administrateur|directeu
 // ============================================
 Route::prefix('admin/audit')->middleware('role:administrateur|directeur')->group(function () {
     Route::get('/', [AuditController::class, 'index']);
+    Route::get('actions', [AuditController::class, 'actions']);
+    Route::get('tables', [AuditController::class, 'tables']);
     Route::get('stats', [AuditController::class, 'stats'])
         ->middleware('throttle:stats');
+    Route::get('export', [AuditController::class, 'export']);
     Route::get('{auditLog}', [AuditController::class, 'show']);
 });
 
