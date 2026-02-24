@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -293,7 +294,7 @@ export default function FacturesPage() {
               </TableHeader>
               <AnimatedTableBody>
                 {facturesList.map((facture, index) => {
-                  const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
+                  const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
                   return (
                     <AnimatedTableRow 
                       key={facture.id} 

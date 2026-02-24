@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { roundMoney } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import html2pdf from "html2pdf.js";
@@ -331,7 +332,7 @@ function generatePdfHtml({
                 <td>${formatDate(f.date_facture)}</td>
                 <td class="text-right">${formatMontant(f.montant_ttc || 0)}</td>
                 <td class="text-right text-green">${formatMontant(f.montant_paye || 0)}</td>
-                <td class="text-right text-red">${formatMontant((f.montant_ttc || 0) - (f.montant_paye || 0))}</td>
+                <td class="text-right text-red">${formatMontant(roundMoney((f.montant_ttc || 0) - (f.montant_paye || 0)))}</td>
                 <td class="text-center">
                   <span class="badge ${f.statut === 'payee' ? 'badge-green' : f.statut === 'partielle' ? 'badge-yellow' : 'badge-red'}">
                     ${f.statut === 'payee' ? 'Payée' : f.statut === 'partielle' ? 'Partielle' : 'Impayée'}

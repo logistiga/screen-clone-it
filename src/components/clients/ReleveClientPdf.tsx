@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { roundMoney } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Client } from "@/lib/api/commercial";
@@ -122,7 +123,7 @@ export const ReleveClientPdf = forwardRef<HTMLDivElement, ReleveClientPdfProps>(
                     <td className="p-2 border text-right">{formatMontant(facture.montant_ttc || 0)}</td>
                     <td className="p-2 border text-right text-green-600">{formatMontant(facture.montant_paye || 0)}</td>
                     <td className="p-2 border text-right text-red-600">
-                      {formatMontant((facture.montant_ttc || 0) - (facture.montant_paye || 0))}
+                      {formatMontant(roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0)))}
                     </td>
                     <td className="p-2 border text-center">
                       <span className={`px-2 py-1 rounded text-xs ${
