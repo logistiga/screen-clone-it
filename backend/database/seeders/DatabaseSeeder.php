@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             UsersSeeder::class,
             ConfigurationSeeder::class,
+            EmailTemplatesSeeder::class,
             DemoDataSeeder::class,
         ]);
     }
