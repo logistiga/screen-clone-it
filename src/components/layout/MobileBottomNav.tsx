@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { 
-  LayoutDashboard, Users, Receipt, Wallet, Menu,
+  LayoutDashboard, Users, Receipt, Wallet, Menu, Clock,
   FileText, ClipboardList, BarChart3, Settings, 
   TrendingUp, CreditCard, Building2, PiggyBank,
   Percent, UserCog, Shield, History, Mail, Hash,
@@ -43,6 +43,7 @@ const fullMenuSections = [
     label: "Comptabilité",
     items: [
       { title: "Caisse", url: "/caisse", icon: Wallet },
+      { title: "Caisse en attente", url: "/caisse-en-attente", icon: Clock },
       { title: "Banque", url: "/banque", icon: Building2 },
       { title: "Caisse Globale", url: "/caisse-globale", icon: PiggyBank },
       { title: "Primes à décaisser", url: "/primes-decaissement", icon: Wallet },
