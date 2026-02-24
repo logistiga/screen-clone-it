@@ -71,7 +71,7 @@ const getAuthHeaders = () => {
 export const auditService = {
   // Liste des audits paginés
   async getAll(params?: AuditFilters): Promise<PaginatedResponse<AuditEntry>> {
-    const response = await axios.get(`${API_URL}/audit`, {
+    const response = await axios.get(`${API_URL}/admin/audit`, {
       headers: getAuthHeaders(),
       params,
     });
@@ -80,7 +80,7 @@ export const auditService = {
 
   // Détails d'un audit
   async getById(id: number): Promise<AuditEntry> {
-    const response = await axios.get(`${API_URL}/audit/${id}`, {
+    const response = await axios.get(`${API_URL}/admin/audit/${id}`, {
       headers: getAuthHeaders(),
     });
     return response.data;
@@ -88,7 +88,7 @@ export const auditService = {
 
   // Liste des actions distinctes
   async getActions(): Promise<string[]> {
-    const response = await axios.get(`${API_URL}/audit/actions`, {
+    const response = await axios.get(`${API_URL}/admin/audit/actions`, {
       headers: getAuthHeaders(),
     });
     return response.data;
@@ -96,7 +96,7 @@ export const auditService = {
 
   // Liste des modules/tables distinctes
   async getTables(): Promise<string[]> {
-    const response = await axios.get(`${API_URL}/audit/tables`, {
+    const response = await axios.get(`${API_URL}/admin/audit/tables`, {
       headers: getAuthHeaders(),
     });
     return response.data;
@@ -104,7 +104,7 @@ export const auditService = {
 
   // Statistiques
   async getStats(dateDebut?: string, dateFin?: string): Promise<AuditStats> {
-    const response = await axios.get(`${API_URL}/audit/stats`, {
+    const response = await axios.get(`${API_URL}/admin/audit/stats`, {
       headers: getAuthHeaders(),
       params: { date_debut: dateDebut, date_fin: dateFin },
     });
@@ -113,7 +113,7 @@ export const auditService = {
 
   // Export des données
   async export(dateDebut?: string, dateFin?: string): Promise<{ data: AuditEntry[]; total: number }> {
-    const response = await axios.get(`${API_URL}/audit/export`, {
+    const response = await axios.get(`${API_URL}/admin/audit/export`, {
       headers: getAuthHeaders(),
       params: { date_debut: dateDebut, date_fin: dateFin },
     });
@@ -124,7 +124,7 @@ export const auditService = {
 // Service utilisateurs pour les filtres
 export const userService = {
   async getAll(): Promise<AuditUser[]> {
-    const response = await axios.get(`${API_URL}/users`, {
+    const response = await axios.get(`${API_URL}/admin/users`, {
       headers: getAuthHeaders(),
     });
     return response.data.data || response.data;
