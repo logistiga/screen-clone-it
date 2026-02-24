@@ -4,7 +4,7 @@ import {
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
   FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight,
-  Tag, BookOpen, ShieldAlert
+  Tag, BookOpen, ShieldAlert, Clock
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -62,6 +62,7 @@ const menuItems = {
     collapsible: true,
     items: [
       { title: "Caisse", url: "/caisse", icon: Wallet },
+      { title: "Caisse en attente", url: "/caisse-en-attente", icon: Clock },
       { title: "Banque", url: "/banque", icon: Building2 },
       { title: "Caisse Globale", url: "/caisse-globale", icon: PiggyBank },
       { title: "Primes à décaisser", url: "/primes-decaissement", icon: Wallet },
