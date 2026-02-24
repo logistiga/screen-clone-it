@@ -591,6 +591,7 @@ export default function NouvelOrdrePage() {
       bl_numero: numeroBL || null,
       navire: null,
       date_arrivee: null,
+      armateur_id: conteneursData?.armateurId || null,
       transitaire_id: transitaireId || null,
       representant_id: conteneursData?.representantId || null,
       prime_transitaire: conteneursData?.primeTransitaire || 0,
