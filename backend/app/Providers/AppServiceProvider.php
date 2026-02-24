@@ -110,6 +110,12 @@ class AppServiceProvider extends ServiceProvider
         Route::model('ordre', OrdreTravail::class);
         Route::model('ordreTravail', OrdreTravail::class);
 
+        // Enregistrement des Observers
+        \App\Models\Facture::observe(\App\Observers\FactureObserver::class);
+        \App\Models\Paiement::observe(\App\Observers\PaiementObserver::class);
+        OrdreTravail::observe(\App\Observers\OrdreObserver::class);
+        \App\Models\Devis::observe(\App\Observers\DevisObserver::class);
+
         // =============================================
         // RATE LIMITERS - Configuration centralisée
         // =============================================

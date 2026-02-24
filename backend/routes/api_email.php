@@ -33,12 +33,24 @@ Route::prefix('email-templates')->middleware('audit')->group(function () {
         ->middleware('permission:configuration.voir');
 });
 
-Route::prefix('email-automation')->middleware('audit')->group(function () {
+Route::prefix('email-automations')->middleware('audit')->group(function () {
+    Route::get('declencheurs', [EmailAutomationController::class, 'declencheurs'])
+        ->middleware('permission:configuration.voir');
+    Route::get('delai-unites', [EmailAutomationController::class, 'delaiUnites'])
+        ->middleware('permission:configuration.voir');
+    Route::get('for-declencheur/{declencheur}', [EmailAutomationController::class, 'forDeclencheur'])
+        ->middleware('permission:configuration.voir');
     Route::get('/', [EmailAutomationController::class, 'index'])
         ->middleware('permission:configuration.voir');
-    Route::put('/', [EmailAutomationController::class, 'update'])
+    Route::post('/', [EmailAutomationController::class, 'store'])
         ->middleware('permission:configuration.modifier');
-    Route::post('test/{type}', [EmailAutomationController::class, 'testSend'])
+    Route::get('{automation}', [EmailAutomationController::class, 'show'])
+        ->middleware('permission:configuration.voir');
+    Route::put('{automation}', [EmailAutomationController::class, 'update'])
+        ->middleware('permission:configuration.modifier');
+    Route::delete('{automation}', [EmailAutomationController::class, 'destroy'])
+        ->middleware('permission:configuration.modifier');
+    Route::post('{automation}/toggle', [EmailAutomationController::class, 'toggleActif'])
         ->middleware('permission:configuration.modifier');
 });
 
