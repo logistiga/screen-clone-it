@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { roundMoney } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -97,7 +98,7 @@ export default function FactureDetailPage() {
     );
   }
 
-  const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
+  const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
   const client = facture.client;
 
   return (

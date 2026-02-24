@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { roundMoney } from "@/lib/utils";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -236,7 +237,7 @@ export default function NoteDebutDetail() {
   const montantTotal = note.montant_total || note.montant_ttc || 0;
   const montantPaye = note.montant_paye || 0;
   const montantAvance = note.montant_avance || 0;
-  const remaining = montantTotal - montantPaye - montantAvance;
+  const remaining = roundMoney(montantTotal - montantPaye - montantAvance);
 
   const clientName = note.client?.nom || (note.client as any)?.raison_sociale || '-';
   const clientEmail = note.client?.email || '';

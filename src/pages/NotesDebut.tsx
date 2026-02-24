@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -222,7 +223,7 @@ export default function NotesDebut() {
   };
 
   const getNoteRemaining = (note: NoteDebut) => {
-    return getNoteAmount(note) - getNotePaid(note) - getNoteAdvance(note);
+    return roundMoney(getNoteAmount(note) - getNotePaid(note) - getNoteAdvance(note));
   };
 
   const getNoteStatus = (note: NoteDebut) => {

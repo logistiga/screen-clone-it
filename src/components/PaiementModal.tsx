@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { roundMoney } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -133,7 +134,7 @@ export function PaiementModal({
     const cssAmount = exonerationData.exonereCss ? 0 : montantHT * (tauxCss / 100);
     const montantEffectif = montantHT + tvaAmount + cssAmount;
     
-    return Math.max(0, montantEffectif - montantDejaPaye);
+    return roundMoney(Math.max(0, montantEffectif - montantDejaPaye));
   }, [montantHT, montantDejaPaye, exonerationData, tauxTva, tauxCss, montantRestant]);
 
   // Économie calculée
