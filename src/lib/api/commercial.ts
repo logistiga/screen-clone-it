@@ -517,7 +517,7 @@ export const facturesApi = {
 // Armateurs API
 export const armateursApi = {
   getAll: async () => {
-    const response = await api.get('/armateurs');
+    const response = await api.get('/armateurs', { params: { per_page: 9999 } });
     const payload: any = response.data;
     // Support multiples formats de réponse API
     if (Array.isArray(payload)) return payload as Armateur[];
