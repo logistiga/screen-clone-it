@@ -30,14 +30,29 @@ class EmailAutomation extends Model
      * Déclencheurs disponibles
      */
     public const DECLENCHEURS = [
+        // Création
         'creation_devis' => 'Création d\'un devis',
         'creation_ordre' => 'Création d\'un ordre de travail',
         'creation_facture' => 'Création d\'une facture',
+        // Modification
+        'modification_devis' => 'Modification d\'un devis',
+        'modification_ordre' => 'Modification d\'un ordre de travail',
+        'modification_facture' => 'Modification d\'une facture',
+        // Suppression
+        'suppression_devis' => 'Suppression d\'un devis',
+        'suppression_ordre' => 'Suppression d\'un ordre de travail',
+        'suppression_facture' => 'Suppression d\'une facture',
+        // Statuts
         'facture_impayee' => 'Facture impayée (après échéance)',
         'paiement_recu' => 'Paiement reçu',
         'ordre_termine' => 'Ordre de travail terminé',
         'devis_accepte' => 'Devis accepté',
         'devis_expire' => 'Devis expiré',
+        'devis_converti' => 'Devis converti en OT',
+        // Client
+        'nouveau_client' => 'Nouveau client créé',
+        // Crédit
+        'echeance_credit' => 'Échéance de crédit approche',
     ];
 
     /**
