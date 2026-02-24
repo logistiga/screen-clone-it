@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { roundMoney } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -61,7 +62,7 @@ export default function OrdrePDFPage() {
   };
 
   const isAnnule = ordre.statut === "annule";
-  const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
+  const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
 
   const getTypeOperationLabel = (type: string) => {
     const labels: Record<string, string> = {

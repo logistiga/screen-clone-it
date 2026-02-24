@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -452,7 +453,7 @@ L'équipe LOGISTIGA`;
               </TableHeader>
               <AnimatedTableBody>
                 {ordresList.map((ordre, index) => {
-                  const resteAPayer = (ordre.montant_ttc || 0) - (ordre.montant_paye || 0);
+                  const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
                   return (
                     <AnimatedTableRow 
                       key={ordre.id} 
@@ -698,7 +699,7 @@ L'équipe LOGISTIGA`;
             dateCreation: emailModal.date_creation,
             montantTTC: emailModal.montant_ttc,
             montantHT: emailModal.montant_ht,
-            resteAPayer: (emailModal.montant_ttc || 0) - (emailModal.montant_paye || 0),
+            resteAPayer: roundMoney((emailModal.montant_ttc || 0) - (emailModal.montant_paye || 0)),
             clientNom: emailModal.client?.raison_sociale || emailModal.client?.nom_complet,
             clientEmail: emailModal.client?.email,
             transitaireNom: emailModal.transitaire?.nom,

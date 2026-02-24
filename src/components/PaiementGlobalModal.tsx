@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { roundMoney } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -93,7 +94,7 @@ export function PaiementGlobalModal({
         numero: f.numero,
         numeroOrdre: f.ordre_travail?.numero || f.ordre?.numero,
         clientId: f.client_id?.toString(),
-        montantRestant: f.montant_ttc - (f.montant_paye || 0),
+        montantRestant: roundMoney(f.montant_ttc - (f.montant_paye || 0)),
       }));
   }, [clientId, factures]);
 

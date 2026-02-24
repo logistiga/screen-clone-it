@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { roundMoney } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -61,7 +62,7 @@ export default function FacturePDFPage() {
   };
 
   const isAnnulee = facture.statut === "annulee";
-  const resteAPayer = (facture.montant_ttc || 0) - (facture.montant_paye || 0);
+  const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
 
   // Déterminer le type de facture
   const isConteneur = facture.categorie === "conteneurs" || (facture.conteneurs && facture.conteneurs.length > 0);
