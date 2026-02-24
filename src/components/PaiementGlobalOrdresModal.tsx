@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { roundMoney } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -91,7 +92,7 @@ export function PaiementGlobalOrdresModal({
         id: o.id.toString(),
         numero: o.numero,
         clientId: o.client_id?.toString(),
-        montantRestant: o.montant_ttc - (o.montant_paye || 0),
+        montantRestant: roundMoney(o.montant_ttc - (o.montant_paye || 0)),
       }));
   }, [clientId, ordres]);
 
