@@ -28,7 +28,7 @@ class CaisseController extends Controller
     /**
      * Types et sources autorisés
      */
-    protected array $allowedTypes = ['Entrée', 'Sortie'];
+    protected array $allowedTypes = ['Entrée', 'Sortie', 'entree', 'sortie'];
     protected array $allowedSources = ['caisse', 'banque'];
 
     public function __construct(CaisseService $caisseService)
