@@ -49,6 +49,9 @@ class CaisseEnAttenteController extends Controller
                     'primes.date_sortie',
                     'primes.montant',
                     'primes.statut',
+                    'primes.type',
+                    'primes.beneficiaire',
+                    'primes.observations',
                     'primes.payee',
                     'primes.paiement_valide',
                     'primes.numero_paiement',
@@ -62,9 +65,8 @@ class CaisseEnAttenteController extends Controller
                     'chauffeurs.nom as chauffeur_nom',
                     'chauffeurs.prenom as chauffeur_prenom',
                 ])
-                // Filtre principal: primes payées ET validées
-                ->where('primes.payee', 1)
-                ->where('primes.paiement_valide', 1);
+                // Filtre principal: toutes les primes payées
+                ->where('primes.payee', 1);
 
             // Filtrer par statut de décaissement
             if ($statut === 'a_decaisser') {
@@ -157,7 +159,6 @@ class CaisseEnAttenteController extends Controller
             $primesValidees = DB::connection('ops')
                 ->table('primes')
                 ->where('payee', 1)
-                ->where('paiement_valide', 1)
                 ->get(['id', 'montant']);
 
             $primeIds = $primesValidees->pluck('id')->toArray();
@@ -230,8 +231,8 @@ class CaisseEnAttenteController extends Controller
                 return response()->json(['message' => 'Prime non trouvée'], 404);
             }
 
-            if (!$prime->payee || !$prime->paiement_valide) {
-                return response()->json(['message' => 'Cette prime n\'est pas validée pour le décaissement'], 422);
+            if (!$prime->payee) {
+                return response()->json(['message' => 'Cette prime n\'est pas marquée comme payée'], 422);
             }
 
             $refUnique = "OPS-PRIME-{$primeId}";

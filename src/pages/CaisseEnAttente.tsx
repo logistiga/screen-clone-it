@@ -50,6 +50,9 @@ interface PrimeEnAttente {
   date_sortie: string;
   montant: number;
   statut: string;
+  type: string | null;
+  beneficiaire: string | null;
+  observations: string | null;
   payee: boolean;
   paiement_valide: boolean;
   numero_paiement: string | null;
@@ -264,13 +267,13 @@ export default function CaisseEnAttentePage() {
                   <TableRow className="hover:bg-transparent bg-muted/50">
                     <TableHead>N° Paiement</TableHead>
                     <TableHead>Date paiement</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Bénéficiaire</TableHead>
                     <TableHead>N° Camion</TableHead>
-                    <TableHead>Chauffeur</TableHead>
                     <TableHead>Conteneur</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Référence</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Observations</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead className="text-right">Montant</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -316,15 +319,18 @@ export default function CaisseEnAttentePage() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <Badge variant="secondary" className="capitalize">
+                            {prime.type || '-'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {prime.beneficiaire || '-'}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <Truck className="h-4 w-4 text-primary" />
                             <span className="font-semibold">{prime.numero_camion || '-'}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {prime.chauffeur_nom
-                            ? `${prime.chauffeur_nom} ${prime.chauffeur_prenom || ''}`.trim()
-                            : '-'}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="gap-1">
@@ -332,11 +338,11 @@ export default function CaisseEnAttentePage() {
                             {prime.numero_conteneur || '-'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="max-w-[150px] truncate">
-                          {prime.nom_client || '-'}
+                        <TableCell className="font-semibold">
+                          {formatMontant(prime.montant)}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {prime.reference_paiement || '-'}
+                        <TableCell className="max-w-[150px] truncate text-sm text-muted-foreground">
+                          {prime.observations || '-'}
                         </TableCell>
                         <TableCell>
                           {prime.decaisse ? (
@@ -350,9 +356,6 @@ export default function CaisseEnAttentePage() {
                               À décaisser
                             </Badge>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatMontant(prime.montant)}
                         </TableCell>
                         <TableCell className="text-right">
                           {prime.decaisse ? (
