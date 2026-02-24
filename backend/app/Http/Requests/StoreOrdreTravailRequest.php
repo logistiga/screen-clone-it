@@ -15,6 +15,7 @@ class StoreOrdreTravailRequest extends FormRequest
     {
         return [
             'client_id' => 'required|exists:clients,id',
+            'armateur_id' => 'nullable|exists:armateurs,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'representant_id' => 'nullable|exists:representants,id',
             'devis_id' => 'nullable|exists:devis,id',
