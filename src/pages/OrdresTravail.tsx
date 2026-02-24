@@ -32,6 +32,7 @@ import {
 import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { PaiementModal } from "@/components/PaiementModal";
 import { PaiementGlobalOrdresModal } from "@/components/PaiementGlobalOrdresModal";
+import { AnnulationPaiementModal } from "@/components/AnnulationPaiementModal";
 import { ExportModal } from "@/components/ExportModal";
 import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture } from "@/hooks/use-commercial";
 import { useAnnulerOrdre } from "@/hooks/use-annulations";
@@ -112,6 +113,7 @@ export default function OrdresTravailPage() {
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [emailModal, setEmailModal] = useState<any>(null);
+  const [annulationPaiementModal, setAnnulationPaiementModal] = useState<{ id: string; numero: string } | null>(null);
 
   // Handlers consolidés
   const handleAction = async () => {
@@ -557,6 +559,17 @@ L'équipe LOGISTIGA`;
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
+                          {ordre.statut !== 'annule' && (ordre.montant_paye || 0) > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Annuler le paiement" 
+                              className="text-amber-600 transition-all duration-200 hover:scale-110 hover:bg-amber-500/10"
+                              onClick={() => setAnnulationPaiementModal({ id: ordre.id, numero: ordre.numero })}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
                             <Download className="h-4 w-4" />
                           </Button>
@@ -712,6 +725,17 @@ L'équipe LOGISTIGA`;
             statut: emailModal.statut,
             categorie: emailModal.categorie || emailModal.type_operation,
           }}
+        />
+      )}
+
+      {annulationPaiementModal && (
+        <AnnulationPaiementModal
+          open={!!annulationPaiementModal}
+          onOpenChange={() => setAnnulationPaiementModal(null)}
+          documentType="ordre"
+          documentId={annulationPaiementModal.id}
+          documentNumero={annulationPaiementModal.numero}
+          onSuccess={() => refetch()}
         />
       )}
     </MainLayout>
