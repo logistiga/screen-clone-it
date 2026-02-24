@@ -12,12 +12,17 @@ use Illuminate\Support\Facades\Validator;
 
 /**
  * Contrôleur pour la Caisse en attente
- * Affiche les primes OPS validées (payee=1 ET paiement_valide=1) en attente de décaissement comptable
+ * Affiche les primes OPS payées en attente de décaissement comptable
+ * 
+ * Structure table OPS `primes`:
+ * id, sortie_conteneur_id, type, beneficiaire, responsable, montant, 
+ * payee, date_paiement, date_prime, reference_paiement, numero_paiement,
+ * paiement_valide, statut, observations, created_at, updated_at, deleted_at
  */
 class CaisseEnAttenteController extends Controller
 {
     /**
-     * Liste des primes validées en attente de décaissement
+     * Liste des primes payées en attente de décaissement
      */
     public function index(Request $request): JsonResponse
     {
@@ -38,72 +43,56 @@ class CaisseEnAttenteController extends Controller
             $query = DB::connection('ops')
                 ->table('primes')
                 ->select([
-                    'primes.id',
-                    'primes.vehicule_id',
-                    'primes.chauffeur_id',
-                    'primes.sortie_conteneur_id',
-                    'primes.voyage_id',
-                    'primes.numero_conteneur',
-                    'primes.numero_bl',
-                    'primes.nom_client',
-                    'primes.date_sortie',
-                    'primes.montant',
-                    'primes.statut',
-                    'primes.type',
-                    'primes.beneficiaire',
-                    'primes.observations',
-                    'primes.payee',
-                    'primes.paiement_valide',
-                    'primes.numero_paiement',
-                    'primes.date_paiement',
-                    'primes.reference_paiement',
+                    'id',
+                    'sortie_conteneur_id',
+                    'type',
+                    'beneficiaire',
+                    'responsable',
+                    'montant',
+                    'payee',
+                    'paiement_valide',
+                    'date_paiement',
+                    'date_prime',
+                    'reference_paiement',
+                    'numero_paiement',
+                    'statut',
+                    'observations',
+                    'created_at',
                 ])
-                ->leftJoin('vehicules', 'primes.vehicule_id', '=', 'vehicules.id')
-                ->leftJoin('chauffeurs', 'primes.chauffeur_id', '=', 'chauffeurs.id')
-                ->addSelect([
-                    'vehicules.immatriculation as numero_camion',
-                    'chauffeurs.nom as chauffeur_nom',
-                    'chauffeurs.prenom as chauffeur_prenom',
-                ])
-                // Filtre principal: toutes les primes payées
-                ->where('primes.payee', 1);
-
-            // Filtrer par statut de décaissement
-            if ($statut === 'a_decaisser') {
-                // Sera filtré après la vérification des mouvements
-            } elseif ($statut === 'decaisse') {
-                // Sera filtré après la vérification des mouvements
-            }
+                ->where('payee', 1)
+                ->whereNull('deleted_at');
 
             // Recherche
             if ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('vehicules.immatriculation', 'like', "%{$search}%")
-                      ->orWhere('primes.numero_conteneur', 'like', "%{$search}%")
-                      ->orWhere('primes.numero_bl', 'like', "%{$search}%")
-                      ->orWhere('primes.nom_client', 'like', "%{$search}%")
-                      ->orWhere('chauffeurs.nom', 'like', "%{$search}%")
-                      ->orWhere('primes.numero_paiement', 'like', "%{$search}%");
+                    $q->where('beneficiaire', 'like', "%{$search}%")
+                      ->orWhere('numero_paiement', 'like', "%{$search}%")
+                      ->orWhere('reference_paiement', 'like', "%{$search}%")
+                      ->orWhere('type', 'like', "%{$search}%")
+                      ->orWhere('observations', 'like', "%{$search}%");
                 });
             }
 
-            $query->orderBy('primes.date_paiement', 'desc')
-                  ->orderBy('primes.id', 'desc');
+            $query->orderBy('date_paiement', 'desc')
+                  ->orderBy('id', 'desc');
 
-            // Récupérer toutes les primes pour le filtrage post-query
             $allPrimes = $query->get();
-            
+
             // Vérifier le statut de décaissement dans FAC
             $primeIds = $allPrimes->pluck('id')->toArray();
-            $mouvementsDecaisses = DB::table('mouvements_caisse')
-                ->where('categorie', 'Prime camion')
-                ->whereIn('reference', array_map(fn($id) => "OPS-PRIME-{$id}", $primeIds))
-                ->get(['id', 'reference', 'date', 'mode_paiement'])
-                ->keyBy(fn($m) => (int) str_replace('OPS-PRIME-', '', $m->reference));
+            $mouvementsDecaisses = [];
+            
+            if (!empty($primeIds)) {
+                $mouvementsDecaisses = DB::table('mouvements_caisse')
+                    ->where('categorie', 'Prime camion')
+                    ->whereIn('reference', array_map(fn($id) => "OPS-PRIME-{$id}", $primeIds))
+                    ->get(['id', 'reference', 'date', 'mode_paiement'])
+                    ->keyBy(fn($m) => (int) str_replace('OPS-PRIME-', '', $m->reference));
+            }
 
             // Ajouter les infos de décaissement
             $allPrimes = $allPrimes->map(function ($prime) use ($mouvementsDecaisses) {
-                $mouvement = $mouvementsDecaisses->get($prime->id);
+                $mouvement = $mouvementsDecaisses[$prime->id] ?? null;
                 $prime->decaisse = $mouvement !== null;
                 $prime->mouvement_id = $mouvement?->id;
                 $prime->date_decaissement = $mouvement?->date;
@@ -156,26 +145,30 @@ class CaisseEnAttenteController extends Controller
                 ]);
             }
 
-            $primesValidees = DB::connection('ops')
+            $primesPayees = DB::connection('ops')
                 ->table('primes')
                 ->where('payee', 1)
+                ->whereNull('deleted_at')
                 ->get(['id', 'montant']);
 
-            $primeIds = $primesValidees->pluck('id')->toArray();
+            $primeIds = $primesPayees->pluck('id')->toArray();
 
-            $decaisseesRefs = DB::table('mouvements_caisse')
-                ->where('categorie', 'Prime camion')
-                ->whereIn('reference', array_map(fn($id) => "OPS-PRIME-{$id}", $primeIds))
-                ->pluck('reference')
-                ->map(fn($ref) => (int) str_replace('OPS-PRIME-', '', $ref))
-                ->toArray();
+            $decaisseesRefs = [];
+            if (!empty($primeIds)) {
+                $decaisseesRefs = DB::table('mouvements_caisse')
+                    ->where('categorie', 'Prime camion')
+                    ->whereIn('reference', array_map(fn($id) => "OPS-PRIME-{$id}", $primeIds))
+                    ->pluck('reference')
+                    ->map(fn($ref) => (int) str_replace('OPS-PRIME-', '', $ref))
+                    ->toArray();
+            }
 
-            $aDecaisser = $primesValidees->filter(fn($p) => !in_array($p->id, $decaisseesRefs));
-            $dejaDecaissees = $primesValidees->filter(fn($p) => in_array($p->id, $decaisseesRefs));
+            $aDecaisser = $primesPayees->filter(fn($p) => !in_array($p->id, $decaisseesRefs));
+            $dejaDecaissees = $primesPayees->filter(fn($p) => in_array($p->id, $decaisseesRefs));
 
             return response()->json([
-                'total_valide' => $primesValidees->sum('montant'),
-                'nombre_primes' => $primesValidees->count(),
+                'total_valide' => $primesPayees->sum('montant'),
+                'nombre_primes' => $primesPayees->count(),
                 'total_a_decaisser' => $aDecaisser->sum('montant'),
                 'nombre_a_decaisser' => $aDecaisser->count(),
                 'deja_decaissees' => $dejaDecaissees->count(),
@@ -194,7 +187,7 @@ class CaisseEnAttenteController extends Controller
     }
 
     /**
-     * Décaisser une prime validée (créer sortie de caisse dans FAC)
+     * Décaisser une prime (créer sortie de caisse dans FAC)
      */
     public function decaisser(Request $request, int $primeId): JsonResponse
     {
@@ -216,15 +209,7 @@ class CaisseEnAttenteController extends Controller
 
             $prime = DB::connection('ops')
                 ->table('primes')
-                ->leftJoin('vehicules', 'primes.vehicule_id', '=', 'vehicules.id')
-                ->leftJoin('chauffeurs', 'primes.chauffeur_id', '=', 'chauffeurs.id')
-                ->where('primes.id', $primeId)
-                ->select([
-                    'primes.*',
-                    'vehicules.immatriculation as numero_camion',
-                    'chauffeurs.nom as chauffeur_nom',
-                    'chauffeurs.prenom as chauffeur_prenom',
-                ])
+                ->where('id', $primeId)
                 ->first();
 
             if (!$prime) {
@@ -246,16 +231,19 @@ class CaisseEnAttenteController extends Controller
 
             DB::beginTransaction();
 
-            $beneficiaire = trim("{$prime->chauffeur_nom} {$prime->chauffeur_prenom}") ?: 'Chauffeur';
-            $numeroCamion = $prime->numero_camion ?: 'N/A';
+            $beneficiaire = $prime->beneficiaire ?: 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
+
+            $description = "Prime {$prime->type} - {$beneficiaire}";
+            if ($prime->numero_paiement) {
+                $description .= " - {$prime->numero_paiement}";
+            }
 
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
                 'categorie' => 'Prime camion',
                 'montant' => $prime->montant,
-                'description' => "Prime camion {$numeroCamion} - {$beneficiaire} - Conteneur: {$prime->numero_conteneur}" . 
-                    ($prime->numero_paiement ? " - Paiement: {$prime->numero_paiement}" : ''),
+                'description' => $description,
                 'beneficiaire' => $beneficiaire,
                 'reference' => $refUnique,
                 'mode_paiement' => $request->mode_paiement,
@@ -264,7 +252,7 @@ class CaisseEnAttenteController extends Controller
                 'banque_id' => $request->banque_id,
             ]);
 
-            Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime validée: {$prime->montant} - Camion {$numeroCamion}", $mouvement->id);
+            Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime: {$prime->montant} - {$beneficiaire}", $mouvement->id);
 
             DB::commit();
 

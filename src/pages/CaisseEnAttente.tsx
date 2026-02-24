@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  CheckCircle2, Wallet, Clock, Truck, Coins, Package, Loader2,
-  RefreshCw, Receipt, Banknote, CalendarDays, Hash
+  CheckCircle2, Wallet, Clock, Coins, Loader2,
+  RefreshCw, Receipt, Banknote, CalendarDays, Hash, AlertTriangle
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const statutFilterOptions = [
-  { value: "all", label: "Toutes les primes validées" },
+  { value: "all", label: "Toutes les primes payées" },
   { value: "a_decaisser", label: "À décaisser" },
   { value: "decaisse", label: "Déjà décaissées" },
 ];
@@ -42,25 +42,20 @@ const itemVariants = {
 
 interface PrimeEnAttente {
   id: number;
-  vehicule_id: number;
-  chauffeur_id: number;
-  numero_conteneur: string;
-  numero_bl: string;
-  nom_client: string;
-  date_sortie: string;
-  montant: number;
-  statut: string;
+  sortie_conteneur_id: number | null;
   type: string | null;
   beneficiaire: string | null;
-  observations: string | null;
+  responsable: string | null;
+  montant: number;
   payee: boolean;
   paiement_valide: boolean;
-  numero_paiement: string | null;
   date_paiement: string | null;
+  date_prime: string | null;
   reference_paiement: string | null;
-  numero_camion: string | null;
-  chauffeur_nom: string | null;
-  chauffeur_prenom: string | null;
+  numero_paiement: string | null;
+  statut: string;
+  observations: string | null;
+  created_at: string | null;
   decaisse: boolean;
   mouvement_id: number | null;
   date_decaissement: string | null;
@@ -90,8 +85,8 @@ export default function CaisseEnAttentePage() {
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Fetch primes validées depuis OPS
-  const { data: primesData, isLoading, refetch } = useQuery({
+  // Fetch primes payées depuis OPS
+  const { data: primesData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['caisse-en-attente', currentPage, pageSize, searchTerm, statutFilter],
     queryFn: async () => {
       const params: Record<string, string | number> = {
@@ -138,9 +133,18 @@ export default function CaisseEnAttentePage() {
     },
   });
 
+  // Sync manuelle
+  const handleSync = async () => {
+    toast.info("Synchronisation en cours...");
+    await refetch();
+    queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
+    toast.success("Synchronisation terminée");
+  };
+
   const primes: PrimeEnAttente[] = primesData?.data || [];
   const totalPages = primesData?.meta?.last_page || 1;
   const totalItems = primesData?.meta?.total || 0;
+  const apiError = primesData?.error || primesData?.message;
 
   const stats = statsData || {
     total_valide: 0, nombre_primes: 0, total_a_decaisser: 0,
@@ -175,19 +179,7 @@ export default function CaisseEnAttentePage() {
   if (isLoading) {
     return (
       <MainLayout title="Caisse en attente">
-        <DocumentLoadingState message="Chargement des primes validées..." />
-      </MainLayout>
-    );
-  }
-
-  if (primes.length === 0 && !hasFilters) {
-    return (
-      <MainLayout title="Caisse en attente">
-        <DocumentEmptyState
-          icon={Wallet}
-          title="Aucune prime en attente"
-          description="Les primes validées et payées depuis l'application TC apparaîtront ici pour le décaissement comptable."
-        />
+        <DocumentLoadingState message="Chargement des primes payées..." />
       </MainLayout>
     );
   }
@@ -199,18 +191,40 @@ export default function CaisseEnAttentePage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Caisse en attente</h1>
-            <p className="text-muted-foreground mt-1">Primes validées depuis TC en attente de décaissement</p>
+            <p className="text-muted-foreground mt-1">Primes payées depuis TC en attente de décaissement</p>
           </div>
-          <Button variant="outline" onClick={() => refetch()} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Actualiser
+          <Button 
+            variant="outline" 
+            onClick={handleSync} 
+            className="gap-2"
+            disabled={isRefetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Synchroniser
           </Button>
         </div>
+
+        {/* Erreur de connexion OPS */}
+        {apiError && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="flex items-center gap-3 py-4">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="font-medium text-destructive">Problème de connexion OPS</p>
+                <p className="text-sm text-muted-foreground">{apiError}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleSync} className="ml-auto gap-1">
+                <RefreshCw className="h-3 w-3" />
+                Réessayer
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <DocumentStatCard
-            title="Total validé"
+            title="Total payé"
             value={formatMontant(stats.total_valide)}
             icon={Banknote}
             subtitle={`${stats.nombre_primes} primes`}
@@ -236,7 +250,7 @@ export default function CaisseEnAttentePage() {
           <DocumentStatCard
             title="Affichées"
             value={totalItems}
-            icon={Truck}
+            icon={Wallet}
             subtitle="primes dans la liste"
             delay={0.3}
           />
@@ -246,7 +260,7 @@ export default function CaisseEnAttentePage() {
         <DocumentFilters
           searchTerm={searchTerm}
           onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
-          searchPlaceholder="Rechercher (camion, conteneur, BL, client, N° paiement)..."
+          searchPlaceholder="Rechercher (bénéficiaire, N° paiement, référence, type)..."
           statutFilter={statutFilter}
           onStatutChange={(v) => { setStatutFilter(v); setCurrentPage(1); }}
           statutOptions={statutFilterOptions}
@@ -257,7 +271,7 @@ export default function CaisseEnAttentePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-primary" />
-              Primes validées en attente de décaissement
+              Primes payées en attente de décaissement
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -269,9 +283,8 @@ export default function CaisseEnAttentePage() {
                     <TableHead>Date paiement</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Bénéficiaire</TableHead>
-                    <TableHead>N° Camion</TableHead>
-                    <TableHead>Conteneur</TableHead>
                     <TableHead>Montant</TableHead>
+                    <TableHead>Référence</TableHead>
                     <TableHead>Observations</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -280,10 +293,10 @@ export default function CaisseEnAttentePage() {
                 <TableBody>
                   {primes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-16 text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="py-16 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Wallet className="h-8 w-8 opacity-50" />
-                          <p>Aucune prime trouvée</p>
+                          <p>Aucune prime payée trouvée</p>
                           {hasFilters && (
                             <Button variant="link" onClick={clearFilters} className="text-primary">
                               Réinitialiser les filtres
@@ -326,22 +339,13 @@ export default function CaisseEnAttentePage() {
                         <TableCell className="font-medium">
                           {prime.beneficiaire || '-'}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Truck className="h-4 w-4 text-primary" />
-                            <span className="font-semibold">{prime.numero_camion || '-'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="gap-1">
-                            <Package className="h-3 w-3" />
-                            {prime.numero_conteneur || '-'}
-                          </Badge>
-                        </TableCell>
                         <TableCell className="font-semibold">
                           {formatMontant(prime.montant)}
                         </TableCell>
-                        <TableCell className="max-w-[150px] truncate text-sm text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground">
+                          {prime.reference_paiement || '-'}
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate text-sm text-muted-foreground">
                           {prime.observations || '-'}
                         </TableCell>
                         <TableCell>
@@ -405,7 +409,7 @@ export default function CaisseEnAttentePage() {
               Valider le décaissement
             </DialogTitle>
             <DialogDescription>
-              Cette action va créer une sortie de caisse pour cette prime validée.
+              Cette action va créer une sortie de caisse pour cette prime.
             </DialogDescription>
           </DialogHeader>
 
@@ -423,25 +427,23 @@ export default function CaisseEnAttentePage() {
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Camion:</span>
-                  <span className="font-medium">{selectedPrime.numero_camion || '-'}</span>
+                  <span className="text-sm text-muted-foreground">Type:</span>
+                  <span className="capitalize">{selectedPrime.type || '-'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Chauffeur:</span>
-                  <span>{selectedPrime.chauffeur_nom ? `${selectedPrime.chauffeur_nom} ${selectedPrime.chauffeur_prenom || ''}`.trim() : '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Conteneur:</span>
-                  <span>{selectedPrime.numero_conteneur || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Client:</span>
-                  <span className="truncate max-w-[200px]">{selectedPrime.nom_client || '-'}</span>
+                  <span className="text-sm text-muted-foreground">Bénéficiaire:</span>
+                  <span className="font-medium">{selectedPrime.beneficiaire || '-'}</span>
                 </div>
                 {selectedPrime.reference_paiement && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Réf. paiement:</span>
                     <span>{selectedPrime.reference_paiement}</span>
+                  </div>
+                )}
+                {selectedPrime.observations && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Observations:</span>
+                    <span className="truncate max-w-[200px]">{selectedPrime.observations}</span>
                   </div>
                 )}
               </div>
