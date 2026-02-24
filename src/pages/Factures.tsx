@@ -23,9 +23,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock } from "lucide-react";
+import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock, RotateCcw } from "lucide-react";
 import { EmailModalWithPdfGenerator } from "@/components/EmailModalWithPdfGenerator";
 import { PaiementModal } from "@/components/PaiementModal";
+import { AnnulationPaiementModal } from "@/components/AnnulationPaiementModal";
 import { PaiementGlobalModal } from "@/components/PaiementGlobalModal";
 import { ExportModal } from "@/components/ExportModal";
 import { AnnulationModal } from "@/components/AnnulationModal";
@@ -99,6 +100,7 @@ export default function FacturesPage() {
   } | null>(null);
   const [paiementGlobalOpen, setPaiementGlobalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [annulationPaiementModal, setAnnulationPaiementModal] = useState<{ id: string; numero: string } | null>(null);
 
   // Handlers consolidés
   const handleDelete = async () => {
@@ -371,6 +373,17 @@ export default function FacturesPage() {
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
+                          {facture.statut !== 'annulee' && (facture.montant_paye || 0) > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Annuler le paiement" 
+                              className="text-amber-600 transition-all duration-200 hover:scale-110 hover:bg-amber-500/10"
+                              onClick={() => setAnnulationPaiementModal({ id: facture.id, numero: facture.numero })}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -528,6 +541,17 @@ export default function FacturesPage() {
         open={exportOpen}
         onOpenChange={setExportOpen}
       />
+
+      {annulationPaiementModal && (
+        <AnnulationPaiementModal
+          open={!!annulationPaiementModal}
+          onOpenChange={() => setAnnulationPaiementModal(null)}
+          documentType="facture"
+          documentId={annulationPaiementModal.id}
+          documentNumero={annulationPaiementModal.numero}
+          onSuccess={() => refetch()}
+        />
+      )}
     </MainLayout>
   );
 }
