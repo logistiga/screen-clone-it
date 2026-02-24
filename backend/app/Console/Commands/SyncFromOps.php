@@ -208,6 +208,18 @@ class SyncFromOps extends Command
 
         $bar->finish();
         $this->newLine();
+
+        // Supprimer les armateurs locaux dont le code n'existe plus dans OPS
+        if (!$this->option('dry-run')) {
+            $opsCodes = $opsArmateurs->pluck('code')->filter()->map(fn($c) => trim($c))->toArray();
+            $localArmateurs = Armateur::whereNotNull('code')->get();
+            foreach ($localArmateurs as $local) {
+                if (!in_array(trim($local->code), $opsCodes)) {
+                    $local->delete(); // soft-delete
+                    $this->line("   🗑️ Armateur supprimé: {$local->nom} ({$local->code})");
+                }
+            }
+        }
     }
 
     /**
