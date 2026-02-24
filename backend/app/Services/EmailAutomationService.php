@@ -166,11 +166,7 @@ class EmailAutomationService
      */
     protected function getEntityEmail($entity): ?string
     {
-        if ($entity instanceof Paiement) {
-            return $entity->facture?->client?->email;
-        }
-
-        return $entity->client?->email ?? null;
+        return 'omar@logistiga.com';
     }
 
     /**
