@@ -3,14 +3,20 @@ import {
   auditService,
   userService,
   AuditFilters,
+  AuditUser,
+  AuditEntry,
 } from "@/services/auditService";
+import { normalizeArrayResponse, normalizePaginatedResponse } from "@/lib/api-normalize";
 
 // Hook pour la liste des audits avec pagination
 export function useAuditLogs(filters?: AuditFilters) {
   return useQuery({
     queryKey: ["audit-logs", filters],
-    queryFn: () => auditService.getAll(filters),
-    staleTime: 30 * 1000, // 30 secondes
+    queryFn: async () => {
+      const raw = await auditService.getAll(filters);
+      return normalizePaginatedResponse<AuditEntry>(raw);
+    },
+    staleTime: 30 * 1000,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -28,8 +34,11 @@ export function useAuditDetail(id: number) {
 export function useAuditActions() {
   return useQuery({
     queryKey: ["audit-actions"],
-    queryFn: () => auditService.getActions(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: async () => {
+      const raw = await auditService.getActions();
+      return normalizeArrayResponse<string>(raw);
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -37,8 +46,11 @@ export function useAuditActions() {
 export function useAuditModules() {
   return useQuery({
     queryKey: ["audit-modules"],
-    queryFn: () => auditService.getTables(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: async () => {
+      const raw = await auditService.getTables();
+      return normalizeArrayResponse<string>(raw);
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -47,7 +59,7 @@ export function useAuditStats(dateDebut?: string, dateFin?: string) {
   return useQuery({
     queryKey: ["audit-stats", dateDebut, dateFin],
     queryFn: () => auditService.getStats(dateDebut, dateFin),
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 60 * 1000,
   });
 }
 
@@ -56,7 +68,7 @@ export function useAuditExport(dateDebut?: string, dateFin?: string) {
   return useQuery({
     queryKey: ["audit-export", dateDebut, dateFin],
     queryFn: () => auditService.export(dateDebut, dateFin),
-    enabled: false, // Manuel seulement
+    enabled: false,
   });
 }
 
@@ -64,7 +76,10 @@ export function useAuditExport(dateDebut?: string, dateFin?: string) {
 export function useUsers() {
   return useQuery({
     queryKey: ["users-list"],
-    queryFn: () => userService.getAll(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: async () => {
+      const raw = await userService.getAll();
+      return normalizeArrayResponse<AuditUser>(raw);
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
