@@ -42,25 +42,27 @@ class CaisseEnAttenteController extends Controller
 
             $query = DB::connection('ops')
                 ->table('primes')
+                ->leftJoin('vehicules', 'primes.vehicule_id', '=', 'vehicules.id')
                 ->select([
-                    'id',
-                    'sortie_conteneur_id',
-                    'type',
-                    'beneficiaire',
-                    'responsable',
-                    'montant',
-                    'payee',
-                    'paiement_valide',
-                    'date_paiement',
-                    'date_prime',
-                    'reference_paiement',
-                    'numero_paiement',
-                    'statut',
-                    'observations',
-                    'created_at',
+                    'primes.id',
+                    'primes.sortie_conteneur_id',
+                    'primes.type',
+                    'primes.beneficiaire',
+                    'primes.responsable',
+                    'primes.montant',
+                    'primes.payee',
+                    'primes.paiement_valide',
+                    'primes.date_paiement',
+                    'primes.date_prime',
+                    'primes.reference_paiement',
+                    'primes.numero_paiement',
+                    'primes.statut',
+                    'primes.observations',
+                    'primes.created_at',
+                    'vehicules.immatriculation as numero_parc',
                 ])
-                ->where('payee', 1)
-                ->whereNull('deleted_at');
+                ->where('primes.payee', 1)
+                ->whereNull('primes.deleted_at');
 
             // Recherche
             if ($search) {

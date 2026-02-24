@@ -45,6 +45,7 @@ interface PrimeEnAttente {
   sortie_conteneur_id: number | null;
   type: string | null;
   beneficiaire: string | null;
+  numero_parc: string | null;
   responsable: string | null;
   montant: number;
   payee: boolean;
@@ -282,7 +283,7 @@ export default function CaisseEnAttentePage() {
                     <TableHead>N° Paiement</TableHead>
                     <TableHead>Date paiement</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Bénéficiaire</TableHead>
+                    <TableHead>N° Parc</TableHead>
                     <TableHead>Montant</TableHead>
                     <TableHead>Référence</TableHead>
                     <TableHead>Observations</TableHead>
@@ -337,7 +338,7 @@ export default function CaisseEnAttentePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {prime.beneficiaire || '-'}
+                          {prime.numero_parc || prime.beneficiaire || '-'}
                         </TableCell>
                         <TableCell className="font-semibold">
                           {formatMontant(prime.montant)}
