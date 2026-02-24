@@ -59,6 +59,6 @@ Route::prefix('email-config')->middleware('audit')->group(function () {
         ->middleware('permission:configuration.voir');
     Route::put('/', [EmailConfigController::class, 'update'])
         ->middleware('permission:configuration.modifier');
-    Route::post('test', [EmailConfigController::class, 'testConnection'])
+    Route::post('test', [EmailConfigController::class, 'sendTest'])
         ->middleware('permission:configuration.modifier');
 });
