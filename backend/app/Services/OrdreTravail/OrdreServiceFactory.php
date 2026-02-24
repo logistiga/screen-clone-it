@@ -79,6 +79,17 @@ class OrdreServiceFactory
 
         unset($data['date']);
 
+        // Fallback: si armateur_id n'est pas envoyé au niveau ordre,
+        // le déduire du premier conteneur (si présent)
+        if (empty($data['armateur_id']) && !empty($data['conteneurs']) && is_array($data['conteneurs'])) {
+            foreach ($data['conteneurs'] as $conteneur) {
+                if (!empty($conteneur['armateur_id'])) {
+                    $data['armateur_id'] = $conteneur['armateur_id'];
+                    break;
+                }
+            }
+        }
+
         return $data;
     }
 

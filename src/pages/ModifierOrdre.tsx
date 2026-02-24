@@ -554,10 +554,10 @@ export default function ModifierOrdrePage() {
     };
 
     if (categorie === "conteneurs" && conteneursData) {
+      data.armateur_id = conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null;
       data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
       data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
       data.bl_numero = conteneursData.numeroBL || null;
-      data.type_operation = conteneursData.typeOperation || null;
       data.prime_transitaire = conteneursData.primeTransitaire || 0;
       data.prime_representant = conteneursData.primeRepresentant || 0;
       data.conteneurs = conteneursData.conteneurs.map(c => ({
