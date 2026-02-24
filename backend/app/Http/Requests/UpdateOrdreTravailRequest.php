@@ -15,10 +15,10 @@ class UpdateOrdreTravailRequest extends FormRequest
     {
         return [
             'client_id' => 'sometimes|exists:clients,id',
+            'armateur_id' => 'nullable|exists:armateurs,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'representant_id' => 'nullable|exists:representants,id',
             'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
-            'type_operation' => 'nullable|string|max:100',
             'type_operation_indep' => 'nullable|string|max:100',
             'bl_numero' => 'nullable|string|max:100',
             'navire' => 'nullable|string|max:255',
