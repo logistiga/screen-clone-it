@@ -182,6 +182,18 @@
     </table>
     @endif
 
+    <div style="margin: 20px 10px 40px; border: 2px solid #1e40af; border-radius: 6px; padding: 12px 20px; text-align: right;">
+        <table style="margin: 0; width: auto; float: right; border-collapse: collapse;">
+            <tr>
+                <td style="font-size: 12px; font-weight: bold; padding-right: 30px; color: #333;">SOLDE ACTUEL DE LA CAISSE :</td>
+                <td style="font-size: 14px; font-weight: bold; color: {{ ($solde_actuel_caisse ?? 0) >= 0 ? '#16a34a' : '#dc2626' }};">
+                    {{ number_format($solde_actuel_caisse ?? 0, 0, ',', ' ') }} FCFA
+                </td>
+            </tr>
+        </table>
+        <div style="clear: both;"></div>
+    </div>
+
     <div class="footer">
         Document généré automatiquement - Caisse Globale
     </div>

@@ -434,12 +434,17 @@ class ExportController extends Controller
                 'total_sorties' => $mouvements->where('type', 'sortie')->sum('montant'),
             ];
 
+            // Solde actuel de la caisse (toutes opérations, pas seulement la période filtrée)
+            $soldeActuelCaisse = MouvementCaisse::where('source', 'caisse')->where('type', 'entree')->sum('montant')
+                - MouvementCaisse::where('source', 'caisse')->where('type', 'sortie')->sum('montant');
+
             $pdf = Pdf::loadView('pdf.export-caisse', [
                 'mouvements' => $mouvements,
                 'stats' => $stats,
                 'date_debut' => $filters['date_debut'] ?? '-',
                 'date_fin' => $filters['date_fin'] ?? '-',
                 'periode' => ($filters['date_debut'] ?? '') . ' — ' . ($filters['date_fin'] ?? ''),
+                'solde_actuel_caisse' => $soldeActuelCaisse,
             ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'DejaVu Sans']);
 
             return $pdf->download('caisse-' . now()->format('Y-m-d') . '.pdf');
