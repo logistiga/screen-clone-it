@@ -35,17 +35,24 @@ const statutFilterOptions = [
   { value: "decaisse", label: "Déjà décaissées" },
 ];
 
+const sourceFilterOptions = [
+  { value: "all", label: "Toutes les sources" },
+  { value: "OPS", label: "OPS (TC)" },
+  { value: "CNV", label: "CNV (Conventionnel)" },
+];
+
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
 };
 
 interface PrimeEnAttente {
-  id: number;
+  id: number | string;
   sortie_conteneur_id: number | null;
   type: string | null;
   beneficiaire: string | null;
   numero_parc: string | null;
+  conventionne_numero: string | null;
   responsable: string | null;
   montant: number;
   payee: boolean;
@@ -61,6 +68,7 @@ interface PrimeEnAttente {
   mouvement_id: number | null;
   date_decaissement: string | null;
   mode_paiement_decaissement: string | null;
+  source: 'OPS' | 'CNV';
 }
 
 interface StatsResponse {
@@ -76,6 +84,7 @@ export default function CaisseEnAttentePage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("a_decaisser");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -86,14 +95,15 @@ export default function CaisseEnAttentePage() {
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Fetch primes payées depuis OPS
+  // Fetch primes payées depuis OPS + CNV
   const { data: primesData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['caisse-en-attente', currentPage, pageSize, searchTerm, statutFilter],
+    queryKey: ['caisse-en-attente', currentPage, pageSize, searchTerm, statutFilter, sourceFilter],
     queryFn: async () => {
       const params: Record<string, string | number> = {
         page: currentPage,
         per_page: pageSize,
         statut: statutFilter,
+        source: sourceFilter,
       };
       if (searchTerm) params.search = searchTerm;
       const response = await api.get('/caisse-en-attente', { params });
@@ -112,11 +122,12 @@ export default function CaisseEnAttentePage() {
 
   // Mutation pour valider le décaissement
   const decaissementMutation = useMutation({
-    mutationFn: async (primeId: number) => {
+    mutationFn: async ({ primeId, source }: { primeId: number | string; source: string }) => {
       const response = await api.post(`/caisse-en-attente/${primeId}/decaisser`, {
         mode_paiement: modePaiement,
         reference,
         notes,
+        source,
       });
       return response.data;
     },
@@ -152,11 +163,12 @@ export default function CaisseEnAttentePage() {
     nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0,
   };
 
-  const hasFilters = !!searchTerm || statutFilter !== 'a_decaisser';
+  const hasFilters = !!searchTerm || statutFilter !== 'a_decaisser' || sourceFilter !== 'all';
 
   const clearFilters = () => {
     setSearchTerm("");
     setStatutFilter("a_decaisser");
+    setSourceFilter("all");
     setCurrentPage(1);
   };
 
@@ -174,7 +186,7 @@ export default function CaisseEnAttentePage() {
 
   const handleDecaissement = () => {
     if (!selectedPrime) return;
-    decaissementMutation.mutate(selectedPrime.id);
+    decaissementMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
   };
 
   if (isLoading) {
@@ -192,7 +204,7 @@ export default function CaisseEnAttentePage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Caisse en attente</h1>
-            <p className="text-muted-foreground mt-1">Primes payées depuis TC en attente de décaissement</p>
+            <p className="text-muted-foreground mt-1">Primes payées depuis TC et CNV en attente de décaissement</p>
           </div>
           <Button 
             variant="outline" 
@@ -205,13 +217,13 @@ export default function CaisseEnAttentePage() {
           </Button>
         </div>
 
-        {/* Erreur de connexion OPS */}
+        {/* Erreur de connexion */}
         {apiError && (
           <Card className="border-destructive/50 bg-destructive/5">
             <CardContent className="flex items-center gap-3 py-4">
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
               <div>
-                <p className="font-medium text-destructive">Problème de connexion OPS</p>
+                <p className="font-medium text-destructive">Problème de connexion</p>
                 <p className="text-sm text-muted-foreground">{apiError}</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleSync} className="ml-auto gap-1">
@@ -258,14 +270,28 @@ export default function CaisseEnAttentePage() {
         </div>
 
         {/* Filtres */}
-        <DocumentFilters
-          searchTerm={searchTerm}
-          onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
-          searchPlaceholder="Rechercher (bénéficiaire, N° paiement, référence, type)..."
-          statutFilter={statutFilter}
-          onStatutChange={(v) => { setStatutFilter(v); setCurrentPage(1); }}
-          statutOptions={statutFilterOptions}
-        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <DocumentFilters
+              searchTerm={searchTerm}
+              onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
+              searchPlaceholder="Rechercher (bénéficiaire, N° paiement, référence, type)..."
+              statutFilter={statutFilter}
+              onStatutChange={(v) => { setStatutFilter(v); setCurrentPage(1); }}
+              statutOptions={statutFilterOptions}
+            />
+          </div>
+          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              {sourceFilterOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Table */}
         <Card className="border-border/50 overflow-hidden">
@@ -280,6 +306,7 @@ export default function CaisseEnAttentePage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-muted/50">
+                    <TableHead>Source</TableHead>
                     <TableHead>N° Paiement</TableHead>
                     <TableHead>Date paiement</TableHead>
                     <TableHead>Type</TableHead>
@@ -294,7 +321,7 @@ export default function CaisseEnAttentePage() {
                 <TableBody>
                   {primes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-16 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-16 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Wallet className="h-8 w-8 opacity-50" />
                           <p>Aucune prime payée trouvée</p>
@@ -309,13 +336,24 @@ export default function CaisseEnAttentePage() {
                   ) : (
                     primes.map((prime, index) => (
                       <motion.tr
-                        key={prime.id}
+                        key={`${prime.source}-${prime.id}`}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
                         transition={{ delay: index * 0.03 }}
                         className="group hover:bg-muted/50 transition-colors"
                       >
+                        <TableCell>
+                          <Badge
+                            className={
+                              prime.source === 'OPS'
+                                ? 'bg-blue-500/15 text-blue-700 border-blue-200'
+                                : 'bg-emerald-500/15 text-emerald-700 border-emerald-200'
+                            }
+                          >
+                            {prime.source}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           {prime.numero_paiement ? (
                             <Badge variant="outline" className="gap-1 font-mono">
@@ -338,7 +376,9 @@ export default function CaisseEnAttentePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {prime.numero_parc || prime.beneficiaire || '-'}
+                          {prime.source === 'CNV'
+                            ? (prime.conventionne_numero || prime.beneficiaire || '-')
+                            : (prime.numero_parc || prime.beneficiaire || '-')}
                         </TableCell>
                         <TableCell className="font-semibold">
                           {formatMontant(prime.montant)}
@@ -417,6 +457,18 @@ export default function CaisseEnAttentePage() {
           {selectedPrime && (
             <div className="space-y-4 py-4">
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Source:</span>
+                  <Badge
+                    className={
+                      selectedPrime.source === 'OPS'
+                        ? 'bg-blue-500/15 text-blue-700 border-blue-200'
+                        : 'bg-emerald-500/15 text-emerald-700 border-emerald-200'
+                    }
+                  >
+                    {selectedPrime.source}
+                  </Badge>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Montant:</span>
                   <span className="font-semibold text-lg">{formatMontant(selectedPrime.montant)}</span>
