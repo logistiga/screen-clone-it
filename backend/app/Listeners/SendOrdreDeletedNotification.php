@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\OrdreDeleted;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +29,10 @@ class SendOrdreDeletedNotification implements ShouldQueue
             ]);
 
             Log::info("Notification créée pour suppression ordre {$ordre->numero}");
+
+            // Déclencher l'automatisation email pour la suppression d'OT
+            app(EmailAutomationService::class)->trigger('suppression_ordre', $ordre);
+
         } catch (\Exception $e) {
             Log::error("Erreur création notification suppression ordre: " . $e->getMessage());
         }
