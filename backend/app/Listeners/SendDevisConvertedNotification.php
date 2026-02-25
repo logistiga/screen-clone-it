@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\DevisConverted;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -32,6 +33,8 @@ class SendDevisConvertedNotification implements ShouldQueue
             ]);
 
             Log::info("Notification conversion devis {$devis->numero} -> ordre {$ordre->numero}");
+
+            app(EmailAutomationService::class)->trigger('devis_converti', $devis);
         } catch (\Exception $e) {
             Log::error("Erreur notification conversion devis: " . $e->getMessage());
         }

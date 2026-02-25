@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\DevisDeleted;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +29,8 @@ class SendDevisDeletedNotification implements ShouldQueue
             ]);
 
             Log::info("Notification créée pour suppression devis {$devis->numero}");
+
+            app(EmailAutomationService::class)->trigger('suppression_devis', $devis);
         } catch (\Exception $e) {
             Log::error("Erreur création notification suppression devis: " . $e->getMessage());
         }

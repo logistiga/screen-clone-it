@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\CreditEcheanceApproaching;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
@@ -40,10 +41,11 @@ class SendCreditAlertNotification implements ShouldQueue
                 'priorite' => $priorite,
             ]);
 
-            // Envoyer email aux admins
             $this->notificationService->envoyerAlerteEcheanceCredit($credit, $joursRestants);
 
             Log::info("Alerte échéance crédit {$credit->reference}: {$joursRestants} jours");
+
+            app(EmailAutomationService::class)->trigger('echeance_credit', $credit);
         } catch (\Exception $e) {
             Log::error("Erreur alerte crédit: " . $e->getMessage());
         }

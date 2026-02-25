@@ -2,15 +2,15 @@
 
 namespace App\Listeners;
 
-use App\Events\OrdreUpdated;
+use App\Events\OrdreCreated;
 use App\Models\Notification;
 use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class SendOrdreUpdatedNotification implements ShouldQueue
+class SendOrdreCreatedNotification implements ShouldQueue
 {
-    public function handle(OrdreUpdated $event): void
+    public function handle(OrdreCreated $event): void
     {
         $ordre = $event->ordre;
         $ordre->load('client');
@@ -18,23 +18,22 @@ class SendOrdreUpdatedNotification implements ShouldQueue
         try {
             Notification::create([
                 'type' => 'ordre',
-                'titre' => 'Ordre de travail modifié',
-                'message' => "L'ordre {$ordre->numero} a été modifié" . ($ordre->client ? " (Client: {$ordre->client->nom})" : ''),
+                'titre' => 'Nouvel ordre de travail',
+                'message' => "L'ordre {$ordre->numero} a été créé" . ($ordre->client ? " pour {$ordre->client->nom}" : ''),
                 'data' => [
                     'ordre_id' => $ordre->id,
                     'numero' => $ordre->numero,
                     'client_id' => $ordre->client_id,
-                    'modifications' => array_keys($event->changedAttributes),
                 ],
                 'action_url' => "/ordres/{$ordre->id}",
                 'priorite' => 'normale',
             ]);
 
-            Log::info("Notification créée pour modification ordre {$ordre->numero}");
+            Log::info("Notification créée pour ordre {$ordre->numero}");
 
-            app(EmailAutomationService::class)->trigger('modification_ordre', $ordre);
+            app(EmailAutomationService::class)->trigger('creation_ordre', $ordre);
         } catch (\Exception $e) {
-            Log::error("Erreur création notification modification ordre: " . $e->getMessage());
+            Log::error("Erreur création notification ordre: " . $e->getMessage());
         }
     }
 }

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\EmailAutomation;
 use App\Models\EmailTemplate;
+use App\Models\Client;
+use App\Models\CreditBancaire;
 use App\Models\Devis;
 use App\Models\Facture;
 use App\Models\OrdreTravail;
@@ -120,17 +122,19 @@ class EmailAutomationService
         ];
 
         if ($entity instanceof Devis) {
+            $entity->loadMissing('client');
             $data = array_merge($data, [
                 'numero_devis' => $entity->numero,
-                'nom_client' => $entity->client->raison_sociale ?? $entity->client->nom_complet,
+                'nom_client' => $entity->client->raison_sociale ?? $entity->client->nom_complet ?? 'N/A',
                 'montant_ht' => number_format($entity->montant_ht, 0, ',', ' ') . ' FCFA',
                 'montant_ttc' => number_format($entity->montant_ttc, 0, ',', ' ') . ' FCFA',
                 'date_validite' => $entity->date_validite?->format('d/m/Y'),
             ]);
         } elseif ($entity instanceof Facture) {
+            $entity->loadMissing('client');
             $data = array_merge($data, [
                 'numero_facture' => $entity->numero,
-                'nom_client' => $entity->client->raison_sociale ?? $entity->client->nom_complet,
+                'nom_client' => $entity->client->raison_sociale ?? $entity->client->nom_complet ?? 'N/A',
                 'montant_ht' => number_format($entity->montant_ht, 0, ',', ' ') . ' FCFA',
                 'montant_ttc' => number_format($entity->montant_ttc, 0, ',', ' ') . ' FCFA',
                 'date_echeance' => $entity->date_echeance?->format('d/m/Y'),
@@ -139,22 +143,38 @@ class EmailAutomationService
                     : 0,
             ]);
         } elseif ($entity instanceof OrdreTravail) {
+            $entity->loadMissing('client');
             $data = array_merge($data, [
                 'numero_ordre' => $entity->numero,
-                'nom_client' => $entity->client->raison_sociale ?? $entity->client->nom_complet,
+                'nom_client' => $entity->client->raison_sociale ?? $entity->client->nom_complet ?? 'N/A',
                 'type_travail' => $entity->type_travail ?? 'Non spécifié',
                 'numero_conteneur' => $entity->numero_conteneur ?? 'N/A',
                 'date_prevue' => $entity->date_prevue?->format('d/m/Y'),
                 'date_fin' => $entity->date_fin?->format('d/m/Y'),
             ]);
         } elseif ($entity instanceof Paiement) {
+            $entity->loadMissing('facture.client', 'ordre.client');
             $facture = $entity->facture;
+            $client = $facture?->client ?? $entity->ordre?->client;
             $data = array_merge($data, [
-                'numero_facture' => $facture->numero,
-                'nom_client' => $facture->client->raison_sociale ?? $facture->client->nom_complet,
+                'numero_facture' => $facture?->numero ?? 'N/A',
+                'nom_client' => $client?->raison_sociale ?? $client?->nom_complet ?? 'N/A',
                 'montant_paye' => number_format($entity->montant, 0, ',', ' ') . ' FCFA',
                 'mode_paiement' => $entity->mode_paiement ?? 'Non spécifié',
                 'date_paiement' => $entity->date_paiement?->format('d/m/Y'),
+            ]);
+        } elseif ($entity instanceof Client) {
+            $data = array_merge($data, [
+                'nom_client' => $entity->raison_sociale ?? $entity->nom_complet ?? $entity->nom,
+                'email_client' => $entity->email ?? 'N/A',
+                'telephone_client' => $entity->telephone ?? 'N/A',
+            ]);
+        } elseif ($entity instanceof CreditBancaire) {
+            $data = array_merge($data, [
+                'reference_credit' => $entity->reference,
+                'montant_credit' => number_format($entity->montant, 0, ',', ' ') . ' FCFA',
+                'montant_restant' => number_format($entity->montant_restant, 0, ',', ' ') . ' FCFA',
+                'date_echeance' => $entity->date_echeance?->format('d/m/Y'),
             ]);
         }
 
