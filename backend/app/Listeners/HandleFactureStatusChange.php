@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\FactureUpdated;
 use App\Models\Notification;
 use App\Services\CacheService;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -13,8 +14,12 @@ class HandleFactureStatusChange implements ShouldQueue
     public function handle(FactureUpdated $event): void
     {
         if (!$event->wasStatusChanged()) {
-            // Juste invalider le cache si pas de changement de statut
             CacheService::invalidateDashboard();
+
+            // Même sans changement de statut, déclencher modification_facture
+            $facture = $event->facture;
+            $facture->load('client');
+            app(EmailAutomationService::class)->trigger('modification_facture', $facture);
             return;
         }
 
@@ -53,6 +58,8 @@ class HandleFactureStatusChange implements ShouldQueue
             CacheService::invalidateDashboard();
 
             Log::info("Notification changement statut facture {$facture->numero}: {$newStatus}");
+
+            app(EmailAutomationService::class)->trigger('modification_facture', $facture);
         } catch (\Exception $e) {
             Log::error("Erreur notification changement statut: " . $e->getMessage());
         }

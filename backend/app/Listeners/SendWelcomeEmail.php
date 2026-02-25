@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\ClientCreated;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,6 @@ class SendWelcomeEmail implements ShouldQueue
         $client = $event->client;
 
         try {
-            // Créer notification interne
             Notification::create([
                 'type' => 'client',
                 'titre' => 'Nouveau client',
@@ -34,12 +34,13 @@ class SendWelcomeEmail implements ShouldQueue
                 'priorite' => 'basse',
             ]);
 
-            // Envoyer email de bienvenue si email présent
             if ($client->email) {
                 $this->notificationService->notifierNouveauClient($client);
             }
 
             Log::info("Notification nouveau client: {$client->nom}");
+
+            app(EmailAutomationService::class)->trigger('nouveau_client', $client);
         } catch (\Exception $e) {
             Log::error("Erreur notification nouveau client: " . $e->getMessage());
         }

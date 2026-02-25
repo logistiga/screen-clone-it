@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\FactureCreated;
 use App\Models\Notification;
 use App\Services\CacheService;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,6 @@ class SendFactureCreatedNotification implements ShouldQueue
         $facture->load('client');
 
         try {
-            // Créer une notification en base de données
             Notification::create([
                 'type' => 'facture',
                 'titre' => 'Nouvelle facture créée',
@@ -31,10 +31,11 @@ class SendFactureCreatedNotification implements ShouldQueue
                 'priorite' => 'normale',
             ]);
 
-            // Invalider le cache dashboard
             CacheService::invalidateDashboard();
 
             Log::info("Notification créée pour facture {$facture->numero}");
+
+            app(EmailAutomationService::class)->trigger('creation_facture', $facture);
         } catch (\Exception $e) {
             Log::error("Erreur création notification facture: " . $e->getMessage());
         }

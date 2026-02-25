@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\PaiementCreated;
 use App\Models\Notification;
 use App\Services\CacheService;
+use App\Services\EmailAutomationService;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
@@ -21,10 +22,8 @@ class SendPaiementNotification implements ShouldQueue
         $paiement->load(['facture.client', 'ordre.client']);
 
         $client = $paiement->facture?->client ?? $paiement->ordre?->client;
-        $document = $paiement->facture ?? $paiement->ordre;
 
         try {
-            // Créer une notification en base
             Notification::create([
                 'type' => 'paiement',
                 'titre' => 'Nouveau paiement reçu',
@@ -47,10 +46,11 @@ class SendPaiementNotification implements ShouldQueue
                 'priorite' => 'normale',
             ]);
 
-            // Invalider le cache
             CacheService::invalidateDashboard();
 
             Log::info("Notification paiement créée: {$paiement->montant} FCFA");
+
+            app(EmailAutomationService::class)->trigger('paiement_recu', $paiement);
         } catch (\Exception $e) {
             Log::error("Erreur création notification paiement: " . $e->getMessage());
         }

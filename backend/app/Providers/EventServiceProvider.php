@@ -33,6 +33,7 @@ use App\Listeners\SendCreditAlertNotification;
 use App\Listeners\InvalidateDashboardCache;
 use App\Listeners\SendOrdreUpdatedNotification;
 use App\Listeners\SendOrdreDeletedNotification;
+use App\Listeners\SendOrdreCreatedNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -72,6 +73,7 @@ class EventServiceProvider extends ServiceProvider
 
         // Ordres
         OrdreCreated::class => [
+            SendOrdreCreatedNotification::class,
             InvalidateDashboardCache::class,
         ],
         OrdreUpdated::class => [

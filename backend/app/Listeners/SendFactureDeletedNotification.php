@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\FactureDeleted;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +29,8 @@ class SendFactureDeletedNotification implements ShouldQueue
             ]);
 
             Log::info("Notification créée pour suppression facture {$facture->numero}");
+
+            app(EmailAutomationService::class)->trigger('suppression_facture', $facture);
         } catch (\Exception $e) {
             Log::error("Erreur création notification suppression facture: " . $e->getMessage());
         }

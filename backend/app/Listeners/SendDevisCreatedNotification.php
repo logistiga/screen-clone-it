@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\DevisCreated;
 use App\Models\Notification;
+use App\Services\EmailAutomationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -30,6 +31,8 @@ class SendDevisCreatedNotification implements ShouldQueue
             ]);
 
             Log::info("Notification créée pour devis {$devis->numero}");
+
+            app(EmailAutomationService::class)->trigger('creation_devis', $devis);
         } catch (\Exception $e) {
             Log::error("Erreur création notification devis: " . $e->getMessage());
         }
