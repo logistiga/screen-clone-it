@@ -1,34 +1,64 @@
 
-## Correction de l'arrondi des montants "Reste a payer"
 
-### Le probleme
+# Ajouter les primes CNV (conventionnel) sur la page Caisse en attente
 
-Quand le systeme calcule `montant_ttc - montant_paye`, le resultat peut etre un nombre decimal (ex: 11.9 au lieu de 12). L'affichage arrondit visuellement a "12 FCFA" mais le champ de saisie du paiement recoit la valeur brute 11.9, ce qui cree une incoherence.
+## Contexte
 
-### La cause
+La base `logiwkuh_cnv` contient une table `primes` avec des primes conventionnelles. Les primes avec `statut = 'payee'` doivent apparaitre sur la meme page "Caisse en attente" que les primes OPS, avec la meme logique de decaissement.
 
-La fonction `roundMoney()` (arrondi mathematique standard pour les montants XAF) existe deja dans `src/lib/utils.ts` mais n'est pas appliquee lors du calcul du reste a payer.
+### Structure table CNV `primes`
+| Colonne | Type |
+|---------|------|
+| id | UUID |
+| type | ENUM (camion, responsable) |
+| beneficiaire | STRING |
+| montant | DECIMAL(12,2) |
+| operation_id | UUID |
+| conventionne_numero | STRING |
+| statut | ENUM (en_attente, payee) |
+| numero_paiement | STRING nullable |
+| date_paiement | TIMESTAMP nullable |
 
-### Corrections a apporter
+## Modifications
 
-**1. `src/pages/OrdreDetail.tsx` (ligne 86)**
-- Appliquer `roundMoney` au calcul : `const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));`
+### 1. Backend - Ajouter connexion `cnv` dans `config/database.php`
 
-**2. `src/pages/FactureDetail.tsx`**
-- Meme correction sur le calcul du reste a payer des factures
+Ajouter un bloc `cnv` (meme pattern que `ops`) utilisant les variables `CNV_DB_HOST`, `CNV_DB_DATABASE`, `CNV_DB_USERNAME`, `CNV_DB_PASSWORD`, `CNV_DB_PORT`, `CNV_DB_SOCKET`.
 
-**3. `src/pages/NotesDebut.tsx`**
-- Meme correction pour les notes de debit
+### 2. Backend - Modifier `CaisseEnAttenteController.php`
 
-**4. `src/pages/NoteDebutDetail.tsx`**
-- Meme correction pour le detail note de debit
+**Methode `index`** :
+- Ajouter `checkCnvConnection()` (meme pattern que `checkOpsConnection`)
+- Lire les primes CNV avec `statut = 'payee'` depuis la connexion `cnv`
+- Colonnes selectionnees : id, type, beneficiaire, montant, conventionne_numero, statut, numero_paiement, date_paiement, created_at
+- Mapper les colonnes CNV vers le meme format que OPS (ex: `numero_parc` = `conventionne_numero`)
+- Ajouter un champ `source` = `'OPS'` ou `'CNV'` sur chaque prime
+- Verifier le decaissement via reference `CNV-PRIME-{id}` (au lieu de `OPS-PRIME-{id}`)
+- Categorie mouvement : `Prime conventionnel` pour CNV
+- Merger les deux collections, filtrer, trier par date_paiement desc, puis paginer
+- Supporter un filtre `source` optionnel (query param)
 
-**5. `src/components/PaiementGlobalOrdresModal.tsx` (ligne 94)**
-- Arrondir `montantRestant: roundMoney(o.montant_ttc - (o.montant_paye || 0))`
+**Methode `stats`** :
+- Ajouter les totaux CNV aux stats existantes (cumul des deux sources)
 
-**6. `src/components/PaiementModal.tsx` (ligne 136)**
-- Arrondir le resultat du calcul dynamique d'exoneration : `return roundMoney(Math.max(0, montantEffectif - montantDejaPaye));`
+**Methode `decaisser`** :
+- Accepter un parametre `source` dans la requete (defaut: `OPS`)
+- Si `source = CNV` : lire depuis connexion `cnv`, reference = `CNV-PRIME-{id}`, categorie = `Prime conventionnel`
+- Si `source = OPS` : comportement actuel inchange
 
-### Resultat attendu
+### 3. Frontend - Modifier `CaisseEnAttente.tsx`
 
-Le champ "Montant du paiement" affichera toujours un entier coherent avec le "Reste a payer" affiche dans l'en-tete du modal (12 au lieu de 11.9).
+- Ajouter `source: string` a l'interface `PrimeEnAttente`
+- Ajouter `conventionne_numero: string | null`
+- Afficher une colonne "Source" avec badge colore (bleu "OPS", vert "CNV")
+- Afficher le `conventionne_numero` pour les primes CNV dans la colonne "N Parc"
+- Ajouter un filtre source dans les options de filtre (Toutes / OPS / CNV)
+- Envoyer `source` dans le POST de decaissement
+- Mettre a jour le sous-titre : "Primes payees depuis TC et CNV en attente de decaissement"
+
+## Fichiers modifies
+
+- `backend/config/database.php` (ajout connexion cnv)
+- `backend/app/Http/Controllers/Api/CaisseEnAttenteController.php` (lecture 2 bases + merge)
+- `src/pages/CaisseEnAttente.tsx` (colonne source + filtre + envoi source)
+
