@@ -132,18 +132,20 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
       ? format(range.from, "d MMMM yyyy", { locale: fr })
       : `Du ${format(range.from, "d MMM yyyy", { locale: fr })} au ${format(range.to, "d MMM yyyy", { locale: fr })}`;
 
+    const logoUrl = `${window.location.origin}/images/logo-logistiga.png`;
+
     // Generate HTML with table-based layout for better PDF rendering
     const html = `
       <div style="font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a; background: white; width: 750px;">
-        <!-- Header -->
+        <!-- Header with Logo -->
         <table style="width: 100%; margin-bottom: 20px; border-bottom: 3px solid #3b82f6; padding-bottom: 15px;">
           <tr>
             <td style="vertical-align: top; width: 50%;">
-              <div style="font-size: 18px; font-weight: bold; color: #1e40af;">${entreprise?.nom || 'LOGISTIGA'}</div>
+              <img src="${logoUrl}" alt="Logistiga" style="height: 55px; width: auto; margin-bottom: 8px;" crossorigin="anonymous" />
               <div style="font-size: 11px; color: #666; margin-top: 5px;">
-                ${entreprise?.adresse || ''}<br/>
+                ${entreprise?.adresse || 'Libreville, Gabon'}<br/>
                 ${entreprise?.telephone ? `Tél: ${entreprise.telephone}` : ''}
-                ${entreprise?.email ? ` | ${entreprise.email}` : ''}
+                ${entreprise?.email ? ` | ${entreprise.email}` : ' | contact@logistiga.com'}
               </div>
             </td>
             <td style="text-align: right; vertical-align: top;">
@@ -230,16 +232,13 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
           </tr>
         </table>
 
-        <!-- Footer -->
-        <table style="width: 100%; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+        <!-- Footer professionnel -->
+        <table style="width: 100%; margin-top: 30px; border-top: 2px solid #e53935; padding-top: 12px;">
           <tr>
-            <td style="font-size: 9px; color: #666;">
-              Document généré automatiquement<br/>
-              ${entreprise?.nom || 'LOGISTIGA'} - Gestion de caisse
-            </td>
-            <td style="text-align: right; font-size: 9px; color: #666;">
-              Page 1/1<br/>
-              ${mouvements.length} mouvement${mouvements.length > 1 ? 's' : ''}
+            <td style="text-align: center; line-height: 1.8;">
+              <div style="font-size: 9px; font-weight: bold; color: #333;">LOGISTIGA SAS au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</div>
+              <div style="font-size: 9px; color: #555;">Tel : (+241) 011 70 14 35 / 011 70 14 34 / 011 70 88 50 / 011 70 95 03 | B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</div>
+              <div style="font-size: 9px; color: #555;">Email: info@logistiga.com – Site web: www.logistiga.com</div>
             </td>
           </tr>
         </table>
