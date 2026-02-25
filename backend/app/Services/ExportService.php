@@ -900,12 +900,17 @@ class ExportService
     {
         $data = $this->getCaisseGlobaleData($filters);
         
+        // Solde actuel de la caisse (toutes entrées - toutes sorties, source caisse)
+        $soldeActuelCaisse = MouvementCaisse::where('source', 'caisse')->where('type', 'entree')->sum('montant')
+            - MouvementCaisse::where('source', 'caisse')->where('type', 'sortie')->sum('montant');
+
         $pdf = Pdf::loadView('pdf.caisse-globale', [
             'mouvements' => $data['mouvements'],
             'totals' => $data['totals'],
             'filters' => $filters,
             'banques' => $data['banques_totals'],
             'generated_at' => now()->format('d/m/Y H:i'),
+            'solde_actuel_caisse' => $soldeActuelCaisse,
         ]);
         
         $pdf->setPaper('A4', 'landscape');

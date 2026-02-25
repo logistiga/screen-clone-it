@@ -76,11 +76,19 @@
     <div style="margin-top: 20px; border: 2px solid #333; border-radius: 4px; padding: 12px 20px; display: inline-block; float: right;">
         <table style="border-collapse: collapse;">
             <tr>
-                <td style="font-size: 13px; font-weight: bold; padding-right: 30px; color: #333;">SOLDE CAISSE :</td>
+                <td style="font-size: 13px; font-weight: bold; padding-right: 30px; color: #333;">SOLDE PÉRIODE :</td>
                 <td style="font-size: 15px; font-weight: bold; color: {{ ($totEntrees - $totSorties) >= 0 ? '#16a34a' : '#dc2626' }};">
                     {{ number_format($totEntrees - $totSorties, 0, ',', ' ') }} FCFA
                 </td>
             </tr>
+            @if(isset($solde_actuel_caisse))
+            <tr>
+                <td style="font-size: 13px; font-weight: bold; padding-right: 30px; padding-top: 8px; color: #1e40af;">SOLDE ACTUEL CAISSE :</td>
+                <td style="font-size: 15px; font-weight: bold; padding-top: 8px; color: {{ $solde_actuel_caisse >= 0 ? '#16a34a' : '#dc2626' }};">
+                    {{ number_format($solde_actuel_caisse, 0, ',', ' ') }} FCFA
+                </td>
+            </tr>
+            @endif
         </table>
     </div>
     <div style="clear: both;"></div>
