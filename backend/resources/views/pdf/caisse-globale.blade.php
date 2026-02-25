@@ -37,9 +37,14 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Rapport de Trésorerie Globale</h1>
-        <p>Période du {{ \Carbon\Carbon::parse($filters['date_debut'])->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($filters['date_fin'])->format('d/m/Y') }}</p>
+    <div class="header" style="display: table; width: 100%; border-bottom: 2px solid #1e40af; padding-bottom: 10px; margin-bottom: 15px;">
+        <div style="display: table-cell; width: 40%; vertical-align: middle;">
+            <img src="{{ public_path('images/logistiga-logo.png') }}" alt="Logistiga" style="height: 50px; max-width: 200px;">
+        </div>
+        <div style="display: table-cell; width: 60%; text-align: right; vertical-align: middle;">
+            <h1 style="font-size: 18px; margin-bottom: 3px;">Rapport de Trésorerie Globale</h1>
+            <p style="font-size: 10px; opacity: 0.8;">Période du {{ \Carbon\Carbon::parse($filters['date_debut'])->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($filters['date_fin'])->format('d/m/Y') }}</p>
+        </div>
     </div>
 
     <div class="meta">
@@ -195,7 +200,9 @@
     </div>
 
     <div class="footer">
-        Document généré automatiquement - Caisse Globale
+        <p><strong>LOGISTIGA SAS</strong> au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</p>
+        <p>Tel : (+241) 011 70 14 35 / 011 70 14 34 / 011 70 88 50 / 011 70 95 03 | B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</p>
+        <p>Email: info@logistiga.com – Site web: www.logistiga.com</p>
     </div>
 </body>
 </html>
