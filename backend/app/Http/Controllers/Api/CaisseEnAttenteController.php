@@ -239,16 +239,12 @@ class CaisseEnAttenteController extends Controller
             ->table('primes')
             ->select([
                 'primes.id',
-                'primes.sortie_conteneur_id',
                 'primes.type',
                 'primes.beneficiaire',
                 'primes.responsable',
                 'primes.montant',
                 'primes.payee',
-                'primes.paiement_valide',
                 'primes.date_paiement',
-                'primes.date_prime',
-                'primes.reference_paiement',
                 'primes.numero_paiement',
                 'primes.statut',
                 'primes.observations',
@@ -261,7 +257,6 @@ class CaisseEnAttenteController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('beneficiaire', 'like', "%{$search}%")
                   ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('reference_paiement', 'like', "%{$search}%")
                   ->orWhere('type', 'like', "%{$search}%")
                   ->orWhere('observations', 'like', "%{$search}%");
             });
