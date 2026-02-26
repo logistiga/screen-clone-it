@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarIcon, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import logoLogistiga from "@/assets/lojistiga-logo.png";
 import {
   Dialog,
   DialogContent,
