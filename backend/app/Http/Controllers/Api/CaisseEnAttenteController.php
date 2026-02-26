@@ -241,7 +241,7 @@ class CaisseEnAttenteController extends Controller
                 'primes.id',
                 'primes.type',
                 'primes.beneficiaire',
-                'primes.responsable',
+                
                 'primes.montant',
                 'primes.payee',
                 'primes.date_paiement',
