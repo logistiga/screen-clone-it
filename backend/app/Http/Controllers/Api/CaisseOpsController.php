@@ -63,6 +63,7 @@ class CaisseOpsController extends Controller
         return $query->orderBy('date_paiement', 'desc')->get()->map(function ($p) {
             $p->source = 'OPS';
             $p->payee = true;
+            $p->paiement_valide = 1;
             $p->observations = null;
             $p->conventionne_numero = null;
             return $p;
