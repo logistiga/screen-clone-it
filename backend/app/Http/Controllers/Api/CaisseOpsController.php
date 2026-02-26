@@ -41,7 +41,7 @@ class CaisseOpsController extends Controller
                 'primes.beneficiaire',
                 'primes.montant',
                 'primes.numero_paiement',
-                'primes.paiement_valide',
+                
                 'primes.statut',
                 'primes.parc',
                 'primes.camion_plaque',
