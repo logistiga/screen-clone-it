@@ -119,21 +119,21 @@ export default function CaisseEnAttentePage() {
     },
   });
 
-  // Fetch CNV primes
+  // Fetch CNV primes (route dédiée)
   const { data: cnvData, isLoading: cnvLoading, refetch: refetchCnv, isRefetching: cnvRefetching } = useQuery({
-    queryKey: ['caisse-en-attente', 'CNV', cnvPage, cnvPageSize, cnvSearch, cnvStatut],
+    queryKey: ['caisse-cnv', cnvPage, cnvPageSize, cnvSearch, cnvStatut],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        page: cnvPage, per_page: cnvPageSize, statut: cnvStatut, source: 'CNV',
+        page: cnvPage, per_page: cnvPageSize, statut: cnvStatut,
       };
       if (cnvSearch) params.search = cnvSearch;
-      const response = await api.get('/caisse-en-attente', { params });
+      const response = await api.get('/caisse-cnv', { params });
       return response.data;
     },
   });
 
-  // Fetch stats
-  const { data: statsData } = useQuery({
+  // Fetch stats OPS
+  const { data: opsStatsData } = useQuery({
     queryKey: ['caisse-en-attente-stats'],
     queryFn: async () => {
       const response = await api.get<StatsResponse>('/caisse-en-attente/stats');
@@ -141,18 +141,32 @@ export default function CaisseEnAttentePage() {
     },
   });
 
-  // Mutation décaissement
+  // Fetch stats CNV
+  const { data: cnvStatsData } = useQuery({
+    queryKey: ['caisse-cnv-stats'],
+    queryFn: async () => {
+      const response = await api.get<StatsResponse>('/caisse-cnv/stats');
+      return response.data;
+    },
+  });
+
+  // Mutation décaissement (route selon source)
   const decaissementMutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const response = await api.post(`/caisse-en-attente/${primeId}/decaisser`, {
-        mode_paiement: modePaiement, reference, notes, source,
+      const endpoint = source === 'CNV'
+        ? `/caisse-cnv/${primeId}/decaisser`
+        : `/caisse-en-attente/${primeId}/decaisser`;
+      const response = await api.post(endpoint, {
+        mode_paiement: modePaiement, reference, notes,
       });
       return response.data;
     },
     onSuccess: () => {
       toast.success("Décaissement validé avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
       setDecaissementModalOpen(false);
@@ -188,9 +202,17 @@ export default function CaisseEnAttentePage() {
     decaissementMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
   };
 
-  const stats = statsData || {
-    total_valide: 0, nombre_primes: 0, total_a_decaisser: 0,
-    nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0,
+  const emptyStats = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
+  const opsStats = opsStatsData || emptyStats;
+  const cnvStats = cnvStatsData || emptyStats;
+  // Stats combinées pour l'affichage global
+  const stats = {
+    total_valide: opsStats.total_valide + cnvStats.total_valide,
+    nombre_primes: opsStats.nombre_primes + cnvStats.nombre_primes,
+    total_a_decaisser: opsStats.total_a_decaisser + cnvStats.total_a_decaisser,
+    nombre_a_decaisser: opsStats.nombre_a_decaisser + cnvStats.nombre_a_decaisser,
+    deja_decaissees: opsStats.deja_decaissees + cnvStats.deja_decaissees,
+    total_decaisse: opsStats.total_decaisse + cnvStats.total_decaisse,
   };
 
   const isRefetching = activeTab === "OPS" ? opsRefetching : cnvRefetching;

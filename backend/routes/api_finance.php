@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PrimeController;
 use App\Http\Controllers\Api\PrimeCamionController;
 use App\Http\Controllers\Api\CategorieDepenseController;
 use App\Http\Controllers\Api\CaisseEnAttenteController;
+use App\Http\Controllers\Api\CaisseCnvController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use Illuminate\Support\Facades\Route;
@@ -160,7 +161,7 @@ Route::prefix('primes-camion')->middleware('audit')->group(function () {
 });
 
 // ============================================
-// CAISSE EN ATTENTE (primes OPS validées)
+// CAISSE EN ATTENTE - OPS (primes OPS validées)
 // ============================================
 Route::prefix('caisse-en-attente')->middleware('audit')->group(function () {
     Route::get('/stats', [CaisseEnAttenteController::class, 'stats'])
@@ -168,6 +169,18 @@ Route::prefix('caisse-en-attente')->middleware('audit')->group(function () {
     Route::get('/', [CaisseEnAttenteController::class, 'index'])
         ->middleware('permission:caisse.voir');
     Route::post('/{primeId}/decaisser', [CaisseEnAttenteController::class, 'decaisser'])
+        ->middleware('permission:caisse.creer');
+});
+
+// ============================================
+// CAISSE EN ATTENTE - CNV (primes conventionnel)
+// ============================================
+Route::prefix('caisse-cnv')->middleware('audit')->group(function () {
+    Route::get('/stats', [CaisseCnvController::class, 'stats'])
+        ->middleware('permission:caisse.voir');
+    Route::get('/', [CaisseCnvController::class, 'index'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/{primeId}/decaisser', [CaisseCnvController::class, 'decaisser'])
         ->middleware('permission:caisse.creer');
 });
 
