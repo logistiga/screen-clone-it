@@ -693,7 +693,7 @@ export default function CreditsPage() {
                                         <Button variant="ghost" size="icon" onClick={() => navigate(`/credits/${credit.id}`)}>
                                           <Eye className="h-4 w-4" />
                                         </Button>
-                                        {credit.statut === 'Actif' && (
+                                        {credit.statut?.toLowerCase() === 'actif' && (
                                           <>
                                             <Button variant="ghost" size="icon" className="text-emerald-600" onClick={() => handleRemboursement(credit)}>
                                               <TrendingDown className="h-4 w-4" />
@@ -921,7 +921,7 @@ export default function CreditsPage() {
                                 <Button variant="ghost" size="icon" onClick={() => navigate(`/credits/${credit.id}`)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                {credit.statut === 'Actif' && (
+                                {credit.statut?.toLowerCase() === 'actif' && (
                                   <>
                                     <Button variant="ghost" size="icon" className="text-emerald-600" onClick={() => handleRemboursement(credit)}>
                                       <TrendingDown className="h-4 w-4" />
