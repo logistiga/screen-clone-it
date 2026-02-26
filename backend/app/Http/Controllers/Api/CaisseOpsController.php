@@ -39,7 +39,6 @@ class CaisseOpsController extends Controller
     {
         $query = DB::connection('ops')
             ->table('primes')
-            ->leftJoin('vehicules', 'primes.vehicule_id', '=', 'vehicules.id')
             ->select([
                 'primes.id',
                 'primes.sortie_conteneur_id',
@@ -56,7 +55,7 @@ class CaisseOpsController extends Controller
                 'primes.statut',
                 'primes.observations',
                 'primes.created_at',
-                'vehicules.immatriculation as numero_parc',
+                DB::raw('NULL as numero_parc'),
             ])
             ->where('primes.payee', 1)
             ->whereNull('primes.deleted_at');
