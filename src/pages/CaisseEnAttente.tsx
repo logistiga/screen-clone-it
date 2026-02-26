@@ -8,15 +8,16 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2, Wallet, Clock, Coins, Loader2,
-  RefreshCw, Receipt, Banknote, Hash, AlertTriangle
+  RefreshCw, Receipt, Banknote, Hash, AlertTriangle, Truck, FileText
 } from "lucide-react";
-import { formatMontant, formatDate } from "@/data/mockData";
+import { formatMontant } from "@/data/mockData";
 import api from "@/lib/api";
 import { TablePagination } from "@/components/TablePagination";
 import {
-  DocumentStatCard, DocumentFilters, DocumentEmptyState, DocumentLoadingState,
+  DocumentStatCard, DocumentFilters, DocumentLoadingState,
 } from "@/components/shared/documents";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -33,12 +34,6 @@ const statutFilterOptions = [
   { value: "all", label: "Toutes les primes payées" },
   { value: "a_decaisser", label: "À décaisser" },
   { value: "decaisse", label: "Déjà décaissées" },
-];
-
-const sourceFilterOptions = [
-  { value: "all", label: "Toutes les sources" },
-  { value: "OPS", label: "OPS (TC)" },
-  { value: "CNV", label: "CNV (Conventionnel)" },
 ];
 
 const itemVariants = {
@@ -69,7 +64,6 @@ interface PrimeEnAttente {
   date_decaissement: string | null;
   mode_paiement_decaissement: string | null;
   source: 'OPS' | 'CNV';
-  // OPS-specific fields
   camion_plaque?: string | null;
   parc?: string | null;
   responsable_nom?: string | null;
@@ -87,36 +81,60 @@ interface StatsResponse {
 
 export default function CaisseEnAttentePage() {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statutFilter, setStatutFilter] = useState<string>("a_decaisser");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [activeTab, setActiveTab] = useState<string>("OPS");
 
-  // Modal de décaissement
+  // OPS state
+  const [opsSearch, setOpsSearch] = useState("");
+  const [opsStatut, setOpsStatut] = useState("a_decaisser");
+  const [opsPage, setOpsPage] = useState(1);
+  const [opsPageSize, setOpsPageSize] = useState(20);
+
+  // CNV state
+  const [cnvSearch, setCnvSearch] = useState("");
+  const [cnvStatut, setCnvStatut] = useState("a_decaisser");
+  const [cnvPage, setCnvPage] = useState(1);
+  const [cnvPageSize, setCnvPageSize] = useState(20);
+
+  // Modal state
   const [decaissementModalOpen, setDecaissementModalOpen] = useState(false);
   const [selectedPrime, setSelectedPrime] = useState<PrimeEnAttente | null>(null);
   const [modePaiement, setModePaiement] = useState("Espèces");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Fetch primes payées depuis OPS + CNV
-  const { data: primesData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['caisse-en-attente', currentPage, pageSize, searchTerm, statutFilter, sourceFilter],
+  // Current tab values
+  const searchTerm = activeTab === "OPS" ? opsSearch : cnvSearch;
+  const statutFilter = activeTab === "OPS" ? opsStatut : cnvStatut;
+  const currentPage = activeTab === "OPS" ? opsPage : cnvPage;
+  const pageSize = activeTab === "OPS" ? opsPageSize : cnvPageSize;
+
+  // Fetch OPS primes
+  const { data: opsData, isLoading: opsLoading, refetch: refetchOps, isRefetching: opsRefetching } = useQuery({
+    queryKey: ['caisse-en-attente', 'OPS', opsPage, opsPageSize, opsSearch, opsStatut],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        page: currentPage,
-        per_page: pageSize,
-        statut: statutFilter,
-        source: sourceFilter,
+        page: opsPage, per_page: opsPageSize, statut: opsStatut, source: 'OPS',
       };
-      if (searchTerm) params.search = searchTerm;
+      if (opsSearch) params.search = opsSearch;
       const response = await api.get('/caisse-en-attente', { params });
       return response.data;
     },
   });
 
-  // Fetch statistiques
+  // Fetch CNV primes
+  const { data: cnvData, isLoading: cnvLoading, refetch: refetchCnv, isRefetching: cnvRefetching } = useQuery({
+    queryKey: ['caisse-en-attente', 'CNV', cnvPage, cnvPageSize, cnvSearch, cnvStatut],
+    queryFn: async () => {
+      const params: Record<string, string | number> = {
+        page: cnvPage, per_page: cnvPageSize, statut: cnvStatut, source: 'CNV',
+      };
+      if (cnvSearch) params.search = cnvSearch;
+      const response = await api.get('/caisse-en-attente', { params });
+      return response.data;
+    },
+  });
+
+  // Fetch stats
   const { data: statsData } = useQuery({
     queryKey: ['caisse-en-attente-stats'],
     queryFn: async () => {
@@ -125,14 +143,11 @@ export default function CaisseEnAttentePage() {
     },
   });
 
-  // Mutation pour valider le décaissement
+  // Mutation décaissement
   const decaissementMutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: number | string; source: string }) => {
       const response = await api.post(`/caisse-en-attente/${primeId}/decaisser`, {
-        mode_paiement: modePaiement,
-        reference,
-        notes,
-        source,
+        mode_paiement: modePaiement, reference, notes, source,
       });
       return response.data;
     },
@@ -150,31 +165,12 @@ export default function CaisseEnAttentePage() {
     },
   });
 
-  // Sync manuelle
   const handleSync = async () => {
     toast.info("Synchronisation en cours...");
-    await refetch();
+    if (activeTab === "OPS") await refetchOps();
+    else await refetchCnv();
     queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
     toast.success("Synchronisation terminée");
-  };
-
-  const primes: PrimeEnAttente[] = primesData?.data || [];
-  const totalPages = primesData?.meta?.last_page || 1;
-  const totalItems = primesData?.meta?.total || 0;
-  const apiError = primesData?.error || primesData?.message;
-
-  const stats = statsData || {
-    total_valide: 0, nombre_primes: 0, total_a_decaisser: 0,
-    nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0,
-  };
-
-  const hasFilters = !!searchTerm || statutFilter !== 'a_decaisser' || sourceFilter !== 'all';
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setStatutFilter("a_decaisser");
-    setSourceFilter("all");
-    setCurrentPage(1);
   };
 
   const resetForm = () => {
@@ -194,42 +190,51 @@ export default function CaisseEnAttentePage() {
     decaissementMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
   };
 
-  if (isLoading) {
+  const stats = statsData || {
+    total_valide: 0, nombre_primes: 0, total_a_decaisser: 0,
+    nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0,
+  };
+
+  const isLoading = activeTab === "OPS" ? opsLoading : cnvLoading;
+  const isRefetching = activeTab === "OPS" ? opsRefetching : cnvRefetching;
+  const currentData = activeTab === "OPS" ? opsData : cnvData;
+  const primes: PrimeEnAttente[] = currentData?.data || [];
+  const totalPages = currentData?.meta?.last_page || 1;
+  const totalItems = currentData?.meta?.total || 0;
+  const apiError = currentData?.error || currentData?.message;
+
+  const renderPrimesTable = (source: 'OPS' | 'CNV') => {
+    const data = source === 'OPS' ? opsData : cnvData;
+    const loading = source === 'OPS' ? opsLoading : cnvLoading;
+    const items: PrimeEnAttente[] = data?.data || [];
+    const total = data?.meta?.last_page || 1;
+    const totalCount = data?.meta?.total || 0;
+    const error = data?.error || data?.message;
+    const search = source === 'OPS' ? opsSearch : cnvSearch;
+    const statut = source === 'OPS' ? opsStatut : cnvStatut;
+    const page = source === 'OPS' ? opsPage : cnvPage;
+    const size = source === 'OPS' ? opsPageSize : cnvPageSize;
+
+    const setSearch = source === 'OPS' ? setOpsSearch : setCnvSearch;
+    const setStatut = source === 'OPS' ? setOpsStatut : setCnvStatut;
+    const setPage = source === 'OPS' ? setOpsPage : setCnvPage;
+    const setSize = source === 'OPS' ? setOpsPageSize : setCnvPageSize;
+
+    const hasFilters = !!search || statut !== 'a_decaisser';
+
+    if (loading) {
+      return <DocumentLoadingState message={`Chargement des primes ${source}...`} />;
+    }
+
     return (
-      <MainLayout title="Caisse en attente">
-        <DocumentLoadingState message="Chargement des primes payées..." />
-      </MainLayout>
-    );
-  }
-
-  return (
-    <MainLayout title="Caisse en attente">
-      <div className="space-y-6 animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Caisse en attente</h1>
-            <p className="text-muted-foreground mt-1">Primes payées depuis TC et CNV en attente de décaissement</p>
-          </div>
-          <Button 
-            variant="outline" 
-            onClick={handleSync} 
-            className="gap-2"
-            disabled={isRefetching}
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-            Synchroniser
-          </Button>
-        </div>
-
-        {/* Erreur de connexion */}
-        {apiError && (
+      <div className="space-y-4">
+        {error && (
           <Card className="border-destructive/50 bg-destructive/5">
             <CardContent className="flex items-center gap-3 py-4">
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
               <div>
                 <p className="font-medium text-destructive">Problème de connexion</p>
-                <p className="text-sm text-muted-foreground">{apiError}</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleSync} className="ml-auto gap-1">
                 <RefreshCw className="h-3 w-3" />
@@ -239,7 +244,195 @@ export default function CaisseEnAttentePage() {
           </Card>
         )}
 
-        {/* Stats */}
+        {/* Filtres */}
+        <DocumentFilters
+          searchTerm={search}
+          onSearchChange={(value) => { setSearch(value); setPage(1); }}
+          searchPlaceholder={source === 'OPS'
+            ? "Rechercher (bénéficiaire, N° paiement, camion, parc, type)..."
+            : "Rechercher (bénéficiaire, N° paiement, conventionné, type)..."
+          }
+          statutFilter={statut}
+          onStatutChange={(v) => { setStatut(v); setPage(1); }}
+          statutOptions={statutFilterOptions}
+        />
+
+        {/* Table */}
+        <Card className="border-border/50 overflow-hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {source === 'OPS' ? (
+                <Truck className="h-5 w-5 text-blue-600" />
+              ) : (
+                <FileText className="h-5 w-5 text-emerald-600" />
+              )}
+              {source === 'OPS' ? 'Primes Conteneurs (OPS)' : 'Primes Conventionnel (CNV)'}
+              <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent bg-muted/50">
+                    <TableHead>Type</TableHead>
+                    <TableHead>Bénéficiaire</TableHead>
+                    {source === 'OPS' ? (
+                      <>
+                        <TableHead>Camion / Parc</TableHead>
+                        <TableHead>Prestataire</TableHead>
+                      </>
+                    ) : (
+                      <>
+                        <TableHead>N° Conventionné</TableHead>
+                        <TableHead>Responsable</TableHead>
+                      </>
+                    )}
+                    <TableHead>N° Paiement</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="py-16 text-center text-muted-foreground">
+                        <div className="flex flex-col items-center gap-2">
+                          <Wallet className="h-8 w-8 opacity-50" />
+                          <p>Aucune prime {source} trouvée</p>
+                          {hasFilters && (
+                            <Button variant="link" onClick={() => { setSearch(""); setStatut("a_decaisser"); setPage(1); }} className="text-primary">
+                              Réinitialiser les filtres
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    items.map((prime, index) => (
+                      <motion.tr
+                        key={`${prime.source}-${prime.id}`}
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        transition={{ delay: index * 0.03 }}
+                        className="group hover:bg-muted/50 transition-colors"
+                      >
+                        <TableCell>
+                          <Badge variant="secondary" className="capitalize">
+                            {prime.type || '-'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate font-medium">
+                          {prime.beneficiaire || prime.responsable_nom || '-'}
+                        </TableCell>
+                        {source === 'OPS' ? (
+                          <>
+                            <TableCell className="text-sm">
+                              {prime.camion_plaque && (
+                                <span className="block font-medium">{prime.camion_plaque}</span>
+                              )}
+                              {(prime.parc || prime.numero_parc) && (
+                                <span className="text-muted-foreground">{prime.parc || prime.numero_parc}</span>
+                              )}
+                              {!prime.camion_plaque && !prime.parc && !prime.numero_parc && '-'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                              {prime.prestataire_nom || '-'}
+                            </TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell className="text-sm font-mono">
+                              {prime.conventionne_numero || prime.numero_parc || '-'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {prime.responsable || prime.responsable_nom || '-'}
+                            </TableCell>
+                          </>
+                        )}
+                        <TableCell>
+                          {prime.numero_paiement ? (
+                            <Badge variant="outline" className="gap-1 font-mono">
+                              <Hash className="h-3 w-3" />
+                              {prime.numero_paiement}
+                            </Badge>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {formatMontant(prime.montant)}
+                        </TableCell>
+                        <TableCell>
+                          {prime.decaisse ? (
+                            <Badge className="bg-success/20 text-success gap-1 w-fit">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Décaissée
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-warning/20 text-warning gap-1">
+                              <Clock className="h-3 w-3" />
+                              À décaisser
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {prime.decaisse ? (
+                            <span className="text-sm text-success flex items-center justify-end gap-1">
+                              <Receipt className="h-4 w-4" />
+                              #{prime.mouvement_id}
+                            </span>
+                          ) : (
+                            <Button size="sm" className="gap-1" onClick={() => openDecaissementModal(prime)}>
+                              <Coins className="h-4 w-4" />
+                              Décaisser
+                            </Button>
+                          )}
+                        </TableCell>
+                      </motion.tr>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {total > 1 && (
+          <TablePagination
+            currentPage={page}
+            totalPages={total}
+            pageSize={size}
+            totalItems={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setSize(s); setPage(1); }}
+          />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <MainLayout title="Caisse en attente">
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Caisse en attente</h1>
+            <p className="text-muted-foreground mt-1">Primes payées en attente de décaissement</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleSync}
+            className="gap-2"
+            disabled={isRefetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Synchroniser
+          </Button>
+        </div>
+
+        {/* Stats globales */}
         <div className="grid gap-4 md:grid-cols-4">
           <DocumentStatCard
             title="Total payé"
@@ -274,175 +467,27 @@ export default function CaisseEnAttentePage() {
           />
         </div>
 
-        {/* Filtres */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <DocumentFilters
-              searchTerm={searchTerm}
-              onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
-              searchPlaceholder="Rechercher (bénéficiaire, N° paiement, référence, type)..."
-              statutFilter={statutFilter}
-              onStatutChange={(v) => { setStatutFilter(v); setCurrentPage(1); }}
-              statutOptions={statutFilterOptions}
-            />
-          </div>
-          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setCurrentPage(1); }}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              {sourceFilterOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Onglets OPS / CNV */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="OPS" className="gap-2">
+              <Truck className="h-4 w-4" />
+              Conteneurs (OPS)
+            </TabsTrigger>
+            <TabsTrigger value="CNV" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Conventionnel (CNV)
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Table */}
-        <Card className="border-border/50 overflow-hidden">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-primary" />
-              Primes payées en attente de décaissement
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent bg-muted/50">
-                    <TableHead>Source</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Bénéficiaire</TableHead>
-                    <TableHead>Camion / Parc</TableHead>
-                    <TableHead>Prestataire</TableHead>
-                    <TableHead>N° Paiement</TableHead>
-                    <TableHead>Montant</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {primes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="py-16 text-center text-muted-foreground">
-                        <div className="flex flex-col items-center gap-2">
-                          <Wallet className="h-8 w-8 opacity-50" />
-                          <p>Aucune prime payée trouvée</p>
-                          {hasFilters && (
-                            <Button variant="link" onClick={clearFilters} className="text-primary">
-                              Réinitialiser les filtres
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    primes.map((prime, index) => (
-                      <motion.tr
-                        key={`${prime.source}-${prime.id}`}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        transition={{ delay: index * 0.03 }}
-                        className="group hover:bg-muted/50 transition-colors"
-                      >
-                        <TableCell>
-                          <Badge
-                            className={
-                              prime.source === 'OPS'
-                                ? 'bg-blue-500/15 text-blue-700 border-blue-200'
-                                : 'bg-emerald-500/15 text-emerald-700 border-emerald-200'
-                            }
-                          >
-                            {prime.source}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="capitalize">
-                            {prime.type || '-'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[180px] truncate font-medium">
-                          {prime.beneficiaire || prime.responsable_nom || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {prime.camion_plaque && (
-                            <span className="block font-medium">{prime.camion_plaque}</span>
-                          )}
-                          {(prime.parc || prime.numero_parc) && (
-                            <span className="text-muted-foreground">{prime.parc || prime.numero_parc}</span>
-                          )}
-                          {!prime.camion_plaque && !prime.parc && !prime.numero_parc && (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                          {prime.prestataire_nom || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {prime.numero_paiement ? (
-                            <Badge variant="outline" className="gap-1 font-mono">
-                              <Hash className="h-3 w-3" />
-                              {prime.numero_paiement}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {formatMontant(prime.montant)}
-                        </TableCell>
-                        <TableCell>
-                          {prime.decaisse ? (
-                            <Badge className="bg-success/20 text-success gap-1 w-fit">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Décaissée
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-warning/20 text-warning gap-1">
-                              <Clock className="h-3 w-3" />
-                              À décaisser
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {prime.decaisse ? (
-                            <span className="text-sm text-success flex items-center justify-end gap-1">
-                              <Receipt className="h-4 w-4" />
-                              #{prime.mouvement_id}
-                            </span>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => openDecaissementModal(prime)}
-                            >
-                              <Coins className="h-4 w-4" />
-                              Décaisser
-                            </Button>
-                          )}
-                        </TableCell>
-                      </motion.tr>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+          <TabsContent value="OPS" className="mt-4">
+            {renderPrimesTable('OPS')}
+          </TabsContent>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={totalItems}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-          />
-        )}
+          <TabsContent value="CNV" className="mt-4">
+            {renderPrimesTable('CNV')}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Modal de décaissement */}
@@ -470,7 +515,7 @@ export default function CaisseEnAttentePage() {
                         : 'bg-emerald-500/15 text-emerald-700 border-emerald-200'
                     }
                   >
-                    {selectedPrime.source}
+                    {selectedPrime.source === 'OPS' ? 'Conteneurs (OPS)' : 'Conventionnel (CNV)'}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
@@ -507,12 +552,6 @@ export default function CaisseEnAttentePage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">N° Paiement:</span>
                     <span className="font-medium font-mono">{selectedPrime.numero_paiement}</span>
-                  </div>
-                )}
-                {selectedPrime.reference_paiement && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Réf. paiement:</span>
-                    <span>{selectedPrime.reference_paiement}</span>
                   </div>
                 )}
               </div>
