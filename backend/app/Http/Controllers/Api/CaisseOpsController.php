@@ -43,7 +43,6 @@ class CaisseOpsController extends Controller
                 'primes.numero_paiement',
                 
                 'primes.statut',
-                'primes.parc',
                 'primes.camion_plaque',
                 'primes.date_paiement',
                 'primes.created_at',
@@ -64,6 +63,7 @@ class CaisseOpsController extends Controller
             $p->source = 'OPS';
             $p->payee = true;
             $p->paiement_valide = 1;
+            $p->parc = $p->parc ?? null;
             $p->observations = null;
             $p->conventionne_numero = null;
             return $p;
