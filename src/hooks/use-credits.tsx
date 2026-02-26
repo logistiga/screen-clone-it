@@ -84,13 +84,28 @@ export function useDeleteCredit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => creditsApi.delete(id),
+    mutationFn: (id: number) => creditsApi.supprimer(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['credits'] });
       toast.success('Crédit supprimé');
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
+    },
+  });
+}
+
+export function useAnnulerCredit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, motif }: { id: number; motif: string }) => creditsApi.annuler(id, motif),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credits'] });
+      toast.success('Crédit annulé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'annulation');
     },
   });
 }

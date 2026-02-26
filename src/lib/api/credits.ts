@@ -183,4 +183,13 @@ export const creditsApi = {
     const response = await api.get(`/credits/comparaison${params}`);
     return response.data;
   },
+
+  annuler: async (id: number, motif: string): Promise<any> => {
+    const response = await api.post(`/credits/${id}/annuler`, { motif });
+    return response.data;
+  },
+
+  supprimer: async (id: number): Promise<void> => {
+    await api.delete(`/credits/${id}`);
+  },
 };

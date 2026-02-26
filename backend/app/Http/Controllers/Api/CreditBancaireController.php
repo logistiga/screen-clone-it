@@ -158,6 +158,56 @@ class CreditBancaireController extends Controller
         return response()->json(['message' => 'Crédit supprimé avec succès']);
     }
 
+    public function annuler(Request $request, CreditBancaire $creditBancaire): JsonResponse
+    {
+        if ($creditBancaire->statut === 'annule' || $creditBancaire->statut === 'Annulé') {
+            return response()->json(['message' => 'Ce crédit est déjà annulé'], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'motif' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $ancienStatut = $creditBancaire->statut;
+
+            ModificationCredit::create([
+                'credit_id' => $creditBancaire->id,
+                'type' => 'annulation',
+                'date_modification' => now(),
+                'ancienne_valeur' => $ancienStatut,
+                'nouvelle_valeur' => 'annule',
+                'motif' => $request->motif,
+                'user_id' => auth()->id(),
+            ]);
+
+            $creditBancaire->echeances()
+                ->where('statut', '!=', 'payee')
+                ->update(['statut' => 'annulee']);
+
+            $creditBancaire->update(['statut' => 'annule']);
+
+            Audit::log('update', 'credit', "Crédit annulé: {$creditBancaire->numero} - Motif: {$request->motif}", $creditBancaire->id);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Crédit annulé avec succès',
+                'data' => new CreditBancaireResource($creditBancaire->load(['banque', 'echeances'])),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Erreur lors de l\'annulation', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function rembourser(RembourserCreditRequest $request, CreditBancaire $creditBancaire): JsonResponse
     {
         $montantRembourse = $creditBancaire->remboursements()->sum('montant');

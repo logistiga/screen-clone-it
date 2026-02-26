@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -9,17 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Plus, Building2, Calendar, TrendingDown, TrendingUp, Wallet, Eye, CreditCard,
   AlertTriangle, CheckCircle, Clock, History, BarChart3, Target, ChevronDown,
-  ChevronRight, RefreshCw, PieChart, ArrowUpRight, ArrowDownRight
+  ChevronRight, RefreshCw, PieChart, ArrowUpRight, ArrowDownRight, Ban, Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouveauCreditModal } from "@/components/NouveauCreditModal";
 import { RemboursementCreditModal } from "@/components/RemboursementCreditModal";
-import { useCredits, useCreditStats, useCreditDashboard, useCreditComparaison } from "@/hooks/use-credits";
+import { useCredits, useCreditStats, useCreditDashboard, useCreditComparaison, useAnnulerCredit, useDeleteCredit } from "@/hooks/use-credits";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, Line, Area, AreaChart } from 'recharts';
 import { DocumentStatCard, DocumentStatCardSkeleton } from "@/components/shared/documents/DocumentStatCard";
 import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
@@ -49,7 +51,13 @@ export default function CreditsPage() {
   const [selectedEcheance, setSelectedEcheance] = useState<any>(null);
   const [filterStatut, setFilterStatut] = useState<string>("all");
   const [expandedBanques, setExpandedBanques] = useState<number[]>([]);
+  const [creditToAnnuler, setCreditToAnnuler] = useState<any>(null);
+  const [creditToSupprimer, setCreditToSupprimer] = useState<any>(null);
+  const [motifAnnulation, setMotifAnnulation] = useState('');
 
+  // Mutations
+  const annulerMutation = useAnnulerCredit();
+  const supprimerMutation = useDeleteCredit();
   // Data fetching
   const { data: creditsData, isLoading: loadingCredits, refetch } = useCredits({ per_page: 100 });
   const { data: stats, isLoading: loadingStats } = useCreditStats(selectedAnnee);
@@ -83,6 +91,7 @@ export default function CreditsPage() {
       case 'actif': return <Badge className="bg-primary/10 text-primary border-primary/20">Actif</Badge>;
       case 'soldé': case 'solde': return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Soldé</Badge>;
       case 'en défaut': case 'en_defaut': return <Badge variant="destructive">En défaut</Badge>;
+      case 'annulé': case 'annule': return <Badge className="bg-muted text-muted-foreground border-muted"><Ban className="h-3 w-3 mr-1" />Annulé</Badge>;
       default: return <Badge variant="outline">{statut}</Badge>;
     }
   };
@@ -126,6 +135,23 @@ export default function CreditsPage() {
       }, echeance);
     }
   };
+
+  const handleAnnuler = useCallback(() => {
+    if (!creditToAnnuler || !motifAnnulation.trim()) return;
+    annulerMutation.mutate({ id: creditToAnnuler.id, motif: motifAnnulation }, {
+      onSuccess: () => {
+        setCreditToAnnuler(null);
+        setMotifAnnulation('');
+      }
+    });
+  }, [creditToAnnuler, motifAnnulation, annulerMutation]);
+
+  const handleSupprimer = useCallback(() => {
+    if (!creditToSupprimer) return;
+    supprimerMutation.mutate(creditToSupprimer.id, {
+      onSuccess: () => setCreditToSupprimer(null),
+    });
+  }, [creditToSupprimer, supprimerMutation]);
 
   // Prepare chart data
   const evolutionChartData = stats?.evolution_mensuelle || [];
@@ -668,8 +694,18 @@ export default function CreditsPage() {
                                           <Eye className="h-4 w-4" />
                                         </Button>
                                         {credit.statut === 'Actif' && (
-                                          <Button variant="ghost" size="icon" className="text-emerald-600" onClick={() => handleRemboursement(credit)}>
-                                            <TrendingDown className="h-4 w-4" />
+                                          <>
+                                            <Button variant="ghost" size="icon" className="text-emerald-600" onClick={() => handleRemboursement(credit)}>
+                                              <TrendingDown className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="text-amber-600" onClick={() => setCreditToAnnuler(credit)} title="Annuler">
+                                              <Ban className="h-4 w-4" />
+                                            </Button>
+                                          </>
+                                        )}
+                                        {(!credit.montant_rembourse || credit.montant_rembourse === 0) && (
+                                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setCreditToSupprimer(credit)} title="Supprimer">
+                                            <Trash2 className="h-4 w-4" />
                                           </Button>
                                         )}
                                       </div>
@@ -886,8 +922,18 @@ export default function CreditsPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 {credit.statut === 'Actif' && (
-                                  <Button variant="ghost" size="icon" className="text-emerald-600" onClick={() => handleRemboursement(credit)}>
-                                    <TrendingDown className="h-4 w-4" />
+                                  <>
+                                    <Button variant="ghost" size="icon" className="text-emerald-600" onClick={() => handleRemboursement(credit)}>
+                                      <TrendingDown className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="text-amber-600" onClick={() => setCreditToAnnuler(credit)} title="Annuler">
+                                      <Ban className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {(!credit.montant_rembourse || credit.montant_rembourse === 0) && (
+                                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setCreditToSupprimer(credit)} title="Supprimer">
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
                               </div>
@@ -926,6 +972,59 @@ export default function CreditsPage() {
           echeance={selectedEcheance}
         />
       )}
+
+      {/* Dialog Annulation */}
+      <AlertDialog open={!!creditToAnnuler} onOpenChange={(open) => { if (!open) { setCreditToAnnuler(null); setMotifAnnulation(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annuler le crédit {creditToAnnuler?.numero} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action changera le statut du crédit en "Annulé" et annulera toutes les échéances non payées. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <label className="text-sm font-medium">Motif d'annulation *</label>
+            <Textarea
+              value={motifAnnulation}
+              onChange={(e) => setMotifAnnulation(e.target.value)}
+              placeholder="Indiquez le motif de l'annulation..."
+              className="mt-1"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleAnnuler}
+              disabled={!motifAnnulation.trim() || annulerMutation.isPending}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {annulerMutation.isPending ? 'Annulation...' : 'Confirmer l\'annulation'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Suppression */}
+      <AlertDialog open={!!creditToSupprimer} onOpenChange={(open) => { if (!open) setCreditToSupprimer(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le crédit {creditToSupprimer?.numero} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement le crédit ainsi que toutes ses échéances et documents associés. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSupprimer}
+              disabled={supprimerMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {supprimerMutation.isPending ? 'Suppression...' : 'Supprimer définitivement'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

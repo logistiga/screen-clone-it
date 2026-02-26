@@ -98,6 +98,8 @@ Route::prefix('credits')->middleware('audit')->group(function () {
         ->middleware('permission:credits.supprimer');
     Route::post('{creditBancaire}/rembourser', [CreditBancaireController::class, 'rembourser'])
         ->middleware('permission:credits.modifier');
+    Route::post('{creditBancaire}/annuler', [CreditBancaireController::class, 'annuler'])
+        ->middleware('permission:credits.supprimer');
     Route::get('{creditBancaire}/echeances', [CreditBancaireController::class, 'echeances'])
         ->middleware('permission:credits.voir');
     Route::post('{creditBancaire}/documents', [CreditBancaireController::class, 'uploadDocument'])
