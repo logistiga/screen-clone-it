@@ -13,11 +13,10 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Contrôleur pour les primes OPS (TC) en attente de décaissement
  *
- * Structure réelle de la table OPS `primes` (19 colonnes) :
- *   id (uuid), sortie_id (uuid), type, numero_conteneur, numero_bl,
- *   client_nom, date_sortie, montant, camion_plaque, parc,
- *   responsable_nom, prestataire_nom, payee, date_paiement,
- *   numero_paiement, paiement_valide, created_by, created_at, updated_at
+ * Colonnes réelles de la table OPS `primes` :
+ *   id, type, beneficiaire, responsable, montant, payee,
+ *   reference_paiement, numero_paiement, paiement_valide,
+ *   statut, camion_plaque, parc, responsable_nom, prestataire_nom, created_at
  */
 class CaisseOpsController extends Controller
 {
@@ -41,19 +40,18 @@ class CaisseOpsController extends Controller
             ->select([
                 'primes.id',
                 'primes.type',
-                'primes.numero_conteneur',
-                'primes.numero_bl',
-                'primes.client_nom',
-                'primes.date_sortie',
+                'primes.beneficiaire',
+                'primes.responsable',
                 'primes.montant',
+                'primes.payee',
+                'primes.reference_paiement',
+                'primes.numero_paiement',
+                'primes.paiement_valide',
+                'primes.statut',
                 'primes.camion_plaque',
                 'primes.parc',
                 'primes.responsable_nom',
                 'primes.prestataire_nom',
-                'primes.payee',
-                'primes.date_paiement',
-                'primes.numero_paiement',
-                'primes.paiement_valide',
                 'primes.created_at',
             ])
             ->where('primes.payee', true)
@@ -61,20 +59,20 @@ class CaisseOpsController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('numero_conteneur', 'like', "%{$search}%")
-                  ->orWhere('numero_bl', 'like', "%{$search}%")
-                  ->orWhere('client_nom', 'like', "%{$search}%")
+                $q->where('beneficiaire', 'like', "%{$search}%")
+                  ->orWhere('responsable', 'like', "%{$search}%")
+                  ->orWhere('reference_paiement', 'like', "%{$search}%")
+                  ->orWhere('numero_paiement', 'like', "%{$search}%")
                   ->orWhere('camion_plaque', 'like', "%{$search}%")
                   ->orWhere('parc', 'like', "%{$search}%")
                   ->orWhere('responsable_nom', 'like', "%{$search}%")
                   ->orWhere('prestataire_nom', 'like', "%{$search}%")
-                  ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%");
+                  ->orWhere('type', 'like', "%{$search}%")
+                  ->orWhere('statut', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy('date_paiement', 'desc')
-            ->orderBy('primes.created_at', 'desc')
+        return $query->orderBy('primes.created_at', 'desc')
             ->get()
             ->map(function ($p) {
                 $p->source = 'OPS';
@@ -95,9 +93,6 @@ class CaisseOpsController extends Controller
             ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => self::buildRef($p->id)]);
     }
 
-    /**
-     * Génère la référence unique pour une prime OPS (id = uuid)
-     */
     public static function buildRef(string $id): string
     {
         return "OPS-PRIME-{$id}";
@@ -147,8 +142,7 @@ class CaisseOpsController extends Controller
     {
         $prime = DB::connection('ops')->table('primes')->where('id', $primeId)->first();
         if ($prime) {
-            // Utiliser client_nom comme bénéficiaire pour le mouvement de caisse
-            $prime->beneficiaire = $prime->client_nom ?: ($prime->prestataire_nom ?: 'N/A');
+            $prime->beneficiaire = $prime->beneficiaire ?: ($prime->prestataire_nom ?: 'N/A');
             $prime->type = $prime->type ?? 'OPS';
             $prime->numero_paiement = $prime->numero_paiement ?? null;
         }
