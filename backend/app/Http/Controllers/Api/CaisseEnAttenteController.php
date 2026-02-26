@@ -134,7 +134,7 @@ class CaisseEnAttenteController extends Controller
     /**
      * Décaisser une prime (créer sortie de caisse dans FAC)
      */
-    public function decaisser(Request $request, int $primeId): JsonResponse
+    public function decaisser(Request $request, string $primeId): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'mode_paiement' => 'required|in:Espèces,Virement,Chèque,Mobile Money',
