@@ -239,7 +239,6 @@ class CaisseEnAttenteController extends Controller
             ->table('primes')
             ->select([
                 'primes.id',
-                'primes.ordre_id',
                 'primes.facture_id',
                 'primes.transitaire_id',
                 'primes.representant_id',
