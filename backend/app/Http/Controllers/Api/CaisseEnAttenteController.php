@@ -239,31 +239,33 @@ class CaisseEnAttenteController extends Controller
             ->table('primes')
             ->select([
                 'primes.id',
-                'primes.type',
-                'primes.beneficiaire',
-                
+                'primes.ordre_id',
+                'primes.facture_id',
+                'primes.transitaire_id',
+                'primes.representant_id',
                 'primes.montant',
-                'primes.payee',
-                'primes.date_paiement',
-                'primes.numero_paiement',
+                'primes.description',
                 'primes.statut',
-                'primes.observations',
+                'primes.date_paiement',
                 'primes.created_at',
             ])
-            ->where('primes.payee', 1)
+            ->whereNotNull('primes.date_paiement')
             ->whereNull('primes.deleted_at');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('beneficiaire', 'like', "%{$search}%")
-                  ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%")
-                  ->orWhere('observations', 'like', "%{$search}%");
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('statut', 'like', "%{$search}%");
             });
         }
 
         return $query->orderBy('date_paiement', 'desc')->get()->map(function ($p) {
             $p->source = 'OPS';
+            $p->type = null;
+            $p->beneficiaire = $p->description ?? 'N/A';
+            $p->payee = true;
+            $p->numero_paiement = null;
+            $p->observations = $p->description ?? null;
             $p->conventionne_numero = null;
             return $p;
         });
