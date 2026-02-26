@@ -37,28 +37,33 @@ class CaisseOpsController extends Controller
             ->table('primes')
             ->select([
                 'primes.id',
+                'primes.type',
+                'primes.beneficiaire',
                 'primes.montant',
-                'primes.description',
+                'primes.numero_paiement',
+                'primes.paiement_valide',
                 'primes.statut',
+                'primes.parc',
+                'primes.camion_plaque',
                 'primes.date_paiement',
                 'primes.created_at',
             ])
-            ->whereNotNull('primes.date_paiement');
+            ->where('primes.statut', 'payee');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('statut', 'like', "%{$search}%");
+                $q->where('beneficiaire', 'like', "%{$search}%")
+                  ->orWhere('numero_paiement', 'like', "%{$search}%")
+                  ->orWhere('camion_plaque', 'like', "%{$search}%")
+                  ->orWhere('parc', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%");
             });
         }
 
         return $query->orderBy('date_paiement', 'desc')->get()->map(function ($p) {
             $p->source = 'OPS';
-            $p->type = null;
-            $p->beneficiaire = $p->description ?? 'N/A';
             $p->payee = true;
-            $p->numero_paiement = null;
-            $p->observations = $p->description ?? null;
+            $p->observations = null;
             $p->conventionne_numero = null;
             return $p;
         });
@@ -71,7 +76,7 @@ class CaisseOpsController extends Controller
     {
         return DB::connection('ops')
             ->table('primes')
-            ->whereNotNull('date_paiement')
+            ->where('statut', 'payee')
             ->get(['id', 'montant'])
             ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => "OPS-PRIME-{$p->id}"]);
     }
