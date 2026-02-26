@@ -40,7 +40,6 @@ class CaisseOpsController extends Controller
             ->table('primes')
             ->select([
                 'primes.id',
-                'primes.sortie_id',
                 'primes.type',
                 'primes.numero_conteneur',
                 'primes.numero_bl',
