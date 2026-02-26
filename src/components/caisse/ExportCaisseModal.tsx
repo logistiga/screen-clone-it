@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarIcon, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import logoLogistiga from "@/assets/lojistiga-logo.png";
 import {
   Dialog,
   DialogContent,
@@ -54,8 +55,24 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
     to: undefined,
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [logoBase64, setLogoBase64] = useState<string>('');
 
   const { data: config } = useConfiguration();
+
+  // Convert logo to base64 for html2canvas
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0);
+      setLogoBase64(canvas.toDataURL('image/png'));
+    };
+    img.src = logoLogistiga;
+  }, []);
 
   const getDateRange = () => {
     const today = new Date();
@@ -136,7 +153,7 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
     const periodLabel = periodType === "today"
       ? format(range.from, "d MMMM yyyy", { locale: fr })
       : `Du ${format(range.from, "d MMM yyyy", { locale: fr })} au ${format(range.to, "d MMM yyyy", { locale: fr })}`;
-    const logoUrl = `${window.location.origin}/images/logo-logistiga.png`;
+    const logoUrl = logoBase64 || `${window.location.origin}/images/logo-logistiga.png`;
     const periodFilename = periodType === "today"
       ? format(range.from, 'dd-MM-yyyy')
       : `${format(range.from, 'dd-MM-yyyy')}_${format(range.to, 'dd-MM-yyyy')}`;
@@ -174,6 +191,9 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
             <div style="font-size: 8px; font-weight: bold; color: #333;">LOGISTIGA SAS au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</div>
             <div style="font-size: 8px; color: #555;">Tel : (+241) 011 70 14 35 / 011 70 14 34 / 011 70 88 50 / 011 70 95 03 | B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</div>
             <div style="font-size: 8px; color: #555;">Email: info@logistiga.com – Site web: www.logistiga.com</div>
+            <div style="font-size: 8px; color: #555; border-top: 1px dashed #ccc; margin-top: 4px; padding-top: 4px;">
+              BGFI N°: 40003 04140 41041658011 78 | UGB N°: 40002 00043 90000338691 84
+            </div>
           </td>
         </tr>
       </table>`;
