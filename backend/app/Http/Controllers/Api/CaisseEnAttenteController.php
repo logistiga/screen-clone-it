@@ -11,11 +11,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * Contrôleur pour la Caisse en attente
- * Affiche les primes OPS et CNV payées en attente de décaissement comptable
+ * Contrôleur orchestrateur pour la Caisse en attente
+ * Délègue à CaisseOpsController et CaisseCnvController
  */
 class CaisseEnAttenteController extends Controller
 {
+    protected CaisseOpsController $ops;
+    protected CaisseCnvController $cnv;
+
+    public function __construct()
+    {
+        $this->ops = new CaisseOpsController();
+        $this->cnv = new CaisseCnvController();
+    }
+
     /**
      * Liste des primes payées en attente de décaissement (OPS + CNV)
      */
@@ -30,14 +39,12 @@ class CaisseEnAttenteController extends Controller
 
             $allPrimes = collect();
 
-            // ── OPS ──
-            if (in_array($sourceFilter, ['all', 'OPS']) && $this->checkOpsConnection()) {
-                $allPrimes = $allPrimes->merge($this->fetchOpsPrimes($search));
+            if (in_array($sourceFilter, ['all', 'OPS']) && $this->ops->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->ops->fetchPrimes($search));
             }
 
-            // ── CNV ──
-            if (in_array($sourceFilter, ['all', 'CNV']) && $this->checkCnvConnection()) {
-                $allPrimes = $allPrimes->merge($this->fetchCnvPrimes($search));
+            if (in_array($sourceFilter, ['all', 'CNV']) && $this->cnv->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->cnv->fetchPrimes($search));
             }
 
             // Vérifier décaissements dans FAC
@@ -83,30 +90,19 @@ class CaisseEnAttenteController extends Controller
         try {
             $allPrimes = collect();
 
-            if ($this->checkOpsConnection()) {
-                $opsPrimes = DB::connection('ops')
-                    ->table('primes')
-                    ->where('payee', 1)
-                    ->whereNull('deleted_at')
-                    ->get(['id', 'montant'])
-                    ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => "OPS-PRIME-{$p->id}"]);
-                $allPrimes = $allPrimes->merge($opsPrimes);
+            if ($this->ops->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->ops->fetchStats());
             }
 
-            if ($this->checkCnvConnection()) {
-                $cnvPrimes = DB::connection('cnv')
-                    ->table('primes')
-                    ->where('statut', 'payee')
-                    ->get(['id', 'montant'])
-                    ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => "CNV-PRIME-{$p->id}"]);
-                $allPrimes = $allPrimes->merge($cnvPrimes);
+            if ($this->cnv->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->cnv->fetchStats());
             }
 
             $refs = $allPrimes->pluck('ref')->toArray();
             $decaisseesRefs = [];
             if (!empty($refs)) {
                 $decaisseesRefs = DB::table('mouvements_caisse')
-                    ->whereIn('categorie', ['Prime camion', 'Prime conventionnel'])
+                    ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
                     ->whereIn('reference', $refs)
                     ->pluck('reference')
                     ->toArray();
@@ -155,43 +151,30 @@ class CaisseEnAttenteController extends Controller
         $source = $request->get('source', 'OPS');
 
         try {
-            if ($source === 'CNV') {
-                if (!$this->checkCnvConnection()) {
-                    return response()->json(['message' => 'Connexion CNV indisponible'], 503);
-                }
-                $prime = DB::connection('cnv')->table('primes')->where('id', $primeId)->first();
-                $refUnique = "CNV-PRIME-{$primeId}";
-                $categorie = 'Prime conventionnel';
-                $payeeCheck = ($prime && $prime->statut === 'payee');
-            } else {
-                if (!$this->checkOpsConnection()) {
-                    return response()->json(['message' => 'Connexion OPS indisponible'], 503);
-                }
-                $prime = DB::connection('ops')->table('primes')->where('id', $primeId)->first();
-                $refUnique = "OPS-PRIME-{$primeId}";
-                $categorie = 'Prime camion';
-                $payeeCheck = ($prime && $prime->payee);
+            // Déléguer la validation à la source appropriée
+            $handler = $source === 'CNV' ? $this->cnv : $this->ops;
+
+            $validationError = $handler->decaisser($request, $primeId);
+            if ($validationError) {
+                return $validationError;
             }
 
+            $prime = $handler->getPrimeForDecaissement($primeId);
             if (!$prime) {
                 return response()->json(['message' => 'Prime non trouvée'], 404);
             }
 
-            if (!$payeeCheck) {
-                return response()->json(['message' => 'Cette prime n\'est pas marquée comme payée'], 422);
-            }
+            $refUnique = $source === 'CNV'
+                ? CaisseCnvController::buildRef($primeId)
+                : CaisseOpsController::buildRef($primeId);
 
-            $dejaDecaissee = DB::table('mouvements_caisse')
-                ->where('reference', $refUnique)
-                ->exists();
-
-            if ($dejaDecaissee) {
-                return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
-            }
+            $categorie = $source === 'CNV'
+                ? CaisseCnvController::categorie()
+                : CaisseOpsController::categorie();
 
             DB::beginTransaction();
 
-            $beneficiaire = $prime->beneficiaire ?: 'N/A';
+            $beneficiaire = $prime->beneficiaire ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
 
             $description = "Prime {$prime->type} - {$beneficiaire}";
@@ -233,98 +216,26 @@ class CaisseEnAttenteController extends Controller
 
     // ── Private helpers ──
 
-    private function fetchOpsPrimes(?string $search): \Illuminate\Support\Collection
-    {
-        $query = DB::connection('ops')
-            ->table('primes')
-            ->select([
-                'primes.id',
-                'primes.facture_id',
-                'primes.transitaire_id',
-                'primes.representant_id',
-                'primes.montant',
-                'primes.description',
-                'primes.statut',
-                'primes.date_paiement',
-                'primes.created_at',
-            ])
-            ->whereNotNull('primes.date_paiement')
-            ->whereNull('primes.deleted_at');
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('statut', 'like', "%{$search}%");
-            });
-        }
-
-        return $query->orderBy('date_paiement', 'desc')->get()->map(function ($p) {
-            $p->source = 'OPS';
-            $p->type = null;
-            $p->beneficiaire = $p->description ?? 'N/A';
-            $p->payee = true;
-            $p->numero_paiement = null;
-            $p->observations = $p->description ?? null;
-            $p->conventionne_numero = null;
-            return $p;
-        });
-    }
-
-    private function fetchCnvPrimes(?string $search): \Illuminate\Support\Collection
-    {
-        $query = DB::connection('cnv')
-            ->table('primes')
-            ->select([
-                'id',
-                'type',
-                'beneficiaire',
-                'montant',
-                'conventionne_numero',
-                'statut',
-                'numero_paiement',
-                'date_paiement',
-                'created_at',
-            ])
-            ->where('statut', 'payee');
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('beneficiaire', 'like', "%{$search}%")
-                  ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('conventionne_numero', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%");
-            });
-        }
-
-        return $query->orderBy('date_paiement', 'desc')->get()->map(function ($p) {
-            $p->source = 'CNV';
-            $p->sortie_conteneur_id = null;
-            $p->responsable = null;
-            $p->payee = true;
-            $p->paiement_valide = true;
-            $p->date_prime = null;
-            $p->reference_paiement = null;
-            $p->observations = null;
-            return $p;
-        });
-    }
-
     private function attachDecaissementStatus(\Illuminate\Support\Collection $primes): \Illuminate\Support\Collection
     {
         if ($primes->isEmpty()) return $primes;
 
         $refs = $primes->map(function ($p) {
-            return $p->source === 'CNV' ? "CNV-PRIME-{$p->id}" : "OPS-PRIME-{$p->id}";
+            return $p->source === 'CNV'
+                ? CaisseCnvController::buildRef($p->id)
+                : CaisseOpsController::buildRef($p->id);
         })->toArray();
 
         $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('categorie', ['Prime camion', 'Prime conventionnel'])
+            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
             ->whereIn('reference', $refs)
             ->get(['id', 'reference', 'date', 'mode_paiement'])
             ->keyBy('reference');
 
         return $primes->map(function ($prime) use ($mouvements) {
-            $ref = $prime->source === 'CNV' ? "CNV-PRIME-{$prime->id}" : "OPS-PRIME-{$prime->id}";
+            $ref = $prime->source === 'CNV'
+                ? CaisseCnvController::buildRef($prime->id)
+                : CaisseOpsController::buildRef($prime->id);
             $mouvement = $mouvements[$ref] ?? null;
             $prime->decaisse = $mouvement !== null;
             $prime->mouvement_id = $mouvement?->id;
@@ -332,25 +243,5 @@ class CaisseEnAttenteController extends Controller
             $prime->mode_paiement_decaissement = $mouvement?->mode_paiement;
             return $prime;
         });
-    }
-
-    private function checkOpsConnection(): bool
-    {
-        try {
-            DB::connection('ops')->getPdo();
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function checkCnvConnection(): bool
-    {
-        try {
-            DB::connection('cnv')->getPdo();
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
     }
 }
