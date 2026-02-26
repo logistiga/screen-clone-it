@@ -37,17 +37,13 @@ class CaisseOpsController extends Controller
             ->table('primes')
             ->select([
                 'primes.id',
-                'primes.facture_id',
-                'primes.transitaire_id',
-                'primes.representant_id',
                 'primes.montant',
                 'primes.description',
                 'primes.statut',
                 'primes.date_paiement',
                 'primes.created_at',
             ])
-            ->whereNotNull('primes.date_paiement')
-            ->whereNull('primes.deleted_at');
+            ->whereNotNull('primes.date_paiement');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -76,7 +72,6 @@ class CaisseOpsController extends Controller
         return DB::connection('ops')
             ->table('primes')
             ->whereNotNull('date_paiement')
-            ->whereNull('deleted_at')
             ->get(['id', 'montant'])
             ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => "OPS-PRIME-{$p->id}"]);
     }
