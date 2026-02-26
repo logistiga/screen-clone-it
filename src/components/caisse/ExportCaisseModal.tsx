@@ -106,7 +106,6 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
   };
 
   const handleExportPDF = async (range: { from: Date; to: Date }) => {
-    // Fetch data
     const response = await api.get('/caisse', {
       params: {
         date_debut: format(range.from, 'yyyy-MM-dd'),
@@ -117,8 +116,7 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
     });
 
     const mouvements: MouvementCaisse[] = response.data?.data || [];
-    
-    // Calculate totals
+
     const totalEntrees = mouvements
       .filter(m => m.type === 'entree')
       .reduce((sum, m) => sum + Number(m.montant), 0);
@@ -127,172 +125,212 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
       .reduce((sum, m) => sum + Number(m.montant), 0);
     const solde = totalEntrees - totalSorties;
 
+    // Fetch solde actuel caisse
+    let soldeActuel = solde;
+    try {
+      const soldeResp = await api.get('/caisse/solde', { params: { source: 'caisse' } });
+      soldeActuel = Number(soldeResp.data?.solde ?? solde);
+    } catch { /* use period solde as fallback */ }
+
     const entreprise = config?.entreprise;
     const periodLabel = periodType === "today"
       ? format(range.from, "d MMMM yyyy", { locale: fr })
       : `Du ${format(range.from, "d MMM yyyy", { locale: fr })} au ${format(range.to, "d MMM yyyy", { locale: fr })}`;
-
     const logoUrl = `${window.location.origin}/images/logo-logistiga.png`;
+    const periodFilename = periodType === "today"
+      ? format(range.from, 'dd-MM-yyyy')
+      : `${format(range.from, 'dd-MM-yyyy')}_${format(range.to, 'dd-MM-yyyy')}`;
 
-    // Generate HTML with table-based layout for better PDF rendering
-    const html = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a; background: white; width: 750px;">
-        <!-- Header with Logo -->
-        <table style="width: 100%; margin-bottom: 20px; border-bottom: 3px solid #3b82f6; padding-bottom: 15px;">
-          <tr>
-            <td style="vertical-align: top; width: 50%;">
-              <img src="${logoUrl}" alt="Logistiga" style="height: 55px; width: auto; margin-bottom: 8px;" crossorigin="anonymous" />
-              <div style="font-size: 11px; color: #666; margin-top: 5px;">
-                ${entreprise?.adresse || 'Libreville, Gabon'}<br/>
-                ${entreprise?.telephone ? `Tél: ${entreprise.telephone}` : ''}
-                ${entreprise?.email ? ` | ${entreprise.email}` : ' | contact@logistiga.com'}
-              </div>
-            </td>
-            <td style="text-align: right; vertical-align: top;">
-              <div style="font-size: 22px; font-weight: bold; color: #1e40af;">JOURNAL DE CAISSE</div>
-              <div style="font-size: 13px; color: #666; margin-top: 5px;">${periodLabel}</div>
-              <div style="font-size: 11px; color: #888; margin-top: 3px;">Édité le ${format(new Date(), "d MMMM yyyy 'à' HH:mm", { locale: fr })}</div>
-            </td>
-          </tr>
-        </table>
+    const ROWS_FIRST_PAGE = 18;
+    const ROWS_OTHER_PAGES = 26;
 
-        <!-- Summary Cards -->
-        <table style="width: 100%; margin-bottom: 20px; border-spacing: 10px; border-collapse: separate;">
-          <tr>
-            <td style="width: 33%; background: #dcfce7; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #22c55e;">
-              <div style="font-size: 11px; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Entrées</div>
-              <div style="font-size: 18px; font-weight: bold; color: #15803d; margin-top: 5px;">+${formatMontant(totalEntrees)}</div>
-            </td>
-            <td style="width: 33%; background: #fee2e2; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
-              <div style="font-size: 11px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Sorties</div>
-              <div style="font-size: 18px; font-weight: bold; color: #dc2626; margin-top: 5px;">-${formatMontant(totalSorties)}</div>
-            </td>
-            <td style="width: 33%; background: ${solde >= 0 ? '#dbeafe' : '#fee2e2'}; padding: 12px 15px; border-radius: 8px; border-left: 4px solid ${solde >= 0 ? '#3b82f6' : '#ef4444'};">
-              <div style="font-size: 11px; color: ${solde >= 0 ? '#1e40af' : '#991b1b'}; text-transform: uppercase; letter-spacing: 0.5px;">Solde période</div>
-              <div style="font-size: 18px; font-weight: bold; color: ${solde >= 0 ? '#2563eb' : '#dc2626'}; margin-top: 5px;">${solde >= 0 ? '+' : ''}${formatMontant(solde)}</div>
-            </td>
-          </tr>
-        </table>
+    // Split mouvements into pages
+    const pages: MouvementCaisse[][] = [];
+    if (mouvements.length === 0) {
+      pages.push([]);
+    } else {
+      pages.push(mouvements.slice(0, ROWS_FIRST_PAGE));
+      let offset = ROWS_FIRST_PAGE;
+      while (offset < mouvements.length) {
+        pages.push(mouvements.slice(offset, offset + ROWS_OTHER_PAGES));
+        offset += ROWS_OTHER_PAGES;
+      }
+    }
 
-        <!-- Data Table -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-          <thead>
-            <tr style="background: #1e40af;">
-              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Date</th>
-              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Type</th>
-              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Description</th>
-              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Catégorie</th>
-              <th style="padding: 10px 8px; text-align: left; color: white; font-weight: 600;">Bénéficiaire</th>
-              <th style="padding: 10px 8px; text-align: right; color: white; font-weight: 600;">Montant</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${mouvements.length === 0 ? `
-              <tr>
-                <td colspan="6" style="padding: 30px; text-align: center; color: #666; font-style: italic;">
-                  Aucun mouvement pour cette période
-                </td>
-              </tr>
-            ` : mouvements.map((m, index) => `
-              <tr style="background: ${index % 2 === 0 ? '#f8fafc' : '#ffffff'};">
-                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${format(new Date(m.date), 'dd/MM/yyyy')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">
-                  <span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: 600; background: ${m.type === 'entree' ? '#dcfce7' : '#fee2e2'}; color: ${m.type === 'entree' ? '#166534' : '#991b1b'};">
-                    ${m.type === 'entree' ? 'ENTRÉE' : 'SORTIE'}
-                  </span>
-                </td>
-                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.description || '-'}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${m.categorie || '-'}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${m.client_nom || m.beneficiaire || '-'}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: ${m.type === 'entree' ? '#16a34a' : '#dc2626'};">
-                  ${m.type === 'entree' ? '+' : '-'}${formatMontant(Number(m.montant))}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-          ${mouvements.length > 0 ? `
-          <tfoot>
-            <tr style="background: #e2e8f0; font-weight: bold;">
-              <td colspan="5" style="padding: 10px 8px; border-top: 2px solid #1e40af;">TOTAL DE LA PÉRIODE</td>
-              <td style="padding: 10px 8px; text-align: right; border-top: 2px solid #1e40af; color: ${solde >= 0 ? '#16a34a' : '#dc2626'}; font-size: 12px;">
-                ${solde >= 0 ? '+' : ''}${formatMontant(solde)}
+    const totalPages = pages.length;
+
+    const buildFooter = (pageNum: number) => `
+      <table style="width: 100%; margin-top: auto; border-top: 2px solid #e53935; padding-top: 8px;">
+        <tr>
+          <td style="text-align: left; font-size: 9px; color: #888;">
+            Document généré automatiquement<br/>Logistiga - Gestion de caisse
+          </td>
+          <td style="text-align: right; font-size: 9px; color: #888;">
+            Page ${pageNum}/${totalPages}<br/>${mouvements.length} mouvements
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align: center; padding-top: 6px; line-height: 1.8;">
+            <div style="font-size: 8px; font-weight: bold; color: #333;">LOGISTIGA SAS au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</div>
+            <div style="font-size: 8px; color: #555;">Tel : (+241) 011 70 14 35 / 011 70 14 34 / 011 70 88 50 / 011 70 95 03 | B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</div>
+            <div style="font-size: 8px; color: #555;">Email: info@logistiga.com – Site web: www.logistiga.com</div>
+          </td>
+        </tr>
+      </table>`;
+
+    const buildTableHeader = () => `
+      <tr style="background: #1e40af;">
+        <th style="padding: 8px 6px; text-align: left; color: white; font-weight: 600; font-size: 9px;">Date</th>
+        <th style="padding: 8px 6px; text-align: left; color: white; font-weight: 600; font-size: 9px;">Type</th>
+        <th style="padding: 8px 6px; text-align: left; color: white; font-weight: 600; font-size: 9px;">Description</th>
+        <th style="padding: 8px 6px; text-align: left; color: white; font-weight: 600; font-size: 9px;">Catégorie</th>
+        <th style="padding: 8px 6px; text-align: left; color: white; font-weight: 600; font-size: 9px;">Bénéficiaire</th>
+        <th style="padding: 8px 6px; text-align: right; color: white; font-weight: 600; font-size: 9px;">Montant</th>
+      </tr>`;
+
+    const buildRows = (rows: MouvementCaisse[], startIdx: number) => rows.map((m, i) => `
+      <tr style="background: ${(startIdx + i) % 2 === 0 ? '#f8fafc' : '#ffffff'};">
+        <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; font-size: 9px;">${format(new Date(m.date), 'dd/MM/yyyy')}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #e2e8f0;">
+          <span style="display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 8px; font-weight: 600; background: ${m.type === 'entree' ? '#dcfce7' : '#fee2e2'}; color: ${m.type === 'entree' ? '#166534' : '#991b1b'};">
+            ${m.type === 'entree' ? 'ENTRÉE' : 'SORTIE'}
+          </span>
+        </td>
+        <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; font-size: 9px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.description || '-'}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; font-size: 9px;">${m.categorie || '-'}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; font-size: 9px;">${m.client_nom || m.beneficiaire || '-'}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; font-size: 9px; color: ${m.type === 'entree' ? '#16a34a' : '#dc2626'};">
+          ${m.type === 'entree' ? '+' : '-'}${formatMontant(Number(m.montant))}
+        </td>
+      </tr>
+    `).join('');
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    for (let p = 0; p < pages.length; p++) {
+      const isFirst = p === 0;
+      const isLast = p === pages.length - 1;
+      const pageRows = pages[p];
+      const startIdx = isFirst ? 0 : ROWS_FIRST_PAGE + (p - 1) * ROWS_OTHER_PAGES;
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; padding: 15px 20px; color: #1a1a1a; background: white; width: 750px; min-height: 1050px; display: flex; flex-direction: column;">
+          ${isFirst ? `
+          <!-- Header -->
+          <table style="width: 100%; margin-bottom: 15px; border-bottom: 3px solid #3b82f6; padding-bottom: 12px;">
+            <tr>
+              <td style="vertical-align: top; width: 50%;">
+                <img src="${logoUrl}" alt="Logistiga" style="height: 50px; width: auto; margin-bottom: 6px;" crossorigin="anonymous" />
+                <div style="font-size: 10px; color: #666; margin-top: 4px;">
+                  ${entreprise?.adresse || 'Libreville, Gabon'}<br/>
+                  ${entreprise?.telephone ? `Tél: ${entreprise.telephone}` : ''}
+                  ${entreprise?.email ? ` | ${entreprise.email}` : ' | contact@logistiga.com'}
+                </div>
+              </td>
+              <td style="text-align: right; vertical-align: top;">
+                <div style="font-size: 20px; font-weight: bold; color: #1e40af;">JOURNAL DE CAISSE</div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px;">${periodLabel}</div>
+                <div style="font-size: 10px; color: #888; margin-top: 2px;">Édité le ${format(new Date(), "d MMMM yyyy 'à' HH:mm", { locale: fr })}</div>
               </td>
             </tr>
-          </tfoot>
+          </table>
+
+          <!-- Summary -->
+          <table style="width: 100%; margin-bottom: 15px; border-spacing: 8px; border-collapse: separate;">
+            <tr>
+              <td style="width: 33%; background: #dcfce7; padding: 10px 12px; border-radius: 6px; border-left: 4px solid #22c55e;">
+                <div style="font-size: 10px; color: #166534; text-transform: uppercase;">Entrées</div>
+                <div style="font-size: 16px; font-weight: bold; color: #15803d; margin-top: 4px;">+${formatMontant(totalEntrees)}</div>
+              </td>
+              <td style="width: 33%; background: #fee2e2; padding: 10px 12px; border-radius: 6px; border-left: 4px solid #ef4444;">
+                <div style="font-size: 10px; color: #991b1b; text-transform: uppercase;">Sorties</div>
+                <div style="font-size: 16px; font-weight: bold; color: #dc2626; margin-top: 4px;">-${formatMontant(totalSorties)}</div>
+              </td>
+              <td style="width: 33%; background: ${solde >= 0 ? '#dbeafe' : '#fee2e2'}; padding: 10px 12px; border-radius: 6px; border-left: 4px solid ${solde >= 0 ? '#3b82f6' : '#ef4444'};">
+                <div style="font-size: 10px; color: ${solde >= 0 ? '#1e40af' : '#991b1b'}; text-transform: uppercase;">Solde période</div>
+                <div style="font-size: 16px; font-weight: bold; color: ${solde >= 0 ? '#2563eb' : '#dc2626'}; margin-top: 4px;">${solde >= 0 ? '+' : ''}${formatMontant(solde)}</div>
+              </td>
+            </tr>
+          </table>
+          ` : `
+          <!-- Continuation header -->
+          <table style="width: 100%; margin-bottom: 10px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">
+            <tr>
+              <td style="font-size: 14px; font-weight: bold; color: #1e40af;">JOURNAL DE CAISSE (suite)</td>
+              <td style="text-align: right; font-size: 10px; color: #888;">${periodLabel}</td>
+            </tr>
+          </table>
+          `}
+
+          <!-- Table -->
+          <div style="flex: 1;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>${buildTableHeader()}</thead>
+              <tbody>
+                ${pageRows.length === 0 ? `
+                  <tr><td colspan="6" style="padding: 30px; text-align: center; color: #666; font-style: italic;">Aucun mouvement pour cette période</td></tr>
+                ` : buildRows(pageRows, startIdx)}
+              </tbody>
+              ${isLast && mouvements.length > 0 ? `
+              <tfoot>
+                <tr style="background: #e2e8f0; font-weight: bold;">
+                  <td colspan="5" style="padding: 8px 6px; border-top: 2px solid #1e40af; font-size: 10px;">TOTAL DE LA PÉRIODE</td>
+                  <td style="padding: 8px 6px; text-align: right; border-top: 2px solid #1e40af; color: ${solde >= 0 ? '#16a34a' : '#dc2626'}; font-size: 11px;">
+                    ${solde >= 0 ? '+' : ''}${formatMontant(solde)}
+                  </td>
+                </tr>
+              </tfoot>
+              ` : ''}
+            </table>
+          </div>
+
+          ${isLast ? `
+          <!-- Solde boxes -->
+          <table style="width: 80%; margin: 15px auto 10px; border-collapse: separate; border-spacing: 10px;">
+            <tr>
+              <td style="border: 2px solid #333; border-radius: 4px; padding: 10px 20px; text-align: center;">
+                <div style="font-size: 10px; color: #666; margin-bottom: 4px;">SOLDE PÉRIODE</div>
+                <div style="font-size: 14px; font-weight: bold; color: ${solde >= 0 ? '#16a34a' : '#dc2626'};">${solde >= 0 ? '+' : ''}${formatMontant(solde)}</div>
+              </td>
+              <td style="border: 2px solid #333; border-radius: 4px; padding: 10px 20px; text-align: center;">
+                <div style="font-size: 10px; color: #666; margin-bottom: 4px;">SOLDE ACTUEL CAISSE</div>
+                <div style="font-size: 14px; font-weight: bold; color: ${soldeActuel >= 0 ? '#16a34a' : '#dc2626'};">${soldeActuel >= 0 ? '+' : ''}${formatMontant(soldeActuel)}</div>
+              </td>
+            </tr>
+          </table>
           ` : ''}
-        </table>
 
-        <!-- Solde Caisse -->
-        <table style="margin-top: 20px; margin-left: auto; border: 2px solid #333; border-radius: 4px; border-collapse: collapse;">
-          <tr>
-            <td style="font-size: 13px; font-weight: bold; padding: 12px 30px 12px 20px; color: #333;">SOLDE CAISSE :</td>
-            <td style="font-size: 15px; font-weight: bold; padding: 12px 20px 12px 0; color: ${solde >= 0 ? '#16a34a' : '#dc2626'};">
-              ${solde >= 0 ? '+' : ''}${formatMontant(solde)}
-            </td>
-          </tr>
-        </table>
+          ${buildFooter(p + 1)}
+        </div>`;
 
-        <!-- Footer professionnel -->
-        <table style="width: 100%; margin-top: 30px; border-top: 2px solid #e53935; padding-top: 12px;">
-          <tr>
-            <td style="text-align: center; line-height: 1.8;">
-              <div style="font-size: 9px; font-weight: bold; color: #333;">LOGISTIGA SAS au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)</div>
-              <div style="font-size: 9px; color: #555;">Tel : (+241) 011 70 14 35 / 011 70 14 34 / 011 70 88 50 / 011 70 95 03 | B.P.: 18 486 - NIF : 743 107 W - RCCM : 2016B20135</div>
-              <div style="font-size: 9px; color: #555;">Email: info@logistiga.com – Site web: www.logistiga.com</div>
-            </td>
-          </tr>
-        </table>
-      </div>
-    `;
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.background = 'white';
+      document.body.appendChild(container);
 
-    // Create container
-    const container = document.createElement('div');
-    container.innerHTML = html;
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.background = 'white';
-    document.body.appendChild(container);
+      try {
+        const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
 
-    try {
-      const periodFilename = periodType === "today" 
-        ? format(range.from, 'dd-MM-yyyy')
-        : `${format(range.from, 'dd-MM-yyyy')}_${format(range.to, 'dd-MM-yyyy')}`;
+        const imgWidth = 210;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/png');
 
-      // Use html2canvas + jsPDF for better rendering
-      const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-
-      // Calculate PDF dimensions
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/png');
-
-      // Handle multi-page if needed
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        if (p > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      } finally {
+        document.body.removeChild(container);
       }
-
-      pdf.save(`journal-caisse-${periodFilename}.pdf`);
-    } finally {
-      document.body.removeChild(container);
     }
+
+    pdf.save(`journal-caisse-${periodFilename}.pdf`);
   };
 
   const handleExport = async () => {
