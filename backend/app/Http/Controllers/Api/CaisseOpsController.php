@@ -43,7 +43,6 @@ class CaisseOpsController extends Controller
                 'primes.numero_paiement',
                 
                 'primes.statut',
-                'primes.camion_plaque',
                 'primes.date_paiement',
                 'primes.created_at',
             ])
@@ -53,7 +52,6 @@ class CaisseOpsController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('beneficiaire', 'like', "%{$search}%")
                   ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('camion_plaque', 'like', "%{$search}%")
                   ->orWhere('parc', 'like', "%{$search}%")
                   ->orWhere('type', 'like', "%{$search}%");
             });
@@ -63,6 +61,7 @@ class CaisseOpsController extends Controller
             $p->source = 'OPS';
             $p->payee = true;
             $p->paiement_valide = 1;
+            $p->camion_plaque = null;
             $p->parc = $p->parc ?? null;
             $p->observations = null;
             $p->conventionne_numero = null;
