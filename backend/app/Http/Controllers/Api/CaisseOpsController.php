@@ -11,18 +11,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * Contrôleur pour les primes OPS en attente de décaissement
+ * Contrôleur pour les primes OPS (TC) en attente de décaissement
  *
- * Colonnes disponibles dans la table `primes` (base logiwkuh_tc) :
- *   type, beneficiaire, responsable, montant, payee,
- *   reference_paiement, numero_paiement, paiement_valide,
- *   statut, camion_plaque, parc, responsable_nom, prestataire_nom
+ * Structure table OPS `primes`:
+ * id, sortie_conteneur_id, type, beneficiaire, responsable, montant,
+ * payee, date_paiement, date_prime, reference_paiement, numero_paiement,
+ * paiement_valide, statut, observations, created_at, updated_at, deleted_at
+ *
+ * Jointure avec `vehicules` pour récupérer l'immatriculation (numero_parc)
  */
 class CaisseOpsController extends Controller
 {
-    /**
-     * Vérifie la connexion OPS
-     */
     public function isAvailable(): bool
     {
         try {
@@ -34,49 +33,51 @@ class CaisseOpsController extends Controller
     }
 
     /**
-     * Récupère les primes OPS payées (statut=payee ET paiement_valide=1)
+     * Récupère les primes OPS payées (payee=1)
      */
     public function fetchPrimes(?string $search = null): \Illuminate\Support\Collection
     {
         $query = DB::connection('ops')
             ->table('primes')
+            ->leftJoin('vehicules', 'primes.vehicule_id', '=', 'vehicules.id')
             ->select([
                 'primes.id',
+                'primes.sortie_conteneur_id',
                 'primes.type',
                 'primes.beneficiaire',
+                'primes.responsable',
                 'primes.montant',
-                'primes.numero_paiement',
+                'primes.payee',
                 'primes.paiement_valide',
+                'primes.date_paiement',
+                'primes.date_prime',
+                'primes.reference_paiement',
+                'primes.numero_paiement',
                 'primes.statut',
-                'primes.camion_plaque',
-                'primes.parc',
-                'primes.responsable_nom',
-                'primes.prestataire_nom',
+                'primes.observations',
+                'primes.created_at',
+                'vehicules.immatriculation as numero_parc',
             ])
-            ->where('primes.statut', 'payee')
-            ->where('primes.paiement_valide', 1);
+            ->where('primes.payee', 1)
+            ->whereNull('primes.deleted_at');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('beneficiaire', 'like', "%{$search}%")
                   ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('camion_plaque', 'like', "%{$search}%")
-                  ->orWhere('parc', 'like', "%{$search}%")
-                  ->orWhere('responsable_nom', 'like', "%{$search}%")
-                  ->orWhere('prestataire_nom', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%");
+                  ->orWhere('reference_paiement', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%")
+                  ->orWhere('observations', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy('primes.id', 'desc')->get()->map(function ($p) {
-            $p->source = 'OPS';
-            $p->responsable = null;
-            $p->payee = null;
-            $p->reference_paiement = null;
-            $p->observations = null;
-            $p->conventionne_numero = null;
-            return $p;
-        });
+        return $query->orderBy('date_paiement', 'desc')
+            ->orderBy('primes.id', 'desc')
+            ->get()
+            ->map(function ($p) {
+                $p->source = 'OPS';
+                return $p;
+            });
     }
 
     /**
@@ -86,30 +87,24 @@ class CaisseOpsController extends Controller
     {
         return DB::connection('ops')
             ->table('primes')
-            ->where('statut', 'payee')
-            ->where('paiement_valide', 1)
+            ->where('payee', 1)
+            ->whereNull('deleted_at')
             ->get(['id', 'montant'])
             ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => self::buildRef($p->id)]);
     }
 
-    /**
-     * Génère la référence unique pour une prime OPS
-     */
     public static function buildRef(int $id): string
     {
         return "OPS-PRIME-{$id}";
     }
 
-    /**
-     * Catégorie de mouvement pour les primes OPS
-     */
     public static function categorie(): string
     {
         return 'Prime camion';
     }
 
     /**
-     * Décaisser une prime OPS
+     * Valider le décaissement d'une prime OPS
      */
     public function decaisser(Request $request, int $primeId): ?JsonResponse
     {
@@ -123,8 +118,8 @@ class CaisseOpsController extends Controller
             return response()->json(['message' => 'Prime OPS non trouvée'], 404);
         }
 
-        if (!$prime->paiement_valide) {
-            return response()->json(['message' => "Cette prime n'est pas validée pour le paiement"], 422);
+        if (!$prime->payee) {
+            return response()->json(['message' => "Cette prime n'est pas marquée comme payée"], 422);
         }
 
         $refUnique = self::buildRef($primeId);
@@ -143,7 +138,7 @@ class CaisseOpsController extends Controller
     {
         $prime = DB::connection('ops')->table('primes')->where('id', $primeId)->first();
         if ($prime) {
-            $prime->beneficiaire = $prime->beneficiaire ?? $prime->prestataire_nom ?? 'N/A';
+            $prime->beneficiaire = $prime->beneficiaire ?: 'N/A';
             $prime->type = $prime->type ?? 'OPS';
             $prime->numero_paiement = $prime->numero_paiement ?? null;
         }
