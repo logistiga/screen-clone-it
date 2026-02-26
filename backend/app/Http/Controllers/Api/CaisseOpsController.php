@@ -45,7 +45,6 @@ class CaisseOpsController extends Controller
                 'primes.type',
                 'primes.beneficiaire',
                 'primes.montant',
-                'primes.payee',
                 'primes.reference_paiement',
                 'primes.numero_paiement',
                 'primes.paiement_valide',
@@ -74,6 +73,7 @@ class CaisseOpsController extends Controller
         return $query->orderBy('primes.id', 'desc')->get()->map(function ($p) {
             $p->source = 'OPS';
             $p->responsable = null;
+            $p->payee = null;
             $p->observations = null;
             $p->conventionne_numero = null;
             return $p;
