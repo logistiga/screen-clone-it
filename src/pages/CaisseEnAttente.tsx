@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, Wallet, Clock, Coins, Loader2,
-  RefreshCw, Receipt, Banknote, CalendarDays, Hash, AlertTriangle
+  RefreshCw, Receipt, Banknote, Hash, AlertTriangle
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
@@ -48,17 +48,17 @@ const itemVariants = {
 
 interface PrimeEnAttente {
   id: number | string;
-  sortie_conteneur_id: number | null;
+  sortie_conteneur_id?: number | null;
   type: string | null;
   beneficiaire: string | null;
-  numero_parc: string | null;
+  numero_parc?: string | null;
   conventionne_numero: string | null;
   responsable: string | null;
   montant: number;
   payee: boolean;
-  paiement_valide: boolean;
-  date_paiement: string | null;
-  date_prime: string | null;
+  paiement_valide: boolean | number;
+  date_paiement?: string | null;
+  date_prime?: string | null;
   reference_paiement: string | null;
   numero_paiement: string | null;
   statut: string;
@@ -69,6 +69,11 @@ interface PrimeEnAttente {
   date_decaissement: string | null;
   mode_paiement_decaissement: string | null;
   source: 'OPS' | 'CNV';
+  // OPS-specific fields
+  camion_plaque?: string | null;
+  parc?: string | null;
+  responsable_nom?: string | null;
+  prestataire_nom?: string | null;
 }
 
 interface StatsResponse {
@@ -307,13 +312,12 @@ export default function CaisseEnAttentePage() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-muted/50">
                     <TableHead>Source</TableHead>
-                    <TableHead>N° Paiement</TableHead>
-                    <TableHead>Date paiement</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>N° Parc</TableHead>
+                    <TableHead>Bénéficiaire</TableHead>
+                    <TableHead>Camion / Parc</TableHead>
+                    <TableHead>Prestataire</TableHead>
+                    <TableHead>N° Paiement</TableHead>
                     <TableHead>Montant</TableHead>
-                    <TableHead>Référence</TableHead>
-                    <TableHead>Observations</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -321,7 +325,7 @@ export default function CaisseEnAttentePage() {
                 <TableBody>
                   {primes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-16 text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="py-16 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Wallet className="h-8 w-8 opacity-50" />
                           <p>Aucune prime payée trouvée</p>
@@ -355,6 +359,28 @@ export default function CaisseEnAttentePage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Badge variant="secondary" className="capitalize">
+                            {prime.type || '-'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate font-medium">
+                          {prime.beneficiaire || prime.responsable_nom || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {prime.camion_plaque && (
+                            <span className="block font-medium">{prime.camion_plaque}</span>
+                          )}
+                          {(prime.parc || prime.numero_parc) && (
+                            <span className="text-muted-foreground">{prime.parc || prime.numero_parc}</span>
+                          )}
+                          {!prime.camion_plaque && !prime.parc && !prime.numero_parc && (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                          {prime.prestataire_nom || '-'}
+                        </TableCell>
+                        <TableCell>
                           {prime.numero_paiement ? (
                             <Badge variant="outline" className="gap-1 font-mono">
                               <Hash className="h-3 w-3" />
@@ -364,30 +390,8 @@ export default function CaisseEnAttentePage() {
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <CalendarDays className="h-3 w-3" />
-                            {prime.date_paiement ? formatDate(prime.date_paiement) : '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="capitalize">
-                            {prime.type || '-'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {prime.source === 'CNV'
-                            ? (prime.conventionne_numero || prime.beneficiaire || '-')
-                            : (prime.numero_parc || prime.beneficiaire || '-')}
-                        </TableCell>
                         <TableCell className="font-semibold">
                           {formatMontant(prime.montant)}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {prime.reference_paiement || '-'}
-                        </TableCell>
-                        <TableCell className="max-w-[180px] truncate text-sm text-muted-foreground">
-                          {prime.observations || '-'}
                         </TableCell>
                         <TableCell>
                           {prime.decaisse ? (
@@ -473,12 +477,6 @@ export default function CaisseEnAttentePage() {
                   <span className="text-sm text-muted-foreground">Montant:</span>
                   <span className="font-semibold text-lg">{formatMontant(selectedPrime.montant)}</span>
                 </div>
-                {selectedPrime.numero_paiement && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">N° Paiement:</span>
-                    <span className="font-medium font-mono">{selectedPrime.numero_paiement}</span>
-                  </div>
-                )}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Type:</span>
                   <span className="capitalize">{selectedPrime.type || '-'}</span>
@@ -487,16 +485,34 @@ export default function CaisseEnAttentePage() {
                   <span className="text-sm text-muted-foreground">Bénéficiaire:</span>
                   <span className="font-medium">{selectedPrime.beneficiaire || '-'}</span>
                 </div>
+                {selectedPrime.camion_plaque && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Camion:</span>
+                    <span>{selectedPrime.camion_plaque}</span>
+                  </div>
+                )}
+                {(selectedPrime.parc || selectedPrime.numero_parc) && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Parc:</span>
+                    <span>{selectedPrime.parc || selectedPrime.numero_parc}</span>
+                  </div>
+                )}
+                {selectedPrime.prestataire_nom && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Prestataire:</span>
+                    <span>{selectedPrime.prestataire_nom}</span>
+                  </div>
+                )}
+                {selectedPrime.numero_paiement && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">N° Paiement:</span>
+                    <span className="font-medium font-mono">{selectedPrime.numero_paiement}</span>
+                  </div>
+                )}
                 {selectedPrime.reference_paiement && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Réf. paiement:</span>
                     <span>{selectedPrime.reference_paiement}</span>
-                  </div>
-                )}
-                {selectedPrime.observations && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Observations:</span>
-                    <span className="truncate max-w-[200px]">{selectedPrime.observations}</span>
                   </div>
                 )}
               </div>
