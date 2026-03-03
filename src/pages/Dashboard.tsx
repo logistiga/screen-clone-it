@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, Variants, Easing } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -6,13 +7,47 @@ import { AnimatedCard, AnimatedCardHeader, AnimatedCardContent } from "@/compone
 import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-container";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, ClipboardList, Receipt, Wallet, TrendingUp, ArrowRight, Building2, CreditCard, FileStack, Handshake, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { Users, FileText, ClipboardList, Receipt, Wallet, TrendingUp, ArrowRight, Building2, CreditCard, FileStack, Handshake, AlertTriangle, Loader2, RefreshCw, CalendarDays, Calendar, CalendarRange } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { useDashboardStats, useDashboardGraphiques, useDashboardAlertes } from "@/hooks/use-dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, CartesianGrid, Tooltip, Legend } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
+import { fr } from "date-fns/locale";
+
+type PeriodType = 'jour' | 'mois' | 'annee';
+
+const periodOptions: { value: PeriodType; label: string; icon: typeof CalendarDays }[] = [
+  { value: 'jour', label: "Aujourd'hui", icon: CalendarDays },
+  { value: 'mois', label: 'Ce mois', icon: Calendar },
+  { value: 'annee', label: 'Cette année', icon: CalendarRange },
+];
+
+function getDateRange(period: PeriodType): { dateDebut: string; dateFin: string; label: string } {
+  const now = new Date();
+  switch (period) {
+    case 'jour':
+      return {
+        dateDebut: format(startOfDay(now), 'yyyy-MM-dd'),
+        dateFin: format(endOfDay(now), 'yyyy-MM-dd'),
+        label: format(now, "EEEE d MMMM yyyy", { locale: fr }),
+      };
+    case 'mois':
+      return {
+        dateDebut: format(startOfMonth(now), 'yyyy-MM-dd'),
+        dateFin: format(endOfMonth(now), 'yyyy-MM-dd'),
+        label: format(now, "MMMM yyyy", { locale: fr }),
+      };
+    case 'annee':
+      return {
+        dateDebut: format(startOfYear(now), 'yyyy-MM-dd'),
+        dateFin: format(endOfYear(now), 'yyyy-MM-dd'),
+        label: format(now, "yyyy"),
+      };
+  }
+}
 
 // Easing personnalisé typé correctement
 const customEase: Easing = [0.25, 0.46, 0.45, 0.94];
@@ -75,11 +110,15 @@ const scaleIn: Variants = {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('annee');
+  
+  const { dateDebut, dateFin, label: periodLabel } = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod]);
+  
   const {
     data: stats,
     isLoading: statsLoading,
     refetch: refetchStats
-  } = useDashboardStats();
+  } = useDashboardStats(dateDebut, dateFin);
   const {
     data: graphiques,
     isLoading: graphiquesLoading
@@ -185,37 +224,64 @@ export default function DashboardPage() {
       <motion.div className="space-y-8" initial="hidden" animate="visible" variants={containerVariants}>
         {/* Message de bienvenue avec stats globales */}
         <motion.div variants={fadeInUp} className="rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <motion.h2 className="text-2xl font-bold mb-2" initial={{
-              opacity: 0,
-              x: -20
-            }} animate={{
-              opacity: 1,
-              x: 0
-            }} transition={{
-              delay: 0.2
-            }}>Bienvenue sur LogistiGA</motion.h2>
-              <motion.p className="text-muted-foreground" initial={{
-              opacity: 0
-            }} animate={{
-              opacity: 1
-            }} transition={{
-              delay: 0.3
+         <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <motion.h2 className="text-2xl font-bold mb-1" initial={{
+                opacity: 0,
+                x: -20
+              }} animate={{
+                opacity: 1,
+                x: 0
+              }} transition={{
+                delay: 0.2
+              }}>Bienvenue sur LogistiGA</motion.h2>
+                <motion.p className="text-muted-foreground text-sm" initial={{
+                opacity: 0
+              }} animate={{
+                opacity: 1
+              }} transition={{
+                delay: 0.3
+              }}>
+                  Votre solution de gestion logistique et transit.
+                </motion.p>
+              </div>
+              <motion.div whileHover={{
+              scale: 1.05
+            }} whileTap={{
+              scale: 0.95
             }}>
-                Votre solution de gestion logistique et transit.
-              </motion.p>
+                <Button variant="outline" size="sm" onClick={() => refetchStats()} disabled={statsLoading}>
+                  {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  <span className="ml-2 hidden sm:inline">Actualiser</span>
+                </Button>
+              </motion.div>
             </div>
-            <motion.div whileHover={{
-            scale: 1.05
-          }} whileTap={{
-            scale: 0.95
-          }}>
-              <Button variant="outline" size="sm" onClick={() => refetchStats()} disabled={statsLoading}>
-                {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                <span className="ml-2 hidden sm:inline">Actualiser</span>
-              </Button>
-            </motion.div>
+            
+            {/* Sélecteur de période */}
+            <div className="flex items-center gap-2">
+              <div className="flex bg-background/60 rounded-lg border p-1 gap-1">
+                {periodOptions.map((option) => {
+                  const Icon = option.icon;
+                  const isActive = selectedPeriod === option.value;
+                  return (
+                    <Button
+                      key={option.value}
+                      variant={isActive ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setSelectedPeriod(option.value)}
+                      className={`gap-1.5 text-xs transition-all ${isActive ? '' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <span className="text-xs text-muted-foreground capitalize hidden sm:inline">
+                — {periodLabel}
+              </span>
+            </div>
           </div>
           
           {/* KPIs principaux */}
