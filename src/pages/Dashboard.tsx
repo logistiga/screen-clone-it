@@ -287,12 +287,12 @@ export default function DashboardPage() {
           {/* KPIs principaux */}
           <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6" variants={containerVariants}>
             {[{
-            label: "CA Annuel",
-            value: stats?.ca_annuel ?? 0,
+            label: selectedPeriod === 'jour' ? "CA du jour" : selectedPeriod === 'mois' ? "CA du mois" : "CA Annuel",
+            value: selectedPeriod === 'annee' ? (stats?.ca_annuel ?? 0) : (stats?.ca_mensuel ?? 0),
             color: "text-primary"
           }, {
-            label: "CA du mois",
-            value: stats?.ca_mensuel ?? 0,
+            label: selectedPeriod === 'jour' ? "Paiements du jour" : selectedPeriod === 'mois' ? "Paiements du mois" : "Paiements annuels",
+            value: stats?.paiements ?? 0,
             color: "text-green-600"
           }, {
             label: "Créances",
