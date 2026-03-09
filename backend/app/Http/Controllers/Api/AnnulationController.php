@@ -119,13 +119,27 @@ class AnnulationController extends Controller
                 'montant' => $facture->montant_ttc ?? 0,
                 'date' => $facture->updated_at ?? now(),
                 'motif' => 'Annulation enregistrée automatiquement',
-                'avoir_genere' => false,
+                'avoir_genere' => true,
+                'numero_avoir' => Annulation::genererNumeroAvoir(),
+                'solde_avoir' => $facture->montant_ttc ?? 0,
             ]);
         }
     }
 
     public function show(Annulation $annulation): JsonResponse
     {
+        // Auto-générer l'avoir si c'est une annulation de facture sans avoir
+        if ($annulation->type === 'facture' && !$annulation->avoir_genere) {
+            DB::transaction(function () use ($annulation) {
+                $annulation->update([
+                    'avoir_genere' => true,
+                    'numero_avoir' => Annulation::genererNumeroAvoir(),
+                    'solde_avoir' => $annulation->montant,
+                ]);
+            });
+            $annulation->refresh();
+        }
+
         $annulation->load(['client']);
         return response()->json(new AnnulationResource($annulation));
     }

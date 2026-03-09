@@ -1,35 +1,64 @@
 
 
-# Plan: Avoir systématique pour toutes les factures annulées
+# Ajouter les primes CNV (conventionnel) sur la page Caisse en attente
 
-## Contexte actuel
+## Contexte
 
-- La page `AvoirPDF.tsx` (ligne 44) bloque l'affichage si `avoir_genere === false`
-- Le backend `AnnulationService` a été mis à jour pour toujours générer un avoir, mais des annulations plus anciennes peuvent avoir `avoir_genere = false`
-- Le bouton "Télécharger l'avoir" existe déjà sur la page Factures pour les factures annulées
+La base `logiwkuh_cnv` contient une table `primes` avec des primes conventionnelles. Les primes avec `statut = 'payee'` doivent apparaitre sur la meme page "Caisse en attente" que les primes OPS, avec la meme logique de decaissement.
 
-## Modifications prévues
+### Structure table CNV `primes`
+| Colonne | Type |
+|---------|------|
+| id | UUID |
+| type | ENUM (camion, responsable) |
+| beneficiaire | STRING |
+| montant | DECIMAL(12,2) |
+| operation_id | UUID |
+| conventionne_numero | STRING |
+| statut | ENUM (en_attente, payee) |
+| numero_paiement | STRING nullable |
+| date_paiement | TIMESTAMP nullable |
 
-### 1. Backend - `AnnulationService.php`
-Confirmer que `annulerFacture` génère **toujours** un avoir avec numéro et solde, indépendamment du paiement. C'est déjà le cas dans le code actuel.
+## Modifications
 
-### 2. Backend - `AnnulationController.php`
-Ajouter une logique dans la méthode `show` ou `annulerFacture` : si une annulation de facture existe sans avoir (anciennes données), générer automatiquement le numéro d'avoir au moment de la consultation.
+### 1. Backend - Ajouter connexion `cnv` dans `config/database.php`
 
-### 3. Frontend - `AvoirPDF.tsx`
-- Supprimer la condition `!annulation.avoir_genere` qui bloque l'affichage (ligne 44)
-- Si `avoir_genere` est false mais que c'est une annulation de facture, afficher quand même le PDF avec un numéro d'avoir auto-généré
-- Adapter le titre du PDF selon le contexte : "AVOIR D'ANNULATION" pour les factures non payées vs "AVOIR" pour les factures payées
+Ajouter un bloc `cnv` (meme pattern que `ops`) utilisant les variables `CNV_DB_HOST`, `CNV_DB_DATABASE`, `CNV_DB_USERNAME`, `CNV_DB_PASSWORD`, `CNV_DB_PORT`, `CNV_DB_SOCKET`.
 
-### 4. Frontend - `Factures.tsx`
-- S'assurer que le bouton "Télécharger l'avoir" fonctionne même si `facture.annulation` n'a pas encore `avoir_genere = true` (fallback vers génération à la volée)
+### 2. Backend - Modifier `CaisseEnAttenteController.php`
 
-### 5. Backend - Nouvelle route (optionnel)
-Ajouter une route `POST /annulations/{id}/ensure-avoir` qui génère l'avoir s'il n'existe pas encore, puis retourne l'annulation mise à jour. Cela couvre les anciennes annulations.
+**Methode `index`** :
+- Ajouter `checkCnvConnection()` (meme pattern que `checkOpsConnection`)
+- Lire les primes CNV avec `statut = 'payee'` depuis la connexion `cnv`
+- Colonnes selectionnees : id, type, beneficiaire, montant, conventionne_numero, statut, numero_paiement, date_paiement, created_at
+- Mapper les colonnes CNV vers le meme format que OPS (ex: `numero_parc` = `conventionne_numero`)
+- Ajouter un champ `source` = `'OPS'` ou `'CNV'` sur chaque prime
+- Verifier le decaissement via reference `CNV-PRIME-{id}` (au lieu de `OPS-PRIME-{id}`)
+- Categorie mouvement : `Prime conventionnel` pour CNV
+- Merger les deux collections, filtrer, trier par date_paiement desc, puis paginer
+- Supporter un filtre `source` optionnel (query param)
 
-## Résumé des fichiers à modifier
-- `backend/app/Services/AnnulationService.php` - confirmer la logique avoir systématique
-- `backend/app/Http/Controllers/Api/AnnulationController.php` - auto-génération avoir si manquant
-- `src/pages/AvoirPDF.tsx` - supprimer le blocage sur `avoir_genere`
-- `src/pages/Factures.tsx` - ajuster le bouton téléchargement avoir
+**Methode `stats`** :
+- Ajouter les totaux CNV aux stats existantes (cumul des deux sources)
+
+**Methode `decaisser`** :
+- Accepter un parametre `source` dans la requete (defaut: `OPS`)
+- Si `source = CNV` : lire depuis connexion `cnv`, reference = `CNV-PRIME-{id}`, categorie = `Prime conventionnel`
+- Si `source = OPS` : comportement actuel inchange
+
+### 3. Frontend - Modifier `CaisseEnAttente.tsx`
+
+- Ajouter `source: string` a l'interface `PrimeEnAttente`
+- Ajouter `conventionne_numero: string | null`
+- Afficher une colonne "Source" avec badge colore (bleu "OPS", vert "CNV")
+- Afficher le `conventionne_numero` pour les primes CNV dans la colonne "N Parc"
+- Ajouter un filtre source dans les options de filtre (Toutes / OPS / CNV)
+- Envoyer `source` dans le POST de decaissement
+- Mettre a jour le sous-titre : "Primes payees depuis TC et CNV en attente de decaissement"
+
+## Fichiers modifies
+
+- `backend/config/database.php` (ajout connexion cnv)
+- `backend/app/Http/Controllers/Api/CaisseEnAttenteController.php` (lecture 2 bases + merge)
+- `src/pages/CaisseEnAttente.tsx` (colonne source + filtre + envoi source)
 

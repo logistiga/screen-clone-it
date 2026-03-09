@@ -41,7 +41,7 @@ export default function AvoirPDFPage() {
     );
   }
 
-  if (error || !annulation || !annulation.avoir_genere) {
+  if (error || !annulation) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center animate-fade-in">
@@ -124,7 +124,9 @@ export default function AvoirPDFPage() {
               </div>
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-destructive">AVOIR</h1>
+              <h1 className="text-2xl font-bold text-destructive">
+                {annulation.rembourse ? "AVOIR" : "AVOIR D'ANNULATION"}
+              </h1>
               <p className="text-lg font-semibold">{annulation.numero_avoir}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Date: {formatDate(annulation.date)}
