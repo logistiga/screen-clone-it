@@ -165,3 +165,11 @@ export const utiliserAvoir = async (
   const response = await api.post(`/annulations/${annulationId}/utiliser-avoir`, data);
   return response.data;
 };
+
+// Garantir qu'un avoir existe pour une facture annulée
+export const ensureAvoirFacture = async (
+  factureId: number
+): Promise<{ message: string; annulation: Annulation }> => {
+  const response = await api.post(`/annulations/ensure-avoir/facture/${factureId}`);
+  return response.data;
+};
