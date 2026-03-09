@@ -133,6 +133,8 @@ Route::prefix('annulations')->middleware('audit')->group(function () {
         ->middleware('permission:ordres.valider');
     Route::post('{annulation}/generer-avoir', [AnnulationController::class, 'genererAvoir'])
         ->middleware('permission:factures.creer');
+    Route::post('ensure-avoir/facture/{facture}', [AnnulationController::class, 'ensureAvoirFacture'])
+        ->middleware('permission:factures.voir');
     Route::post('{annulation}/rembourser', [AnnulationController::class, 'rembourser'])
         ->middleware('permission:caisse.creer');
     Route::post('{annulation}/utiliser-avoir', [AnnulationController::class, 'utiliserAvoir'])

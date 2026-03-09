@@ -448,11 +448,21 @@ export default function FacturesPage() {
                               size="icon" 
                               title="Télécharger l'avoir"
                               className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                              onClick={() => {
+                              onClick={async () => {
                                 if (facture.annulation?.id) {
                                   navigate(`/annulations/${facture.annulation.id}/avoir`);
                                 } else {
-                                  toast.error("Aucun avoir trouvé pour cette facture");
+                                  try {
+                                    const { ensureAvoirFacture } = await import("@/lib/api/annulations");
+                                    const result = await ensureAvoirFacture(Number(facture.id));
+                                    if (result.annulation?.id) {
+                                      navigate(`/annulations/${result.annulation.id}/avoir`);
+                                    } else {
+                                      toast.error("Impossible de générer l'avoir");
+                                    }
+                                  } catch (err: any) {
+                                    toast.error(err?.response?.data?.message || "Erreur lors de la génération de l'avoir");
+                                  }
                                 }
                               }}
                             >

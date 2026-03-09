@@ -497,4 +497,58 @@ class AnnulationController extends Controller
 
         return response()->json($historique);
     }
+
+    /**
+     * Garantir qu'un avoir existe pour une facture annulée.
+     * Crée l'annulation + avoir si manquant, ou génère l'avoir si annulation sans avoir.
+     */
+    public function ensureAvoirFacture(Facture $facture): JsonResponse
+    {
+        if ($facture->statut !== 'annulee') {
+            return response()->json(['message' => 'Cette facture n\'est pas annulée.'], 422);
+        }
+
+        try {
+            $annulation = Annulation::where('document_id', $facture->id)
+                ->where('type', 'facture')
+                ->first();
+
+            if (!$annulation) {
+                // Créer l'annulation avec avoir
+                $annulation = Annulation::create([
+                    'numero' => Annulation::genererNumero(),
+                    'type' => 'facture',
+                    'document_id' => $facture->id,
+                    'document_numero' => $facture->numero,
+                    'client_id' => $facture->client_id,
+                    'montant' => $facture->montant_ttc ?? 0,
+                    'date' => $facture->updated_at ?? now(),
+                    'motif' => 'Annulation enregistrée automatiquement',
+                    'avoir_genere' => true,
+                    'numero_avoir' => Annulation::genererNumeroAvoir(),
+                    'solde_avoir' => $facture->montant_ttc ?? 0,
+                ]);
+            } elseif (!$annulation->avoir_genere) {
+                // Générer l'avoir pour une annulation existante sans avoir
+                DB::transaction(function () use ($annulation) {
+                    $annulation->update([
+                        'avoir_genere' => true,
+                        'numero_avoir' => Annulation::genererNumeroAvoir(),
+                        'solde_avoir' => $annulation->montant,
+                    ]);
+                });
+                $annulation->refresh();
+            }
+
+            $annulation->load('client');
+
+            return response()->json([
+                'message' => 'Avoir disponible',
+                'annulation' => new AnnulationResource($annulation),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
 }
