@@ -212,4 +212,35 @@ class FactureController extends Controller
 
         return response()->json(FactureResource::collection($factures));
     }
+
+    /**
+     * Synchronise les annulations manquantes pour les factures annulées
+     */
+    protected function synchroniserAnnulationsFactures(): void
+    {
+        $facturesAnnulees = Facture::where('statut', 'annulee')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('annulations')
+                    ->whereColumn('annulations.document_id', 'factures.id')
+                    ->where('annulations.type', 'facture');
+            })
+            ->get();
+
+        foreach ($facturesAnnulees as $facture) {
+            Annulation::create([
+                'numero' => Annulation::genererNumero(),
+                'type' => 'facture',
+                'document_id' => $facture->id,
+                'document_numero' => $facture->numero,
+                'client_id' => $facture->client_id,
+                'montant' => $facture->montant_ttc ?? 0,
+                'date' => $facture->updated_at ?? now(),
+                'motif' => 'Annulation enregistrée automatiquement',
+                'avoir_genere' => true,
+                'numero_avoir' => Annulation::genererNumeroAvoir(),
+                'solde_avoir' => $facture->montant_ttc ?? 0,
+            ]);
+        }
+    }
 }
