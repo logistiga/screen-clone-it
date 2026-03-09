@@ -454,7 +454,7 @@ export default function FacturesPage() {
                                 } else {
                                   try {
                                     const { ensureAvoirFacture } = await import("@/lib/api/annulations");
-                                    const result = await ensureAvoirFacture(facture.id);
+                                    const result = await ensureAvoirFacture(Number(facture.id));
                                     if (result.annulation?.id) {
                                       navigate(`/annulations/${result.annulation.id}/avoir`);
                                     } else {
