@@ -42,8 +42,10 @@ class AnnulationService
                 'montant' => $facture->montant_ttc,
                 'date' => now(),
                 'motif' => $motif,
-                'avoir_genere' => $genererAvoir,
-                'numero_avoir' => $genererAvoir ? Annulation::genererNumeroAvoir() : null,
+                // Toujours générer un avoir automatiquement pour les factures
+                'avoir_genere' => true,
+                'numero_avoir' => Annulation::genererNumeroAvoir(),
+                'solde_avoir' => $facture->montant_ttc,
             ]);
 
             // Annuler les paiements liés

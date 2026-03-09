@@ -45,7 +45,7 @@ class FactureController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements']);
+        $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements', 'annulation']);
 
         // Recherche sécurisée
         $search = $this->validateSearchParameter($request);
