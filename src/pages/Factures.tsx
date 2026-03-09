@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock, RotateCcw } from "lucide-react";
+import { Plus, Eye, Wallet, Mail, FileText, Ban, Trash2, Edit, Download, CreditCard, Receipt, Container, Package, Truck, TrendingUp, Clock, RotateCcw, FileDown } from "lucide-react";
 import { EmailModalWithPdfGenerator } from "@/components/EmailModalWithPdfGenerator";
 import { PaiementModal } from "@/components/PaiementModal";
 import { AnnulationPaiementModal } from "@/components/AnnulationPaiementModal";
