@@ -119,7 +119,9 @@ class AnnulationController extends Controller
                 'montant' => $facture->montant_ttc ?? 0,
                 'date' => $facture->updated_at ?? now(),
                 'motif' => 'Annulation enregistrée automatiquement',
-                'avoir_genere' => false,
+                'avoir_genere' => true,
+                'numero_avoir' => Annulation::genererNumeroAvoir(),
+                'solde_avoir' => $facture->montant_ttc ?? 0,
             ]);
         }
     }
