@@ -187,7 +187,9 @@ export default function AvoirPDFPage() {
               <div>
                 <h3 className="text-lg font-bold text-destructive">MONTANT DE L'AVOIR</h3>
                 <p className="text-sm text-muted-foreground">
-                  Ce montant est à déduire des prochaines factures ou à rembourser au client.
+                  {annulation.rembourse 
+                    ? "Ce montant est à déduire des prochaines factures ou à rembourser au client."
+                    : "Cet avoir représente l'annulation de la facture. Aucun montant n'est dû."}
                 </p>
               </div>
               <div className="text-right">
