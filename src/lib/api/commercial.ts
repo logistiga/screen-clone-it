@@ -157,6 +157,8 @@ export interface Facture {
   lignes?: any[];
   // Relation vers l'ordre de travail lié
   ordre_travail?: { id: string; numero: string } | null;
+  // Annulation liée
+  annulation?: { id: number; motif: string; avoir_genere: boolean; numero_avoir?: string; date?: string } | null;
 }
 
 export interface Armateur {
