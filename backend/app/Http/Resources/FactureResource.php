@@ -109,6 +109,13 @@ class FactureResource extends JsonResource
             'lots' => LotFactureResource::collection($this->whenLoaded('lots')),
             'paiements' => PaiementResource::collection($this->whenLoaded('paiements')),
             'primes' => PrimeResource::collection($this->whenLoaded('primes')),
+            'annulation' => $this->whenLoaded('annulation', fn() => $this->annulation ? [
+                'id' => $this->annulation->id,
+                'motif' => $this->annulation->motif,
+                'avoir_genere' => (bool) $this->annulation->avoir_genere,
+                'numero_avoir' => $this->annulation->numero_avoir,
+                'date' => $this->annulation->created_at?->toDateString(),
+            ] : null),
         ];
     }
 }

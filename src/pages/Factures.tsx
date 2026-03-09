@@ -430,15 +430,34 @@ export default function FacturesPage() {
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Supprimer"
-                            className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10"
-                            onClick={() => setConfirmDelete({ id: facture.id, numero: facture.numero })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {facture.statut !== 'annulee' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Supprimer"
+                              className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10"
+                              onClick={() => setConfirmDelete({ id: facture.id, numero: facture.numero })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {facture.statut === 'annulee' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Télécharger l'avoir"
+                              className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
+                              onClick={() => {
+                                if (facture.annulation?.id) {
+                                  navigate(`/annulations/${facture.annulation.id}/avoir`);
+                                } else {
+                                  toast.error("Aucun avoir trouvé pour cette facture");
+                                }
+                              }}
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </AnimatedTableRow>
