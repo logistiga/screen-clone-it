@@ -45,6 +45,9 @@ class FactureController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Auto-créer les annulations manquantes pour les factures annulées sans enregistrement
+        $this->synchroniserAnnulationsFactures();
+
         $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements', 'annulation']);
 
         // Recherche sécurisée
