@@ -185,6 +185,7 @@ class AiAssistantController extends Controller
 
         return match ($setting->provider) {
             'ollama' => $this->callOllama($setting, $allMessages, $extra),
+            'deepseek' => $this->callDeepSeek($setting, $allMessages, $extra),
             'openai' => $this->callOpenAI($setting, $allMessages, $extra),
             'anthropic' => $this->callAnthropic($setting, $allMessages, $extra),
             'google' => $this->callGoogle($setting, $allMessages, $extra),
