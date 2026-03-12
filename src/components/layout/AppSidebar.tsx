@@ -96,6 +96,7 @@ const menuItems = {
   ia: {
     label: "",
     collapsible: false,
+    adminOnly: true,
     items: [
       { title: "Assistant IA", url: "/assistant-ia", icon: Bot },
     ]
