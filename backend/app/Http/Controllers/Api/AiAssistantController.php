@@ -131,7 +131,7 @@ class AiAssistantController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $request->validate([
-            'provider' => 'required|in:ollama,openai,anthropic,google',
+            'provider' => 'required|in:ollama,deepseek,openai,anthropic,google',
             'api_url' => 'nullable|string|max:500',
             'api_key' => 'nullable|string|max:500',
             'model' => 'required|string|max:100',
@@ -185,6 +185,7 @@ class AiAssistantController extends Controller
 
         return match ($setting->provider) {
             'ollama' => $this->callOllama($setting, $allMessages, $extra),
+            'deepseek' => $this->callDeepSeek($setting, $allMessages, $extra),
             'openai' => $this->callOpenAI($setting, $allMessages, $extra),
             'anthropic' => $this->callAnthropic($setting, $allMessages, $extra),
             'google' => $this->callGoogle($setting, $allMessages, $extra),
@@ -211,6 +212,26 @@ class AiAssistantController extends Controller
         }
 
         return $response->json('message.content') ?? 'Pas de réponse.';
+    }
+
+    protected function callDeepSeek(AiSetting $setting, array $messages, array $extra): string
+    {
+        if (!$setting->api_key) throw new \Exception('Clé API DeepSeek non configurée.');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $setting->api_key,
+        ])->timeout(120)->post('https://api.deepseek.com/v1/chat/completions', [
+            'model' => $setting->model,
+            'messages' => $messages,
+            'temperature' => $extra['temperature'] ?? 0.7,
+            'max_tokens' => $extra['max_tokens'] ?? 2000,
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception("DeepSeek error ({$response->status()}): " . $response->body());
+        }
+
+        return $response->json('choices.0.message.content') ?? 'Pas de réponse.';
     }
 
     protected function callOpenAI(AiSetting $setting, array $messages, array $extra): string

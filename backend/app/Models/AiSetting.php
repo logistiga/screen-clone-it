@@ -33,6 +33,11 @@ class AiSetting extends Model
                 'models' => ['mistral:7b', 'llama3.2:3b', 'llama3.1:8b', 'codellama:7b', 'phi3:mini'],
                 'needs_key' => false,
             ],
+            'deepseek' => [
+                'label' => 'DeepSeek (Rapide ⚡)',
+                'models' => ['deepseek-chat', 'deepseek-reasoner'],
+                'needs_key' => true,
+            ],
             'openai' => [
                 'label' => 'OpenAI',
                 'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
