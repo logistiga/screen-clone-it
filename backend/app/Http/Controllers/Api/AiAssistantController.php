@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiMemory;
+use App\Models\AiSetting;
 use App\Models\Client;
 use App\Models\Facture;
 use App\Models\Paiement;
@@ -12,97 +14,294 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AiAssistantController extends Controller
 {
     /**
-     * Chat avec l'assistant IA
+     * Chat avec l'assistant IA (multi-provider + mémoire)
      */
     public function chat(Request $request): JsonResponse
     {
         $request->validate([
-            'messages' => 'required|array|min:1',
-            'messages.*.role' => 'required|in:user,assistant,system',
-            'messages.*.content' => 'required|string',
+            'message' => 'required|string|max:5000',
+            'session_id' => 'nullable|string|max:100',
         ]);
 
-        $apiKey = config('services.openai.key');
-        if (!$apiKey) {
-            return response()->json([
-                'error' => 'La clé API IA n\'est pas configurée. Contactez l\'administrateur.'
-            ], 500);
+        $setting = AiSetting::active();
+        if (!$setting) {
+            return response()->json(['error' => 'Aucun provider IA configuré.'], 500);
         }
 
-        try {
-            // Collecter le contexte métier
-            $context = $this->getBusinessContext();
-            
-            $systemPrompt = $this->buildSystemPrompt($context);
-            
-            $messages = array_merge(
-                [['role' => 'system', 'content' => $systemPrompt]],
-                $request->input('messages')
-            );
+        $userId = $request->user()?->id;
+        $sessionId = $request->input('session_id', Str::uuid()->toString());
+        $userMessage = $request->input('message');
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-            ])->timeout(60)->post(config('services.openai.endpoint', 'https://api.openai.com/v1/chat/completions'), [
-                'model' => config('services.openai.model', 'gpt-4o-mini'),
-                'messages' => $messages,
-                'temperature' => 0.7,
-                'max_tokens' => 2000,
+        try {
+            // Save user message
+            AiMemory::saveMessage($sessionId, $userId, 'user', $userMessage);
+
+            // Get conversation history
+            $history = AiMemory::getHistory($sessionId, $setting->max_context_length);
+
+            // Build context
+            $businessContext = $this->getBusinessContext();
+            $systemPrompt = $this->buildSystemPrompt($setting, $businessContext);
+
+            // Call AI provider
+            $response = $this->callProvider($setting, $systemPrompt, $history);
+
+            // Save assistant response
+            AiMemory::saveMessage($sessionId, $userId, 'assistant', $response, [
+                'provider' => $setting->provider,
+                'model' => $setting->model,
             ]);
 
-            if (!$response->successful()) {
-                Log::error('AI API Error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-                return response()->json([
-                    'error' => 'Erreur de communication avec l\'IA. Réessayez plus tard.'
-                ], 502);
-            }
-
-            $data = $response->json();
-            $content = $data['choices'][0]['message']['content'] ?? 'Désolé, je n\'ai pas pu générer de réponse.';
-
             return response()->json([
-                'message' => $content,
-                'usage' => $data['usage'] ?? null,
+                'message' => $response,
+                'session_id' => $sessionId,
             ]);
 
         } catch (\Exception $e) {
-            Log::error('AI Assistant Error', ['error' => $e->getMessage()]);
+            Log::error('AI Chat Error', ['error' => $e->getMessage(), 'provider' => $setting->provider]);
             return response()->json([
-                'error' => 'Erreur interne du service IA.'
-            ], 500);
+                'error' => 'Erreur de communication avec l\'IA: ' . $e->getMessage()
+            ], 502);
         }
     }
 
     /**
-     * Retourne le contexte métier pour pré-alimenter l'assistant
+     * Historique des conversations
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $sessionId = $request->query('session_id');
+        if (!$sessionId) {
+            // Return list of sessions
+            $sessions = AiMemory::select('session_id', DB::raw('MIN(created_at) as started_at'), DB::raw('MAX(created_at) as last_message_at'), DB::raw('COUNT(*) as message_count'))
+                ->where('user_id', $request->user()?->id)
+                ->groupBy('session_id')
+                ->orderByDesc('last_message_at')
+                ->limit(50)
+                ->get();
+            return response()->json($sessions);
+        }
+
+        $messages = AiMemory::where('session_id', $sessionId)
+            ->orderBy('created_at')
+            ->get(['role', 'content', 'metadata', 'created_at']);
+        return response()->json($messages);
+    }
+
+    /**
+     * Contexte métier
      */
     public function context(): JsonResponse
     {
         try {
-            $context = $this->getBusinessContext();
-            return response()->json($context);
+            return response()->json($this->getBusinessContext());
         } catch (\Exception $e) {
-            Log::error('AI Context Error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Impossible de charger le contexte.'], 500);
         }
     }
 
     /**
-     * Collecte les données métier pertinentes
+     * Settings CRUD
      */
+    public function getSettings(): JsonResponse
+    {
+        $setting = AiSetting::active();
+        $providers = AiSetting::getProviders();
+        return response()->json([
+            'setting' => $setting,
+            'providers' => $providers,
+        ]);
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $request->validate([
+            'provider' => 'required|in:ollama,openai,anthropic,google',
+            'api_url' => 'nullable|string|max:500',
+            'api_key' => 'nullable|string|max:500',
+            'model' => 'required|string|max:100',
+            'max_context_length' => 'integer|min:1|max:100',
+            'system_prompt' => 'nullable|string|max:5000',
+            'extra_config' => 'nullable|array',
+        ]);
+
+        $setting = AiSetting::active() ?? new AiSetting();
+        $data = $request->only(['provider', 'api_url', 'model', 'max_context_length', 'system_prompt', 'extra_config']);
+        
+        // Only update api_key if provided (don't clear it)
+        if ($request->filled('api_key')) {
+            $data['api_key'] = $request->input('api_key');
+        }
+        
+        $data['is_active'] = true;
+        $setting->fill($data);
+        $setting->save();
+
+        return response()->json(['message' => 'Paramètres IA mis à jour.', 'setting' => $setting]);
+    }
+
+    public function testConnection(Request $request): JsonResponse
+    {
+        $setting = AiSetting::active();
+        if (!$setting) {
+            return response()->json(['success' => false, 'error' => 'Aucun provider configuré.']);
+        }
+
+        try {
+            $response = $this->callProvider($setting, 'Réponds juste "OK" en un mot.', [
+                ['role' => 'user', 'content' => 'Test de connexion. Réponds OK.']
+            ]);
+            return response()->json(['success' => true, 'response' => $response]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    // ========== Private methods ==========
+
+    protected function callProvider(AiSetting $setting, string $systemPrompt, array $messages): string
+    {
+        $allMessages = array_merge(
+            [['role' => 'system', 'content' => $systemPrompt]],
+            $messages
+        );
+
+        $extra = $setting->extra_config ?? [];
+
+        return match ($setting->provider) {
+            'ollama' => $this->callOllama($setting, $allMessages, $extra),
+            'openai' => $this->callOpenAI($setting, $allMessages, $extra),
+            'anthropic' => $this->callAnthropic($setting, $allMessages, $extra),
+            'google' => $this->callGoogle($setting, $allMessages, $extra),
+            default => throw new \Exception("Provider non supporté: {$setting->provider}"),
+        };
+    }
+
+    protected function callOllama(AiSetting $setting, array $messages, array $extra): string
+    {
+        $url = rtrim($setting->api_url, '/') . '/api/chat';
+
+        $response = Http::timeout(120)->post($url, [
+            'model' => $setting->model,
+            'messages' => $messages,
+            'stream' => false,
+            'options' => [
+                'temperature' => $extra['temperature'] ?? 0.7,
+                'num_predict' => $extra['max_tokens'] ?? 2000,
+            ],
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception("Ollama error ({$response->status()}): " . $response->body());
+        }
+
+        return $response->json('message.content') ?? 'Pas de réponse.';
+    }
+
+    protected function callOpenAI(AiSetting $setting, array $messages, array $extra): string
+    {
+        $apiKey = $setting->api_key ?: config('services.openai.key');
+        if (!$apiKey) throw new \Exception('Clé API OpenAI non configurée.');
+
+        $endpoint = $setting->api_url ?: 'https://api.openai.com/v1/chat/completions';
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+        ])->timeout(60)->post($endpoint, [
+            'model' => $setting->model,
+            'messages' => $messages,
+            'temperature' => $extra['temperature'] ?? 0.7,
+            'max_tokens' => $extra['max_tokens'] ?? 2000,
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception("OpenAI error ({$response->status()}): " . $response->body());
+        }
+
+        return $response->json('choices.0.message.content') ?? 'Pas de réponse.';
+    }
+
+    protected function callAnthropic(AiSetting $setting, array $messages, array $extra): string
+    {
+        if (!$setting->api_key) throw new \Exception('Clé API Anthropic non configurée.');
+
+        // Extract system from messages
+        $system = '';
+        $filtered = [];
+        foreach ($messages as $msg) {
+            if ($msg['role'] === 'system') {
+                $system .= $msg['content'] . "\n";
+            } else {
+                $filtered[] = $msg;
+            }
+        }
+
+        $response = Http::withHeaders([
+            'x-api-key' => $setting->api_key,
+            'anthropic-version' => '2023-06-01',
+        ])->timeout(60)->post('https://api.anthropic.com/v1/messages', [
+            'model' => $setting->model,
+            'system' => trim($system),
+            'messages' => $filtered,
+            'max_tokens' => $extra['max_tokens'] ?? 2000,
+            'temperature' => $extra['temperature'] ?? 0.7,
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception("Anthropic error ({$response->status()}): " . $response->body());
+        }
+
+        return $response->json('content.0.text') ?? 'Pas de réponse.';
+    }
+
+    protected function callGoogle(AiSetting $setting, array $messages, array $extra): string
+    {
+        if (!$setting->api_key) throw new \Exception('Clé API Google non configurée.');
+
+        // Convert to Gemini format
+        $system = '';
+        $contents = [];
+        foreach ($messages as $msg) {
+            if ($msg['role'] === 'system') {
+                $system .= $msg['content'] . "\n";
+            } else {
+                $contents[] = [
+                    'role' => $msg['role'] === 'assistant' ? 'model' : 'user',
+                    'parts' => [['text' => $msg['content']]],
+                ];
+            }
+        }
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$setting->model}:generateContent?key={$setting->api_key}";
+
+        $body = ['contents' => $contents];
+        if ($system) {
+            $body['systemInstruction'] = ['parts' => [['text' => trim($system)]]];
+        }
+        $body['generationConfig'] = [
+            'temperature' => $extra['temperature'] ?? 0.7,
+            'maxOutputTokens' => $extra['max_tokens'] ?? 2000,
+        ];
+
+        $response = Http::timeout(60)->post($url, $body);
+
+        if (!$response->successful()) {
+            throw new \Exception("Google error ({$response->status()}): " . $response->body());
+        }
+
+        return $response->json('candidates.0.content.parts.0.text') ?? 'Pas de réponse.';
+    }
+
     protected function getBusinessContext(): array
     {
         $context = [];
 
         try {
-            // Stats clients
             $context['clients'] = [
                 'total' => Client::count(),
                 'nouveaux_ce_mois' => Client::whereMonth('created_at', now()->month)
@@ -113,7 +312,6 @@ class AiAssistantController extends Controller
         }
 
         try {
-            // Stats factures
             $context['factures'] = [
                 'total' => Facture::count(),
                 'impayees' => Facture::whereIn('statut', ['envoyee', 'en_retard'])->count(),
@@ -126,7 +324,6 @@ class AiAssistantController extends Controller
         }
 
         try {
-            // Stats paiements du mois
             $context['paiements'] = [
                 'total_mois' => round((float) Paiement::whereMonth('date_paiement', now()->month)
                     ->whereYear('date_paiement', now()->year)->sum('montant'), 2),
@@ -136,7 +333,6 @@ class AiAssistantController extends Controller
         }
 
         try {
-            // Solde caisse
             $entrees = MouvementCaisse::where('type', 'entree')->sum('montant');
             $sorties = MouvementCaisse::where('type', 'sortie')->sum('montant');
             $context['caisse'] = [
@@ -153,7 +349,6 @@ class AiAssistantController extends Controller
         }
 
         try {
-            // Top 5 clients par CA
             $context['top_clients'] = Facture::select('client_id', DB::raw('SUM(montant_ttc) as total_ca'))
                 ->groupBy('client_id')
                 ->orderByDesc('total_ca')
@@ -174,22 +369,13 @@ class AiAssistantController extends Controller
         return $context;
     }
 
-    /**
-     * Construit le prompt système avec le contexte métier
-     */
-    protected function buildSystemPrompt(array $context): string
+    protected function buildSystemPrompt(AiSetting $setting, array $context): string
     {
         $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $basePrompt = $setting->system_prompt ?: "Tu es l'assistant IA de Logistiga. Réponds en français.";
 
         return <<<PROMPT
-Tu es l'assistant IA de **Logistiga**, une application de gestion de facturation et logistique pour le transport maritime et le transit.
-
-## Ton rôle
-- Analyser les données financières et commerciales de l'entreprise
-- Fournir des recommandations stratégiques et opérationnelles
-- Prédire les tendances et identifier les risques
-- Résumer les performances et produire des rapports clairs
-- Répondre en français, de manière professionnelle et concise
+{$basePrompt}
 
 ## Contexte métier actuel (données en temps réel)
 ```json

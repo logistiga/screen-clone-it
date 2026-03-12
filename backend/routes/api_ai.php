@@ -12,4 +12,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('ai')->group(function () {
     Route::post('chat', [AiAssistantController::class, 'chat']);
     Route::get('context', [AiAssistantController::class, 'context']);
+    Route::get('history', [AiAssistantController::class, 'history']);
+    Route::get('settings', [AiAssistantController::class, 'getSettings']);
+    Route::put('settings', [AiAssistantController::class, 'updateSettings']);
+    Route::post('test-connection', [AiAssistantController::class, 'testConnection']);
 });
