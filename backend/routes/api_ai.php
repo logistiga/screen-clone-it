@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('ai')->group(function () {
+Route::prefix('ai')->middleware('role:administrateur|directeur')->group(function () {
     Route::post('chat', [AiAssistantController::class, 'chat']);
     Route::get('context', [AiAssistantController::class, 'context']);
     Route::get('history', [AiAssistantController::class, 'history']);
