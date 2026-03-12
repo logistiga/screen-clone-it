@@ -4,7 +4,7 @@ import {
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
   FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight,
-  Tag, BookOpen, ShieldAlert, Clock
+  Tag, BookOpen, ShieldAlert, Clock, Bot
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
