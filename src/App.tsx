@@ -129,6 +129,7 @@ const ArmateurDetailPage = lazy(() => import("./pages/ArmateurDetail"));
 const RecuPrimePDFPage = lazy(() => import("./pages/RecuPrimePDF"));
 const GuidePage = lazy(() => import("./pages/Guide"));
 const ConnexionsSuspectesPage = lazy(() => import("./pages/ConnexionsSuspectes"));
+const AiAssistantPage = lazy(() => import("./pages/AiAssistant"));
 
 // Configuration optimisée de React Query pour production
 const queryClient = new QueryClient({
