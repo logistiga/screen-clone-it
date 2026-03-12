@@ -195,17 +195,24 @@ class AiAssistantController extends Controller
 
     protected function callOllama(AiSetting $setting, array $messages, array $extra): string
     {
-        $url = rtrim($setting->api_url, '/') . '/api/chat';
+        // Normalize URL: remove any trailing path like /api, /v1, etc. to get base URL
+        $baseUrl = rtrim($setting->api_url, '/');
+        $baseUrl = preg_replace('#/(api|v1)(/.*)?$#', '', $baseUrl);
+        $url = $baseUrl . '/api/chat';
 
-        $response = Http::timeout(120)->post($url, [
-            'model' => $setting->model,
-            'messages' => $messages,
-            'stream' => false,
-            'options' => [
-                'temperature' => $extra['temperature'] ?? 0.7,
-                'num_predict' => $extra['max_tokens'] ?? 2000,
-            ],
-        ]);
+        Log::info('Ollama request', ['url' => $url, 'model' => $setting->model]);
+
+        $response = Http::timeout(120)
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post($url, [
+                'model' => $setting->model,
+                'messages' => $messages,
+                'stream' => false,
+                'options' => [
+                    'temperature' => $extra['temperature'] ?? 0.7,
+                    'num_predict' => $extra['max_tokens'] ?? 2000,
+                ],
+            ]);
 
         if (!$response->successful()) {
             throw new \Exception("Ollama error ({$response->status()}): " . $response->body());
