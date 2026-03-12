@@ -1,73 +1,64 @@
 
 
-# Plan: Enrichir le contexte IA avec les données réelles de LogistiGA
+# Ajouter les primes CNV (conventionnel) sur la page Caisse en attente
 
-## Constat
+## Contexte
 
-Le `AiAssistantController` existe déjà avec support multi-provider (Ollama, OpenAI, Anthropic, Google), mémoire persistante (`ai_memory`), et injection de contexte métier. Il n'est **pas nécessaire de créer un nouveau controller** — il faut enrichir le contexte injecté avec les données manquantes.
+La base `logiwkuh_cnv` contient une table `primes` avec des primes conventionnelles. Les primes avec `statut = 'payee'` doivent apparaitre sur la meme page "Caisse en attente" que les primes OPS, avec la meme logique de decaissement.
 
-## Ce qui existe déjà
-- Multi-provider avec Ollama configuré sur `http://187.124.38.130:11434`
-- Mémoire persistante (`AiMemory` model, 20 derniers messages)
-- Contexte : clients, factures, paiements, caisse, top clients
-
-## Ce qui manque
-- **Notifications récentes** (table `notifications` existe)
-- **Conteneurs / Flotte** (table `conteneurs_traites` existe avec camion_plaque, statut, chauffeur)
-- **Anomalies conteneurs** (`ConteneurAnomalie`)
-- **Crédits bancaires** en cours
-- **Prompt système** plus riche avec infos équipe Omar
+### Structure table CNV `primes`
+| Colonne | Type |
+|---------|------|
+| id | UUID |
+| type | ENUM (camion, responsable) |
+| beneficiaire | STRING |
+| montant | DECIMAL(12,2) |
+| operation_id | UUID |
+| conventionne_numero | STRING |
+| statut | ENUM (en_attente, payee) |
+| numero_paiement | STRING nullable |
+| date_paiement | TIMESTAMP nullable |
 
 ## Modifications
 
-### 1. `backend/app/Http/Controllers/Api/AiAssistantController.php`
+### 1. Backend - Ajouter connexion `cnv` dans `config/database.php`
 
-Enrichir la méthode `getBusinessContext()` avec :
+Ajouter un bloc `cnv` (meme pattern que `ops`) utilisant les variables `CNV_DB_HOST`, `CNV_DB_DATABASE`, `CNV_DB_USERNAME`, `CNV_DB_PASSWORD`, `CNV_DB_PORT`, `CNV_DB_SOCKET`.
 
-```php
-// Notifications récentes (10 dernières)
-$context['notifications'] = Notification::orderByDesc('created_at')
-    ->limit(10)
-    ->get(['type', 'title', 'message', 'created_at'])
-    ->toArray();
+### 2. Backend - Modifier `CaisseEnAttenteController.php`
 
-// Flotte / Conteneurs récents (camions, statuts)
-$context['conteneurs'] = ConteneurTraite::orderByDesc('created_at')
-    ->limit(15)
-    ->get(['numero_conteneur', 'camion_plaque', 'chauffeur_nom', 'statut', 'destination_adresse', 'date_sortie'])
-    ->toArray();
+**Methode `index`** :
+- Ajouter `checkCnvConnection()` (meme pattern que `checkOpsConnection`)
+- Lire les primes CNV avec `statut = 'payee'` depuis la connexion `cnv`
+- Colonnes selectionnees : id, type, beneficiaire, montant, conventionne_numero, statut, numero_paiement, date_paiement, created_at
+- Mapper les colonnes CNV vers le meme format que OPS (ex: `numero_parc` = `conventionne_numero`)
+- Ajouter un champ `source` = `'OPS'` ou `'CNV'` sur chaque prime
+- Verifier le decaissement via reference `CNV-PRIME-{id}` (au lieu de `OPS-PRIME-{id}`)
+- Categorie mouvement : `Prime conventionnel` pour CNV
+- Merger les deux collections, filtrer, trier par date_paiement desc, puis paginer
+- Supporter un filtre `source` optionnel (query param)
 
-// Anomalies en cours
-$context['anomalies'] = ConteneurAnomalie::where('resolved', false)
-    ->limit(10)
-    ->get(['numero_conteneur', 'type_anomalie', 'description', 'created_at'])
-    ->toArray();
+**Methode `stats`** :
+- Ajouter les totaux CNV aux stats existantes (cumul des deux sources)
 
-// Crédits bancaires actifs
-$context['credits'] = CreditBancaire::where('statut', 'actif')
-    ->get(['banque_id', 'montant_total', 'montant_restant', 'date_echeance'])
-    ->toArray();
-```
+**Methode `decaisser`** :
+- Accepter un parametre `source` dans la requete (defaut: `OPS`)
+- Si `source = CNV` : lire depuis connexion `cnv`, reference = `CNV-PRIME-{id}`, categorie = `Prime conventionnel`
+- Si `source = OPS` : comportement actuel inchange
 
-Enrichir `buildSystemPrompt()` pour inclure le contexte spécifique Omar/Logistiga :
+### 3. Frontend - Modifier `CaisseEnAttente.tsx`
 
-```
-Tu es l'assistant de Omar, directeur de Logistiga au Gabon.
-Flotte de 40 camions. Port d'Owendo.
-Équipe: Mustapha, Georgia, Mohamed, Evans.
-```
+- Ajouter `source: string` a l'interface `PrimeEnAttente`
+- Ajouter `conventionne_numero: string | null`
+- Afficher une colonne "Source" avec badge colore (bleu "OPS", vert "CNV")
+- Afficher le `conventionne_numero` pour les primes CNV dans la colonne "N Parc"
+- Ajouter un filtre source dans les options de filtre (Toutes / OPS / CNV)
+- Envoyer `source` dans le POST de decaissement
+- Mettre a jour le sous-titre : "Primes payees depuis TC et CNV en attente de decaissement"
 
-### 2. `backend/app/Models/AiSetting.php`
+## Fichiers modifies
 
-Mettre à jour le prompt système par défaut dans la migration seed pour inclure les infos Omar.
-
-### 3. Aucun changement frontend nécessaire
-
-L'interface chat, paramètres et historique fonctionnent déjà. Le contexte enrichi sera automatiquement injecté dans les réponses IA.
-
-## Résumé des fichiers modifiés
-
-| Fichier | Action |
-|---------|--------|
-| `backend/app/Http/Controllers/Api/AiAssistantController.php` | Ajouter notifications, conteneurs, anomalies, crédits au contexte |
+- `backend/config/database.php` (ajout connexion cnv)
+- `backend/app/Http/Controllers/Api/CaisseEnAttenteController.php` (lecture 2 bases + merge)
+- `src/pages/CaisseEnAttente.tsx` (colonne source + filtre + envoi source)
 

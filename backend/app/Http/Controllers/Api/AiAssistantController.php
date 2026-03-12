@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\AiMemory;
 use App\Models\AiSetting;
 use App\Models\Client;
+use App\Models\ConteneurAnomalie;
+use App\Models\ConteneurTraite;
+use App\Models\CreditBancaire;
 use App\Models\Facture;
-use App\Models\Paiement;
 use App\Models\MouvementCaisse;
+use App\Models\Notification;
+use App\Models\Paiement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -364,6 +368,41 @@ class AiAssistantController extends Controller
             $context['top_clients'] = [];
         }
 
+        try {
+            $context['notifications_recentes'] = Notification::orderByDesc('created_at')
+                ->limit(10)
+                ->get(['type', 'title', 'message', 'created_at'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['notifications_recentes'] = [];
+        }
+
+        try {
+            $context['conteneurs_flotte'] = ConteneurTraite::orderByDesc('created_at')
+                ->limit(15)
+                ->get(['numero_conteneur', 'camion_plaque', 'chauffeur_nom', 'statut', 'destination_adresse', 'date_sortie'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['conteneurs_flotte'] = [];
+        }
+
+        try {
+            $context['anomalies_en_cours'] = ConteneurAnomalie::where('resolved', false)
+                ->limit(10)
+                ->get(['numero_conteneur', 'type_anomalie', 'description', 'created_at'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['anomalies_en_cours'] = [];
+        }
+
+        try {
+            $context['credits_bancaires'] = CreditBancaire::where('statut', 'actif')
+                ->get(['banque_id', 'montant_total', 'montant_restant', 'date_echeance'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['credits_bancaires'] = [];
+        }
+
         $context['date_contexte'] = now()->format('d/m/Y H:i');
 
         return $context;
@@ -372,7 +411,7 @@ class AiAssistantController extends Controller
     protected function buildSystemPrompt(AiSetting $setting, array $context): string
     {
         $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        $basePrompt = $setting->system_prompt ?: "Tu es l'assistant IA de Logistiga. Réponds en français.";
+        $basePrompt = $setting->system_prompt ?: "Tu es l'assistant de Omar, directeur de Logistiga au Gabon. Flotte de 40 camions. Port d'Owendo. Équipe: Mustapha, Georgia, Mohamed, Evans. Réponds en français, de manière professionnelle et concise.";
 
         return <<<PROMPT
 {$basePrompt}
