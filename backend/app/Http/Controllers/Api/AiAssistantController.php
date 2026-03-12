@@ -131,7 +131,7 @@ class AiAssistantController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $request->validate([
-            'provider' => 'required|in:ollama,openai,anthropic,google',
+            'provider' => 'required|in:ollama,deepseek,openai,anthropic,google',
             'api_url' => 'nullable|string|max:500',
             'api_key' => 'nullable|string|max:500',
             'model' => 'required|string|max:100',
