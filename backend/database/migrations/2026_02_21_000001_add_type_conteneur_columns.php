@@ -8,15 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Ajouter type_conteneur à conteneurs_traites
-        Schema::table('conteneurs_traites', function (Blueprint $table) {
-            $table->string('type_conteneur', 50)->nullable()->after('numero_bl');
-        });
+        if (!Schema::hasColumn('conteneurs_traites', 'type_conteneur')) {
+            Schema::table('conteneurs_traites', function (Blueprint $table) {
+                $table->string('type_conteneur', 50)->nullable()->after('numero_bl');
+            });
+        }
 
-        // Ajouter type_conteneur (string) à armateurs
-        Schema::table('armateurs', function (Blueprint $table) {
-            $table->string('type_conteneur', 50)->nullable()->after('code');
-        });
+        if (!Schema::hasColumn('armateurs', 'type_conteneur')) {
+            Schema::table('armateurs', function (Blueprint $table) {
+                $table->string('type_conteneur', 50)->nullable()->after('code');
+            });
+        }
     }
 
     public function down(): void
