@@ -66,11 +66,17 @@ class AiAssistantController extends Controller
                 'session_id' => $sessionId,
             ]);
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('AI Connection Timeout', ['error' => $e->getMessage(), 'provider' => $setting->provider]);
+            return response()->json([
+                'error' => 'Le serveur IA est injoignable. Vérifiez que Ollama est démarré sur le VPS (systemctl restart ollama).',
+                'details' => $e->getMessage(),
+            ], 503);
         } catch (\Exception $e) {
             Log::error('AI Chat Error', ['error' => $e->getMessage(), 'provider' => $setting->provider]);
             return response()->json([
                 'error' => 'Erreur de communication avec l\'IA: ' . $e->getMessage()
-            ], 502);
+            ], 500);
         }
     }
 
