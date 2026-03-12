@@ -129,6 +129,7 @@ const ArmateurDetailPage = lazy(() => import("./pages/ArmateurDetail"));
 const RecuPrimePDFPage = lazy(() => import("./pages/RecuPrimePDF"));
 const GuidePage = lazy(() => import("./pages/Guide"));
 const ConnexionsSuspectesPage = lazy(() => import("./pages/ConnexionsSuspectes"));
+const AiAssistantPage = lazy(() => import("./pages/AiAssistant"));
 
 // Configuration optimisée de React Query pour production
 const queryClient = new QueryClient({
@@ -274,6 +275,7 @@ const App = () => (
                 
                 {/* Routes protégées - Autres */}
                 <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
+                <Route path="/assistant-ia" element={<ProtectedRoute><AiAssistantPage /></ProtectedRoute>} />
                 <Route path="/securite/connexions-suspectes" element={<ProtectedRoute requiredPermission={P.securite.view} requiredRole="administrateur"><ConnexionsSuspectesPage /></ProtectedRoute>} />
                 
                 {/* 404 */}

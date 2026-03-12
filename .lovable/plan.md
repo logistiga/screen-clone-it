@@ -1,70 +1,64 @@
 
 
-# Plan: Page IA Assistant pour Logistiga
+# Ajouter les primes CNV (conventionnel) sur la page Caisse en attente
 
-## Vue d'ensemble
+## Contexte
 
-Créer une page dédiée **"Assistant IA"** accessible depuis la sidebar, avec un chatbot intelligent qui analyse vos données métier (clients, factures, paiements, créances, trésorerie) et fournit des recommandations, prédictions et résumés.
+La base `logiwkuh_cnv` contient une table `primes` avec des primes conventionnelles. Les primes avec `statut = 'payee'` doivent apparaitre sur la meme page "Caisse en attente" que les primes OPS, avec la meme logique de decaissement.
 
-## Architecture
+### Structure table CNV `primes`
+| Colonne | Type |
+|---------|------|
+| id | UUID |
+| type | ENUM (camion, responsable) |
+| beneficiaire | STRING |
+| montant | DECIMAL(12,2) |
+| operation_id | UUID |
+| conventionne_numero | STRING |
+| statut | ENUM (en_attente, payee) |
+| numero_paiement | STRING nullable |
+| date_paiement | TIMESTAMP nullable |
 
-L'IA fonctionnera via un **endpoint Laravel backend** qui :
-1. Reçoit le message de l'utilisateur + l'historique de conversation
-2. Collecte les données pertinentes depuis la base (dashboard stats, alertes, créances, top clients...)
-3. Envoie le tout à un modèle IA (OpenAI ou autre) avec un prompt système spécialisé en gestion/facturation
-4. Retourne la réponse à afficher dans le chat
+## Modifications
 
-```text
-┌─────────────┐     ┌──────────────────┐     ┌────────────┐
-│  React Chat │────▶│ Laravel Backend  │────▶│  API IA    │
-│  Page       │◀────│ /api/ai/chat     │◀────│ (OpenAI…)  │
-│             │     │ + données métier │     │            │
-└─────────────┘     └──────────────────┘     └────────────┘
-```
+### 1. Backend - Ajouter connexion `cnv` dans `config/database.php`
 
-## Fichiers à créer / modifier
+Ajouter un bloc `cnv` (meme pattern que `ops`) utilisant les variables `CNV_DB_HOST`, `CNV_DB_DATABASE`, `CNV_DB_USERNAME`, `CNV_DB_PASSWORD`, `CNV_DB_PORT`, `CNV_DB_SOCKET`.
 
-### Backend (Laravel)
+### 2. Backend - Modifier `CaisseEnAttenteController.php`
 
-1. **`backend/app/Http/Controllers/Api/AiAssistantController.php`**
-   - Méthode `chat(Request $request)` : reçoit `messages[]`, collecte le contexte métier (stats dashboard, alertes, créances en cours), appelle l'API IA externe, retourne la réponse
-   - Méthode `context()` : retourne un résumé des données clés pour pré-alimenter l'assistant
-   - Le prompt système inclut le contexte métier : stats actuelles, alertes, top clients, créances impayées
+**Methode `index`** :
+- Ajouter `checkCnvConnection()` (meme pattern que `checkOpsConnection`)
+- Lire les primes CNV avec `statut = 'payee'` depuis la connexion `cnv`
+- Colonnes selectionnees : id, type, beneficiaire, montant, conventionne_numero, statut, numero_paiement, date_paiement, created_at
+- Mapper les colonnes CNV vers le meme format que OPS (ex: `numero_parc` = `conventionne_numero`)
+- Ajouter un champ `source` = `'OPS'` ou `'CNV'` sur chaque prime
+- Verifier le decaissement via reference `CNV-PRIME-{id}` (au lieu de `OPS-PRIME-{id}`)
+- Categorie mouvement : `Prime conventionnel` pour CNV
+- Merger les deux collections, filtrer, trier par date_paiement desc, puis paginer
+- Supporter un filtre `source` optionnel (query param)
 
-2. **`backend/routes/api_ai.php`** — Routes IA isolées
-   - `POST /ai/chat` — Envoi de message
-   - `GET /ai/context` — Contexte métier pour l'IA
+**Methode `stats`** :
+- Ajouter les totaux CNV aux stats existantes (cumul des deux sources)
 
-3. **`backend/routes/api.php`** — Ajouter `require __DIR__.'/api_ai.php';`
+**Methode `decaisser`** :
+- Accepter un parametre `source` dans la requete (defaut: `OPS`)
+- Si `source = CNV` : lire depuis connexion `cnv`, reference = `CNV-PRIME-{id}`, categorie = `Prime conventionnel`
+- Si `source = OPS` : comportement actuel inchange
 
-4. **`backend/config/services.php`** — Clé API IA (OPENAI_API_KEY dans .env backend)
+### 3. Frontend - Modifier `CaisseEnAttente.tsx`
 
-### Frontend (React)
+- Ajouter `source: string` a l'interface `PrimeEnAttente`
+- Ajouter `conventionne_numero: string | null`
+- Afficher une colonne "Source" avec badge colore (bleu "OPS", vert "CNV")
+- Afficher le `conventionne_numero` pour les primes CNV dans la colonne "N Parc"
+- Ajouter un filtre source dans les options de filtre (Toutes / OPS / CNV)
+- Envoyer `source` dans le POST de decaissement
+- Mettre a jour le sous-titre : "Primes payees depuis TC et CNV en attente de decaissement"
 
-5. **`src/pages/AiAssistant.tsx`** — Page dédiée avec :
-   - Interface de chat (messages utilisateur/assistant)
-   - Rendu markdown des réponses IA (`react-markdown` à ajouter)
-   - Suggestions rapides pré-définies : "Résumé du mois", "Clients à risque", "État de la trésorerie", "Factures impayées", "Prédictions CA"
-   - Indicateur de chargement pendant la réponse
+## Fichiers modifies
 
-6. **`src/services/aiService.ts`** — Service API pour communiquer avec le backend
-
-7. **`src/components/layout/AppSidebar.tsx`** — Ajouter l'entrée "Assistant IA" avec icône `Bot` dans la sidebar
-
-8. **`src/App.tsx`** — Ajouter la route `/assistant-ia`
-
-## Fonctionnalités de l'assistant
-
-L'assistant pourra répondre à des questions comme :
-- **Analyse** : "Quel est l'état de ma trésorerie ?" / "Quels clients ont des impayés ?"
-- **Prédictions** : "Quelles sont les tendances du CA ?" / "Quels paiements risquent d'être en retard ?"
-- **Recommandations** : "Quels clients dois-je relancer ?" / "Comment optimiser ma trésorerie ?"
-- **Résumés** : "Résumé du mois" / "Synthèse des opérations de la semaine"
-
-## Prérequis
-
-Une clé API pour un modèle IA (OpenAI GPT, etc.) devra être configurée dans le `.env` du backend Laravel (`OPENAI_API_KEY`). L'appel IA se fait côté serveur uniquement.
-
-## Dépendance à ajouter
-- `react-markdown` (rendu markdown des réponses IA dans le chat)
+- `backend/config/database.php` (ajout connexion cnv)
+- `backend/app/Http/Controllers/Api/CaisseEnAttenteController.php` (lecture 2 bases + merge)
+- `src/pages/CaisseEnAttente.tsx` (colonne source + filtre + envoi source)
 
