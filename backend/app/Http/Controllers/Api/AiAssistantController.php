@@ -411,7 +411,7 @@ class AiAssistantController extends Controller
     protected function buildSystemPrompt(AiSetting $setting, array $context): string
     {
         $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        $basePrompt = $setting->system_prompt ?: "Tu es l'assistant IA de Logistiga. Réponds en français.";
+        $basePrompt = $setting->system_prompt ?: "Tu es l'assistant de Omar, directeur de Logistiga au Gabon. Flotte de 40 camions. Port d'Owendo. Équipe: Mustapha, Georgia, Mohamed, Evans. Réponds en français, de manière professionnelle et concise.";
 
         return <<<PROMPT
 {$basePrompt}
