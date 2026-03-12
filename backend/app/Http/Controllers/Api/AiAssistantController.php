@@ -368,6 +368,41 @@ class AiAssistantController extends Controller
             $context['top_clients'] = [];
         }
 
+        try {
+            $context['notifications_recentes'] = Notification::orderByDesc('created_at')
+                ->limit(10)
+                ->get(['type', 'title', 'message', 'created_at'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['notifications_recentes'] = [];
+        }
+
+        try {
+            $context['conteneurs_flotte'] = ConteneurTraite::orderByDesc('created_at')
+                ->limit(15)
+                ->get(['numero_conteneur', 'camion_plaque', 'chauffeur_nom', 'statut', 'destination_adresse', 'date_sortie'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['conteneurs_flotte'] = [];
+        }
+
+        try {
+            $context['anomalies_en_cours'] = ConteneurAnomalie::where('resolved', false)
+                ->limit(10)
+                ->get(['numero_conteneur', 'type_anomalie', 'description', 'created_at'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['anomalies_en_cours'] = [];
+        }
+
+        try {
+            $context['credits_bancaires'] = CreditBancaire::where('statut', 'actif')
+                ->get(['banque_id', 'montant_total', 'montant_restant', 'date_echeance'])
+                ->toArray();
+        } catch (\Exception $e) {
+            $context['credits_bancaires'] = [];
+        }
+
         $context['date_contexte'] = now()->format('d/m/Y H:i');
 
         return $context;
