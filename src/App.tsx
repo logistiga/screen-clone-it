@@ -275,6 +275,7 @@ const App = () => (
                 
                 {/* Routes protégées - Autres */}
                 <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
+                <Route path="/assistant-ia" element={<ProtectedRoute><AiAssistantPage /></ProtectedRoute>} />
                 <Route path="/securite/connexions-suspectes" element={<ProtectedRoute requiredPermission={P.securite.view} requiredRole="administrateur"><ConnexionsSuspectesPage /></ProtectedRoute>} />
                 
                 {/* 404 */}

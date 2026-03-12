@@ -93,6 +93,13 @@ const menuItems = {
       { title: "Guide & Installation", url: "/guide", icon: BookOpen },
     ]
   },
+  ia: {
+    label: "",
+    collapsible: false,
+    items: [
+      { title: "Assistant IA", url: "/assistant-ia", icon: Bot },
+    ]
+  },
   securite: {
     label: "Sécurité",
     collapsible: true,

@@ -73,4 +73,5 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     require __DIR__.'/api_reporting.php';     // Dashboard, Reporting, Export
     require __DIR__.'/api_admin.php';         // Configuration, Users, Rôles, Audit, Connexions suspectes
     require __DIR__.'/api_notifications.php'; // Notifications in-app (alertes)
+    require __DIR__.'/api_ai.php';             // Assistant IA
 });
