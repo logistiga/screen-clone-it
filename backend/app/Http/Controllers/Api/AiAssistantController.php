@@ -195,30 +195,68 @@ class AiAssistantController extends Controller
 
     protected function callOllama(AiSetting $setting, array $messages, array $extra): string
     {
-        // Normalize URL: remove any trailing path like /api, /v1, etc. to get base URL
-        $baseUrl = rtrim($setting->api_url, '/');
+        // Normalize URL: remove trailing slash and common suffixes
+        $baseUrl = rtrim((string) $setting->api_url, '/');
         $baseUrl = preg_replace('#/(api|v1)(/.*)?$#', '', $baseUrl);
-        $url = $baseUrl . '/api/chat';
 
-        Log::info('Ollama request', ['url' => $url, 'model' => $setting->model]);
+        $chatPayload = [
+            'model' => $setting->model,
+            'messages' => $messages,
+            'stream' => false,
+            'options' => [
+                'temperature' => $extra['temperature'] ?? 0.7,
+                'num_predict' => $extra['max_tokens'] ?? 2000,
+            ],
+        ];
+
+        $primaryUrl = $baseUrl . '/api/chat';
+        Log::info('Ollama request primary endpoint', ['url' => $primaryUrl, 'model' => $setting->model]);
 
         $response = Http::timeout(120)
-            ->withHeaders(['Content-Type' => 'application/json'])
-            ->post($url, [
+            ->withHeaders(['Content-Type' => 'application/json', 'Accept' => 'application/json'])
+            ->post($primaryUrl, $chatPayload);
+
+        // Some proxies expose OpenAI-compatible endpoints only
+        if ($response->status() === 405) {
+            Log::warning('Ollama /api/chat returned 405, trying OpenAI-compatible endpoints', ['base_url' => $baseUrl]);
+
+            $fallbackUrls = [
+                $baseUrl . '/v1/chat/completions',
+                $baseUrl . '/chat/completions',
+            ];
+
+            $fallbackPayload = [
                 'model' => $setting->model,
                 'messages' => $messages,
-                'stream' => false,
-                'options' => [
-                    'temperature' => $extra['temperature'] ?? 0.7,
-                    'num_predict' => $extra['max_tokens'] ?? 2000,
-                ],
-            ]);
+                'temperature' => $extra['temperature'] ?? 0.7,
+                'max_tokens' => $extra['max_tokens'] ?? 2000,
+            ];
+
+            foreach ($fallbackUrls as $fallbackUrl) {
+                $fallbackResponse = Http::timeout(120)
+                    ->withHeaders(['Content-Type' => 'application/json', 'Accept' => 'application/json'])
+                    ->post($fallbackUrl, $fallbackPayload);
+
+                if ($fallbackResponse->successful()) {
+                    return $fallbackResponse->json('choices.0.message.content')
+                        ?? $fallbackResponse->json('message.content')
+                        ?? 'Pas de réponse.';
+                }
+
+                Log::warning('Ollama fallback failed', [
+                    'url' => $fallbackUrl,
+                    'status' => $fallbackResponse->status(),
+                ]);
+            }
+        }
 
         if (!$response->successful()) {
             throw new \Exception("Ollama error ({$response->status()}): " . $response->body());
         }
 
-        return $response->json('message.content') ?? 'Pas de réponse.';
+        return $response->json('message.content')
+            ?? $response->json('choices.0.message.content')
+            ?? 'Pas de réponse.';
     }
 
     protected function callDeepSeek(AiSetting $setting, array $messages, array $extra): string
