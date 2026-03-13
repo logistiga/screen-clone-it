@@ -444,6 +444,7 @@ export default function ClientsPage() {
                   );
                 })}
               </AnimatedTableBody>
+
             </Table>
           </div>
 
