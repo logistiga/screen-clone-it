@@ -304,16 +304,22 @@ export default function ClientsPage() {
       ) : viewMode === "cards" ? (
         /* Vue Cards avec scroll infini */
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredClients.map((client: Client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                onEdit={(id) => navigate(`/clients/${id}/modifier`)}
-                onDelete={(c) => setDeleteConfirm({ id: c.id, nom: c.nom })}
-              />
-            ))}
-          </div>
+          {isSearching ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredClients.map((client: Client) => (
+                <ClientCard
+                  key={client.id}
+                  client={client}
+                  onEdit={(id) => navigate(`/clients/${id}/modifier`)}
+                  onDelete={(c) => setDeleteConfirm({ id: c.id, nom: c.nom })}
+                />
+              ))}
+            </div>
+          )}
           <InfiniteScrollLoader
             ref={loadMoreRef}
             isFetchingNextPage={isFetchingNextPage}
