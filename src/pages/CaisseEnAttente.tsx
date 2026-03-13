@@ -104,10 +104,12 @@ export default function CaisseEnAttentePage() {
 
   // Modal state
   const [decaissementModalOpen, setDecaissementModalOpen] = useState(false);
+  const [refusModalOpen, setRefusModalOpen] = useState(false);
   const [selectedPrime, setSelectedPrime] = useState<PrimeEnAttente | null>(null);
   const [modePaiement, setModePaiement] = useState("Espèces");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [motifRefus, setMotifRefus] = useState("");
 
   // Fetch OPS primes
   const { data: opsData, isLoading: opsLoading, refetch: refetchOps, isRefetching: opsRefetching } = useQuery({
