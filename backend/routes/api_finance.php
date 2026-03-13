@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PrimeCamionController;
 use App\Http\Controllers\Api\CategorieDepenseController;
 use App\Http\Controllers\Api\CaisseEnAttenteController;
 use App\Http\Controllers\Api\CaisseCnvController;
+use App\Http\Controllers\Api\CaisseHorslbvController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use Illuminate\Support\Facades\Route;
