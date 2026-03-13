@@ -427,20 +427,6 @@
         </table>
     </div>
 
-    <!-- Coordonnées bancaires -->
-    <div class="bank-info">
-        <h3>Coordonnées Bancaires</h3>
-        <div class="bank-grid">
-            <div class="bank-item">
-                <div class="bname">BGFI Bank Gabon</div>
-                <div class="bnumber">N°: 40003 04140 41041658011 78</div>
-            </div>
-            <div class="bank-item">
-                <div class="bname">UGB</div>
-                <div class="bnumber">N°: 40002 00043 90000338691 84</div>
-            </div>
-        </div>
-    </div>
 
     <!-- Signatures -->
     <div class="signatures">

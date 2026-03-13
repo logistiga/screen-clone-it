@@ -405,8 +405,6 @@ export default function FacturePDFPage() {
             </div>
           )}
 
-          {/* Coordonnées bancaires */}
-          <DocumentBankDetails />
 
           {/* Notes */}
           {facture.notes && (
