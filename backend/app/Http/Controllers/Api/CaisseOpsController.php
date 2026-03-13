@@ -23,8 +23,10 @@ class CaisseOpsController extends Controller
     public function isAvailable(): bool
     {
         try {
-            DB::connection('ops')->getPdo();
-            return true;
+            $connection = DB::connection('ops');
+            $connection->getPdo();
+
+            return $connection->getSchemaBuilder()->hasTable('primes');
         } catch (\Exception $e) {
             return false;
         }
