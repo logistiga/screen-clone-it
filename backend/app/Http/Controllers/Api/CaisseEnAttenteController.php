@@ -179,13 +179,17 @@ class CaisseEnAttenteController extends Controller
                 return response()->json(['message' => 'Prime non trouvée'], 404);
             }
 
-            $refUnique = $source === 'CNV'
-                ? CaisseCnvController::buildRef($primeId)
-                : CaisseOpsController::buildRef($primeId);
+            $refUnique = match ($source) {
+                'CNV' => CaisseCnvController::buildRef($primeId),
+                'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+                default => CaisseOpsController::buildRef($primeId),
+            };
 
-            $categorie = $source === 'CNV'
-                ? CaisseCnvController::categorie()
-                : CaisseOpsController::categorie();
+            $categorie = match ($source) {
+                'CNV' => CaisseCnvController::categorie(),
+                'HORSLBV' => CaisseHorslbvController::categorie(),
+                default => CaisseOpsController::categorie(),
+            };
 
             DB::beginTransaction();
 
