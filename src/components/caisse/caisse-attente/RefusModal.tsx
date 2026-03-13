@@ -25,9 +25,12 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
 
   const mutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const endpoint = source === 'CNV'
-        ? `/caisse-cnv/${primeId}/refuser`
-        : `/caisse-en-attente/${primeId}/refuser`;
+      const endpointMap: Record<string, string> = {
+        CNV: `/caisse-cnv/${primeId}/refuser`,
+        HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
+        OPS: `/caisse-en-attente/${primeId}/refuser`,
+      };
+      const endpoint = endpointMap[source] || endpointMap.OPS;
       const response = await api.post(endpoint, { motif });
       return response.data;
     },
