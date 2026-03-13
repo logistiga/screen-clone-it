@@ -186,7 +186,7 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                       <TableCell className="max-w-[180px] truncate font-medium">
                         {prime.beneficiaire || '-'}
                       </TableCell>
-                      {source === 'OPS' ? (
+                      {source === 'OPS' && (
                         <>
                           <TableCell className="text-sm">
                             {prime.camion_plaque && (
@@ -204,13 +204,24 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                             {prime.responsable_nom || prime.responsable || '-'}
                           </TableCell>
                         </>
-                      ) : (
+                      )}
+                      {source === 'CNV' && (
                         <>
                           <TableCell className="text-sm font-mono">
                             {prime.conventionne_numero || prime.numero_parc || '-'}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {prime.responsable_nom || prime.responsable || '-'}
+                          </TableCell>
+                        </>
+                      )}
+                      {source === 'HORSLBV' && (
+                        <>
+                          <TableCell className="text-sm font-mono">
+                            {prime.numero_fiche || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-mono">
+                            {prime.numero_depense || '-'}
                           </TableCell>
                         </>
                       )}
