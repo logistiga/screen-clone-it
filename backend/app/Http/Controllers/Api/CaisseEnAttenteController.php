@@ -106,6 +106,10 @@ class CaisseEnAttenteController extends Controller
                 $allPrimes = $allPrimes->merge($this->cnv->fetchStats());
             }
 
+            if ($this->horslbv->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->horslbv->fetchStats());
+            }
+
             $refs = $allPrimes->pluck('ref')->toArray();
             $decaisseesRefs = [];
             if (!empty($refs)) {
