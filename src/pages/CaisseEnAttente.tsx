@@ -432,6 +432,11 @@ export default function CaisseEnAttentePage() {
                               <CheckCircle2 className="h-3 w-3" />
                               Décaissée
                             </Badge>
+                          ) : prime.refusee ? (
+                            <Badge className="bg-destructive/20 text-destructive gap-1">
+                              <Ban className="h-3 w-3" />
+                              Refusée
+                            </Badge>
                           ) : (
                             <Badge className="bg-warning/20 text-warning gap-1">
                               <Clock className="h-3 w-3" />
@@ -445,11 +450,22 @@ export default function CaisseEnAttentePage() {
                               <Receipt className="h-4 w-4" />
                               #{prime.mouvement_id}
                             </span>
+                          ) : prime.refusee ? (
+                            <span className="text-sm text-destructive flex items-center justify-end gap-1">
+                              <Ban className="h-4 w-4" />
+                              Ignorée
+                            </span>
                           ) : (
-                            <Button size="sm" className="gap-1" onClick={() => openDecaissementModal(prime)}>
-                              <Coins className="h-4 w-4" />
-                              Décaisser
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" className="gap-1" onClick={() => openDecaissementModal(prime)}>
+                                <Coins className="h-4 w-4" />
+                                Décaisser
+                              </Button>
+                              <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive" onClick={() => openRefusModal(prime)}>
+                                <XCircle className="h-4 w-4" />
+                                Refuser
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       </motion.tr>
