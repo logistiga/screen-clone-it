@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2, Wallet, Clock, Coins, Loader2,
-  RefreshCw, Receipt, Banknote, Hash, AlertTriangle, Truck, FileText
+  RefreshCw, Receipt, Banknote, Hash, AlertTriangle, Truck, FileText,
+  XCircle, Ban
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
