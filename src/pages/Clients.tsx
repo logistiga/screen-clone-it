@@ -132,14 +132,14 @@ export default function ClientsPage() {
     return result;
   }, [clients, statusFilter, villeFilter, sortField, sortOrder]);
 
-  // Stats basées sur toutes les données chargées
+  // Stats basées sur les données SANS recherche (restent stables)
   const stats = useMemo(() => {
-    const total = clients.length;
-    const totalSolde = clients.reduce((sum: number, c: Client) => sum + Number(c.solde || 0), 0);
-    const totalAvoirs = clients.reduce((sum: number, c: Client) => sum + Number(c.solde_avoirs || 0), 0);
-    const withSolde = clients.filter((c: Client) => Number(c.solde) > 0).length;
-    return { total, totalSolde, totalAvoirs, withSolde, serverTotal: totalItems };
-  }, [clients, totalItems]);
+    const total = allClients.length;
+    const totalSolde = allClients.reduce((sum: number, c: Client) => sum + Number(c.solde || 0), 0);
+    const totalAvoirs = allClients.reduce((sum: number, c: Client) => sum + Number(c.solde_avoirs || 0), 0);
+    const withSolde = allClients.filter((c: Client) => Number(c.solde) > 0).length;
+    return { total, totalSolde, totalAvoirs, withSolde, serverTotal: totalAllItems };
+  }, [allClients, totalAllItems]);
 
   const hasActiveFilters = statusFilter !== "all" || villeFilter !== "all" || searchTerm !== "";
 
