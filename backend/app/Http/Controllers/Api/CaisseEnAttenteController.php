@@ -114,7 +114,7 @@ class CaisseEnAttenteController extends Controller
             $decaisseesRefs = [];
             if (!empty($refs)) {
                 $decaisseesRefs = DB::table('mouvements_caisse')
-                    ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
+                    ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
                     ->whereIn('reference', $refs)
                     ->pluck('reference')
                     ->toArray();
