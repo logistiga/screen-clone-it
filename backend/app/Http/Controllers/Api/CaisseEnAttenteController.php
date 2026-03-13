@@ -52,9 +52,11 @@ class CaisseEnAttenteController extends Controller
 
             // Filtrage par statut de décaissement
             if ($statut === 'a_decaisser') {
-                $allPrimes = $allPrimes->filter(fn($p) => !$p->decaisse);
+                $allPrimes = $allPrimes->filter(fn($p) => !$p->decaisse && !$p->refusee);
             } elseif ($statut === 'decaisse') {
                 $allPrimes = $allPrimes->filter(fn($p) => $p->decaisse);
+            } elseif ($statut === 'refusee') {
+                $allPrimes = $allPrimes->filter(fn($p) => $p->refusee);
             }
 
             // Tri et pagination

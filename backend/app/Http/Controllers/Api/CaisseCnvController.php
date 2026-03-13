@@ -53,9 +53,11 @@ class CaisseCnvController extends Controller
 
             // Filtrage par statut de décaissement
             if ($statut === 'a_decaisser') {
-                $primes = $primes->filter(fn($p) => !$p->decaisse);
+                $primes = $primes->filter(fn($p) => !$p->decaisse && !$p->refusee);
             } elseif ($statut === 'decaisse') {
                 $primes = $primes->filter(fn($p) => $p->decaisse);
+            } elseif ($statut === 'refusee') {
+                $primes = $primes->filter(fn($p) => $p->refusee);
             }
 
             $primes = $primes->sortByDesc('date_paiement')->values();
