@@ -85,11 +85,11 @@ export default function ClientsPage() {
   // Extraire les villes uniques pour le filtre
   const villes = useMemo(() => {
     const villeSet = new Set<string>();
-    clients.forEach((client: Client) => {
+    allClients.forEach((client: Client) => {
       if (client.ville) villeSet.add(client.ville);
     });
     return Array.from(villeSet).sort();
-  }, [clients]);
+  }, [allClients]);
 
   // Filtrer et trier les clients
   const filteredClients = useMemo(() => {
