@@ -156,7 +156,7 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={source === 'OPS' ? 10 : 9} className="py-16 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="py-16 text-center text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Wallet className="h-8 w-8 opacity-50" />
                         <p>Aucune prime {source} trouvée</p>
