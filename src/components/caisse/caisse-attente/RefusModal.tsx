@@ -74,7 +74,7 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Source:</span>
                 <Badge variant="secondary">
-                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : 'Conventionnel (CNV)'}
+                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : prime.source === 'CNV' ? 'Conventionnel (CNV)' : 'Hors Libreville'}
                 </Badge>
               </div>
               <div className="flex justify-between">
