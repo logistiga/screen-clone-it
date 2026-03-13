@@ -130,7 +130,7 @@ export default function ClientsPage() {
     });
 
     return result;
-  }, [clients, searchTerm, statusFilter, villeFilter, sortField, sortOrder]);
+  }, [clients, statusFilter, villeFilter, sortField, sortOrder]);
 
   // Stats basées sur toutes les données chargées
   const stats = useMemo(() => {
