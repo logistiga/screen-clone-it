@@ -284,7 +284,7 @@ export default function ClientsPage() {
       />
 
       {/* Contenu principal */}
-      {filteredClients.length === 0 && !isLoading ? (
+      {filteredClients.length === 0 && !isLoading && !isSearching ? (
         <Card className="p-12">
           <div className="flex flex-col items-center justify-center text-center">
             <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
