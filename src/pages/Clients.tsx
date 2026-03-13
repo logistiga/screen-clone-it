@@ -174,7 +174,7 @@ export default function ClientsPage() {
     setVilleFilter("all");
   };
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <MainLayout title="Clients">
         <div className="flex items-center justify-center h-96">
