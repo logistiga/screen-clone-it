@@ -68,6 +68,7 @@ export default function ClientsPage() {
     flatData: clients,
     totalItems,
     isLoading,
+    isFetching,
     error,
     fetchNextPage,
     hasNextPage,
@@ -78,6 +79,7 @@ export default function ClientsPage() {
   });
 
   const isInitialLoading = isLoading && clients.length === 0 && allClients.length === 0;
+  const isSearching = isFetching && !isFetchingNextPage && !!debouncedSearch;
 
   // Hook pour l'infinite scroll
   const loadMoreRef = useInfiniteScroll(fetchNextPage, hasNextPage, isFetchingNextPage);
@@ -283,7 +285,7 @@ export default function ClientsPage() {
       />
 
       {/* Contenu principal */}
-      {filteredClients.length === 0 && !isLoading ? (
+      {filteredClients.length === 0 && !isLoading && !isSearching ? (
         <Card className="p-12">
           <div className="flex flex-col items-center justify-center text-center">
             <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -302,16 +304,22 @@ export default function ClientsPage() {
       ) : viewMode === "cards" ? (
         /* Vue Cards avec scroll infini */
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredClients.map((client: Client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                onEdit={(id) => navigate(`/clients/${id}/modifier`)}
-                onDelete={(c) => setDeleteConfirm({ id: c.id, nom: c.nom })}
-              />
-            ))}
-          </div>
+          {isSearching ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredClients.map((client: Client) => (
+                <ClientCard
+                  key={client.id}
+                  client={client}
+                  onEdit={(id) => navigate(`/clients/${id}/modifier`)}
+                  onDelete={(c) => setDeleteConfirm({ id: c.id, nom: c.nom })}
+                />
+              ))}
+            </div>
+          )}
           <InfiniteScrollLoader
             ref={loadMoreRef}
             isFetchingNextPage={isFetchingNextPage}
@@ -352,7 +360,13 @@ export default function ClientsPage() {
                 </TableRow>
               </TableHeader>
               <AnimatedTableBody>
-                {filteredClients.map((client: Client, index: number) => {
+                {isSearching ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-32 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredClients.map((client: Client, index: number) => {
                   const solde = Number(client.solde) || 0;
                   const avoirs = Number(client.solde_avoirs) || 0;
                   
@@ -437,6 +451,7 @@ export default function ClientsPage() {
                   );
                 })}
               </AnimatedTableBody>
+
             </Table>
           </div>
 
