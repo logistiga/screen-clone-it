@@ -35,7 +35,7 @@ import { InfiniteScrollLoader } from "@/components/InfiniteScrollLoader";
 import { ClientAvatar, ClientHealthBadge, ClientCard, ClientFilters } from "@/components/clients";
 import { Client } from "@/lib/api/commercial";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { useDebounce } from "@/hooks/use-debounce";
+// useDebounce n'est plus nécessaire pour la recherche client-side
 
 type SortField = "nom" | "solde" | "ville" | "created_at";
 type SortOrder = "asc" | "desc";
