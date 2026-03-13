@@ -54,7 +54,7 @@ export default function ClientsPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   // Debounce search pour éviter trop de requêtes
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedSearch = useDebounce(searchTerm, 500);
 
   // Infinite Query hook
   const {
