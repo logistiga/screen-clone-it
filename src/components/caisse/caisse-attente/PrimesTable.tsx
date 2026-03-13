@@ -18,7 +18,7 @@ import { DocumentFilters, DocumentLoadingState } from "@/components/shared/docum
 import { PrimeEnAttente, statutFilterOptions, itemVariants } from "./types";
 
 interface PrimesTableProps {
-  source: 'OPS' | 'CNV';
+  source: 'OPS' | 'CNV' | 'HORSLBV';
   onDecaisser: (prime: PrimeEnAttente) => void;
   onRefuser: (prime: PrimeEnAttente) => void;
 }
@@ -30,11 +30,19 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const queryKey = source === 'OPS'
-    ? ['caisse-en-attente', 'OPS', page, pageSize, search, statut]
-    : ['caisse-cnv', page, pageSize, search, statut];
+  const queryKeyMap = {
+    OPS: ['caisse-en-attente', 'OPS', page, pageSize, search, statut],
+    CNV: ['caisse-cnv', page, pageSize, search, statut],
+    HORSLBV: ['caisse-horslbv', page, pageSize, search, statut],
+  };
+  const queryKey = queryKeyMap[source];
 
-  const apiEndpoint = source === 'OPS' ? '/caisse-en-attente' : '/caisse-cnv';
+  const apiEndpointMap = {
+    OPS: '/caisse-en-attente',
+    CNV: '/caisse-cnv',
+    HORSLBV: '/caisse-horslbv',
+  };
+  const apiEndpoint = apiEndpointMap[source];
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey,
