@@ -353,7 +353,13 @@ export default function ClientsPage() {
                 </TableRow>
               </TableHeader>
               <AnimatedTableBody>
-                {filteredClients.map((client: Client, index: number) => {
+                {isSearching ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-32 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredClients.map((client: Client, index: number) => {
                   const solde = Number(client.solde) || 0;
                   const avoirs = Number(client.solde_avoirs) || 0;
                   
