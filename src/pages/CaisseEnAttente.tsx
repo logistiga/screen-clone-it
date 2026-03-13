@@ -694,6 +694,71 @@ export default function CaisseEnAttentePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de refus */}
+      <Dialog open={refusModalOpen} onOpenChange={setRefusModalOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              Refuser le décaissement
+            </DialogTitle>
+            <DialogDescription>
+              Cette prime sera ignorée et ne s'affichera plus dans la liste des primes à décaisser.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPrime && (
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Source:</span>
+                  <Badge variant="secondary">
+                    {selectedPrime.source === 'OPS' ? 'Conteneurs (OPS)' : 'Conventionnel (CNV)'}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Montant:</span>
+                  <span className="font-semibold text-lg">{formatMontant(selectedPrime.montant)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Bénéficiaire:</span>
+                  <span className="font-medium">{selectedPrime.beneficiaire || '-'}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motif du refus (optionnel)</Label>
+                <Textarea
+                  value={motifRefus}
+                  onChange={(e) => setMotifRefus(e.target.value)}
+                  placeholder="Raison du refus..."
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefusModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRefus}
+              disabled={refusMutation.isPending}
+              className="gap-2"
+            >
+              {refusMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              Confirmer le refus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
