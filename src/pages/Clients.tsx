@@ -35,7 +35,7 @@ import { InfiniteScrollLoader } from "@/components/InfiniteScrollLoader";
 import { ClientAvatar, ClientHealthBadge, ClientCard, ClientFilters } from "@/components/clients";
 import { Client } from "@/lib/api/commercial";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { useDebounce } from "@/hooks/use-debounce";
+// useDebounce n'est plus nécessaire pour la recherche client-side
 
 type SortField = "nom" | "solde" | "ville" | "created_at";
 type SortOrder = "asc" | "desc";
@@ -53,10 +53,7 @@ export default function ClientsPage() {
   const [sortField, setSortField] = useState<SortField>("nom");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
-  // Debounce search pour éviter trop de requêtes
-  const debouncedSearch = useDebounce(searchTerm, 500);
-
-  // Infinite Query hook
+  // Infinite Query hook (sans recherche côté serveur pour éviter le rechargement)
   const {
     flatData: clients,
     totalItems,
@@ -66,7 +63,6 @@ export default function ClientsPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteClients({
-    search: debouncedSearch || undefined,
     per_page: 20,
   });
 
@@ -87,6 +83,17 @@ export default function ClientsPage() {
   // Filtrer et trier les clients
   const filteredClients = useMemo(() => {
     let result = [...clients];
+
+    // Filtre par recherche (côté client)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter((c: Client) =>
+        c.nom.toLowerCase().includes(term) ||
+        (c.ville && c.ville.toLowerCase().includes(term)) ||
+        (c.type && c.type.toLowerCase().includes(term)) ||
+        (c.telephone && c.telephone.includes(term))
+      );
+    }
 
     // Filtre par statut
     if (statusFilter === "with_balance") {
@@ -123,7 +130,7 @@ export default function ClientsPage() {
     });
 
     return result;
-  }, [clients, statusFilter, villeFilter, sortField, sortOrder]);
+  }, [clients, searchTerm, statusFilter, villeFilter, sortField, sortOrder]);
 
   // Stats basées sur toutes les données chargées
   const stats = useMemo(() => {
