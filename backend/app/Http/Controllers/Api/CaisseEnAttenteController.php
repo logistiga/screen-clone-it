@@ -304,14 +304,16 @@ class CaisseEnAttenteController extends Controller
         if ($primes->isEmpty()) return $primes;
 
         $refs = $primes->map(function ($p) {
-            return $p->source === 'CNV'
-                ? CaisseCnvController::buildRef($p->id)
-                : CaisseOpsController::buildRef($p->id);
+            return match ($p->source) {
+                'CNV' => CaisseCnvController::buildRef($p->id),
+                'HORSLBV' => CaisseHorslbvController::buildRef($p->id),
+                default => CaisseOpsController::buildRef($p->id),
+            };
         })->toArray();
 
         // Vérifier décaissements
         $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
+            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
             ->whereIn('reference', $refs)
             ->get(['id', 'reference', 'date', 'mode_paiement'])
             ->keyBy('reference');
