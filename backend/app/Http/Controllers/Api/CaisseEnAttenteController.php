@@ -18,11 +18,13 @@ class CaisseEnAttenteController extends Controller
 {
     protected CaisseOpsController $ops;
     protected CaisseCnvController $cnv;
+    protected CaisseHorslbvController $horslbv;
 
     public function __construct()
     {
         $this->ops = new CaisseOpsController();
         $this->cnv = new CaisseCnvController();
+        $this->horslbv = new CaisseHorslbvController();
     }
 
     /**
