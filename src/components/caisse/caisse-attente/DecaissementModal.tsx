@@ -46,8 +46,10 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       toast.success("Décaissement validé avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
       onOpenChange(false);
