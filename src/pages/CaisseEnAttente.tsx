@@ -190,6 +190,30 @@ export default function CaisseEnAttentePage() {
     toast.success("Synchronisation terminée");
   };
 
+  // Mutation refus
+  const refusMutation = useMutation({
+    mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
+      const endpoint = source === 'CNV'
+        ? `/caisse-cnv/${primeId}/refuser`
+        : `/caisse-en-attente/${primeId}/refuser`;
+      const response = await api.post(endpoint, { motif: motifRefus });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Prime refusée avec succès");
+      queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
+      setRefusModalOpen(false);
+      setSelectedPrime(null);
+      setMotifRefus("");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Erreur lors du refus");
+    },
+  });
+
   const resetForm = () => {
     setSelectedPrime(null);
     setModePaiement("Espèces");
@@ -202,9 +226,19 @@ export default function CaisseEnAttentePage() {
     setDecaissementModalOpen(true);
   };
 
+  const openRefusModal = (prime: PrimeEnAttente) => {
+    setSelectedPrime(prime);
+    setRefusModalOpen(true);
+  };
+
   const handleDecaissement = () => {
     if (!selectedPrime) return;
     decaissementMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
+  };
+
+  const handleRefus = () => {
+    if (!selectedPrime) return;
+    refusMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
   };
 
   const emptyStats = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
