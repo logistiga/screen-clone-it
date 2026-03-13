@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +59,7 @@ export default function ClientsPage() {
   const {
     flatData: allClients,
     totalItems: totalAllItems,
+    isLoading: isLoadingAllClients,
   } = useInfiniteClients({
     per_page: 20,
   });
@@ -78,7 +79,16 @@ export default function ClientsPage() {
     per_page: 20,
   });
 
-  const isInitialLoading = isLoading && clients.length === 0 && allClients.length === 0;
+  const hasFinishedFirstLoadRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && !isLoadingAllClients) {
+      hasFinishedFirstLoadRef.current = true;
+    }
+  }, [isLoading, isLoadingAllClients]);
+
+  const isInitialLoading =
+    !hasFinishedFirstLoadRef.current && (isLoading || isLoadingAllClients);
   const isSearching = isFetching && !isFetchingNextPage && !!debouncedSearch;
 
   // Hook pour l'infinite scroll

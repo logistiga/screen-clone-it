@@ -53,10 +53,16 @@ export function ClientFilters({
           placeholder="Rechercher un client..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+            }
+          }}
           className="pl-10 pr-10"
         />
         {searchTerm && (
           <button
+            type="button"
             onClick={() => onSearchChange("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
@@ -98,6 +104,7 @@ export function ClientFilters({
         {/* Effacer filtres */}
         {hasActiveFilters && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={onClearFilters}
@@ -111,6 +118,7 @@ export function ClientFilters({
         {/* Toggle Vue */}
         <div className="flex items-center border rounded-lg p-1 bg-muted/50">
           <Button
+            type="button"
             variant={viewMode === "table" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => onViewModeChange("table")}
@@ -119,6 +127,7 @@ export function ClientFilters({
             <LayoutList className="h-4 w-4" />
           </Button>
           <Button
+            type="button"
             variant={viewMode === "cards" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => onViewModeChange("cards")}
@@ -132,7 +141,7 @@ export function ClientFilters({
         {onExport && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button type="button" variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Exporter
               </Button>
