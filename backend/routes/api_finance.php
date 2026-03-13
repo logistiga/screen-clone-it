@@ -172,6 +172,8 @@ Route::prefix('caisse-en-attente')->middleware('audit')->group(function () {
         ->middleware('permission:caisse.voir');
     Route::post('/{primeId}/decaisser', [CaisseEnAttenteController::class, 'decaisser'])
         ->middleware('permission:caisse.creer');
+    Route::post('/{primeId}/refuser', [CaisseEnAttenteController::class, 'refuser'])
+        ->middleware('permission:caisse.creer');
 });
 
 // ============================================
@@ -183,6 +185,8 @@ Route::prefix('caisse-cnv')->middleware('audit')->group(function () {
     Route::get('/', [CaisseCnvController::class, 'index'])
         ->middleware('permission:caisse.voir');
     Route::post('/{primeId}/decaisser', [CaisseCnvController::class, 'decaisser'])
+        ->middleware('permission:caisse.creer');
+    Route::post('/{primeId}/refuser', [CaisseCnvController::class, 'refuserCnv'])
         ->middleware('permission:caisse.creer');
 });
 

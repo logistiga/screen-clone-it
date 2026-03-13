@@ -53,9 +53,11 @@ class CaisseCnvController extends Controller
 
             // Filtrage par statut de décaissement
             if ($statut === 'a_decaisser') {
-                $primes = $primes->filter(fn($p) => !$p->decaisse);
+                $primes = $primes->filter(fn($p) => !$p->decaisse && !$p->refusee);
             } elseif ($statut === 'decaisse') {
                 $primes = $primes->filter(fn($p) => $p->decaisse);
+            } elseif ($statut === 'refusee') {
+                $primes = $primes->filter(fn($p) => $p->refusee);
             }
 
             $primes = $primes->sortByDesc('date_paiement')->values();
@@ -213,6 +215,15 @@ class CaisseCnvController extends Controller
         }
     }
 
+    /**
+     * Refuser une prime CNV (délègue à l'orchestrateur)
+     */
+    public function refuserCnv(Request $request, string $primeId): JsonResponse
+    {
+        $controller = new CaisseEnAttenteController();
+        return $controller->refuserCnv($request, $primeId);
+    }
+
     // ── Helpers publics (utilisés aussi par l'orchestrateur) ──
 
     public function fetchPrimes(?string $search = null): \Illuminate\Support\Collection
@@ -296,13 +307,19 @@ class CaisseCnvController extends Controller
             ->get(['id', 'reference', 'date', 'mode_paiement'])
             ->keyBy('reference');
 
-        return $primes->map(function ($prime) use ($mouvements) {
+        $refusees = DB::table('primes_refusees')
+            ->whereIn('reference', $refs)
+            ->pluck('reference')
+            ->toArray();
+
+        return $primes->map(function ($prime) use ($mouvements, $refusees) {
             $ref = self::buildRef($prime->id);
             $mouvement = $mouvements[$ref] ?? null;
             $prime->decaisse = $mouvement !== null;
             $prime->mouvement_id = $mouvement?->id;
             $prime->date_decaissement = $mouvement?->date;
             $prime->mode_paiement_decaissement = $mouvement?->mode_paiement;
+            $prime->refusee = in_array($ref, $refusees);
             return $prime;
         });
     }

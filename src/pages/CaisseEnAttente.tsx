@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2, Wallet, Clock, Coins, Loader2,
-  RefreshCw, Receipt, Banknote, Hash, AlertTriangle, Truck, FileText
+  RefreshCw, Receipt, Banknote, Hash, AlertTriangle, Truck, FileText,
+  XCircle, Ban
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import api from "@/lib/api";
@@ -34,6 +35,7 @@ const statutFilterOptions = [
   { value: "all", label: "Toutes les primes payées" },
   { value: "a_decaisser", label: "À décaisser" },
   { value: "decaisse", label: "Déjà décaissées" },
+  { value: "refusee", label: "Refusées" },
 ];
 
 const itemVariants = {
@@ -66,6 +68,7 @@ interface PrimeEnAttente {
   // Champs ajoutés par le backend
   source: 'OPS' | 'CNV';
   decaisse: boolean;
+  refusee: boolean;
   mouvement_id: number | null;
   date_decaissement: string | null;
   mode_paiement_decaissement: string | null;
@@ -101,10 +104,12 @@ export default function CaisseEnAttentePage() {
 
   // Modal state
   const [decaissementModalOpen, setDecaissementModalOpen] = useState(false);
+  const [refusModalOpen, setRefusModalOpen] = useState(false);
   const [selectedPrime, setSelectedPrime] = useState<PrimeEnAttente | null>(null);
   const [modePaiement, setModePaiement] = useState("Espèces");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [motifRefus, setMotifRefus] = useState("");
 
   // Fetch OPS primes
   const { data: opsData, isLoading: opsLoading, refetch: refetchOps, isRefetching: opsRefetching } = useQuery({
@@ -185,6 +190,30 @@ export default function CaisseEnAttentePage() {
     toast.success("Synchronisation terminée");
   };
 
+  // Mutation refus
+  const refusMutation = useMutation({
+    mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
+      const endpoint = source === 'CNV'
+        ? `/caisse-cnv/${primeId}/refuser`
+        : `/caisse-en-attente/${primeId}/refuser`;
+      const response = await api.post(endpoint, { motif: motifRefus });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Prime refusée avec succès");
+      queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
+      setRefusModalOpen(false);
+      setSelectedPrime(null);
+      setMotifRefus("");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Erreur lors du refus");
+    },
+  });
+
   const resetForm = () => {
     setSelectedPrime(null);
     setModePaiement("Espèces");
@@ -197,9 +226,19 @@ export default function CaisseEnAttentePage() {
     setDecaissementModalOpen(true);
   };
 
+  const openRefusModal = (prime: PrimeEnAttente) => {
+    setSelectedPrime(prime);
+    setRefusModalOpen(true);
+  };
+
   const handleDecaissement = () => {
     if (!selectedPrime) return;
     decaissementMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
+  };
+
+  const handleRefus = () => {
+    if (!selectedPrime) return;
+    refusMutation.mutate({ primeId: selectedPrime.id, source: selectedPrime.source });
   };
 
   const emptyStats = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
@@ -393,6 +432,11 @@ export default function CaisseEnAttentePage() {
                               <CheckCircle2 className="h-3 w-3" />
                               Décaissée
                             </Badge>
+                          ) : prime.refusee ? (
+                            <Badge className="bg-destructive/20 text-destructive gap-1">
+                              <Ban className="h-3 w-3" />
+                              Refusée
+                            </Badge>
                           ) : (
                             <Badge className="bg-warning/20 text-warning gap-1">
                               <Clock className="h-3 w-3" />
@@ -406,11 +450,22 @@ export default function CaisseEnAttentePage() {
                               <Receipt className="h-4 w-4" />
                               #{prime.mouvement_id}
                             </span>
+                          ) : prime.refusee ? (
+                            <span className="text-sm text-destructive flex items-center justify-end gap-1">
+                              <Ban className="h-4 w-4" />
+                              Ignorée
+                            </span>
                           ) : (
-                            <Button size="sm" className="gap-1" onClick={() => openDecaissementModal(prime)}>
-                              <Coins className="h-4 w-4" />
-                              Décaisser
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" className="gap-1" onClick={() => openDecaissementModal(prime)}>
+                                <Coins className="h-4 w-4" />
+                                Décaisser
+                              </Button>
+                              <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive" onClick={() => openRefusModal(prime)}>
+                                <XCircle className="h-4 w-4" />
+                                Refuser
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       </motion.tr>
@@ -635,6 +690,71 @@ export default function CaisseEnAttentePage() {
                 <Coins className="h-4 w-4" />
               )}
               Confirmer le décaissement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de refus */}
+      <Dialog open={refusModalOpen} onOpenChange={setRefusModalOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              Refuser le décaissement
+            </DialogTitle>
+            <DialogDescription>
+              Cette prime sera ignorée et ne s'affichera plus dans la liste des primes à décaisser.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPrime && (
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Source:</span>
+                  <Badge variant="secondary">
+                    {selectedPrime.source === 'OPS' ? 'Conteneurs (OPS)' : 'Conventionnel (CNV)'}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Montant:</span>
+                  <span className="font-semibold text-lg">{formatMontant(selectedPrime.montant)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Bénéficiaire:</span>
+                  <span className="font-medium">{selectedPrime.beneficiaire || '-'}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motif du refus (optionnel)</Label>
+                <Textarea
+                  value={motifRefus}
+                  onChange={(e) => setMotifRefus(e.target.value)}
+                  placeholder="Raison du refus..."
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefusModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRefus}
+              disabled={refusMutation.isPending}
+              className="gap-2"
+            >
+              {refusMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              Confirmer le refus
             </Button>
           </DialogFooter>
         </DialogContent>

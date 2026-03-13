@@ -52,9 +52,11 @@ class CaisseEnAttenteController extends Controller
 
             // Filtrage par statut de décaissement
             if ($statut === 'a_decaisser') {
-                $allPrimes = $allPrimes->filter(fn($p) => !$p->decaisse);
+                $allPrimes = $allPrimes->filter(fn($p) => !$p->decaisse && !$p->refusee);
             } elseif ($statut === 'decaisse') {
                 $allPrimes = $allPrimes->filter(fn($p) => $p->decaisse);
+            } elseif ($statut === 'refusee') {
+                $allPrimes = $allPrimes->filter(fn($p) => $p->refusee);
             }
 
             // Tri et pagination
@@ -214,6 +216,68 @@ class CaisseEnAttenteController extends Controller
         }
     }
 
+    /**
+     * Refuser le décaissement d'une prime (OPS ou CNV)
+     */
+    public function refuser(Request $request, string $primeId): JsonResponse
+    {
+        return $this->doRefuser($request, $primeId, 'OPS');
+    }
+
+    /**
+     * Refuser le décaissement d'une prime CNV (appelé depuis route caisse-cnv)
+     */
+    public function refuserCnv(Request $request, string $primeId): JsonResponse
+    {
+        return $this->doRefuser($request, $primeId, 'CNV');
+    }
+
+    private function doRefuser(Request $request, string $primeId, string $source): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'motif' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $reference = $source === 'CNV'
+            ? CaisseCnvController::buildRef($primeId)
+            : CaisseOpsController::buildRef($primeId);
+
+        // Vérifier si déjà refusée
+        if (DB::table('primes_refusees')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Cette prime a déjà été refusée'], 422);
+        }
+
+        // Vérifier si déjà décaissée
+        if (DB::table('mouvements_caisse')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Cette prime a déjà été décaissée, impossible de la refuser'], 422);
+        }
+
+        try {
+            DB::table('primes_refusees')->insert([
+                'prime_id' => $primeId,
+                'source' => $source,
+                'reference' => $reference,
+                'motif' => $request->get('motif'),
+                'user_id' => $request->user()?->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Audit::log('create', 'refus_decaissement', "Refus décaissement prime {$source}: {$primeId}", null);
+
+            return response()->json(['message' => 'Prime refusée avec succès'], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors du refus',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     // ── Private helpers ──
 
     private function attachDecaissementStatus(\Illuminate\Support\Collection $primes): \Illuminate\Support\Collection
@@ -226,13 +290,20 @@ class CaisseEnAttenteController extends Controller
                 : CaisseOpsController::buildRef($p->id);
         })->toArray();
 
+        // Vérifier décaissements
         $mouvements = DB::table('mouvements_caisse')
             ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
             ->whereIn('reference', $refs)
             ->get(['id', 'reference', 'date', 'mode_paiement'])
             ->keyBy('reference');
 
-        return $primes->map(function ($prime) use ($mouvements) {
+        // Vérifier refus
+        $refusees = DB::table('primes_refusees')
+            ->whereIn('reference', $refs)
+            ->pluck('reference')
+            ->toArray();
+
+        return $primes->map(function ($prime) use ($mouvements, $refusees) {
             $ref = $prime->source === 'CNV'
                 ? CaisseCnvController::buildRef($prime->id)
                 : CaisseOpsController::buildRef($prime->id);
@@ -241,6 +312,7 @@ class CaisseEnAttenteController extends Controller
             $prime->mouvement_id = $mouvement?->id;
             $prime->date_decaissement = $mouvement?->date;
             $prime->mode_paiement_decaissement = $mouvement?->mode_paiement;
+            $prime->refusee = in_array($ref, $refusees);
             return $prime;
         });
     }
