@@ -212,8 +212,6 @@ export default function AvoirPDFPage() {
             </ul>
           </div>
 
-          {/* Coordonnées bancaires (pour remboursement éventuel) */}
-          <DocumentBankDetails />
 
           {/* Signature */}
           <div className="flex justify-between items-end mb-6 mt-8">
