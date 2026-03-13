@@ -93,9 +93,12 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
       <DocumentFilters
         searchTerm={search}
         onSearchChange={(value) => { setSearch(value); setPage(1); }}
-        searchPlaceholder={source === 'OPS'
-          ? "Rechercher (bénéficiaire, camion, parc, prestataire, type)..."
-          : "Rechercher (bénéficiaire, N° paiement, conventionné, type)..."
+        searchPlaceholder={
+          source === 'OPS'
+            ? "Rechercher (bénéficiaire, camion, parc, prestataire, type)..."
+            : source === 'CNV'
+            ? "Rechercher (bénéficiaire, N° paiement, conventionné, type)..."
+            : "Rechercher (N° fiche, N° dépense, note)..."
         }
         statutFilter={statut}
         onStatutChange={(v) => { setStatut(v); setPage(1); }}
