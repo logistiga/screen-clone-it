@@ -141,7 +141,7 @@ export function ClientFilters({
         {onExport && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button type="button" variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Exporter
               </Button>
