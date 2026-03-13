@@ -78,6 +78,7 @@ export default function ClientsPage() {
   });
 
   const isInitialLoading = isLoading && clients.length === 0 && allClients.length === 0;
+  const isSearching = isLoading && !isInitialLoading;
 
   // Hook pour l'infinite scroll
   const loadMoreRef = useInfiniteScroll(fetchNextPage, hasNextPage, isFetchingNextPage);
