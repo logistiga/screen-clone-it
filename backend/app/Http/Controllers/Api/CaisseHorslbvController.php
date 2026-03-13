@@ -19,8 +19,10 @@ class CaisseHorslbvController extends Controller
     public function isAvailable(): bool
     {
         try {
-            DB::connection('horslbv')->getPdo();
-            return true;
+            $connection = DB::connection('horslbv');
+            $connection->getPdo();
+
+            return $connection->getSchemaBuilder()->hasTable('fiches_depenses');
         } catch (\Exception $e) {
             return false;
         }
