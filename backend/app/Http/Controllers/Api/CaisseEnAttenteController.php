@@ -325,9 +325,11 @@ class CaisseEnAttenteController extends Controller
             ->toArray();
 
         return $primes->map(function ($prime) use ($mouvements, $refusees) {
-            $ref = $prime->source === 'CNV'
-                ? CaisseCnvController::buildRef($prime->id)
-                : CaisseOpsController::buildRef($prime->id);
+            $ref = match ($prime->source) {
+                'CNV' => CaisseCnvController::buildRef($prime->id),
+                'HORSLBV' => CaisseHorslbvController::buildRef($prime->id),
+                default => CaisseOpsController::buildRef($prime->id),
+            };
             $mouvement = $mouvements[$ref] ?? null;
             $prime->decaisse = $mouvement !== null;
             $prime->mouvement_id = $mouvement?->id;
