@@ -213,6 +213,15 @@ class CaisseCnvController extends Controller
         }
     }
 
+    /**
+     * Refuser une prime CNV (délègue à l'orchestrateur)
+     */
+    public function refuserCnv(Request $request, string $primeId): JsonResponse
+    {
+        $controller = new CaisseEnAttenteController();
+        return $controller->refuserCnv($request, $primeId);
+    }
+
     // ── Helpers publics (utilisés aussi par l'orchestrateur) ──
 
     public function fetchPrimes(?string $search = null): \Illuminate\Support\Collection
