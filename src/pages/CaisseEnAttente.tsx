@@ -68,6 +68,7 @@ interface PrimeEnAttente {
   // Champs ajoutés par le backend
   source: 'OPS' | 'CNV';
   decaisse: boolean;
+  refusee: boolean;
   mouvement_id: number | null;
   date_decaissement: string | null;
   mode_paiement_decaissement: string | null;
