@@ -68,6 +68,7 @@ export default function ClientsPage() {
     flatData: clients,
     totalItems,
     isLoading,
+    isFetching,
     error,
     fetchNextPage,
     hasNextPage,
