@@ -111,10 +111,12 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
           <CardTitle className="flex items-center gap-2">
             {source === 'OPS' ? (
               <Truck className="h-5 w-5 text-primary" />
-            ) : (
+            ) : source === 'CNV' ? (
               <FileText className="h-5 w-5 text-primary" />
+            ) : (
+              <Truck className="h-5 w-5 text-primary" />
             )}
-            {source === 'OPS' ? 'Primes Conteneurs (OPS)' : 'Primes Conventionnel (CNV)'}
+            {source === 'OPS' ? 'Primes Conteneurs (OPS)' : source === 'CNV' ? 'Primes Conventionnel (CNV)' : 'Dépenses Hors Libreville'}
             <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
           </CardTitle>
         </CardHeader>
