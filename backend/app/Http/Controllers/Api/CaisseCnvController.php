@@ -296,13 +296,19 @@ class CaisseCnvController extends Controller
             ->get(['id', 'reference', 'date', 'mode_paiement'])
             ->keyBy('reference');
 
-        return $primes->map(function ($prime) use ($mouvements) {
+        $refusees = DB::table('primes_refusees')
+            ->whereIn('reference', $refs)
+            ->pluck('reference')
+            ->toArray();
+
+        return $primes->map(function ($prime) use ($mouvements, $refusees) {
             $ref = self::buildRef($prime->id);
             $mouvement = $mouvements[$ref] ?? null;
             $prime->decaisse = $mouvement !== null;
             $prime->mouvement_id = $mouvement?->id;
             $prime->date_decaissement = $mouvement?->date;
             $prime->mode_paiement_decaissement = $mouvement?->mode_paiement;
+            $prime->refusee = in_array($ref, $refusees);
             return $prime;
         });
     }
