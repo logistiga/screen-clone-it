@@ -163,8 +163,11 @@ class CaisseEnAttenteController extends Controller
         $source = $request->get('source', 'OPS');
 
         try {
-            // Déléguer la validation à la source appropriée
-            $handler = $source === 'CNV' ? $this->cnv : $this->ops;
+            $handler = match ($source) {
+                'CNV' => $this->cnv,
+                'HORSLBV' => $this->horslbv,
+                default => $this->ops,
+            };
 
             $validationError = $handler->decaisser($request, $primeId);
             if ($validationError) {
