@@ -249,7 +249,7 @@ class CaisseEnAttenteController extends Controller
         return $this->doRefuser($request, $primeId, 'CNV');
     }
 
-    private function doRefuser(Request $request, string $primeId, string $source): JsonResponse
+    public function doRefuser(Request $request, string $primeId, string $source): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'motif' => 'nullable|string|max:500',
@@ -259,9 +259,11 @@ class CaisseEnAttenteController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $reference = $source === 'CNV'
-            ? CaisseCnvController::buildRef($primeId)
-            : CaisseOpsController::buildRef($primeId);
+        $reference = match ($source) {
+            'CNV' => CaisseCnvController::buildRef($primeId),
+            'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+            default => CaisseOpsController::buildRef($primeId),
+        };
 
         // Vérifier si déjà refusée
         if (DB::table('primes_refusees')->where('reference', $reference)->exists()) {
