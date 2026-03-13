@@ -31,9 +31,12 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
   const mutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const endpoint = source === 'CNV'
-        ? `/caisse-cnv/${primeId}/decaisser`
-        : `/caisse-en-attente/${primeId}/decaisser`;
+      const endpointMap: Record<string, string> = {
+        CNV: `/caisse-cnv/${primeId}/decaisser`,
+        HORSLBV: `/caisse-horslbv/${primeId}/decaisser`,
+        OPS: `/caisse-en-attente/${primeId}/decaisser`,
+      };
+      const endpoint = endpointMap[source] || endpointMap.OPS;
       const response = await api.post(endpoint, {
         mode_paiement: modePaiement, reference, notes,
       });
