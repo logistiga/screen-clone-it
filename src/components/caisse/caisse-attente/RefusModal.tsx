@@ -38,8 +38,10 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       toast.success("Prime refusée avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
       onOpenChange(false);
       setMotif("");
     },
