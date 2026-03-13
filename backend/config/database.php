@@ -103,6 +103,31 @@ return [
             ]) : [],
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Connexion Logistiga Hors Libreville (READ ONLY)
+        |--------------------------------------------------------------------------
+        | Cette connexion permet à FAC de lire les fiches de dépenses hors Libreville.
+        */
+        'horslbv' => [
+            'driver' => 'mysql',
+            'host' => env('HORSLBV_DB_HOST', '127.0.0.1'),
+            'port' => env('HORSLBV_DB_PORT', '3306'),
+            'database' => env('HORSLBV_DB_DATABASE', 'logiwkuh_horslbv'),
+            'username' => env('HORSLBV_DB_USERNAME', 'root'),
+            'password' => env('HORSLBV_DB_PASSWORD', ''),
+            'unix_socket' => env('HORSLBV_DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
