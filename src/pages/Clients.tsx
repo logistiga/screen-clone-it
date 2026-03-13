@@ -35,7 +35,7 @@ import { InfiniteScrollLoader } from "@/components/InfiniteScrollLoader";
 import { ClientAvatar, ClientHealthBadge, ClientCard, ClientFilters } from "@/components/clients";
 import { Client } from "@/lib/api/commercial";
 import { MainLayout } from "@/components/layout/MainLayout";
-// useDebounce n'est plus nécessaire pour la recherche client-side
+import { useDebounce } from "@/hooks/use-debounce";
 
 type SortField = "nom" | "solde" | "ville" | "created_at";
 type SortOrder = "asc" | "desc";
@@ -53,7 +53,17 @@ export default function ClientsPage() {
   const [sortField, setSortField] = useState<SortField>("nom");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
-  // Infinite Query hook (sans recherche côté serveur pour éviter le rechargement)
+  const debouncedSearch = useDebounce(searchTerm, 600);
+
+  // Query pour les stats (sans recherche - reste stable)
+  const {
+    flatData: allClients,
+    totalItems: totalAllItems,
+  } = useInfiniteClients({
+    per_page: 20,
+  });
+
+  // Query pour la liste filtrée (avec recherche serveur)
   const {
     flatData: clients,
     totalItems,
@@ -63,6 +73,7 @@ export default function ClientsPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteClients({
+    search: debouncedSearch || undefined,
     per_page: 20,
   });
 
