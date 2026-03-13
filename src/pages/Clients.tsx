@@ -84,6 +84,17 @@ export default function ClientsPage() {
   const filteredClients = useMemo(() => {
     let result = [...clients];
 
+    // Filtre par recherche (côté client)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter((c: Client) =>
+        c.nom.toLowerCase().includes(term) ||
+        (c.ville && c.ville.toLowerCase().includes(term)) ||
+        (c.type && c.type.toLowerCase().includes(term)) ||
+        (c.telephone && c.telephone.includes(term))
+      );
+    }
+
     // Filtre par statut
     if (statusFilter === "with_balance") {
       result = result.filter((c: Client) => Number(c.solde) > 0);
