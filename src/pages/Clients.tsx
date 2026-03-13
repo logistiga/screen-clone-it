@@ -53,10 +53,7 @@ export default function ClientsPage() {
   const [sortField, setSortField] = useState<SortField>("nom");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
-  // Debounce search pour éviter trop de requêtes
-  const debouncedSearch = useDebounce(searchTerm, 500);
-
-  // Infinite Query hook
+  // Infinite Query hook (sans recherche côté serveur pour éviter le rechargement)
   const {
     flatData: clients,
     totalItems,
@@ -66,7 +63,6 @@ export default function ClientsPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteClients({
-    search: debouncedSearch || undefined,
     per_page: 20,
   });
 
