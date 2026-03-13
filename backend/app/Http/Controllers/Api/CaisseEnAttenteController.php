@@ -49,6 +49,10 @@ class CaisseEnAttenteController extends Controller
                 $allPrimes = $allPrimes->merge($this->cnv->fetchPrimes($search));
             }
 
+            if (in_array($sourceFilter, ['all', 'HORSLBV']) && $this->horslbv->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->horslbv->fetchPrimes($search));
+            }
+
             // Vérifier décaissements dans FAC
             $allPrimes = $this->attachDecaissementStatus($allPrimes);
 
