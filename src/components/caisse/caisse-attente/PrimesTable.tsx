@@ -127,16 +127,23 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                 <TableRow className="hover:bg-transparent bg-muted/50">
                   <TableHead>Type</TableHead>
                   <TableHead>Bénéficiaire</TableHead>
-                  {source === 'OPS' ? (
+                  {source === 'OPS' && (
                     <>
                       <TableHead>Camion / Parc</TableHead>
                       <TableHead>Prestataire</TableHead>
                       <TableHead>Responsable</TableHead>
                     </>
-                  ) : (
+                  )}
+                  {source === 'CNV' && (
                     <>
                       <TableHead>N° Conventionné</TableHead>
                       <TableHead>Responsable</TableHead>
+                    </>
+                  )}
+                  {source === 'HORSLBV' && (
+                    <>
+                      <TableHead>N° Fiche</TableHead>
+                      <TableHead>N° Dépense</TableHead>
                     </>
                   )}
                   <TableHead>N° Paiement</TableHead>
