@@ -35,6 +35,7 @@ const statutFilterOptions = [
   { value: "all", label: "Toutes les primes payées" },
   { value: "a_decaisser", label: "À décaisser" },
   { value: "decaisse", label: "Déjà décaissées" },
+  { value: "refusee", label: "Refusées" },
 ];
 
 const itemVariants = {
