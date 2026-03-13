@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PrimeCamionController;
 use App\Http\Controllers\Api\CategorieDepenseController;
 use App\Http\Controllers\Api\CaisseEnAttenteController;
 use App\Http\Controllers\Api\CaisseCnvController;
+use App\Http\Controllers\Api\CaisseHorslbvController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use Illuminate\Support\Facades\Route;
@@ -187,6 +188,20 @@ Route::prefix('caisse-cnv')->middleware('audit')->group(function () {
     Route::post('/{primeId}/decaisser', [CaisseCnvController::class, 'decaisser'])
         ->middleware('permission:caisse.creer');
     Route::post('/{primeId}/refuser', [CaisseCnvController::class, 'refuserCnv'])
+        ->middleware('permission:caisse.creer');
+});
+
+// ============================================
+// CAISSE EN ATTENTE - HORS LIBREVILLE (fiches dépenses)
+// ============================================
+Route::prefix('caisse-horslbv')->middleware('audit')->group(function () {
+    Route::get('/stats', [CaisseHorslbvController::class, 'stats'])
+        ->middleware('permission:caisse.voir');
+    Route::get('/', [CaisseHorslbvController::class, 'index'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/{primeId}/decaisser', [CaisseHorslbvController::class, 'decaisser'])
+        ->middleware('permission:caisse.creer');
+    Route::post('/{primeId}/refuser', [CaisseHorslbvController::class, 'refuser'])
         ->middleware('permission:caisse.creer');
 });
 

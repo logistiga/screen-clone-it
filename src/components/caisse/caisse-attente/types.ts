@@ -15,7 +15,7 @@ export interface PrimeEnAttente {
   prestataire_nom: string | null;
   created_at: string;
   // Champs ajoutés par le backend
-  source: 'OPS' | 'CNV';
+  source: 'OPS' | 'CNV' | 'HORSLBV';
   decaisse: boolean;
   refusee: boolean;
   mouvement_id: number | null;
@@ -24,6 +24,15 @@ export interface PrimeEnAttente {
   // CNV-specific
   conventionne_numero?: string | null;
   numero_parc?: string | null;
+  // HORSLBV-specific
+  numero_fiche?: string | null;
+  numero_depense?: string | null;
+  frais_route?: number | null;
+  carburant?: number | null;
+  logement?: number | null;
+  prime_chauffeur?: number | null;
+  gasoil_litres?: number | null;
+  note?: string | null;
 }
 
 export interface StatsResponse {

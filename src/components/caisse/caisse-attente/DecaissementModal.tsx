@@ -31,9 +31,12 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
   const mutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const endpoint = source === 'CNV'
-        ? `/caisse-cnv/${primeId}/decaisser`
-        : `/caisse-en-attente/${primeId}/decaisser`;
+      const endpointMap: Record<string, string> = {
+        CNV: `/caisse-cnv/${primeId}/decaisser`,
+        HORSLBV: `/caisse-horslbv/${primeId}/decaisser`,
+        OPS: `/caisse-en-attente/${primeId}/decaisser`,
+      };
+      const endpoint = endpointMap[source] || endpointMap.OPS;
       const response = await api.post(endpoint, {
         mode_paiement: modePaiement, reference, notes,
       });
@@ -43,8 +46,10 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       toast.success("Décaissement validé avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
       onOpenChange(false);
@@ -85,7 +90,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Source:</span>
                 <Badge variant="secondary">
-                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : 'Conventionnel (CNV)'}
+                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : prime.source === 'CNV' ? 'Conventionnel (CNV)' : 'Hors Libreville'}
                 </Badge>
               </div>
               <div className="flex justify-between">

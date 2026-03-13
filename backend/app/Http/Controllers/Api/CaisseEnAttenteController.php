@@ -18,11 +18,13 @@ class CaisseEnAttenteController extends Controller
 {
     protected CaisseOpsController $ops;
     protected CaisseCnvController $cnv;
+    protected CaisseHorslbvController $horslbv;
 
     public function __construct()
     {
         $this->ops = new CaisseOpsController();
         $this->cnv = new CaisseCnvController();
+        $this->horslbv = new CaisseHorslbvController();
     }
 
     /**
@@ -45,6 +47,10 @@ class CaisseEnAttenteController extends Controller
 
             if (in_array($sourceFilter, ['all', 'CNV']) && $this->cnv->isAvailable()) {
                 $allPrimes = $allPrimes->merge($this->cnv->fetchPrimes($search));
+            }
+
+            if (in_array($sourceFilter, ['all', 'HORSLBV']) && $this->horslbv->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->horslbv->fetchPrimes($search));
             }
 
             // Vérifier décaissements dans FAC
@@ -100,11 +106,15 @@ class CaisseEnAttenteController extends Controller
                 $allPrimes = $allPrimes->merge($this->cnv->fetchStats());
             }
 
+            if ($this->horslbv->isAvailable()) {
+                $allPrimes = $allPrimes->merge($this->horslbv->fetchStats());
+            }
+
             $refs = $allPrimes->pluck('ref')->toArray();
             $decaisseesRefs = [];
             if (!empty($refs)) {
                 $decaisseesRefs = DB::table('mouvements_caisse')
-                    ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
+                    ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
                     ->whereIn('reference', $refs)
                     ->pluck('reference')
                     ->toArray();
@@ -143,7 +153,7 @@ class CaisseEnAttenteController extends Controller
             'banque_id' => 'nullable|exists:banques,id',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
-            'source' => 'nullable|in:OPS,CNV',
+            'source' => 'nullable|in:OPS,CNV,HORSLBV',
         ]);
 
         if ($validator->fails()) {
@@ -153,8 +163,11 @@ class CaisseEnAttenteController extends Controller
         $source = $request->get('source', 'OPS');
 
         try {
-            // Déléguer la validation à la source appropriée
-            $handler = $source === 'CNV' ? $this->cnv : $this->ops;
+            $handler = match ($source) {
+                'CNV' => $this->cnv,
+                'HORSLBV' => $this->horslbv,
+                default => $this->ops,
+            };
 
             $validationError = $handler->decaisser($request, $primeId);
             if ($validationError) {
@@ -166,13 +179,17 @@ class CaisseEnAttenteController extends Controller
                 return response()->json(['message' => 'Prime non trouvée'], 404);
             }
 
-            $refUnique = $source === 'CNV'
-                ? CaisseCnvController::buildRef($primeId)
-                : CaisseOpsController::buildRef($primeId);
+            $refUnique = match ($source) {
+                'CNV' => CaisseCnvController::buildRef($primeId),
+                'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+                default => CaisseOpsController::buildRef($primeId),
+            };
 
-            $categorie = $source === 'CNV'
-                ? CaisseCnvController::categorie()
-                : CaisseOpsController::categorie();
+            $categorie = match ($source) {
+                'CNV' => CaisseCnvController::categorie(),
+                'HORSLBV' => CaisseHorslbvController::categorie(),
+                default => CaisseOpsController::categorie(),
+            };
 
             DB::beginTransaction();
 
@@ -232,7 +249,7 @@ class CaisseEnAttenteController extends Controller
         return $this->doRefuser($request, $primeId, 'CNV');
     }
 
-    private function doRefuser(Request $request, string $primeId, string $source): JsonResponse
+    public function doRefuser(Request $request, string $primeId, string $source): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'motif' => 'nullable|string|max:500',
@@ -242,9 +259,11 @@ class CaisseEnAttenteController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $reference = $source === 'CNV'
-            ? CaisseCnvController::buildRef($primeId)
-            : CaisseOpsController::buildRef($primeId);
+        $reference = match ($source) {
+            'CNV' => CaisseCnvController::buildRef($primeId),
+            'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+            default => CaisseOpsController::buildRef($primeId),
+        };
 
         // Vérifier si déjà refusée
         if (DB::table('primes_refusees')->where('reference', $reference)->exists()) {
@@ -285,14 +304,16 @@ class CaisseEnAttenteController extends Controller
         if ($primes->isEmpty()) return $primes;
 
         $refs = $primes->map(function ($p) {
-            return $p->source === 'CNV'
-                ? CaisseCnvController::buildRef($p->id)
-                : CaisseOpsController::buildRef($p->id);
+            return match ($p->source) {
+                'CNV' => CaisseCnvController::buildRef($p->id),
+                'HORSLBV' => CaisseHorslbvController::buildRef($p->id),
+                default => CaisseOpsController::buildRef($p->id),
+            };
         })->toArray();
 
         // Vérifier décaissements
         $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie()])
+            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
             ->whereIn('reference', $refs)
             ->get(['id', 'reference', 'date', 'mode_paiement'])
             ->keyBy('reference');
@@ -304,9 +325,11 @@ class CaisseEnAttenteController extends Controller
             ->toArray();
 
         return $primes->map(function ($prime) use ($mouvements, $refusees) {
-            $ref = $prime->source === 'CNV'
-                ? CaisseCnvController::buildRef($prime->id)
-                : CaisseOpsController::buildRef($prime->id);
+            $ref = match ($prime->source) {
+                'CNV' => CaisseCnvController::buildRef($prime->id),
+                'HORSLBV' => CaisseHorslbvController::buildRef($prime->id),
+                default => CaisseOpsController::buildRef($prime->id),
+            };
             $mouvement = $mouvements[$ref] ?? null;
             $prime->decaisse = $mouvement !== null;
             $prime->mouvement_id = $mouvement?->id;

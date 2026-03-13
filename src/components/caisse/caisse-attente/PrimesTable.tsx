@@ -18,7 +18,7 @@ import { DocumentFilters, DocumentLoadingState } from "@/components/shared/docum
 import { PrimeEnAttente, statutFilterOptions, itemVariants } from "./types";
 
 interface PrimesTableProps {
-  source: 'OPS' | 'CNV';
+  source: 'OPS' | 'CNV' | 'HORSLBV';
   onDecaisser: (prime: PrimeEnAttente) => void;
   onRefuser: (prime: PrimeEnAttente) => void;
 }
@@ -30,11 +30,19 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const queryKey = source === 'OPS'
-    ? ['caisse-en-attente', 'OPS', page, pageSize, search, statut]
-    : ['caisse-cnv', page, pageSize, search, statut];
+  const queryKeyMap = {
+    OPS: ['caisse-en-attente', 'OPS', page, pageSize, search, statut],
+    CNV: ['caisse-cnv', page, pageSize, search, statut],
+    HORSLBV: ['caisse-horslbv', page, pageSize, search, statut],
+  };
+  const queryKey = queryKeyMap[source];
 
-  const apiEndpoint = source === 'OPS' ? '/caisse-en-attente' : '/caisse-cnv';
+  const apiEndpointMap = {
+    OPS: '/caisse-en-attente',
+    CNV: '/caisse-cnv',
+    HORSLBV: '/caisse-horslbv',
+  };
+  const apiEndpoint = apiEndpointMap[source];
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey,
@@ -85,9 +93,12 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
       <DocumentFilters
         searchTerm={search}
         onSearchChange={(value) => { setSearch(value); setPage(1); }}
-        searchPlaceholder={source === 'OPS'
-          ? "Rechercher (bénéficiaire, camion, parc, prestataire, type)..."
-          : "Rechercher (bénéficiaire, N° paiement, conventionné, type)..."
+        searchPlaceholder={
+          source === 'OPS'
+            ? "Rechercher (bénéficiaire, camion, parc, prestataire, type)..."
+            : source === 'CNV'
+            ? "Rechercher (bénéficiaire, N° paiement, conventionné, type)..."
+            : "Rechercher (N° fiche, N° dépense, note)..."
         }
         statutFilter={statut}
         onStatutChange={(v) => { setStatut(v); setPage(1); }}
@@ -100,10 +111,12 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
           <CardTitle className="flex items-center gap-2">
             {source === 'OPS' ? (
               <Truck className="h-5 w-5 text-primary" />
-            ) : (
+            ) : source === 'CNV' ? (
               <FileText className="h-5 w-5 text-primary" />
+            ) : (
+              <Truck className="h-5 w-5 text-primary" />
             )}
-            {source === 'OPS' ? 'Primes Conteneurs (OPS)' : 'Primes Conventionnel (CNV)'}
+            {source === 'OPS' ? 'Primes Conteneurs (OPS)' : source === 'CNV' ? 'Primes Conventionnel (CNV)' : 'Dépenses Hors Libreville'}
             <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
           </CardTitle>
         </CardHeader>
@@ -114,16 +127,23 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                 <TableRow className="hover:bg-transparent bg-muted/50">
                   <TableHead>Type</TableHead>
                   <TableHead>Bénéficiaire</TableHead>
-                  {source === 'OPS' ? (
+                  {source === 'OPS' && (
                     <>
                       <TableHead>Camion / Parc</TableHead>
                       <TableHead>Prestataire</TableHead>
                       <TableHead>Responsable</TableHead>
                     </>
-                  ) : (
+                  )}
+                  {source === 'CNV' && (
                     <>
                       <TableHead>N° Conventionné</TableHead>
                       <TableHead>Responsable</TableHead>
+                    </>
+                  )}
+                  {source === 'HORSLBV' && (
+                    <>
+                      <TableHead>N° Fiche</TableHead>
+                      <TableHead>N° Dépense</TableHead>
                     </>
                   )}
                   <TableHead>N° Paiement</TableHead>
@@ -136,7 +156,7 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={source === 'OPS' ? 10 : 9} className="py-16 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="py-16 text-center text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Wallet className="h-8 w-8 opacity-50" />
                         <p>Aucune prime {source} trouvée</p>
@@ -166,7 +186,7 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                       <TableCell className="max-w-[180px] truncate font-medium">
                         {prime.beneficiaire || '-'}
                       </TableCell>
-                      {source === 'OPS' ? (
+                      {source === 'OPS' && (
                         <>
                           <TableCell className="text-sm">
                             {prime.camion_plaque && (
@@ -184,13 +204,24 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                             {prime.responsable_nom || prime.responsable || '-'}
                           </TableCell>
                         </>
-                      ) : (
+                      )}
+                      {source === 'CNV' && (
                         <>
                           <TableCell className="text-sm font-mono">
                             {prime.conventionne_numero || prime.numero_parc || '-'}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {prime.responsable_nom || prime.responsable || '-'}
+                          </TableCell>
+                        </>
+                      )}
+                      {source === 'HORSLBV' && (
+                        <>
+                          <TableCell className="text-sm font-mono">
+                            {prime.numero_fiche || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-mono">
+                            {prime.numero_depense || '-'}
                           </TableCell>
                         </>
                       )}

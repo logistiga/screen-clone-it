@@ -25,9 +25,12 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
 
   const mutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const endpoint = source === 'CNV'
-        ? `/caisse-cnv/${primeId}/refuser`
-        : `/caisse-en-attente/${primeId}/refuser`;
+      const endpointMap: Record<string, string> = {
+        CNV: `/caisse-cnv/${primeId}/refuser`,
+        HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
+        OPS: `/caisse-en-attente/${primeId}/refuser`,
+      };
+      const endpoint = endpointMap[source] || endpointMap.OPS;
       const response = await api.post(endpoint, { motif });
       return response.data;
     },
@@ -35,8 +38,10 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       toast.success("Prime refusée avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
       onOpenChange(false);
       setMotif("");
     },
@@ -69,7 +74,7 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Source:</span>
                 <Badge variant="secondary">
-                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : 'Conventionnel (CNV)'}
+                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : prime.source === 'CNV' ? 'Conventionnel (CNV)' : 'Hors Libreville'}
                 </Badge>
               </div>
               <div className="flex justify-between">
