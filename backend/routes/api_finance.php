@@ -192,6 +192,20 @@ Route::prefix('caisse-cnv')->middleware('audit')->group(function () {
 });
 
 // ============================================
+// CAISSE EN ATTENTE - HORS LIBREVILLE (fiches dépenses)
+// ============================================
+Route::prefix('caisse-horslbv')->middleware('audit')->group(function () {
+    Route::get('/stats', [CaisseHorslbvController::class, 'stats'])
+        ->middleware('permission:caisse.voir');
+    Route::get('/', [CaisseHorslbvController::class, 'index'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/{primeId}/decaisser', [CaisseHorslbvController::class, 'decaisser'])
+        ->middleware('permission:caisse.creer');
+    Route::post('/{primeId}/refuser', [CaisseHorslbvController::class, 'refuser'])
+        ->middleware('permission:caisse.creer');
+});
+
+// ============================================
 // CATÉGORIES DE DÉPENSES
 // ============================================
 Route::prefix('categories-depenses')->middleware('audit')->group(function () {
