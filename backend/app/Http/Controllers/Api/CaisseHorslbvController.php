@@ -231,7 +231,7 @@ class CaisseHorslbvController extends Controller
     public function refuser(Request $request, string $primeId): JsonResponse
     {
         $controller = new CaisseEnAttenteController();
-        return $controller->doRefuserSource($request, $primeId, 'HORSLBV');
+        return $controller->doRefuser($request, $primeId, 'HORSLBV');
     }
 
     // ── Helpers publics ──
