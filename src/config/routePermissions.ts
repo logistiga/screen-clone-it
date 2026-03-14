@@ -65,6 +65,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/caisse-globale', permission: 'caisse.voir' },
   { path: '/primes-decaissement', permission: 'caisse.voir' },
   { path: '/caisse-en-attente', permission: 'caisse.voir' },
+  { path: '/caisse-en-attend', permission: 'caisse.voir' },
 
   // === Reporting ===
   { path: '/reporting', permission: 'reporting.voir' },
@@ -101,6 +102,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
 
   // === Autres ===
   { path: '/guide' }, // Pas de permission requise
+  { path: '/assistant-ia', role: 'directeur' },
   { path: '/securite/connexions-suspectes', permission: 'securite.voir', role: 'administrateur' },
 ];
 

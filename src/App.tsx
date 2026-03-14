@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -275,7 +275,8 @@ const App = () => (
                 
                 {/* Routes protégées - Autres */}
                 <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
-                <Route path="/assistant-ia" element={<ProtectedRoute requiredRole="administrateur"><AiAssistantPage /></ProtectedRoute>} />
+                <Route path="/caisse-en-attend" element={<ProtectedRoute requiredPermission={P.caisse.view}><Navigate to="/caisse-en-attente" replace /></ProtectedRoute>} />
+                <Route path="/assistant-ia" element={<ProtectedRoute requiredRole="directeur"><AiAssistantPage /></ProtectedRoute>} />
                 <Route path="/securite/connexions-suspectes" element={<ProtectedRoute requiredPermission={P.securite.view} requiredRole="administrateur"><ConnexionsSuspectesPage /></ProtectedRoute>} />
                 
                 {/* 404 */}
