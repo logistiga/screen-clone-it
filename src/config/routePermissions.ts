@@ -65,6 +65,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/caisse-globale', permission: 'caisse.voir' },
   { path: '/primes-decaissement', permission: 'caisse.voir' },
   { path: '/caisse-en-attente', permission: 'caisse.voir' },
+  { path: '/caisse-en-attend', permission: 'caisse.voir' },
 
   // === Reporting ===
   { path: '/reporting', permission: 'reporting.voir' },
