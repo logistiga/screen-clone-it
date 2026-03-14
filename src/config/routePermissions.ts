@@ -102,6 +102,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
 
   // === Autres ===
   { path: '/guide' }, // Pas de permission requise
+  { path: '/assistant-ia', role: 'directeur' },
   { path: '/securite/connexions-suspectes', permission: 'securite.voir', role: 'administrateur' },
 ];
 
