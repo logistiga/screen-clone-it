@@ -89,6 +89,7 @@ const categorieOptions = [
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
+  const hasLoadedOnce = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
