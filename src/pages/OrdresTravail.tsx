@@ -534,7 +534,7 @@ L'équipe LOGISTIGA`;
                   <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <AnimatedTableBody>
+              <AnimatedTableBody key={tableRenderKey}>
                 {ordresList.map((ordre, index) => {
                   const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
                   return (
