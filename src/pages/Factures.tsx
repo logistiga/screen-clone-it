@@ -305,7 +305,7 @@ export default function FacturesPage() {
                   <TableHead className="w-44">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <AnimatedTableBody>
+              <AnimatedTableBody key={tableRenderKey}>
                 {facturesList.map((facture, index) => {
                   const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
                   return (
