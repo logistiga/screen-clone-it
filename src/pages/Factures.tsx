@@ -269,6 +269,7 @@ export default function FacturesPage() {
           categorieFilter={categorieFilter}
           onCategorieChange={setCategorieFilter}
           categorieOptions={categorieOptions}
+          isSearching={isSearching}
         />
 
         {/* Actions */}
