@@ -10,7 +10,7 @@ import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { usePrefetch } from "@/hooks/use-prefetch";
+
 import { canAccessRoute } from "@/config/routePermissions";
 import {
   Sidebar,
@@ -115,7 +115,6 @@ export const AppSidebar = forwardRef<HTMLDivElement, React.ComponentPropsWithout
   function AppSidebar(_props, ref) {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
-  const { prefetchRoute } = usePrefetch();
   const { user, hasRole, hasPermission } = useAuth();
   const isCollapsed = state === "collapsed";
   const isAdmin = hasRole('admin') || hasRole('administrateur') || hasRole('directeur');
@@ -132,16 +131,12 @@ export const AppSidebar = forwardRef<HTMLDivElement, React.ComponentPropsWithout
     setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Gestionnaire de préchargement au survol
-  const handleMouseEnter = useCallback((url: string) => {
-    prefetchRoute(url);
-  }, [prefetchRoute]);
 
   const renderMenuItem = (item: { title: string; url: string; icon: any }, isActive: boolean) => {
     const content = (
       <NavLink
         to={item.url}
-        onMouseEnter={() => handleMouseEnter(item.url)}
+        
         className={cn(
           "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 relative",
           isCollapsed && "justify-center px-2",
