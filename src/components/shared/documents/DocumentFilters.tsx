@@ -54,6 +54,7 @@ export const DocumentFilters = React.forwardRef<
   viewMode = 'list',
   onViewModeChange,
   showViewToggle = false,
+  isSearching = false,
 }, ref) => {
   const activeFilters = [
     statutFilter && statutFilter !== 'all' && statutFilter,
