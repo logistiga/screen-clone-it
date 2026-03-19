@@ -155,17 +155,19 @@ class PrevisionSyncService
     }
 
     /**
-     * Réels caisse par catégorie - inclut TOUS les mouvements caisse
+     * Réels caisse par catégorie
+     * Sépare les mouvements liés aux paiements (recettes) des autres mouvements (dépenses)
      */
     private function getReelsCaisseParCategorie(int $annee, int $mois): array
     {
-        // Mouvements caisse : source = 'caisse' OU source est null (par défaut c'est la caisse)
+        // Mouvements caisse NON liés à un paiement (dépenses manuelles, primes, etc.)
         $mouvements = MouvementCaisse::whereYear('date', $annee)
             ->whereMonth('date', $mois)
             ->where(function ($q) {
                 $q->where('source', 'caisse')
                   ->orWhereNull('source');
             })
+            ->whereNull('paiement_id')
             ->get();
 
         $entrees = [];
@@ -182,20 +184,20 @@ class PrevisionSyncService
             }
         }
 
-        // Ajouter aussi les paiements en espèces comme entrées caisse
+        // Paiements en espèces/Mobile Money = entrées caisse clients
         $paiementsEspeces = Paiement::whereYear('date', $annee)
             ->whereMonth('date', $mois)
             ->where(function ($q) {
-                $q->where('mode_paiement', 'especes')
-                  ->orWhere('mode_paiement', 'Espèces')
+                $q->where('mode_paiement', 'Espèces')
                   ->orWhere('mode_paiement', 'espèces')
-                  ->orWhere('mode_paiement', 'cash');
+                  ->orWhere('mode_paiement', 'especes')
+                  ->orWhere('mode_paiement', 'cash')
+                  ->orWhere('mode_paiement', 'Mobile Money');
             })
-            ->get();
+            ->sum('montant');
 
-        foreach ($paiementsEspeces as $p) {
-            $cat = 'Paiements clients';
-            $entrees[$cat] = ($entrees[$cat] ?? 0) + (float) $p->montant;
+        if ($paiementsEspeces > 0) {
+            $entrees['Paiements clients'] = ($entrees['Paiements clients'] ?? 0) + (float) $paiementsEspeces;
         }
 
         return ['entrees' => $entrees, 'sorties' => $sorties];
@@ -206,22 +208,18 @@ class PrevisionSyncService
      */
     private function getReelsBanqueParCategorie(int $annee, int $mois): array
     {
-        // Paiements par chèque/virement = entrées banque
+        // Paiements par chèque/virement = entrées banque (exclure espèces et Mobile Money)
         $paiementsBanque = Paiement::whereYear('date', $annee)
             ->whereMonth('date', $mois)
             ->where(function ($q) {
-                // Exclure les paiements espèces
-                $q->where(function ($sub) {
-                    $sub->whereNotIn('mode_paiement', ['especes', 'Espèces', 'espèces', 'cash'])
-                        ->orWhereNull('mode_paiement');
-                });
+                $q->whereNotIn('mode_paiement', ['Espèces', 'espèces', 'especes', 'cash', 'Mobile Money'])
+                  ->whereNotNull('mode_paiement');
             })
-            ->get();
+            ->sum('montant');
 
         $entrees = [];
-        foreach ($paiementsBanque as $p) {
-            $cat = 'Paiements clients';
-            $entrees[$cat] = ($entrees[$cat] ?? 0) + (float) $p->montant;
+        if ($paiementsBanque > 0) {
+            $entrees['Paiements clients'] = (float) $paiementsBanque;
         }
 
         // Sorties banque via mouvements caisse source=banque
