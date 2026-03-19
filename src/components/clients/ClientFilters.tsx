@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Filter, X, LayoutGrid, LayoutList, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Search, Filter, X, LayoutGrid, LayoutList, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 
 interface ClientFiltersProps {
   searchTerm: string;
@@ -28,6 +28,7 @@ interface ClientFiltersProps {
   onExport?: (format: "excel" | "csv" | "pdf") => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
+  isSearching?: boolean;
 }
 
 export function ClientFilters({

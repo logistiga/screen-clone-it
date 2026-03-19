@@ -373,7 +373,7 @@ export default function ClientsPage() {
                   <TableHead className="w-[120px] text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <AnimatedTableBody>
+              <AnimatedTableBody key={tableRenderKey}>
                 {isSearching ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-32 text-center">
