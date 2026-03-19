@@ -162,6 +162,25 @@ export default function PrevisionsPage() {
     );
   }
 
+  if (statsError) {
+    return (
+      <MainLayout title="Prévisions budgétaires">
+        <div className="space-y-6">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Erreur lors du chargement des prévisions: {(statsError as any)?.response?.data?.message || (statsError as any)?.message || 'Erreur inconnue'}
+            </AlertDescription>
+          </Alert>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Réessayer
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   const synthese = stats?.synthese;
 
   return (
