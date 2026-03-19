@@ -10,6 +10,7 @@ use App\Models\Prevision;
 use App\Models\Audit;
 use App\Models\MouvementCaisse;
 use App\Models\Paiement;
+use App\Services\PrevisionSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
