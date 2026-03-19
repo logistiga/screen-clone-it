@@ -56,6 +56,7 @@ class EventServiceProvider extends ServiceProvider
         PaiementCreated::class => [
             SendPaiementNotification::class,
             InvalidateDashboardCache::class,
+            SyncPrevisionRealise::class,
         ],
 
         // Devis
