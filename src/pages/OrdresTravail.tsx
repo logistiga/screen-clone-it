@@ -112,6 +112,7 @@ export default function OrdresTravailPage() {
   const {
     data: ordresData,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useOrdres({
@@ -505,7 +506,13 @@ L'équipe LOGISTIGA`;
         </div>
 
         {/* Table */}
-        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md relative">
+          {isFetching && hasLoadedOnce.current && (
+            <div className="absolute top-0 left-0 right-0 h-1 bg-primary/20 overflow-hidden z-10">
+              <div className="h-full bg-primary animate-[shimmer_1.5s_ease-in-out_infinite] w-1/3" 
+                   style={{ animation: 'shimmer 1.5s ease-in-out infinite' }} />
+            </div>
+          )}
           <CardContent className="p-0">
             <Table>
               <TableHeader>
