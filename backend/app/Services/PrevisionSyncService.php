@@ -1,0 +1,231 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Prevision;
+use App\Models\MouvementCaisse;
+use App\Models\Paiement;
+use Illuminate\Support\Str;
+
+class PrevisionSyncService
+{
+    /**
+     * Synchroniser les réalisés pour un mois/année donnés
+     */
+    public function syncMois(int $annee, int $mois): int
+    {
+        $reelsCaisse = $this->getReelsCaisseParCategorie($annee, $mois);
+        $reelsBanque = $this->getReelsBanqueParCategorie($annee, $mois);
+
+        $updated = 0;
+        $previsions = Prevision::where('annee', $annee)->where('mois', $mois)->get();
+
+        foreach ($previsions as $prevision) {
+            $categorie = $prevision->categorie;
+            $type = $prevision->type;
+
+            $sourceEntrees = $type === 'recette' ? 'entrees' : 'sorties';
+
+            // Matching flexible par catégorie
+            $realiseCaisse = $this->findMontantByCategorie(
+                $reelsCaisse[$sourceEntrees] ?? [],
+                $categorie
+            );
+            $realiseBanque = $this->findMontantByCategorie(
+                $reelsBanque[$sourceEntrees] ?? [],
+                $categorie
+            );
+
+            $prevision->update([
+                'realise_caisse' => $realiseCaisse,
+                'realise_banque' => $realiseBanque,
+            ]);
+            $prevision->updateStatut();
+            $updated++;
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Sync automatique à partir d'une date (paiement ou mouvement)
+     */
+    public function syncFromDate(\DateTimeInterface $date): void
+    {
+        $annee = (int) $date->format('Y');
+        $mois = (int) $date->format('n');
+        $this->syncMois($annee, $mois);
+    }
+
+    /**
+     * Matching flexible : insensible à la casse, accents, espaces
+     */
+    private function findMontantByCategorie(array $reels, string $categorieRecherchee): float
+    {
+        // 1. Exact match
+        if (isset($reels[$categorieRecherchee])) {
+            return $reels[$categorieRecherchee];
+        }
+
+        // 2. Normalisation et matching flexible
+        $normRecherche = $this->normaliserCategorie($categorieRecherchee);
+
+        foreach ($reels as $cat => $montant) {
+            $normCat = $this->normaliserCategorie($cat);
+
+            // Match exact normalisé
+            if ($normCat === $normRecherche) {
+                return $montant;
+            }
+
+            // Match partiel (l'un contient l'autre)
+            if (Str::contains($normCat, $normRecherche) || Str::contains($normRecherche, $normCat)) {
+                return $montant;
+            }
+        }
+
+        // 3. Aliases connus
+        $aliases = $this->getAliases();
+        $normRecherche = $this->normaliserCategorie($categorieRecherchee);
+        
+        foreach ($aliases as $group) {
+            $normGroup = array_map(fn($a) => $this->normaliserCategorie($a), $group);
+            if (in_array($normRecherche, $normGroup)) {
+                // Chercher dans les réels avec tous les alias du groupe
+                foreach ($reels as $cat => $montant) {
+                    if (in_array($this->normaliserCategorie($cat), $normGroup)) {
+                        return $montant;
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Normaliser une catégorie pour comparaison
+     */
+    private function normaliserCategorie(string $categorie): string
+    {
+        $str = mb_strtolower(trim($categorie));
+        // Retirer accents
+        $str = str_replace(
+            ['é', 'è', 'ê', 'ë', 'à', 'â', 'ä', 'ù', 'û', 'ü', 'î', 'ï', 'ô', 'ö', 'ç'],
+            ['e', 'e', 'e', 'e', 'a', 'a', 'a', 'u', 'u', 'u', 'i', 'i', 'o', 'o', 'c'],
+            $str
+        );
+        // Retirer espaces multiples
+        $str = preg_replace('/\s+/', ' ', $str);
+        return $str;
+    }
+
+    /**
+     * Alias de catégories connues (groupes de noms équivalents)
+     */
+    private function getAliases(): array
+    {
+        return [
+            ['Facturation clients', 'Paiements clients', 'Paiement client', 'Factures clients'],
+            ['Salaires', 'Salaire', 'Paie'],
+            ['Carburant', 'Gasoil', 'Essence', 'Fuel'],
+            ['Entretien véhicules', 'Entretien vehicules', 'Réparations véhicules'],
+            ['Fournitures bureau', 'Fournitures de bureau', 'Fourniture bureau'],
+            ['Frais bancaires', 'Frais banque', 'Commissions bancaires'],
+            ['Électricité et eau', 'Electricite et eau', 'Eau et électricité', 'SEEG'],
+            ['Télécommunications', 'Telecom', 'Téléphone', 'Internet'],
+            ['Remboursement crédit', 'Remboursement credit', 'Crédit bancaire'],
+            ['Autres dépenses', 'Autres depenses', 'Divers', 'Autres'],
+            ['Autres recettes', 'Autres entrees', 'Divers recettes'],
+        ];
+    }
+
+    /**
+     * Réels caisse par catégorie - inclut TOUS les mouvements caisse
+     */
+    private function getReelsCaisseParCategorie(int $annee, int $mois): array
+    {
+        // Mouvements caisse : source = 'caisse' OU source est null (par défaut c'est la caisse)
+        $mouvements = MouvementCaisse::whereYear('date', $annee)
+            ->whereMonth('date', $mois)
+            ->where(function ($q) {
+                $q->where('source', 'caisse')
+                  ->orWhereNull('source');
+            })
+            ->get();
+
+        $entrees = [];
+        $sorties = [];
+
+        foreach ($mouvements as $m) {
+            $cat = $m->categorie ?: 'Autres';
+            $montant = (float) $m->montant;
+
+            if (in_array(strtolower($m->type), ['entree', 'entrée'])) {
+                $entrees[$cat] = ($entrees[$cat] ?? 0) + $montant;
+            } else {
+                $sorties[$cat] = ($sorties[$cat] ?? 0) + $montant;
+            }
+        }
+
+        // Ajouter aussi les paiements en espèces comme entrées caisse
+        $paiementsEspeces = Paiement::whereYear('date', $annee)
+            ->whereMonth('date', $mois)
+            ->where(function ($q) {
+                $q->where('mode_paiement', 'especes')
+                  ->orWhere('mode_paiement', 'Espèces')
+                  ->orWhere('mode_paiement', 'espèces')
+                  ->orWhere('mode_paiement', 'cash');
+            })
+            ->get();
+
+        foreach ($paiementsEspeces as $p) {
+            $cat = 'Paiements clients';
+            $entrees[$cat] = ($entrees[$cat] ?? 0) + (float) $p->montant;
+        }
+
+        return ['entrees' => $entrees, 'sorties' => $sorties];
+    }
+
+    /**
+     * Réels banque par catégorie
+     */
+    private function getReelsBanqueParCategorie(int $annee, int $mois): array
+    {
+        // Paiements par chèque/virement = entrées banque
+        $paiementsBanque = Paiement::whereYear('date', $annee)
+            ->whereMonth('date', $mois)
+            ->where(function ($q) {
+                // Exclure les paiements espèces
+                $q->where(function ($sub) {
+                    $sub->whereNotIn('mode_paiement', ['especes', 'Espèces', 'espèces', 'cash'])
+                        ->orWhereNull('mode_paiement');
+                });
+            })
+            ->get();
+
+        $entrees = [];
+        foreach ($paiementsBanque as $p) {
+            $cat = 'Paiements clients';
+            $entrees[$cat] = ($entrees[$cat] ?? 0) + (float) $p->montant;
+        }
+
+        // Sorties banque via mouvements caisse source=banque
+        $mouvements = MouvementCaisse::whereYear('date', $annee)
+            ->whereMonth('date', $mois)
+            ->where('source', 'banque')
+            ->where(function ($q) {
+                $q->where('type', 'sortie')
+                  ->orWhere('type', 'Sortie');
+            })
+            ->get();
+
+        $sorties = [];
+        foreach ($mouvements as $m) {
+            $cat = $m->categorie ?: 'Autres dépenses';
+            $sorties[$cat] = ($sorties[$cat] ?? 0) + (float) $m->montant;
+        }
+
+        return ['entrees' => $entrees, 'sorties' => $sorties];
+    }
+}
