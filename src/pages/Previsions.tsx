@@ -57,13 +57,21 @@ export default function PrevisionsPage() {
   const [exporting, setExporting] = useState(false);
 
   // Données
-  const { data: stats, isLoading: loadingStats } = useStatsMensuelles(annee, mois);
+  const { data: stats, isLoading: loadingStats, error: statsError } = useStatsMensuelles(annee, mois);
   const { data: historique, isLoading: loadingHistorique } = useHistoriquePrevisions(annee);
-  const { data: previsionsData } = usePrevisions({ annee, mois, per_page: 100 });
+  const { data: previsionsData, error: previsionsError } = usePrevisions({ annee, mois, per_page: 100 });
   const deleteMutation = useDeletePrevision();
   const syncMutation = useSyncPrevisionRealise();
 
   const previsions = previsionsData?.data || [];
+
+  // Debug: log errors
+  if (statsError) {
+    console.error('[Previsions] Stats error:', statsError);
+  }
+  if (previsionsError) {
+    console.error('[Previsions] Previsions error:', previsionsError);
+  }
 
   const formatMontant = (montant: number) => {
     if (montant >= 1000000) return (montant / 1000000).toFixed(1) + 'M';
@@ -149,6 +157,25 @@ export default function PrevisionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(i => <DocumentStatCardSkeleton key={i} />)}
           </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (statsError) {
+    return (
+      <MainLayout title="Prévisions budgétaires">
+        <div className="space-y-6">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Erreur lors du chargement des prévisions: {(statsError as any)?.response?.data?.message || (statsError as any)?.message || 'Erreur inconnue'}
+            </AlertDescription>
+          </Alert>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Réessayer
+          </Button>
         </div>
       </MainLayout>
     );
