@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,17 +55,40 @@ export default function PrevisionsPage() {
   const [mois, setMois] = useState(currentDate.getMonth() + 1);
   const [showNouvelleModal, setShowNouvelleModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [hasAutoSelectedLatestPeriod, setHasAutoSelectedLatestPeriod] = useState(false);
 
   // Données
   const { data: stats, isLoading: loadingStats, error: statsError } = useStatsMensuelles(annee, mois);
   const { data: historique, isLoading: loadingHistorique } = useHistoriquePrevisions(annee);
   const { data: previsionsData, error: previsionsError } = usePrevisions({ annee, mois, per_page: 100 });
+  const { data: latestPrevisionsData } = usePrevisions({ per_page: 1 });
   const deleteMutation = useDeletePrevision();
   const syncMutation = useSyncPrevisionRealise();
 
   const previsions = previsionsData?.data || [];
+  const latestPrevision = latestPrevisionsData?.data?.[0];
+  const hasDataForSelectedPeriod = (stats?.nb_previsions || 0) > 0 || previsions.length > 0;
 
-  // Debug: log errors
+  useEffect(() => {
+    if (hasAutoSelectedLatestPeriod || loadingStats || !latestPrevision) return;
+
+    const latestPeriodIsDifferent = latestPrevision.annee !== annee || latestPrevision.mois !== mois;
+
+    if (!hasDataForSelectedPeriod && latestPeriodIsDifferent) {
+      setAnnee(latestPrevision.annee);
+      setMois(latestPrevision.mois);
+    }
+
+    setHasAutoSelectedLatestPeriod(true);
+  }, [
+    annee,
+    mois,
+    hasAutoSelectedLatestPeriod,
+    hasDataForSelectedPeriod,
+    latestPrevision,
+    loadingStats,
+  ]);
+
   if (statsError) {
     console.error('[Previsions] Stats error:', statsError);
   }
@@ -255,17 +278,24 @@ export default function PrevisionsPage() {
         </motion.div>
 
         {/* Alertes */}
-        {stats?.alertes && stats.alertes.length > 0 && (
-          <motion.div variants={itemVariants} className="space-y-2">
-            {stats.alertes.map((alerte, i) => (
-              <Alert key={i} variant={alerte.type === 'danger' ? 'destructive' : 'default'} 
-                className={alerte.type === 'warning' ? 'border-warning bg-warning/10' : ''}>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{alerte.message}</AlertDescription>
-              </Alert>
-            ))}
-          </motion.div>
-        )}
+        <motion.div variants={itemVariants} className="space-y-2">
+          {!hasDataForSelectedPeriod && latestPrevision && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Aucune prévision pour {moisNoms[mois - 1]} {annee}. La dernière période disponible est {moisNoms[latestPrevision.mois - 1]} {latestPrevision.annee}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {stats?.alertes && stats.alertes.length > 0 && stats.alertes.map((alerte, i) => (
+            <Alert key={i} variant={alerte.type === 'danger' ? 'destructive' : 'default'} 
+              className={alerte.type === 'warning' ? 'border-warning bg-warning/10' : ''}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{alerte.message}</AlertDescription>
+            </Alert>
+          ))}
+        </motion.div>
 
         {/* KPIs principaux */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
