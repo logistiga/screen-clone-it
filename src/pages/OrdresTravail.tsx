@@ -479,7 +479,7 @@ L'équipe LOGISTIGA`;
           categorieFilter={categorieFilter}
           onCategorieChange={setCategorieFilter}
           categorieOptions={categorieOptions}
-          isSearching={isFetching && searchTerm !== debouncedSearch}
+          isSearching={searchTerm !== debouncedSearch || (isFetching && !!debouncedSearch)}
         />
 
         {/* Actions */}
