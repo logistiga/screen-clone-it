@@ -136,6 +136,8 @@ export default function NotesDebut() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   // Sélection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
@@ -146,8 +148,8 @@ export default function NotesDebut() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Charger les données depuis le backend
-  const { data: notesData, isLoading, refetch } = useNotesDebut({
-    search: searchTerm || undefined,
+  const { data: notesData, isLoading, isFetching, refetch } = useNotesDebut({
+    search: debouncedSearch || undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
     page: currentPage,
     per_page: pageSize,

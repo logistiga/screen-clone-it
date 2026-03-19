@@ -76,9 +76,11 @@ export default function DevisPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   // API hooks
-  const { data: devisData, isLoading, error, refetch } = useDevis({
-    search: searchTerm || undefined,
+  const { data: devisData, isLoading, isFetching, error, refetch } = useDevis({
+    search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     page: currentPage,
     per_page: pageSize,

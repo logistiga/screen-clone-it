@@ -69,9 +69,11 @@ export default function FacturesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   // API hooks
-  const { data: facturesData, isLoading, error, refetch } = useFactures({
-    search: searchTerm || undefined,
+  const { data: facturesData, isLoading, isFetching, error, refetch } = useFactures({
+    search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
     page: currentPage,
