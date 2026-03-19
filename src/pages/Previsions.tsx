@@ -57,13 +57,21 @@ export default function PrevisionsPage() {
   const [exporting, setExporting] = useState(false);
 
   // Données
-  const { data: stats, isLoading: loadingStats } = useStatsMensuelles(annee, mois);
+  const { data: stats, isLoading: loadingStats, error: statsError } = useStatsMensuelles(annee, mois);
   const { data: historique, isLoading: loadingHistorique } = useHistoriquePrevisions(annee);
-  const { data: previsionsData } = usePrevisions({ annee, mois, per_page: 100 });
+  const { data: previsionsData, error: previsionsError } = usePrevisions({ annee, mois, per_page: 100 });
   const deleteMutation = useDeletePrevision();
   const syncMutation = useSyncPrevisionRealise();
 
   const previsions = previsionsData?.data || [];
+
+  // Debug: log errors
+  if (statsError) {
+    console.error('[Previsions] Stats error:', statsError);
+  }
+  if (previsionsError) {
+    console.error('[Previsions] Previsions error:', previsionsError);
+  }
 
   const formatMontant = (montant: number) => {
     if (montant >= 1000000) return (montant / 1000000).toFixed(1) + 'M';
