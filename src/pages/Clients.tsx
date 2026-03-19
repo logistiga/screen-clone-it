@@ -296,6 +296,7 @@ export default function ClientsPage() {
         villes={villes}
         onClearFilters={clearFilters}
         hasActiveFilters={hasActiveFilters}
+        isSearching={isSearching}
       />
 
       {/* Contenu principal */}
