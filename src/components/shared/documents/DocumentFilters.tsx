@@ -35,6 +35,7 @@ interface DocumentFiltersProps {
   viewMode?: 'list' | 'grid';
   onViewModeChange?: (mode: 'list' | 'grid') => void;
   showViewToggle?: boolean;
+  isSearching?: boolean;
 }
 
 export const DocumentFilters = React.forwardRef<
