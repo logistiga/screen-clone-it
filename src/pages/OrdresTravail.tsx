@@ -468,7 +468,10 @@ L'équipe LOGISTIGA`;
         {/* Filters */}
         <DocumentFilters
           searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          onSearchChange={(value) => {
+            setSearchTerm(value);
+            setCurrentPage(1);
+          }}
           searchPlaceholder="Rechercher par numéro, client, conteneur..."
           statutFilter={statutFilter}
           onStatutChange={setStatutFilter}
@@ -476,6 +479,7 @@ L'équipe LOGISTIGA`;
           categorieFilter={categorieFilter}
           onCategorieChange={setCategorieFilter}
           categorieOptions={categorieOptions}
+          isSearching={isFetching && searchTerm !== debouncedSearch}
         />
 
         {/* Actions */}
