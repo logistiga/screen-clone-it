@@ -517,7 +517,7 @@ L'équipe LOGISTIGA`;
                    style={{ animation: 'shimmer 1.5s ease-in-out infinite' }} />
             </div>
           )}
-          <CardContent className="p-0">
+          <CardContent className={`p-0 transition-opacity duration-200 ${isFetching && hasLoadedOnce.current ? 'opacity-50' : 'opacity-100'}`}>
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
