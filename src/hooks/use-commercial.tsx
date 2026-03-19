@@ -293,7 +293,7 @@ export function useOrdres(params?: { search?: string; statut?: string; categorie
     refetchOnReconnect: false,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
-    placeholderData: (prev: any) => prev,
+    
   });
 
   // Précharger la page suivante
