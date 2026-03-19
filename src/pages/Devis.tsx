@@ -361,7 +361,7 @@ L'équipe Logistiga`;
                     <TableHead className="w-48">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody key={tableRenderKey}>
                   {filteredDevis.map((d, index) => (
                     <TableRow 
                       key={d.id} 
