@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
   Plus,
   Download,
@@ -135,6 +136,8 @@ export default function NotesDebut() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   // Sélection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
@@ -145,8 +148,8 @@ export default function NotesDebut() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Charger les données depuis le backend
-  const { data: notesData, isLoading, refetch } = useNotesDebut({
-    search: searchTerm || undefined,
+  const { data: notesData, isLoading, isFetching, refetch } = useNotesDebut({
+    search: debouncedSearch || undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
     page: currentPage,
     per_page: pageSize,
@@ -156,6 +159,12 @@ export default function NotesDebut() {
 
   const notes = notesData?.data || [];
   const meta = notesData?.meta || { current_page: 1, last_page: 1, per_page: 15, total: 0 };
+
+  const isSearching = (searchTerm !== debouncedSearch) || (isFetching && !isLoading);
+  const tableRenderKey = useMemo(() =>
+    [debouncedSearch, typeFilter, currentPage, pageSize, meta.total, notes.map(n => n.id).join("-")].join("|"),
+    [debouncedSearch, typeFilter, currentPage, pageSize, meta.total, notes]
+  );
 
   // Sélection
   const handleSelectAll = () => {
@@ -354,6 +363,7 @@ export default function NotesDebut() {
           statutFilter={typeFilter}
           onStatutChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}
           statutOptions={typeFilterOptions}
+          isSearching={isSearching}
         />
 
         {/* Selection Info */}
@@ -402,7 +412,7 @@ export default function NotesDebut() {
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <AnimatedTableBody>
+                <AnimatedTableBody key={tableRenderKey}>
                   {notes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={11} className="py-16 text-center text-muted-foreground">

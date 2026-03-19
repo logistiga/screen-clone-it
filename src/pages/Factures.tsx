@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { roundMoney } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -68,9 +69,11 @@ export default function FacturesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   // API hooks
-  const { data: facturesData, isLoading, error, refetch } = useFactures({
-    search: searchTerm || undefined,
+  const { data: facturesData, isLoading, isFetching, error, refetch } = useFactures({
+    search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
     page: currentPage,
@@ -113,6 +116,12 @@ export default function FacturesPage() {
   const facturesList = facturesData?.data || [];
   const totalPages = facturesData?.meta?.last_page || 1;
   const totalItems = facturesData?.meta?.total || 0;
+
+  const isSearching = (searchTerm !== debouncedSearch) || (isFetching && !isLoading);
+  const tableRenderKey = useMemo(() =>
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, facturesList.map(f => f.id).join("-")].join("|"),
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, facturesList]
+  );
 
   // Statistiques calculées
   const totalFactures = facturesList.reduce((sum, f) => sum + (f.montant_ttc || 0), 0);
@@ -260,6 +269,7 @@ export default function FacturesPage() {
           categorieFilter={categorieFilter}
           onCategorieChange={setCategorieFilter}
           categorieOptions={categorieOptions}
+          isSearching={isSearching}
         />
 
         {/* Actions */}
@@ -295,7 +305,7 @@ export default function FacturesPage() {
                   <TableHead className="w-44">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <AnimatedTableBody>
+              <AnimatedTableBody key={tableRenderKey}>
                 {facturesList.map((facture, index) => {
                   const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
                   return (

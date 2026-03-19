@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Filter, X, LayoutGrid, LayoutList, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Search, Filter, X, LayoutGrid, LayoutList, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 
 interface ClientFiltersProps {
   searchTerm: string;
@@ -28,6 +28,7 @@ interface ClientFiltersProps {
   onExport?: (format: "excel" | "csv" | "pdf") => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
+  isSearching?: boolean;
 }
 
 export function ClientFilters({
@@ -43,12 +44,17 @@ export function ClientFilters({
   onExport,
   onClearFilters,
   hasActiveFilters,
+  isSearching = false,
 }: ClientFiltersProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       {/* Recherche */}
       <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        {isSearching ? (
+          <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary animate-spin" />
+        ) : (
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        )}
         <Input
           placeholder="Rechercher un client..."
           value={searchTerm}

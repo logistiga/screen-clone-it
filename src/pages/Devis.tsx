@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,11 @@ export default function DevisPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   // API hooks
-  const { data: devisData, isLoading, error, refetch } = useDevis({
-    search: searchTerm || undefined,
+  const { data: devisData, isLoading, isFetching, error, refetch } = useDevis({
+    search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     page: currentPage,
     per_page: pageSize,
@@ -166,6 +169,12 @@ L'équipe Logistiga`;
   const devisList = devisData?.data || [];
   const totalPages = devisData?.meta?.last_page || 1;
   const totalItems = devisData?.meta?.total || 0;
+
+  const isSearching = (searchTerm !== debouncedSearch) || (isFetching && !isLoading);
+  const tableRenderKey = useMemo(() => 
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, devisList.map(d => d.id).join("-")].join("|"),
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, devisList]
+  );
 
   // Filtrer par catégorie côté client si nécessaire
   const filteredDevis = categorieFilter === 'all' 
@@ -308,6 +317,7 @@ L'équipe Logistiga`;
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             showViewToggle
+            isSearching={isSearching}
           />
           <Button 
             className="gap-2 shadow-md transition-all duration-200 hover:scale-105 shrink-0" 
@@ -351,7 +361,7 @@ L'équipe Logistiga`;
                     <TableHead className="w-48">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody key={tableRenderKey}>
                   {filteredDevis.map((d, index) => (
                     <TableRow 
                       key={d.id} 

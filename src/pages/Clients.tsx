@@ -90,6 +90,10 @@ export default function ClientsPage() {
   const isInitialLoading =
     !hasFinishedFirstLoadRef.current && (isLoading || isLoadingAllClients);
   const isSearching = isFetching && !isFetchingNextPage && !!debouncedSearch;
+  const tableRenderKey = useMemo(() =>
+    [debouncedSearch, statusFilter, villeFilter, sortField, sortOrder, clients.map((c: Client) => c.id).join("-")].join("|"),
+    [debouncedSearch, statusFilter, villeFilter, sortField, sortOrder, clients]
+  );
 
   // Hook pour l'infinite scroll
   const loadMoreRef = useInfiniteScroll(fetchNextPage, hasNextPage, isFetchingNextPage);
@@ -292,6 +296,7 @@ export default function ClientsPage() {
         villes={villes}
         onClearFilters={clearFilters}
         hasActiveFilters={hasActiveFilters}
+        isSearching={isSearching}
       />
 
       {/* Contenu principal */}
@@ -369,7 +374,7 @@ export default function ClientsPage() {
                   <TableHead className="w-[120px] text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <AnimatedTableBody>
+              <AnimatedTableBody key={tableRenderKey}>
                 {isSearching ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-32 text-center">
