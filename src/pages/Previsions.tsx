@@ -278,17 +278,24 @@ export default function PrevisionsPage() {
         </motion.div>
 
         {/* Alertes */}
-        {stats?.alertes && stats.alertes.length > 0 && (
-          <motion.div variants={itemVariants} className="space-y-2">
-            {stats.alertes.map((alerte, i) => (
-              <Alert key={i} variant={alerte.type === 'danger' ? 'destructive' : 'default'} 
-                className={alerte.type === 'warning' ? 'border-warning bg-warning/10' : ''}>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{alerte.message}</AlertDescription>
-              </Alert>
-            ))}
-          </motion.div>
-        )}
+        <motion.div variants={itemVariants} className="space-y-2">
+          {!hasDataForSelectedPeriod && latestPrevision && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Aucune prévision pour {moisNoms[mois - 1]} {annee}. La dernière période disponible est {moisNoms[latestPrevision.mois - 1]} {latestPrevision.annee}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {stats?.alertes && stats.alertes.length > 0 && stats.alertes.map((alerte, i) => (
+            <Alert key={i} variant={alerte.type === 'danger' ? 'destructive' : 'default'} 
+              className={alerte.type === 'warning' ? 'border-warning bg-warning/10' : ''}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{alerte.message}</AlertDescription>
+            </Alert>
+          ))}
+        </motion.div>
 
         {/* KPIs principaux */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
