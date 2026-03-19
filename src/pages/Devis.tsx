@@ -317,6 +317,7 @@ L'équipe Logistiga`;
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             showViewToggle
+            isSearching={isSearching}
           />
           <Button 
             className="gap-2 shadow-md transition-all duration-200 hover:scale-105 shrink-0" 
