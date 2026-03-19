@@ -127,7 +127,11 @@ class PrevisionController extends Controller
         $annee = (int) $request->get('annee', date('Y'));
         $mois = (int) $request->get('mois', date('n'));
 
-        // Récupérer les prévisions du mois
+        // Synchroniser les réalisés avant de lire les données
+        $syncService = app(PrevisionSyncService::class);
+        $syncService->syncMois($annee, $mois);
+
+        // Récupérer les prévisions du mois (après sync)
         $previsions = Prevision::where('annee', $annee)
             ->where('mois', $mois)
             ->get();
