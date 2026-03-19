@@ -10,7 +10,7 @@ import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { usePrefetch } from "@/hooks/use-prefetch";
+
 import { canAccessRoute } from "@/config/routePermissions";
 import {
   Sidebar,
