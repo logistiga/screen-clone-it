@@ -412,7 +412,7 @@ export default function NotesDebut() {
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <AnimatedTableBody>
+                <AnimatedTableBody key={tableRenderKey}>
                   {notes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={11} className="py-16 text-center text-muted-foreground">
