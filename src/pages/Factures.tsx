@@ -117,6 +117,12 @@ export default function FacturesPage() {
   const totalPages = facturesData?.meta?.last_page || 1;
   const totalItems = facturesData?.meta?.total || 0;
 
+  const isSearching = (searchTerm !== debouncedSearch) || (isFetching && !isLoading);
+  const tableRenderKey = useMemo(() =>
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, facturesList.map(f => f.id).join("-")].join("|"),
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, facturesList]
+  );
+
   // Statistiques calculées
   const totalFactures = facturesList.reduce((sum, f) => sum + (f.montant_ttc || 0), 0);
   const totalPaye = facturesList.reduce((sum, f) => sum + (f.montant_paye || 0), 0);

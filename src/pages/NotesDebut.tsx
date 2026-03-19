@@ -160,6 +160,12 @@ export default function NotesDebut() {
   const notes = notesData?.data || [];
   const meta = notesData?.meta || { current_page: 1, last_page: 1, per_page: 15, total: 0 };
 
+  const isSearching = (searchTerm !== debouncedSearch) || (isFetching && !isLoading);
+  const tableRenderKey = useMemo(() =>
+    [debouncedSearch, typeFilter, currentPage, pageSize, meta.total, notes.map(n => n.id).join("-")].join("|"),
+    [debouncedSearch, typeFilter, currentPage, pageSize, meta.total, notes]
+  );
+
   // Sélection
   const handleSelectAll = () => {
     setSelectedIds(selectedIds.length === notes.length ? [] : notes.map((n) => n.id));

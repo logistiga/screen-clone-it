@@ -170,6 +170,12 @@ L'équipe Logistiga`;
   const totalPages = devisData?.meta?.last_page || 1;
   const totalItems = devisData?.meta?.total || 0;
 
+  const isSearching = (searchTerm !== debouncedSearch) || (isFetching && !isLoading);
+  const tableRenderKey = useMemo(() => 
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, devisList.map(d => d.id).join("-")].join("|"),
+    [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, devisList]
+  );
+
   // Filtrer par catégorie côté client si nécessaire
   const filteredDevis = categorieFilter === 'all' 
     ? devisList 
