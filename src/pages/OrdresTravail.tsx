@@ -390,7 +390,11 @@ L'équipe LOGISTIGA`;
     return <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">{categorie || "N/A"}</Badge>;
   };
 
-  if (isLoading) {
+  if (ordresData) {
+    hasLoadedOnce.current = true;
+  }
+
+  if (isLoading && !hasLoadedOnce.current) {
     return (
       <MainLayout title="Ordres de Travail">
         <DocumentLoadingState message="Chargement des ordres..." />
