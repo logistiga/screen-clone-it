@@ -1,16 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AnimatedTableRow, AnimatedTableBody } from "@/components/ui/animated-table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,11 +17,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  Plus, Eye, Edit, ArrowRight, Wallet, FileText, Ban, Trash2, 
-  Download, CreditCard, ClipboardList, Container, Package, 
-  Truck, Ship, ArrowUpFromLine, ArrowDownToLine, Clock, RotateCcw, 
-  Warehouse, Calendar, TrendingUp, Mail, MessageCircle, Check
+import {
+  Plus,
+  Eye,
+  Edit,
+  ArrowRight,
+  Wallet,
+  FileText,
+  Ban,
+  Trash2,
+  Download,
+  CreditCard,
+  ClipboardList,
+  Container,
+  Package,
+  Truck,
+  Ship,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  Clock,
+  RotateCcw,
+  Warehouse,
+  Calendar,
+  TrendingUp,
+  Mail,
+  MessageCircle,
+  Check,
 } from "lucide-react";
 import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { PaiementModal } from "@/components/PaiementModal";
@@ -74,36 +89,52 @@ const categorieOptions = [
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [categorieFilter, setCategorieFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
   // API hooks
-  const { data: ordresData, isLoading, error, refetch } = useOrdres({
-    search: searchTerm || undefined,
+  const {
+    data: ordresData,
+    isLoading,
+    error,
+    refetch,
+  } = useOrdres({
+    search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
     page: currentPage,
     per_page: pageSize,
   });
-  
+
   const deleteOrdreMutation = useDeleteOrdre();
   const convertMutation = useConvertOrdreToFacture();
-  
+
   // États modales consolidés
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'supprimer' | 'facturer' | null;
+    type: "supprimer" | "facturer" | null;
     id: string;
     numero: string;
   } | null>(null);
   const [annulationModal, setAnnulationModal] = useState<{ id: number; numero: string } | null>(null);
-  const [paiementModal, setPaiementModal] = useState<{ 
-    id: string; 
-    numero: string; 
-    montantRestant: number; 
+  const [paiementModal, setPaiementModal] = useState<{
+    id: string;
+    numero: string;
+    montantRestant: number;
     clientId?: number;
     montantHT: number;
     montantDejaPaye: number;
@@ -136,17 +167,17 @@ export default function OrdresTravailPage() {
 
   const handleWhatsAppShare = (ordre: any) => {
     const pdfUrl = `${window.location.origin}/ordres/${ordre.id}/pdf`;
-    const montant = new Intl.NumberFormat('fr-FR').format(ordre.montant_ttc || 0) + ' FCFA';
-    const typeOperation = ordre.type_independant || ordre.type_conteneur || 'Ordre de travail';
-    const message = `Bonjour${ordre.client?.raison_sociale ? ` ${ordre.client.raison_sociale}` : ''},
+    const montant = new Intl.NumberFormat("fr-FR").format(ordre.montant_ttc || 0) + " FCFA";
+    const typeOperation = ordre.type_independant || ordre.type_conteneur || "Ordre de travail";
+    const message = `Bonjour${ordre.client?.raison_sociale ? ` ${ordre.client.raison_sociale}` : ""},
 
 Veuillez trouver ci-dessous votre ordre de travail n° *${ordre.numero}* d'un montant de *${montant}*.
 
 📋 *Détails de l'ordre :*
-• Client : ${ordre.client?.raison_sociale || ordre.client?.nom_complet || '-'}
+• Client : ${ordre.client?.raison_sociale || ordre.client?.nom_complet || "-"}
 • Type : ${typeOperation}
-• Montant HT : ${new Intl.NumberFormat('fr-FR').format(ordre.montant_ht || 0)} FCFA
-• TVA : ${new Intl.NumberFormat('fr-FR').format(ordre.montant_tva || 0)} FCFA
+• Montant HT : ${new Intl.NumberFormat("fr-FR").format(ordre.montant_ht || 0)} FCFA
+• TVA : ${new Intl.NumberFormat("fr-FR").format(ordre.montant_tva || 0)} FCFA
 • *Total TTC : ${montant}*
 • Statut : ${getStatutLabel(ordre.statut)}
 
@@ -166,82 +197,105 @@ L'équipe LOGISTIGA`;
   const totalItems = ordresData?.meta?.total || 0;
 
   // Statistiques calculées avec useMemo pour optimisation
-  const stats = useMemo(() => ({
-    totalOrdres: ordresList.reduce((sum, o) => sum + (o.montant_ttc || 0), 0),
-    totalPaye: ordresList.reduce((sum, o) => sum + (o.montant_paye || 0), 0),
-    ordresEnCours: ordresList.filter(o => o.statut === 'en_cours').length
-  }), [ordresList]);
+  const stats = useMemo(
+    () => ({
+      totalOrdres: ordresList.reduce((sum, o) => sum + (o.montant_ttc || 0), 0),
+      totalPaye: ordresList.reduce((sum, o) => sum + (o.montant_paye || 0), 0),
+      ordresEnCours: ordresList.filter((o) => o.statut === "en_cours").length,
+    }),
+    [ordresList],
+  );
 
   // Configuration des types d'opérations indépendantes
-  const typeIndepConfigs: Record<string, TypeConfig> = useMemo(() => ({
-    transport: { 
-      label: "Transport", 
-      icon: <Truck className="h-3 w-3" />, 
-      className: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700" 
-    },
-    manutention: { 
-      label: "Manutention", 
-      icon: <Package className="h-3 w-3" />, 
-      className: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700" 
-    },
-    stockage: { 
-      label: "Stockage", 
-      icon: <Warehouse className="h-3 w-3" />, 
-      className: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:border-indigo-700" 
-    },
-    location: { 
-      label: "Location", 
-      icon: <Calendar className="h-3 w-3" />, 
-      className: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700" 
-    },
-    double_relevage: { 
-      label: "Double Relevage", 
-      icon: <RotateCcw className="h-3 w-3" />, 
-      className: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700" 
-    },
-  }), []);
+  const typeIndepConfigs: Record<string, TypeConfig> = useMemo(
+    () => ({
+      transport: {
+        label: "Transport",
+        icon: <Truck className="h-3 w-3" />,
+        className:
+          "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700",
+      },
+      manutention: {
+        label: "Manutention",
+        icon: <Package className="h-3 w-3" />,
+        className:
+          "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700",
+      },
+      stockage: {
+        label: "Stockage",
+        icon: <Warehouse className="h-3 w-3" />,
+        className:
+          "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:border-indigo-700",
+      },
+      location: {
+        label: "Location",
+        icon: <Calendar className="h-3 w-3" />,
+        className:
+          "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700",
+      },
+      double_relevage: {
+        label: "Double Relevage",
+        icon: <RotateCcw className="h-3 w-3" />,
+        className:
+          "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700",
+      },
+    }),
+    [],
+  );
 
   // Configuration des types de conteneurs (Import/Export)
-  const typeConteneurConfigs: Record<string, TypeConfig> = useMemo(() => ({
-    import: { 
-      label: "Import", 
-      icon: <ArrowDownToLine className="h-3 w-3" />, 
-      className: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700" 
-    },
-    export: { 
-      label: "Export", 
-      icon: <ArrowUpFromLine className="h-3 w-3" />, 
-      className: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-200 dark:border-cyan-700" 
-    },
-  }), []);
+  const typeConteneurConfigs: Record<string, TypeConfig> = useMemo(
+    () => ({
+      import: {
+        label: "Import",
+        icon: <ArrowDownToLine className="h-3 w-3" />,
+        className:
+          "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700",
+      },
+      export: {
+        label: "Export",
+        icon: <ArrowUpFromLine className="h-3 w-3" />,
+        className:
+          "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-200 dark:border-cyan-700",
+      },
+    }),
+    [],
+  );
 
   const getStatutBadge = (statut: string) => {
     const configs: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-      en_cours: { 
-        label: getStatutLabel(statut), 
-        className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700",
-        icon: <Clock className="h-3 w-3" />
+      en_cours: {
+        label: getStatutLabel(statut),
+        className:
+          "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700",
+        icon: <Clock className="h-3 w-3" />,
       },
-      termine: { 
-        label: getStatutLabel(statut), 
-        className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700",
-        icon: null
+      termine: {
+        label: getStatutLabel(statut),
+        className:
+          "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700",
+        icon: null,
       },
-      facture: { 
-        label: getStatutLabel(statut), 
-        className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700",
-        icon: <FileText className="h-3 w-3" />
+      facture: {
+        label: getStatutLabel(statut),
+        className:
+          "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700",
+        icon: <FileText className="h-3 w-3" />,
       },
-      annule: { 
-        label: getStatutLabel(statut), 
+      annule: {
+        label: getStatutLabel(statut),
         className: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700",
-        icon: <Ban className="h-3 w-3" />
+        icon: <Ban className="h-3 w-3" />,
       },
     };
-    const config = configs[statut] || { label: getStatutLabel(statut), className: "bg-muted text-muted-foreground", icon: null };
+    const config = configs[statut] || {
+      label: getStatutLabel(statut),
+      className: "bg-muted text-muted-foreground",
+      icon: null,
+    };
     return (
-      <Badge 
-        variant="outline" 
+      <Badge
+        variant="outline"
         className={`${config.className} flex items-center gap-1 transition-all duration-200 hover:scale-105`}
       >
         {config.icon}
@@ -251,35 +305,39 @@ L'équipe LOGISTIGA`;
   };
 
   // Fonction pour déduire le type depuis les lignes de l'ordre
-  const getTypeFromLignes = (ordre: typeof ordresList[0]): string => {
+  const getTypeFromLignes = (ordre: (typeof ordresList)[0]): string => {
     if (ordre.lignes && ordre.lignes.length > 0) {
       const firstLigne = ordre.lignes[0];
       if (firstLigne.type_operation) {
         return firstLigne.type_operation.toLowerCase();
       }
     }
-    return '';
+    return "";
   };
 
   // Fonction améliorée pour obtenir le badge de type/catégorie
-  const getTypeBadge = (ordre: typeof ordresList[0]) => {
+  const getTypeBadge = (ordre: (typeof ordresList)[0]) => {
     const { categorie, type_operation, type_operation_indep } = ordre;
 
-    if (categorie === 'conteneurs') {
-      const typeOp = type_operation?.toLowerCase() || '';
-      if (typeOp.includes('import') || typeOp === 'import') {
+    if (categorie === "conteneurs") {
+      const typeOp = type_operation?.toLowerCase() || "";
+      if (typeOp.includes("import") || typeOp === "import") {
         const config = typeConteneurConfigs.import;
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
+          <Badge
+            className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}
+          >
             {config.icon}
             <span>Conteneurs / Import</span>
           </Badge>
         );
       }
-      if (typeOp.includes('export') || typeOp === 'export') {
+      if (typeOp.includes("export") || typeOp === "export") {
         const config = typeConteneurConfigs.export;
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
+          <Badge
+            className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}
+          >
             {config.icon}
             <span>Conteneurs / Export</span>
           </Badge>
@@ -293,17 +351,19 @@ L'équipe LOGISTIGA`;
       );
     }
 
-    if (categorie === 'operations_independantes') {
-      let typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || '';
-      
+    if (categorie === "operations_independantes") {
+      let typeIndep = type_operation_indep?.toLowerCase() || type_operation?.toLowerCase() || "";
+
       if (!typeIndep || !typeIndepConfigs[typeIndep]) {
         typeIndep = getTypeFromLignes(ordre);
       }
-      
+
       const config = typeIndepConfigs[typeIndep];
       if (config) {
         return (
-          <Badge className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}>
+          <Badge
+            className={`${config.className} flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium`}
+          >
             {config.icon}
             <span>Indépendant / {config.label}</span>
           </Badge>
@@ -317,7 +377,7 @@ L'équipe LOGISTIGA`;
       );
     }
 
-    if (categorie === 'conventionnel') {
+    if (categorie === "conventionnel") {
       return (
         <Badge className="bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 flex items-center gap-1.5 transition-all duration-200 hover:scale-105 font-medium">
           <Ship className="h-3 w-3" />
@@ -326,11 +386,7 @@ L'équipe LOGISTIGA`;
       );
     }
 
-    return (
-      <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">
-        {categorie || 'N/A'}
-      </Badge>
-    );
+    return <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">{categorie || "N/A"}</Badge>;
   };
 
   if (isLoading) {
@@ -344,10 +400,7 @@ L'équipe LOGISTIGA`;
   if (error) {
     return (
       <MainLayout title="Ordres de Travail">
-        <DocumentErrorState 
-          message="Erreur lors du chargement des ordres"
-          onRetry={() => refetch()}
-        />
+        <DocumentErrorState message="Erreur lors du chargement des ordres" onRetry={() => refetch()} />
       </MainLayout>
     );
   }
@@ -421,15 +474,26 @@ L'équipe LOGISTIGA`;
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 justify-end">
-          <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}>
+          <Button
+            variant="outline"
+            className="gap-2 transition-all duration-200 hover:scale-105"
+            onClick={() => setPaiementGlobalOpen(true)}
+          >
             <CreditCard className="h-4 w-4" />
             Paiement global
           </Button>
-          <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setExportOpen(true)}>
+          <Button
+            variant="outline"
+            className="gap-2 transition-all duration-200 hover:scale-105"
+            onClick={() => setExportOpen(true)}
+          >
             <Download className="h-4 w-4" />
             Exporter
           </Button>
-          <Button className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => navigate("/ordres/nouveau")}>
+          <Button
+            className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+            onClick={() => navigate("/ordres/nouveau")}
+          >
             <Plus className="h-4 w-4" />
             Nouvel ordre
           </Button>
@@ -457,12 +521,8 @@ L'équipe LOGISTIGA`;
                 {ordresList.map((ordre, index) => {
                   const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
                   return (
-                    <AnimatedTableRow 
-                      key={ordre.id} 
-                      index={index}
-                      className="cursor-pointer"
-                    >
-                      <TableCell 
+                    <AnimatedTableRow key={ordre.id} index={index} className="cursor-pointer">
+                      <TableCell
                         className="font-medium text-primary hover:underline cursor-pointer"
                         onClick={() => navigate(`/ordres/${ordre.id}`)}
                       >
@@ -471,7 +531,7 @@ L'équipe LOGISTIGA`;
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                            {ordre.client?.nom?.substring(0, 2).toUpperCase() || '??'}
+                            {ordre.client?.nom?.substring(0, 2).toUpperCase() || "??"}
                           </div>
                           <span className="truncate max-w-[150px]">{ordre.client?.nom}</span>
                         </div>
@@ -483,22 +543,26 @@ L'équipe LOGISTIGA`;
                         <span className={(ordre.montant_paye || 0) > 0 ? "text-emerald-600 dark:text-emerald-400" : ""}>
                           {formatMontant(ordre.montant_paye)}
                         </span>
-                        {resteAPayer > 0 && ordre.statut !== 'facture' && (
-                          <div className="text-xs text-destructive">
-                            Reste: {formatMontant(resteAPayer)}
-                          </div>
+                        {resteAPayer > 0 && ordre.statut !== "facture" && (
+                          <div className="text-xs text-destructive">Reste: {formatMontant(resteAPayer)}</div>
                         )}
                       </TableCell>
                       <TableCell>{getStatutBadge(ordre.statut)}</TableCell>
                       <TableCell>
-                        {ordre.categorie === 'conteneurs' ? (
+                        {ordre.categorie === "conteneurs" ? (
                           ordre.logistiga_synced_at ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
+                            <Badge
+                              variant="outline"
+                              className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800"
+                            >
                               <Check className="h-3 w-3 mr-1" />
                               Envoyé
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"
+                            >
                               En attente
                             </Badge>
                           )
@@ -508,7 +572,7 @@ L'équipe LOGISTIGA`;
                       </TableCell>
                       <TableCell>
                         {ordre.facture?.numero ? (
-                          <span 
+                          <span
                             className="text-sm font-medium text-blue-600 hover:underline cursor-pointer"
                             onClick={() => navigate(`/factures/${ordre.facture.id}`)}
                           >
@@ -520,81 +584,101 @@ L'équipe LOGISTIGA`;
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Voir"
+                            onClick={() => navigate(`/ordres/${ordre.id}`)}
+                            className="transition-all duration-200 hover:scale-110 hover:bg-primary/10"
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {ordre.statut !== 'annule' && (
-                            <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10">
+                          {ordre.statut !== "annule" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Modifier"
+                              onClick={() => navigate(`/ordres/${ordre.id}/modifier`)}
+                              className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                          {ordre.statut !== "facture" && ordre.statut !== "annule" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               title="Convertir en facture"
                               className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
-                              onClick={() => setConfirmAction({ type: 'facturer', id: ordre.id, numero: ordre.numero })}
+                              onClick={() => setConfirmAction({ type: "facturer", id: ordre.id, numero: ordre.numero })}
                             >
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           )}
-                          {ordre.statut !== 'facture' && ordre.statut !== 'annule' && resteAPayer > 0 && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Paiement" 
+                          {ordre.statut !== "facture" && ordre.statut !== "annule" && resteAPayer > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Paiement"
                               className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
-                              onClick={() => setPaiementModal({ 
-                                id: ordre.id, 
-                                numero: ordre.numero, 
-                                montantRestant: resteAPayer,
-                                clientId: ordre.client_id ? Number(ordre.client_id) : undefined,
-                                montantHT: ordre.montant_ht || 0,
-                                montantDejaPaye: ordre.montant_paye || 0,
-                                exonereTva: ordre.exonere_tva || false,
-                                exonereCss: ordre.exonere_css || false
-                              })}
+                              onClick={() =>
+                                setPaiementModal({
+                                  id: ordre.id,
+                                  numero: ordre.numero,
+                                  montantRestant: resteAPayer,
+                                  clientId: ordre.client_id ? Number(ordre.client_id) : undefined,
+                                  montantHT: ordre.montant_ht || 0,
+                                  montantDejaPaye: ordre.montant_paye || 0,
+                                  exonereTva: ordre.exonere_tva || false,
+                                  exonereCss: ordre.exonere_css || false,
+                                })
+                              }
                             >
                               <Wallet className="h-4 w-4" />
                             </Button>
                           )}
-                          {ordre.statut !== 'annule' && (ordre.montant_paye || 0) > 0 && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Annuler le paiement" 
+                          {ordre.statut !== "annule" && (ordre.montant_paye || 0) > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Annuler le paiement"
                               className="text-amber-600 transition-all duration-200 hover:scale-110 hover:bg-amber-500/10"
                               onClick={() => setAnnulationPaiementModal({ id: ordre.id, numero: ordre.numero })}
                             >
                               <RotateCcw className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Télécharger PDF"
+                            onClick={() => navigate(`/ordres/${ordre.id}/pdf`)}
+                            className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10"
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Email" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Email"
                             className="text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"
                             onClick={() => setEmailModal(ordre)}
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="WhatsApp" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="WhatsApp"
                             className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
                             onClick={() => handleWhatsAppShare(ordre)}
                           >
                             <MessageCircle className="h-4 w-4" />
                           </Button>
-                          {ordre.statut !== 'annule' && ordre.statut !== 'facture' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                          {ordre.statut !== "annule" && ordre.statut !== "facture" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               title="Annuler"
                               className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
                               onClick={() => setAnnulationModal({ id: Number(ordre.id), numero: ordre.numero })}
@@ -602,12 +686,12 @@ L'équipe LOGISTIGA`;
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             title="Supprimer"
                             className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10"
-                            onClick={() => setConfirmAction({ type: 'supprimer', id: ordre.id, numero: ordre.numero })}
+                            onClick={() => setConfirmAction({ type: "supprimer", id: ordre.id, numero: ordre.numero })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -631,7 +715,10 @@ L'équipe LOGISTIGA`;
               pageSize={pageSize}
               totalItems={totalItems}
               onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
             />
           </CardContent>
         </Card>
@@ -642,22 +729,25 @@ L'équipe LOGISTIGA`;
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction?.type === 'supprimer' ? 'Confirmer la suppression' : 'Convertir en facture'}
+              {confirmAction?.type === "supprimer" ? "Confirmer la suppression" : "Convertir en facture"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction?.type === 'supprimer' 
+              {confirmAction?.type === "supprimer"
                 ? `Êtes-vous sûr de vouloir supprimer l'ordre ${confirmAction?.numero} ? Cette action est irréversible.`
-                : `Voulez-vous convertir l'ordre ${confirmAction?.numero} en facture ?`
-              }
+                : `Voulez-vous convertir l'ordre ${confirmAction?.numero} en facture ?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleAction} 
-              className={confirmAction?.type === 'supprimer' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            <AlertDialogAction
+              onClick={handleAction}
+              className={
+                confirmAction?.type === "supprimer"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : ""
+              }
             >
-              {confirmAction?.type === 'supprimer' ? 'Supprimer' : 'Convertir'}
+              {confirmAction?.type === "supprimer" ? "Supprimer" : "Convertir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -691,15 +781,9 @@ L'équipe LOGISTIGA`;
         />
       )}
 
-      <PaiementGlobalOrdresModal
-        open={paiementGlobalOpen}
-        onOpenChange={setPaiementGlobalOpen}
-      />
+      <PaiementGlobalOrdresModal open={paiementGlobalOpen} onOpenChange={setPaiementGlobalOpen} />
 
-      <ExportModal
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-      />
+      <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
 
       {emailModal && (
         <EmailModalWithTemplate
