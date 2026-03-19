@@ -71,7 +71,11 @@ export const DocumentFilters = React.forwardRef<
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center flex-1">
         {/* Search */}
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          {isSearching ? (
+            <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary animate-spin" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          )}
           <Input 
             placeholder={searchPlaceholder}
             value={searchTerm} 
