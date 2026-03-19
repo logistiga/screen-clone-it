@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Search, X, LayoutGrid, List } from "lucide-react";
+import { Search, X, LayoutGrid, List, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,7 @@ interface DocumentFiltersProps {
   viewMode?: 'list' | 'grid';
   onViewModeChange?: (mode: 'list' | 'grid') => void;
   showViewToggle?: boolean;
+  isSearching?: boolean;
 }
 
 export const DocumentFilters = React.forwardRef<
@@ -53,6 +54,7 @@ export const DocumentFilters = React.forwardRef<
   viewMode = 'list',
   onViewModeChange,
   showViewToggle = false,
+  isSearching = false,
 }, ref) => {
   const activeFilters = [
     statutFilter && statutFilter !== 'all' && statutFilter,
@@ -69,7 +71,11 @@ export const DocumentFilters = React.forwardRef<
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center flex-1">
         {/* Search */}
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          {isSearching ? (
+            <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary animate-spin" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          )}
           <Input 
             placeholder={searchPlaceholder}
             value={searchTerm} 

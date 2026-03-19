@@ -468,7 +468,10 @@ L'équipe LOGISTIGA`;
         {/* Filters */}
         <DocumentFilters
           searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          onSearchChange={(value) => {
+            setSearchTerm(value);
+            setCurrentPage(1);
+          }}
           searchPlaceholder="Rechercher par numéro, client, conteneur..."
           statutFilter={statutFilter}
           onStatutChange={setStatutFilter}
@@ -476,6 +479,7 @@ L'équipe LOGISTIGA`;
           categorieFilter={categorieFilter}
           onCategorieChange={setCategorieFilter}
           categorieOptions={categorieOptions}
+          isSearching={searchTerm !== debouncedSearch || (isFetching && !!debouncedSearch)}
         />
 
         {/* Actions */}
@@ -513,7 +517,7 @@ L'équipe LOGISTIGA`;
                    style={{ animation: 'shimmer 1.5s ease-in-out infinite' }} />
             </div>
           )}
-          <CardContent className="p-0">
+          <CardContent className={`p-0 transition-opacity duration-200 ${isFetching && hasLoadedOnce.current ? 'opacity-50' : 'opacity-100'}`}>
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
