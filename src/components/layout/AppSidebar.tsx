@@ -132,10 +132,6 @@ export const AppSidebar = forwardRef<HTMLDivElement, React.ComponentPropsWithout
     setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Gestionnaire de préchargement au survol
-  const handleMouseEnter = useCallback((url: string) => {
-    prefetchRoute(url);
-  }, [prefetchRoute]);
 
   const renderMenuItem = (item: { title: string; url: string; icon: any }, isActive: boolean) => {
     const content = (
