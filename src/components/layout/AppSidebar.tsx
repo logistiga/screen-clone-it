@@ -115,7 +115,6 @@ export const AppSidebar = forwardRef<HTMLDivElement, React.ComponentPropsWithout
   function AppSidebar(_props, ref) {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
-  const { prefetchRoute } = usePrefetch();
   const { user, hasRole, hasPermission } = useAuth();
   const isCollapsed = state === "collapsed";
   const isAdmin = hasRole('admin') || hasRole('administrateur') || hasRole('directeur');
