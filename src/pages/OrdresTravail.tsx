@@ -194,9 +194,10 @@ L'équipe LOGISTIGA`;
     openWhatsAppShare(message);
   };
 
-  const ordresList = ordresData?.data || [];
+  const ordresList = Array.isArray(ordresData?.data) ? ordresData.data : [];
   const totalPages = ordresData?.meta?.last_page || 1;
   const totalItems = ordresData?.meta?.total || 0;
+  const tableRenderKey = [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, ordresList.map((ordre) => ordre.id).join("-")].join("|");
 
   // Statistiques calculées avec useMemo pour optimisation
   const stats = useMemo(
