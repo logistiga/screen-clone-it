@@ -718,8 +718,8 @@ L'équipe LOGISTIGA`;
                   );
                 })}
                 {ordresList.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableRow key={`empty-${tableRenderKey}`}>
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       Aucun ordre trouvé avec ces critères
                     </TableCell>
                   </TableRow>
