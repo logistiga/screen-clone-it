@@ -194,9 +194,10 @@ L'équipe LOGISTIGA`;
     openWhatsAppShare(message);
   };
 
-  const ordresList = ordresData?.data || [];
+  const ordresList = Array.isArray(ordresData?.data) ? ordresData.data : [];
   const totalPages = ordresData?.meta?.last_page || 1;
   const totalItems = ordresData?.meta?.total || 0;
+  const tableRenderKey = [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, ordresList.map((ordre) => ordre.id).join("-")].join("|");
 
   // Statistiques calculées avec useMemo pour optimisation
   const stats = useMemo(
@@ -533,7 +534,7 @@ L'équipe LOGISTIGA`;
                   <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <AnimatedTableBody>
+              <AnimatedTableBody key={tableRenderKey}>
                 {ordresList.map((ordre, index) => {
                   const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
                   return (
@@ -717,8 +718,8 @@ L'équipe LOGISTIGA`;
                   );
                 })}
                 {ordresList.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableRow key={`empty-${tableRenderKey}`}>
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       Aucun ordre trouvé avec ces critères
                     </TableCell>
                   </TableRow>
