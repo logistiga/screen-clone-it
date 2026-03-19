@@ -62,41 +62,50 @@ class PrevisionSyncService
      */
     private function findMontantByCategorie(array $reels, string $categorieRecherchee): float
     {
-        // 1. Exact match
         if (isset($reels[$categorieRecherchee])) {
-            return $reels[$categorieRecherchee];
+            return (float) $reels[$categorieRecherchee];
         }
 
-        // 2. Normalisation et matching flexible
         $normRecherche = $this->normaliserCategorie($categorieRecherchee);
 
+        $totalFlexible = 0;
         foreach ($reels as $cat => $montant) {
             $normCat = $this->normaliserCategorie($cat);
 
-            // Match exact normalisé
             if ($normCat === $normRecherche) {
-                return $montant;
+                $totalFlexible += (float) $montant;
+                continue;
             }
 
-            // Match partiel (l'un contient l'autre)
-            if (Str::contains($normCat, $normRecherche) || Str::contains($normRecherche, $normCat)) {
-                return $montant;
+            if (
+                $normCat !== ''
+                && $normRecherche !== ''
+                && (Str::contains($normCat, $normRecherche) || Str::contains($normRecherche, $normCat))
+            ) {
+                $totalFlexible += (float) $montant;
             }
         }
 
-        // 3. Aliases connus
-        $aliases = $this->getAliases();
-        $normRecherche = $this->normaliserCategorie($categorieRecherchee);
-        
-        foreach ($aliases as $group) {
-            $normGroup = array_map(fn($a) => $this->normaliserCategorie($a), $group);
-            if (in_array($normRecherche, $normGroup)) {
-                // Chercher dans les réels avec tous les alias du groupe
-                foreach ($reels as $cat => $montant) {
-                    if (in_array($this->normaliserCategorie($cat), $normGroup)) {
-                        return $montant;
-                    }
+        if ($totalFlexible > 0) {
+            return $totalFlexible;
+        }
+
+        foreach ($this->getAliases() as $group) {
+            $normGroup = array_map(fn ($alias) => $this->normaliserCategorie($alias), $group);
+
+            if (!in_array($normRecherche, $normGroup, true)) {
+                continue;
+            }
+
+            $totalAlias = 0;
+            foreach ($reels as $cat => $montant) {
+                if (in_array($this->normaliserCategorie($cat), $normGroup, true)) {
+                    $totalAlias += (float) $montant;
                 }
+            }
+
+            if ($totalAlias > 0) {
+                return $totalAlias;
             }
         }
 
@@ -109,15 +118,16 @@ class PrevisionSyncService
     private function normaliserCategorie(string $categorie): string
     {
         $str = mb_strtolower(trim($categorie));
-        // Retirer accents
         $str = str_replace(
             ['é', 'è', 'ê', 'ë', 'à', 'â', 'ä', 'ù', 'û', 'ü', 'î', 'ï', 'ô', 'ö', 'ç'],
             ['e', 'e', 'e', 'e', 'a', 'a', 'a', 'u', 'u', 'u', 'i', 'i', 'o', 'o', 'c'],
             $str
         );
-        // Retirer espaces multiples
+        $str = str_replace(['_', '-', '/', '\\'], ' ', $str);
+        $str = preg_replace('/[^a-z0-9 ]+/u', ' ', $str);
         $str = preg_replace('/\s+/', ' ', $str);
-        return $str;
+
+        return trim($str);
     }
 
     /**
@@ -134,7 +144,11 @@ class PrevisionSyncService
             ['Frais bancaires', 'Frais banque', 'Commissions bancaires'],
             ['Électricité et eau', 'Electricite et eau', 'Eau et électricité', 'SEEG'],
             ['Télécommunications', 'Telecom', 'Téléphone', 'Internet'],
-            ['Remboursement crédit', 'Remboursement credit', 'Crédit bancaire'],
+            ['Remboursement crédit', 'Remboursement credit', 'Crédit bancaire', 'remboursement_credit'],
+            ['Primes représentants', 'Prime représentant', 'Primes representants', 'Prime representant'],
+            ['Prime transitaire', 'Primes transitaires'],
+            ['Loyer', 'Loyers'],
+            ['Impôts et taxes', 'Impots et taxes', 'Taxes et impots'],
             ['Autres dépenses', 'Autres depenses', 'Divers', 'Autres'],
             ['Autres recettes', 'Autres entrees', 'Divers recettes'],
         ];

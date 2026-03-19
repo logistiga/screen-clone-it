@@ -22,6 +22,13 @@ class PrevisionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $annee = $request->get('annee');
+        $mois = $request->get('mois');
+
+        if ($annee && $mois) {
+            app(PrevisionSyncService::class)->syncMois((int) $annee, (int) $mois);
+        }
+
         $query = Prevision::with(['user']);
 
         if ($request->has('type')) {
