@@ -10,6 +10,7 @@ use App\Models\Prevision;
 use App\Models\Audit;
 use App\Models\MouvementCaisse;
 use App\Models\Paiement;
+use App\Services\PrevisionSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -313,36 +314,8 @@ class PrevisionController extends Controller
         $annee = (int) $request->get('annee', date('Y'));
         $mois = (int) $request->get('mois', date('n'));
 
-        // Récupérer les réels
-        $reelsCaisse = $this->getReelsCaisseMoisParCategorie($annee, $mois);
-        $reelsBanque = $this->getReelsBanqueMoisParCategorie($annee, $mois);
-
-        $updated = 0;
-        $previsions = Prevision::where('annee', $annee)->where('mois', $mois)->get();
-
-        foreach ($previsions as $prevision) {
-            $categorie = $prevision->categorie;
-            $type = $prevision->type;
-
-            // Trouver les réels correspondants
-            $realiseCaisse = 0;
-            $realiseBanque = 0;
-
-            if ($type === 'recette') {
-                $realiseCaisse = $reelsCaisse['entrees'][$categorie] ?? 0;
-                $realiseBanque = $reelsBanque['entrees'][$categorie] ?? 0;
-            } else {
-                $realiseCaisse = $reelsCaisse['sorties'][$categorie] ?? 0;
-                $realiseBanque = $reelsBanque['sorties'][$categorie] ?? 0;
-            }
-
-            $prevision->update([
-                'realise_caisse' => $realiseCaisse,
-                'realise_banque' => $realiseBanque,
-            ]);
-            $prevision->updateStatut();
-            $updated++;
-        }
+        $syncService = app(PrevisionSyncService::class);
+        $updated = $syncService->syncMois($annee, $mois);
 
         return response()->json([
             'message' => "Synchronisation effectuée pour {$updated} prévisions",

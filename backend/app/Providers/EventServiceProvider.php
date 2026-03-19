@@ -24,6 +24,7 @@ use App\Listeners\SendFactureCreatedNotification;
 use App\Listeners\HandleFactureStatusChange;
 use App\Listeners\SendFactureDeletedNotification;
 use App\Listeners\SendPaiementNotification;
+use App\Listeners\SyncPrevisionRealise;
 use App\Listeners\SendDevisCreatedNotification;
 use App\Listeners\SendDevisConvertedNotification;
 use App\Listeners\SendDevisUpdatedNotification;
@@ -55,6 +56,7 @@ class EventServiceProvider extends ServiceProvider
         PaiementCreated::class => [
             SendPaiementNotification::class,
             InvalidateDashboardCache::class,
+            SyncPrevisionRealise::class,
         ],
 
         // Devis

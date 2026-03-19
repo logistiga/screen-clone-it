@@ -115,6 +115,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Paiement::observe(\App\Observers\PaiementObserver::class);
         OrdreTravail::observe(\App\Observers\OrdreObserver::class);
         \App\Models\Devis::observe(\App\Observers\DevisObserver::class);
+        \App\Models\MouvementCaisse::observe(\App\Observers\MouvementCaisseObserver::class);
 
         // =============================================
         // RATE LIMITERS - Configuration centralisée
