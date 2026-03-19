@@ -90,6 +90,10 @@ export default function ClientsPage() {
   const isInitialLoading =
     !hasFinishedFirstLoadRef.current && (isLoading || isLoadingAllClients);
   const isSearching = isFetching && !isFetchingNextPage && !!debouncedSearch;
+  const tableRenderKey = useMemo(() =>
+    [debouncedSearch, statusFilter, villeFilter, sortField, sortOrder, clients.map((c: Client) => c.id).join("-")].join("|"),
+    [debouncedSearch, statusFilter, villeFilter, sortField, sortOrder, clients]
+  );
 
   // Hook pour l'infinite scroll
   const loadMoreRef = useInfiniteScroll(fetchNextPage, hasNextPage, isFetchingNextPage);
