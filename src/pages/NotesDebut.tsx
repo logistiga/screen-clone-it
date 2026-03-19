@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
   Plus,
   Download,
