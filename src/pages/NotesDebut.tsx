@@ -363,6 +363,7 @@ export default function NotesDebut() {
           statutFilter={typeFilter}
           onStatutChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}
           statutOptions={typeFilterOptions}
+          isSearching={isSearching}
         />
 
         {/* Selection Info */}
