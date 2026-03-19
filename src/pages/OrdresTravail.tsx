@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { roundMoney } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -89,6 +89,7 @@ const categorieOptions = [
 
 export default function OrdresTravailPage() {
   const navigate = useNavigate();
+  const hasLoadedOnce = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -389,7 +390,11 @@ L'équipe LOGISTIGA`;
     return <Badge className="bg-muted text-muted-foreground flex items-center gap-1.5">{categorie || "N/A"}</Badge>;
   };
 
-  if (isLoading) {
+  if (ordresData) {
+    hasLoadedOnce.current = true;
+  }
+
+  if (isLoading && !hasLoadedOnce.current) {
     return (
       <MainLayout title="Ordres de Travail">
         <DocumentLoadingState message="Chargement des ordres..." />
