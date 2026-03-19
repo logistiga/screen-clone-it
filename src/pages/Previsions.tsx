@@ -55,17 +55,40 @@ export default function PrevisionsPage() {
   const [mois, setMois] = useState(currentDate.getMonth() + 1);
   const [showNouvelleModal, setShowNouvelleModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [hasAutoSelectedLatestPeriod, setHasAutoSelectedLatestPeriod] = useState(false);
 
   // Données
   const { data: stats, isLoading: loadingStats, error: statsError } = useStatsMensuelles(annee, mois);
   const { data: historique, isLoading: loadingHistorique } = useHistoriquePrevisions(annee);
   const { data: previsionsData, error: previsionsError } = usePrevisions({ annee, mois, per_page: 100 });
+  const { data: latestPrevisionsData } = usePrevisions({ per_page: 1 });
   const deleteMutation = useDeletePrevision();
   const syncMutation = useSyncPrevisionRealise();
 
   const previsions = previsionsData?.data || [];
+  const latestPrevision = latestPrevisionsData?.data?.[0];
+  const hasDataForSelectedPeriod = (stats?.nb_previsions || 0) > 0 || previsions.length > 0;
 
-  // Debug: log errors
+  useEffect(() => {
+    if (hasAutoSelectedLatestPeriod || loadingStats || !latestPrevision) return;
+
+    const latestPeriodIsDifferent = latestPrevision.annee !== annee || latestPrevision.mois !== mois;
+
+    if (!hasDataForSelectedPeriod && latestPeriodIsDifferent) {
+      setAnnee(latestPrevision.annee);
+      setMois(latestPrevision.mois);
+    }
+
+    setHasAutoSelectedLatestPeriod(true);
+  }, [
+    annee,
+    mois,
+    hasAutoSelectedLatestPeriod,
+    hasDataForSelectedPeriod,
+    latestPrevision,
+    loadingStats,
+  ]);
+
   if (statsError) {
     console.error('[Previsions] Stats error:', statsError);
   }
