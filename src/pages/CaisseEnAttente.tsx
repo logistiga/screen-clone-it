@@ -45,18 +45,27 @@ export default function CaisseEnAttentePage() {
     },
   });
 
+  const { data: garageStatsData } = useQuery({
+    queryKey: ['caisse-garage-stats'],
+    queryFn: async () => {
+      const response = await api.get<StatsResponse>('/caisse-garage/stats');
+      return response.data;
+    },
+  });
+
   const emptyStats: StatsResponse = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
   const opsStats = opsStatsData || emptyStats;
   const cnvStats = cnvStatsData || emptyStats;
   const horslbvStats = horslbvStatsData || emptyStats;
+  const garageStats = garageStatsData || emptyStats;
 
   const stats = {
-    total_valide: opsStats.total_valide + cnvStats.total_valide + horslbvStats.total_valide,
-    nombre_primes: opsStats.nombre_primes + cnvStats.nombre_primes + horslbvStats.nombre_primes,
-    total_a_decaisser: opsStats.total_a_decaisser + cnvStats.total_a_decaisser + horslbvStats.total_a_decaisser,
-    nombre_a_decaisser: opsStats.nombre_a_decaisser + cnvStats.nombre_a_decaisser + horslbvStats.nombre_a_decaisser,
-    deja_decaissees: opsStats.deja_decaissees + cnvStats.deja_decaissees + horslbvStats.deja_decaissees,
-    total_decaisse: opsStats.total_decaisse + cnvStats.total_decaisse + horslbvStats.total_decaisse,
+    total_valide: opsStats.total_valide + cnvStats.total_valide + horslbvStats.total_valide + garageStats.total_valide,
+    nombre_primes: opsStats.nombre_primes + cnvStats.nombre_primes + horslbvStats.nombre_primes + garageStats.nombre_primes,
+    total_a_decaisser: opsStats.total_a_decaisser + cnvStats.total_a_decaisser + horslbvStats.total_a_decaisser + garageStats.total_a_decaisser,
+    nombre_a_decaisser: opsStats.nombre_a_decaisser + cnvStats.nombre_a_decaisser + horslbvStats.nombre_a_decaisser + garageStats.nombre_a_decaisser,
+    deja_decaissees: opsStats.deja_decaissees + cnvStats.deja_decaissees + horslbvStats.deja_decaissees + garageStats.deja_decaissees,
+    total_decaisse: opsStats.total_decaisse + cnvStats.total_decaisse + horslbvStats.total_decaisse + garageStats.total_decaisse,
   };
 
   const openDecaissementModal = (prime: PrimeEnAttente) => {
