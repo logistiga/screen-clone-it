@@ -206,12 +206,12 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                       </TableCell>
                       <TableCell>
                         {['validé', 'valide', 'validated'].includes(item.statut) ? (
-                          <Badge className="bg-emerald-500/20 text-emerald-600 gap-1">
+                          <Badge className="bg-success/20 text-success gap-1">
                             <CheckCircle2 className="h-3 w-3" />
                             Validé
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-500/20 text-amber-600 gap-1">
+                          <Badge className="bg-warning/20 text-warning gap-1">
                             <Clock className="h-3 w-3" />
                             En attente
                           </Badge>
@@ -219,7 +219,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                       </TableCell>
                       <TableCell className="text-right">
                         {['validé', 'valide', 'validated'].includes(item.statut) ? (
-                          <span className="text-sm text-emerald-600 flex items-center justify-end gap-1">
+                          <span className="text-sm text-success flex items-center justify-end gap-1">
                             <CheckCircle2 className="h-4 w-4" />
                             Fait
                           </span>
