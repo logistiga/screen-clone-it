@@ -168,6 +168,7 @@ class CaisseEnAttenteController extends Controller
             $handler = match ($source) {
                 'CNV' => $this->cnv,
                 'HORSLBV' => $this->horslbv,
+                'GARAGE' => $this->garage,
                 default => $this->ops,
             };
 
