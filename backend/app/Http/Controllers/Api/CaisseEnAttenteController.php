@@ -185,12 +185,14 @@ class CaisseEnAttenteController extends Controller
             $refUnique = match ($source) {
                 'CNV' => CaisseCnvController::buildRef($primeId),
                 'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+                'GARAGE' => CaisseGarageController::buildRef($primeId),
                 default => CaisseOpsController::buildRef($primeId),
             };
 
             $categorie = match ($source) {
                 'CNV' => CaisseCnvController::categorie(),
                 'HORSLBV' => CaisseHorslbvController::categorie(),
+                'GARAGE' => CaisseGarageController::categorie(),
                 default => CaisseOpsController::categorie(),
             };
 
