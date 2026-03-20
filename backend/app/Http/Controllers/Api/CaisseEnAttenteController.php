@@ -155,7 +155,7 @@ class CaisseEnAttenteController extends Controller
             'banque_id' => 'nullable|exists:banques,id',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
-            'source' => 'nullable|in:OPS,CNV,HORSLBV',
+            'source' => 'nullable|in:OPS,CNV,HORSLBV,GARAGE',
         ]);
 
         if ($validator->fails()) {
