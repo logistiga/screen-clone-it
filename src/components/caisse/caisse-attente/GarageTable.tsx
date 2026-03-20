@@ -42,14 +42,14 @@ interface GarageStatsResponse {
 }
 
 const statutOptions = [
+  { value: "all", label: "Tous les statuts" },
   { value: "en_attente", label: "En attente de validation" },
   { value: "valide", label: "Validés" },
-  { value: "all", label: "Tous" },
 ];
 
 function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | 'autres' }) {
   const [search, setSearch] = useState("");
-  const [statut, setStatut] = useState("en_attente");
+  const [statut, setStatut] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -83,7 +83,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
   const totalPages = data?.meta?.last_page || 1;
   const totalCount = data?.meta?.total || 0;
   const error = data?.error || data?.message;
-  const hasFilters = !!search || statut !== 'en_attente';
+  const hasFilters = !!search || statut !== 'all';
 
   if (isLoading) {
     return <DocumentLoadingState message={`Chargement des achats ${label}...`} />;
@@ -92,7 +92,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
   return (
     <div className="space-y-4">
       {/* Stats mini */}
-      <div className="grid gap-3 grid-cols-2">
+      <div className="grid gap-3 grid-cols-1 max-w-md">
         <DocumentStatCard
           title="En attente"
           value={formatMontant(stats.total_en_attente)}
@@ -100,14 +100,6 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
           subtitle={`${stats.nombre_en_attente} achats`}
           variant="warning"
           delay={0}
-        />
-        <DocumentStatCard
-          title="Validés"
-          value={formatMontant(stats.total_valide)}
-          icon={CheckCircle2}
-          subtitle={`${stats.nombre_valide} achats`}
-          variant="success"
-          delay={0.1}
         />
       </div>
 
@@ -167,7 +159,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                         <Wallet className="h-8 w-8 opacity-50" />
                         <p>Aucun achat {label} trouvé</p>
                         {hasFilters && (
-                          <Button variant="link" onClick={() => { setSearch(""); setStatut("en_attente"); setPage(1); }} className="text-primary">
+                          <Button variant="link" onClick={() => { setSearch(""); setStatut("all"); setPage(1); }} className="text-primary">
                             Réinitialiser les filtres
                           </Button>
                         )}
