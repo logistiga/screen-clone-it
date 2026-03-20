@@ -92,7 +92,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
   return (
     <div className="space-y-4">
       {/* Stats mini */}
-      <div className="grid gap-3 grid-cols-2">
+      <div className="grid gap-3 grid-cols-1 max-w-md">
         <DocumentStatCard
           title="En attente"
           value={formatMontant(stats.total_en_attente)}
@@ -100,14 +100,6 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
           subtitle={`${stats.nombre_en_attente} achats`}
           variant="warning"
           delay={0}
-        />
-        <DocumentStatCard
-          title="Validés"
-          value={formatMontant(stats.total_valide)}
-          icon={CheckCircle2}
-          subtitle={`${stats.nombre_valide} achats`}
-          variant="success"
-          delay={0.1}
         />
       </div>
 
