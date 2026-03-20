@@ -83,7 +83,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
   const totalPages = data?.meta?.last_page || 1;
   const totalCount = data?.meta?.total || 0;
   const error = data?.error || data?.message;
-  const hasFilters = !!search || statut !== 'en_attente';
+  const hasFilters = !!search || statut !== 'all';
 
   if (isLoading) {
     return <DocumentLoadingState message={`Chargement des achats ${label}...`} />;
