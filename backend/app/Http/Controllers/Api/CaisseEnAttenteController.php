@@ -267,6 +267,7 @@ class CaisseEnAttenteController extends Controller
         $reference = match ($source) {
             'CNV' => CaisseCnvController::buildRef($primeId),
             'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+            'GARAGE' => CaisseGarageController::buildRef($primeId),
             default => CaisseOpsController::buildRef($primeId),
         };
 
