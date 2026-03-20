@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CategorieDepenseController;
 use App\Http\Controllers\Api\CaisseEnAttenteController;
 use App\Http\Controllers\Api\CaisseCnvController;
 use App\Http\Controllers\Api\CaisseHorslbvController;
+use App\Http\Controllers\Api\CaisseGarageController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use Illuminate\Support\Facades\Route;
@@ -202,6 +203,18 @@ Route::prefix('caisse-horslbv')->middleware('audit')->group(function () {
     Route::post('/{primeId}/decaisser', [CaisseHorslbvController::class, 'decaisser'])
         ->middleware('permission:caisse.creer');
     Route::post('/{primeId}/refuser', [CaisseHorslbvController::class, 'refuser'])
+        ->middleware('permission:caisse.creer');
+});
+
+// ============================================
+// CAISSE EN ATTENTE - GARAGE (achats validation)
+// ============================================
+Route::prefix('caisse-garage')->middleware('audit')->group(function () {
+    Route::get('/stats', [CaisseGarageController::class, 'stats'])
+        ->middleware('permission:caisse.voir');
+    Route::get('/', [CaisseGarageController::class, 'index'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/{type}/{id}/valider', [CaisseGarageController::class, 'valider'])
         ->middleware('permission:caisse.creer');
 });
 

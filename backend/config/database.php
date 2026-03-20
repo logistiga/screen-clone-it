@@ -128,6 +128,31 @@ return [
             ]) : [],
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Connexion Garage (READ ONLY)
+        |--------------------------------------------------------------------------
+        | Permet à FAC de lire les achats en attente de validation du Garage.
+        */
+        'garage' => [
+            'driver' => 'mysql',
+            'host' => env('GARAGE_DB_HOST', '127.0.0.1'),
+            'port' => env('GARAGE_DB_PORT', '3306'),
+            'database' => env('GARAGE_DB_DATABASE', 'logiwkuh_gr'),
+            'username' => env('GARAGE_DB_USERNAME', 'root'),
+            'password' => env('GARAGE_DB_PASSWORD', ''),
+            'unix_socket' => env('GARAGE_DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
