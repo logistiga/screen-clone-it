@@ -28,6 +28,7 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       const endpointMap: Record<string, string> = {
         CNV: `/caisse-cnv/${primeId}/refuser`,
         HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
+        GARAGE: `/caisse-garage/${primeId}/refuser`,
         OPS: `/caisse-en-attente/${primeId}/refuser`,
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
@@ -35,13 +36,15 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       return response.data;
     },
     onSuccess: () => {
-      toast.success("Prime refusée avec succès");
+      toast.success("Achat refusé avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-garage'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-garage-stats'] });
       onOpenChange(false);
       setMotif("");
     },

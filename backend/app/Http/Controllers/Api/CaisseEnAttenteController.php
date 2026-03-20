@@ -19,12 +19,14 @@ class CaisseEnAttenteController extends Controller
     protected CaisseOpsController $ops;
     protected CaisseCnvController $cnv;
     protected CaisseHorslbvController $horslbv;
+    protected CaisseGarageController $garage;
 
     public function __construct()
     {
         $this->ops = new CaisseOpsController();
         $this->cnv = new CaisseCnvController();
         $this->horslbv = new CaisseHorslbvController();
+        $this->garage = new CaisseGarageController();
     }
 
     /**
@@ -153,7 +155,7 @@ class CaisseEnAttenteController extends Controller
             'banque_id' => 'nullable|exists:banques,id',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
-            'source' => 'nullable|in:OPS,CNV,HORSLBV',
+            'source' => 'nullable|in:OPS,CNV,HORSLBV,GARAGE',
         ]);
 
         if ($validator->fails()) {
@@ -166,6 +168,7 @@ class CaisseEnAttenteController extends Controller
             $handler = match ($source) {
                 'CNV' => $this->cnv,
                 'HORSLBV' => $this->horslbv,
+                'GARAGE' => $this->garage,
                 default => $this->ops,
             };
 
@@ -182,12 +185,14 @@ class CaisseEnAttenteController extends Controller
             $refUnique = match ($source) {
                 'CNV' => CaisseCnvController::buildRef($primeId),
                 'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+                'GARAGE' => CaisseGarageController::buildRef($primeId),
                 default => CaisseOpsController::buildRef($primeId),
             };
 
             $categorie = match ($source) {
                 'CNV' => CaisseCnvController::categorie(),
                 'HORSLBV' => CaisseHorslbvController::categorie(),
+                'GARAGE' => CaisseGarageController::categorie(),
                 default => CaisseOpsController::categorie(),
             };
 
@@ -196,7 +201,7 @@ class CaisseEnAttenteController extends Controller
             $beneficiaire = $prime->beneficiaire ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
 
-            $description = "Prime {$prime->type} - {$beneficiaire}";
+            $description = ($source === 'GARAGE' ? "Achat Garage" : "Prime {$prime->type}") . " - {$beneficiaire}";
             $numeroPaiement = $prime->numero_paiement ?? null;
             if ($numeroPaiement) {
                 $description .= " - {$numeroPaiement}";
@@ -262,6 +267,7 @@ class CaisseEnAttenteController extends Controller
         $reference = match ($source) {
             'CNV' => CaisseCnvController::buildRef($primeId),
             'HORSLBV' => CaisseHorslbvController::buildRef($primeId),
+            'GARAGE' => CaisseGarageController::buildRef($primeId),
             default => CaisseOpsController::buildRef($primeId),
         };
 

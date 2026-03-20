@@ -9,63 +9,35 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Wrench, CheckCircle2, Clock, AlertTriangle, RefreshCw, Wallet, ShoppingCart,
+  Wrench, CheckCircle2, Clock, AlertTriangle, RefreshCw, Wallet,
+  ShoppingCart, Coins, Ban, XCircle, Receipt, Hash,
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import api from "@/lib/api";
 import { TablePagination } from "@/components/TablePagination";
 import { DocumentFilters, DocumentLoadingState } from "@/components/shared/documents";
-import { DocumentStatCard } from "@/components/shared/documents";
-import { itemVariants } from "./types";
+import { PrimeEnAttente, StatsResponse, statutFilterOptions, itemVariants } from "./types";
 
-interface GarageItem {
-  id: number;
-  type: string;
-  type_key: string;
-  numero: string | null;
-  fournisseur_nom: string | null;
-  date: string | null;
-  montant: number;
-  statut: string;
-  designation: string | null;
-  created_at: string;
-  source: string;
+interface GarageTableProps {
+  onDecaisser: (prime: PrimeEnAttente) => void;
+  onRefuser: (prime: PrimeEnAttente) => void;
 }
 
-interface GarageStatsResponse {
-  total_en_attente: number;
-  nombre_en_attente: number;
-  total_valide: number;
-  nombre_valide: number;
-  message?: string;
-  error?: string;
-}
-
-const statutOptions = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "en_attente", label: "En attente de validation" },
-  { value: "valide", label: "Validés" },
-];
-
-function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | 'autres' }) {
+function GarageSubTable({ 
+  fournisseurFilter, 
+  onDecaisser, 
+  onRefuser 
+}: { 
+  fournisseurFilter: 'piston' | 'autres';
+  onDecaisser: (prime: PrimeEnAttente) => void;
+  onRefuser: (prime: PrimeEnAttente) => void;
+}) {
   const [search, setSearch] = useState("");
-  const [statut, setStatut] = useState("all");
+  const [statut, setStatut] = useState("a_decaisser");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   const label = fournisseurFilter === 'piston' ? 'Piston Gabon' : 'Autres Fournisseurs';
-
-  const { data: statsData } = useQuery({
-    queryKey: ['caisse-garage-stats', fournisseurFilter],
-    queryFn: async () => {
-      const response = await api.get<GarageStatsResponse>('/caisse-garage/stats', {
-        params: { fournisseur_filter: fournisseurFilter },
-      });
-      return response.data;
-    },
-  });
-
-  const stats = statsData || { total_en_attente: 0, nombre_en_attente: 0, total_valide: 0, nombre_valide: 0 };
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['caisse-garage', fournisseurFilter, page, pageSize, search, statut],
@@ -79,11 +51,11 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
     },
   });
 
-  const items: GarageItem[] = data?.data || [];
+  const items = data?.data || [];
   const totalPages = data?.meta?.last_page || 1;
   const totalCount = data?.meta?.total || 0;
   const error = data?.error || data?.message;
-  const hasFilters = !!search || statut !== 'all';
+  const hasFilters = !!search || statut !== 'a_decaisser';
 
   if (isLoading) {
     return <DocumentLoadingState message={`Chargement des achats ${label}...`} />;
@@ -91,18 +63,6 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
 
   return (
     <div className="space-y-4">
-      {/* Stats mini */}
-      <div className="grid gap-3 grid-cols-1 max-w-md">
-        <DocumentStatCard
-          title="En attente"
-          value={formatMontant(stats.total_en_attente)}
-          icon={Clock}
-          subtitle={`${stats.nombre_en_attente} achats`}
-          variant="warning"
-          delay={0}
-        />
-      </div>
-
       {error && (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="flex items-center gap-3 py-4">
@@ -125,7 +85,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
         searchPlaceholder="Rechercher (numéro, fournisseur, désignation)..."
         statutFilter={statut}
         onStatutChange={(v) => { setStatut(v); setPage(1); }}
-        statutOptions={statutOptions}
+        statutOptions={statutFilterOptions}
       />
 
       <Card className="border-border/50 overflow-hidden">
@@ -159,7 +119,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                         <Wallet className="h-8 w-8 opacity-50" />
                         <p>Aucun achat {label} trouvé</p>
                         {hasFilters && (
-                          <Button variant="link" onClick={() => { setSearch(""); setStatut("all"); setPage(1); }} className="text-primary">
+                          <Button variant="link" onClick={() => { setSearch(""); setStatut("a_decaisser"); setPage(1); }} className="text-primary">
                             Réinitialiser les filtres
                           </Button>
                         )}
@@ -167,7 +127,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                     </TableCell>
                   </TableRow>
                 ) : (
-                  items.map((item, index) => (
+                  items.map((item: any, index: number) => (
                     <motion.tr
                       key={`${item.type_key}-${item.id}`}
                       variants={itemVariants}
@@ -185,7 +145,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                         {item.numero || '-'}
                       </TableCell>
                       <TableCell className="max-w-[180px] truncate font-medium">
-                        {item.fournisseur_nom || '-'}
+                        {item.fournisseur_nom || item.beneficiaire || '-'}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                         {item.designation || '-'}
@@ -197,40 +157,89 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                         {formatMontant(item.montant)}
                       </TableCell>
                       <TableCell>
-                        {['validé', 'valide', 'validated'].includes(item.statut) ? (
-                          <Badge className="bg-success/20 text-success gap-1">
+                        {item.decaisse ? (
+                          <Badge className="bg-success/20 text-success gap-1 w-fit">
                             <CheckCircle2 className="h-3 w-3" />
-                            Validé
+                            Décaissé
+                          </Badge>
+                        ) : item.refusee ? (
+                          <Badge className="bg-destructive/20 text-destructive gap-1">
+                            <Ban className="h-3 w-3" />
+                            Refusé
                           </Badge>
                         ) : (
                           <Badge className="bg-warning/20 text-warning gap-1">
                             <Clock className="h-3 w-3" />
-                            En attente
+                            À décaisser
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {['validé', 'valide', 'validated'].includes(item.statut) ? (
+                        {item.decaisse ? (
                           <span className="text-sm text-success flex items-center justify-end gap-1">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Fait
+                            <Receipt className="h-4 w-4" />
+                            #{item.mouvement_id}
+                          </span>
+                        ) : item.refusee ? (
+                          <span className="text-sm text-destructive flex items-center justify-end gap-1">
+                            <Ban className="h-4 w-4" />
+                            Ignoré
                           </span>
                         ) : (
-                          <Button
-                            size="sm"
-                            className="gap-1"
-                            onClick={async () => {
-                              try {
-                                await api.post(`/caisse-garage/${item.type_key}/${item.id}/valider`);
-                                refetch();
-                              } catch (e) {
-                                console.error('Erreur validation:', e);
-                              }
-                            }}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Valider
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" className="gap-1" onClick={() => onDecaisser({
+                              id: item.id,
+                              type: item.type,
+                              beneficiaire: item.fournisseur_nom || item.beneficiaire,
+                              montant: item.montant,
+                              source: 'GARAGE' as const,
+                              decaisse: false,
+                              refusee: false,
+                              mouvement_id: null,
+                              date_decaissement: null,
+                              mode_paiement_decaissement: null,
+                              payee: true,
+                              paiement_valide: true,
+                              responsable: null,
+                              reference_paiement: null,
+                              numero_paiement: item.numero,
+                              statut: null,
+                              camion_plaque: null,
+                              parc: null,
+                              responsable_nom: null,
+                              prestataire_nom: null,
+                              created_at: item.created_at,
+                            })}>
+                              <Coins className="h-4 w-4" />
+                              Décaisser
+                            </Button>
+                            <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive" onClick={() => onRefuser({
+                              id: item.id,
+                              type: item.type,
+                              beneficiaire: item.fournisseur_nom || item.beneficiaire,
+                              montant: item.montant,
+                              source: 'GARAGE' as const,
+                              decaisse: false,
+                              refusee: false,
+                              mouvement_id: null,
+                              date_decaissement: null,
+                              mode_paiement_decaissement: null,
+                              payee: true,
+                              paiement_valide: true,
+                              responsable: null,
+                              reference_paiement: null,
+                              numero_paiement: item.numero,
+                              statut: null,
+                              camion_plaque: null,
+                              parc: null,
+                              responsable_nom: null,
+                              prestataire_nom: null,
+                              created_at: item.created_at,
+                            })}>
+                              <XCircle className="h-4 w-4" />
+                              Refuser
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </motion.tr>
@@ -256,7 +265,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
   );
 }
 
-export function GarageTable() {
+export function GarageTable({ onDecaisser, onRefuser }: GarageTableProps) {
   return (
     <Tabs defaultValue="piston" className="w-full">
       <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -271,11 +280,11 @@ export function GarageTable() {
       </TabsList>
 
       <TabsContent value="piston" className="mt-4">
-        <div><GarageSubTable fournisseurFilter="piston" /></div>
+        <div><GarageSubTable fournisseurFilter="piston" onDecaisser={onDecaisser} onRefuser={onRefuser} /></div>
       </TabsContent>
 
       <TabsContent value="autres" className="mt-4">
-        <div><GarageSubTable fournisseurFilter="autres" /></div>
+        <div><GarageSubTable fournisseurFilter="autres" onDecaisser={onDecaisser} onRefuser={onRefuser} /></div>
       </TabsContent>
     </Tabs>
   );

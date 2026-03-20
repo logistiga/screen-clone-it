@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Audit;
 use App\Models\MouvementCaisse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -11,17 +12,29 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * Contrôleur pour les achats Garage en attente de validation
+ * Contrôleur pour les achats Garage validés en attente de décaissement
  * 
- * Tables concernées (base garage) :
- * - bon_commandes (statut: brouillon → validé)
- * - achat_pneus (statut: en_attente → valide)
- * - achats_divers (statut: en_attente → valide)
- * - fournisseurs (table de référence)
+ * Lit uniquement les achats VALIDÉS depuis la base garage (logiwkuh_gr)
+ * puis gère le décaissement/refus localement (même pattern que OPS/CNV/HORSLBV)
+ * 
+ * Tables sources (base garage, READ ONLY) :
+ * - bon_commandes (statut = 'validé')
+ * - achat_pneus (statut = 'valide')
+ * - achats_divers (statut = 'valide')
  */
 class CaisseGarageController extends Controller
 {
     private const PISTON_GABON = 'piston gabon';
+
+    public static function buildRef(string $id): string
+    {
+        return 'GARAGE-ACHAT-' . $id;
+    }
+
+    public static function categorie(): string
+    {
+        return 'Achats Garage';
+    }
 
     public function isAvailable(): bool
     {
@@ -35,46 +48,53 @@ class CaisseGarageController extends Controller
     }
 
     /**
-     * Stats globales des achats garage
+     * Stats des achats garage validés (en attente de décaissement)
      */
     public function stats(Request $request): JsonResponse
     {
         if (!$this->isAvailable()) {
             return response()->json([
-                'total_en_attente' => 0,
-                'nombre_en_attente' => 0,
                 'total_valide' => 0,
-                'nombre_valide' => 0,
+                'nombre_primes' => 0,
+                'total_a_decaisser' => 0,
+                'nombre_a_decaisser' => 0,
+                'deja_decaissees' => 0,
+                'total_decaisse' => 0,
                 'message' => 'Base Garage indisponible',
             ]);
         }
 
         try {
-            $filter = $request->get('fournisseur_filter', 'all'); // all, piston, autres
+            $filter = $request->get('fournisseur_filter', 'all');
+            $allItems = $this->fetchAllValidated(null, $filter);
+            $allItems = $this->attachDecaissementStatus($allItems);
 
-            $bcStats = $this->getBonCommandeStats($filter);
-            $pneuStats = $this->getAchatPneuStats($filter);
-            $diversStats = $this->getAchatDiversStats($filter);
+            $aDecaisser = $allItems->filter(fn($i) => !$i->decaisse && !$i->refusee);
+            $decaissees = $allItems->filter(fn($i) => $i->decaisse);
 
             return response()->json([
-                'total_en_attente' => $bcStats['en_attente_montant'] + $pneuStats['en_attente_montant'] + $diversStats['en_attente_montant'],
-                'nombre_en_attente' => $bcStats['en_attente_count'] + $pneuStats['en_attente_count'] + $diversStats['en_attente_count'],
-                'total_valide' => $bcStats['valide_montant'] + $pneuStats['valide_montant'] + $diversStats['valide_montant'],
-                'nombre_valide' => $bcStats['valide_count'] + $pneuStats['valide_count'] + $diversStats['valide_count'],
+                'total_valide' => $allItems->sum('montant'),
+                'nombre_primes' => $allItems->count(),
+                'total_a_decaisser' => $aDecaisser->sum('montant'),
+                'nombre_a_decaisser' => $aDecaisser->count(),
+                'deja_decaissees' => $decaissees->count(),
+                'total_decaisse' => $decaissees->sum('montant'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'total_en_attente' => 0,
-                'nombre_en_attente' => 0,
                 'total_valide' => 0,
-                'nombre_valide' => 0,
+                'nombre_primes' => 0,
+                'total_a_decaisser' => 0,
+                'nombre_a_decaisser' => 0,
+                'deja_decaissees' => 0,
+                'total_decaisse' => 0,
                 'error' => 'Erreur: ' . $e->getMessage(),
             ]);
         }
     }
 
     /**
-     * Liste des achats garage (bon_commandes + achat_pneus + achats_divers)
+     * Liste des achats garage validés avec statut décaissement
      */
     public function index(Request $request): JsonResponse
     {
@@ -90,36 +110,22 @@ class CaisseGarageController extends Controller
             $perPage = (int) $request->get('per_page', 20);
             $page = (int) $request->get('page', 1);
             $search = $request->get('search');
-            $statut = $request->get('statut', 'en_attente');
+            $statut = $request->get('statut', 'all');
             $fournisseurFilter = $request->get('fournisseur_filter', 'all');
 
-            $allItems = collect();
+            $allItems = $this->fetchAllValidated($search, $fournisseurFilter);
+            $allItems = $this->attachDecaissementStatus($allItems);
 
-            // Bons de commande
-            if (Schema::connection('garage')->hasTable('bon_commandes')) {
-                $allItems = $allItems->merge($this->fetchBonCommandes($search, $fournisseurFilter));
+            // Filtrer par statut de décaissement
+            if ($statut === 'a_decaisser') {
+                $allItems = $allItems->filter(fn($i) => !$i->decaisse && !$i->refusee);
+            } elseif ($statut === 'decaisse') {
+                $allItems = $allItems->filter(fn($i) => $i->decaisse);
+            } elseif ($statut === 'refusee') {
+                $allItems = $allItems->filter(fn($i) => $i->refusee);
             }
 
-            // Achats pneus
-            if (Schema::connection('garage')->hasTable('achat_pneus')) {
-                $allItems = $allItems->merge($this->fetchAchatPneus($search, $fournisseurFilter));
-            }
-
-            // Achats divers
-            if (Schema::connection('garage')->hasTable('achats_divers')) {
-                $allItems = $allItems->merge($this->fetchAchatsDivers($search, $fournisseurFilter));
-            }
-
-            // Filtrer par statut
-            if ($statut === 'en_attente') {
-                $allItems = $allItems->filter(fn($item) => in_array($item['statut'], ['brouillon', 'en_attente']));
-            } elseif ($statut === 'valide') {
-                $allItems = $allItems->filter(fn($item) => in_array($item['statut'], ['validé', 'valide', 'validated']));
-            }
-
-            // Trier par date desc
             $allItems = $allItems->sortByDesc('date')->values();
-
             $total = $allItems->count();
             $lastPage = max(1, ceil($total / $perPage));
             $items = $allItems->forPage($page, $perPage)->values();
@@ -142,51 +148,35 @@ class CaisseGarageController extends Controller
         }
     }
 
-    /**
-     * Valider un achat garage
-     */
-    public function valider(Request $request, string $type, int $id): JsonResponse
+    // ─── Fetch validated items from garage DB ───────────────
+
+    private function fetchAllValidated(?string $search, string $fournisseurFilter): \Illuminate\Support\Collection
     {
-        if (!$this->isAvailable()) {
-            return response()->json(['error' => 'Base Garage indisponible'], 503);
+        $allItems = collect();
+
+        if (Schema::connection('garage')->hasTable('bon_commandes')) {
+            $allItems = $allItems->merge($this->fetchBonCommandes($search, $fournisseurFilter));
+        }
+        if (Schema::connection('garage')->hasTable('achat_pneus')) {
+            $allItems = $allItems->merge($this->fetchAchatPneus($search, $fournisseurFilter));
+        }
+        if (Schema::connection('garage')->hasTable('achats_divers')) {
+            $allItems = $allItems->merge($this->fetchAchatsDivers($search, $fournisseurFilter));
         }
 
-        try {
-            $tableMap = [
-                'bon_commande' => 'bon_commandes',
-                'achat_pneu' => 'achat_pneus',
-                'achat_divers' => 'achats_divers',
-            ];
-
-            $table = $tableMap[$type] ?? null;
-            if (!$table) {
-                return response()->json(['error' => 'Type invalide'], 400);
-            }
-
-            $statutValide = $type === 'bon_commande' ? 'validé' : 'valide';
-
-            DB::connection('garage')->table($table)
-                ->where('id', $id)
-                ->update(['statut' => $statutValide]);
-
-            return response()->json(['success' => true, 'message' => 'Achat validé avec succès']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Erreur: ' . $e->getMessage()], 500);
-        }
+        return $allItems;
     }
-
-    // ─── Private helpers ─────────────────────────────────
 
     private function fetchBonCommandes(?string $search, string $fournisseurFilter): \Illuminate\Support\Collection
     {
         $query = DB::connection('garage')
             ->table('bon_commandes')
             ->leftJoin('fournisseurs', 'bon_commandes.fournisseur_id', '=', 'fournisseurs.id')
+            ->whereIn('bon_commandes.statut', ['validé', 'validated'])
             ->select([
                 'bon_commandes.id',
                 'bon_commandes.numero',
                 'bon_commandes.date_commande as date',
-                'bon_commandes.statut',
                 'bon_commandes.montant_total as montant',
                 'bon_commandes.created_at',
                 'fournisseurs.raison_sociale as fournisseur_nom',
@@ -201,15 +191,15 @@ class CaisseGarageController extends Controller
             });
         }
 
-        return $query->get()->map(fn($row) => [
-            'id' => $row->id,
+        return $query->get()->map(fn($row) => (object) [
+            'id' => 'bc-' . $row->id,
             'type' => 'Bon de commande',
             'type_key' => 'bon_commande',
             'numero' => $row->numero,
+            'beneficiaire' => $row->fournisseur_nom,
             'fournisseur_nom' => $row->fournisseur_nom,
             'date' => $row->date,
             'montant' => (float) $row->montant,
-            'statut' => $row->statut,
             'designation' => $row->numero,
             'created_at' => $row->created_at,
             'source' => 'GARAGE',
@@ -221,15 +211,14 @@ class CaisseGarageController extends Controller
         $query = DB::connection('garage')
             ->table('achat_pneus')
             ->leftJoin('fournisseurs', 'achat_pneus.fournisseur_id', '=', 'fournisseurs.id')
+            ->whereIn('achat_pneus.statut', ['valide', 'validated'])
             ->select([
                 'achat_pneus.id',
                 'achat_pneus.date_achat as date',
                 'achat_pneus.marque',
                 'achat_pneus.dimension',
                 'achat_pneus.quantite',
-                'achat_pneus.prix_unitaire',
                 'achat_pneus.montant_total as montant',
-                'achat_pneus.statut',
                 'achat_pneus.created_at',
                 'fournisseurs.raison_sociale as fournisseur_nom',
             ]);
@@ -244,15 +233,15 @@ class CaisseGarageController extends Controller
             });
         }
 
-        return $query->get()->map(fn($row) => [
-            'id' => $row->id,
+        return $query->get()->map(fn($row) => (object) [
+            'id' => 'pn-' . $row->id,
             'type' => 'Achat pneu',
             'type_key' => 'achat_pneu',
             'numero' => null,
+            'beneficiaire' => $row->fournisseur_nom,
             'fournisseur_nom' => $row->fournisseur_nom,
             'date' => $row->date,
             'montant' => (float) $row->montant,
-            'statut' => $row->statut,
             'designation' => ($row->marque ?? '') . ' ' . ($row->dimension ?? '') . ' (x' . ($row->quantite ?? 1) . ')',
             'created_at' => $row->created_at,
             'source' => 'GARAGE',
@@ -264,11 +253,11 @@ class CaisseGarageController extends Controller
         $query = DB::connection('garage')
             ->table('achats_divers')
             ->leftJoin('fournisseurs', 'achats_divers.fournisseur_id', '=', 'fournisseurs.id')
+            ->whereIn('achats_divers.statut', ['valide', 'validated'])
             ->select([
                 'achats_divers.id',
                 'achats_divers.numero',
                 'achats_divers.date_achat as date',
-                'achats_divers.statut',
                 'achats_divers.montant_total as montant',
                 'achats_divers.created_at',
                 'fournisseurs.raison_sociale as fournisseur_nom',
@@ -283,20 +272,128 @@ class CaisseGarageController extends Controller
             });
         }
 
-        return $query->get()->map(fn($row) => [
-            'id' => $row->id,
+        return $query->get()->map(fn($row) => (object) [
+            'id' => 'div-' . $row->id,
             'type' => 'Achat divers',
             'type_key' => 'achat_divers',
             'numero' => $row->numero,
+            'beneficiaire' => $row->fournisseur_nom,
             'fournisseur_nom' => $row->fournisseur_nom,
             'date' => $row->date,
             'montant' => (float) $row->montant,
-            'statut' => $row->statut,
             'designation' => $row->numero,
             'created_at' => $row->created_at,
             'source' => 'GARAGE',
         ]);
     }
+
+    // ─── Décaissement / Refus (local) ───────────────────────
+
+    /**
+     * Décaisser un achat garage validé
+     */
+    public function decaisser(Request $request, string $itemId): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'mode_paiement' => 'required|in:Espèces,Virement,Chèque,Mobile Money',
+            'banque_id' => 'nullable|exists:banques,id',
+            'reference' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $refUnique = self::buildRef($itemId);
+
+        // Vérifier si déjà décaissé
+        if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+            return response()->json(['message' => 'Cet achat a déjà été décaissé'], 422);
+        }
+
+        $item = $this->getPrimeForDecaissement($itemId);
+        if (!$item) {
+            return response()->json(['message' => 'Achat non trouvé'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $beneficiaire = $item->beneficiaire ?? $item->fournisseur_nom ?? 'Fournisseur Garage';
+            $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
+
+            $description = "Achat Garage ({$item->type}) - {$beneficiaire}";
+
+            $mouvement = MouvementCaisse::create([
+                'type' => 'Sortie',
+                'categorie' => self::categorie(),
+                'montant' => $item->montant,
+                'description' => $description,
+                'beneficiaire' => $beneficiaire,
+                'reference' => $refUnique,
+                'mode_paiement' => $request->mode_paiement,
+                'date' => now()->toDateString(),
+                'source' => $isCaisse ? 'caisse' : 'banque',
+                'banque_id' => $request->banque_id,
+            ]);
+
+            Audit::log('create', 'decaissement_garage', "Décaissement achat Garage: {$item->montant} - {$beneficiaire}", $mouvement->id);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Décaissement validé avec succès',
+                'mouvement' => $mouvement,
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Erreur lors du décaissement',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Refuser un achat garage
+     */
+    public function refuser(Request $request, string $itemId): JsonResponse
+    {
+        $reference = self::buildRef($itemId);
+
+        if (DB::table('primes_refusees')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Cet achat a déjà été refusé'], 422);
+        }
+
+        if (DB::table('mouvements_caisse')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Cet achat a déjà été décaissé, impossible de le refuser'], 422);
+        }
+
+        try {
+            DB::table('primes_refusees')->insert([
+                'prime_id' => $itemId,
+                'source' => 'GARAGE',
+                'reference' => $reference,
+                'motif' => $request->get('motif'),
+                'user_id' => $request->user()?->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Audit::log('create', 'refus_garage', "Refus achat Garage: {$itemId}", null);
+
+            return response()->json(['message' => 'Achat refusé avec succès'], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors du refus',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────
 
     private function applyFournisseurFilter($query, string $filter)
     {
@@ -311,54 +408,54 @@ class CaisseGarageController extends Controller
         return $query;
     }
 
-    private function getBonCommandeStats(string $filter): array
+    /**
+     * Attache le statut décaissé/refusé à chaque item
+     */
+    private function attachDecaissementStatus(\Illuminate\Support\Collection $items): \Illuminate\Support\Collection
     {
-        $baseQuery = DB::connection('garage')->table('bon_commandes')
-            ->leftJoin('fournisseurs', 'bon_commandes.fournisseur_id', '=', 'fournisseurs.id');
-        $baseQuery = $this->applyFournisseurFilter($baseQuery, $filter);
+        if ($items->isEmpty()) return $items;
 
-        $enAttente = (clone $baseQuery)->whereIn('bon_commandes.statut', ['brouillon', 'en_attente']);
-        $valide = (clone $baseQuery)->whereIn('bon_commandes.statut', ['validé', 'validated']);
+        $refs = $items->map(fn($i) => self::buildRef($i->id))->toArray();
 
-        return [
-            'en_attente_montant' => (float) $enAttente->sum('bon_commandes.montant_total'),
-            'en_attente_count' => $enAttente->count(),
-            'valide_montant' => (float) $valide->sum('bon_commandes.montant_total'),
-            'valide_count' => $valide->count(),
-        ];
+        $mouvements = DB::table('mouvements_caisse')
+            ->where('categorie', self::categorie())
+            ->whereIn('reference', $refs)
+            ->get(['id', 'reference', 'date', 'mode_paiement'])
+            ->keyBy('reference');
+
+        $refusees = DB::table('primes_refusees')
+            ->whereIn('reference', $refs)
+            ->pluck('reference')
+            ->toArray();
+
+        return $items->map(function ($item) use ($mouvements, $refusees) {
+            $ref = self::buildRef($item->id);
+            $mouvement = $mouvements[$ref] ?? null;
+            $item->decaisse = $mouvement !== null;
+            $item->mouvement_id = $mouvement?->id;
+            $item->date_decaissement = $mouvement?->date;
+            $item->mode_paiement_decaissement = $mouvement?->mode_paiement;
+            $item->refusee = in_array($ref, $refusees);
+            return $item;
+        });
     }
 
-    private function getAchatPneuStats(string $filter): array
+    /**
+     * Récupère un achat pour le décaissement (utilisé par CaisseEnAttenteController)
+     */
+    public function getPrimeForDecaissement(string $itemId): ?object
     {
-        $baseQuery = DB::connection('garage')->table('achat_pneus')
-            ->leftJoin('fournisseurs', 'achat_pneus.fournisseur_id', '=', 'fournisseurs.id');
-        $baseQuery = $this->applyFournisseurFilter($baseQuery, $filter);
+        if (!$this->isAvailable()) return null;
 
-        $enAttente = (clone $baseQuery)->whereIn('achat_pneus.statut', ['en_attente', 'brouillon']);
-        $valide = (clone $baseQuery)->whereIn('achat_pneus.statut', ['valide', 'validated']);
-
-        return [
-            'en_attente_montant' => (float) $enAttente->sum('achat_pneus.montant_total'),
-            'en_attente_count' => $enAttente->count(),
-            'valide_montant' => (float) $valide->sum('achat_pneus.montant_total'),
-            'valide_count' => $valide->count(),
-        ];
+        $allItems = $this->fetchAllValidated(null, 'all');
+        return $allItems->firstWhere('id', $itemId);
     }
 
-    private function getAchatDiversStats(string $filter): array
+    /**
+     * Récupère toutes les primes validées (utilisé par CaisseEnAttenteController pour les stats)
+     */
+    public function fetchPrimes(?string $search): \Illuminate\Support\Collection
     {
-        $baseQuery = DB::connection('garage')->table('achats_divers')
-            ->leftJoin('fournisseurs', 'achats_divers.fournisseur_id', '=', 'fournisseurs.id');
-        $baseQuery = $this->applyFournisseurFilter($baseQuery, $filter);
-
-        $enAttente = (clone $baseQuery)->whereIn('achats_divers.statut', ['en_attente', 'brouillon']);
-        $valide = (clone $baseQuery)->whereIn('achats_divers.statut', ['valide', 'validated']);
-
-        return [
-            'en_attente_montant' => (float) $enAttente->sum('achats_divers.montant_total'),
-            'en_attente_count' => $enAttente->count(),
-            'valide_montant' => (float) $valide->sum('achats_divers.montant_total'),
-            'valide_count' => $valide->count(),
-        ];
+        return $this->fetchAllValidated($search, 'all');
     }
 }
