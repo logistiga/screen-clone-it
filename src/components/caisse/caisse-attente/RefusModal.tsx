@@ -28,6 +28,7 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       const endpointMap: Record<string, string> = {
         CNV: `/caisse-cnv/${primeId}/refuser`,
         HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
+        GARAGE: `/caisse-garage/${primeId}/refuser`,
         OPS: `/caisse-en-attente/${primeId}/refuser`,
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
