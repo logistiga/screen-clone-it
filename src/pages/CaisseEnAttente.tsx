@@ -146,7 +146,7 @@ export default function CaisseEnAttentePage() {
           </TabsContent>
 
           <TabsContent value="GARAGE" className="mt-4">
-            <GarageTable />
+            <GarageTable onDecaisser={openDecaissementModal} onRefuser={openRefusModal} />
           </TabsContent>
         </Tabs>
       </div>
