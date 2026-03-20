@@ -55,20 +55,18 @@ return [
         |--------------------------------------------------------------------------
         | Connexion Logistiga OPS (READ ONLY)
         |--------------------------------------------------------------------------
-        | Cette connexion permet à FAC de lire les données depuis la base OPS.
-        | Utilisée pour la synchronisation des conteneurs traités et armateurs.
+        | Synchronisation conteneurs traités et armateurs : OPS → FAC
         */
         'ops' => [
             'driver' => 'mysql',
             'host' => env('OPS_DB_HOST', '127.0.0.1'),
             'port' => env('OPS_DB_PORT', '3306'),
             'database' => env('OPS_DB_DATABASE', 'logistiga_ops'),
-            'username' => env('OPS_DB_USERNAME', 'root'),
+            'username' => env('OPS_DB_USERNAME', 'fac_reader'),
             'password' => env('OPS_DB_PASSWORD', ''),
-             // Ne pas réutiliser DB_SOCKET (connexion principale) : OPS peut avoir un socket différent
-             'unix_socket' => env('OPS_DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'unix_socket' => env('OPS_DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
