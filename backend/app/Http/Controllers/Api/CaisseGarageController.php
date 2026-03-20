@@ -294,8 +294,66 @@ class CaisseGarageController extends Controller
      */
     public function decaisser(Request $request, string $itemId): JsonResponse
     {
-        // Handled by CaisseEnAttenteController::decaisser with source=GARAGE
-        return response()->json(['message' => 'Use /caisse-en-attente/{id}/decaisser with source=GARAGE'], 400);
+        $validator = Validator::make($request->all(), [
+            'mode_paiement' => 'required|in:Espèces,Virement,Chèque,Mobile Money',
+            'banque_id' => 'nullable|exists:banques,id',
+            'reference' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $refUnique = self::buildRef($itemId);
+
+        // Vérifier si déjà décaissé
+        if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+            return response()->json(['message' => 'Cet achat a déjà été décaissé'], 422);
+        }
+
+        $item = $this->getPrimeForDecaissement($itemId);
+        if (!$item) {
+            return response()->json(['message' => 'Achat non trouvé'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $beneficiaire = $item->beneficiaire ?? $item->fournisseur_nom ?? 'Fournisseur Garage';
+            $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
+
+            $description = "Achat Garage ({$item->type}) - {$beneficiaire}";
+
+            $mouvement = MouvementCaisse::create([
+                'type' => 'Sortie',
+                'categorie' => self::categorie(),
+                'montant' => $item->montant,
+                'description' => $description,
+                'beneficiaire' => $beneficiaire,
+                'reference' => $refUnique,
+                'mode_paiement' => $request->mode_paiement,
+                'date' => now()->toDateString(),
+                'source' => $isCaisse ? 'caisse' : 'banque',
+                'banque_id' => $request->banque_id,
+            ]);
+
+            Audit::log('create', 'decaissement_garage', "Décaissement achat Garage: {$item->montant} - {$beneficiaire}", $mouvement->id);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Décaissement validé avec succès',
+                'mouvement' => $mouvement,
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Erreur lors du décaissement',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -303,8 +361,36 @@ class CaisseGarageController extends Controller
      */
     public function refuser(Request $request, string $itemId): JsonResponse
     {
-        // Handled by CaisseEnAttenteController::doRefuser
-        return response()->json(['message' => 'Use /caisse-en-attente/{id}/refuser with source=GARAGE'], 400);
+        $reference = self::buildRef($itemId);
+
+        if (DB::table('primes_refusees')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Cet achat a déjà été refusé'], 422);
+        }
+
+        if (DB::table('mouvements_caisse')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Cet achat a déjà été décaissé, impossible de le refuser'], 422);
+        }
+
+        try {
+            DB::table('primes_refusees')->insert([
+                'prime_id' => $itemId,
+                'source' => 'GARAGE',
+                'reference' => $reference,
+                'motif' => $request->get('motif'),
+                'user_id' => $request->user()?->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Audit::log('create', 'refus_garage', "Refus achat Garage: {$itemId}", null);
+
+            return response()->json(['message' => 'Achat refusé avec succès'], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors du refus',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     // ─── Helpers ─────────────────────────────────────────────
