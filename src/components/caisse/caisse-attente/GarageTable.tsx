@@ -279,11 +279,11 @@ export function GarageTable() {
       </TabsList>
 
       <TabsContent value="piston" className="mt-4">
-        <GarageSubTable fournisseurFilter="piston" />
+        <div><GarageSubTable fournisseurFilter="piston" /></div>
       </TabsContent>
 
       <TabsContent value="autres" className="mt-4">
-        <GarageSubTable fournisseurFilter="autres" />
+        <div><GarageSubTable fournisseurFilter="autres" /></div>
       </TabsContent>
     </Tabs>
   );
