@@ -55,20 +55,18 @@ return [
         |--------------------------------------------------------------------------
         | Connexion Logistiga OPS (READ ONLY)
         |--------------------------------------------------------------------------
-        | Cette connexion permet à FAC de lire les données depuis la base OPS.
-        | Utilisée pour la synchronisation des conteneurs traités et armateurs.
+        | Synchronisation conteneurs traités et armateurs : OPS → FAC
         */
         'ops' => [
             'driver' => 'mysql',
             'host' => env('OPS_DB_HOST', '127.0.0.1'),
             'port' => env('OPS_DB_PORT', '3306'),
             'database' => env('OPS_DB_DATABASE', 'logistiga_ops'),
-            'username' => env('OPS_DB_USERNAME', 'root'),
+            'username' => env('OPS_DB_USERNAME', 'fac_reader'),
             'password' => env('OPS_DB_PASSWORD', ''),
-             // Ne pas réutiliser DB_SOCKET (connexion principale) : OPS peut avoir un socket différent
-             'unix_socket' => env('OPS_DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'unix_socket' => env('OPS_DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
@@ -82,18 +80,18 @@ return [
         |--------------------------------------------------------------------------
         | Connexion Logistiga CNV (READ ONLY)
         |--------------------------------------------------------------------------
-        | Cette connexion permet à FAC de lire les primes conventionnelles.
+        | Primes conventionnelles
         */
         'cnv' => [
             'driver' => 'mysql',
             'host' => env('CNV_DB_HOST', '127.0.0.1'),
             'port' => env('CNV_DB_PORT', '3306'),
             'database' => env('CNV_DB_DATABASE', 'logiwkuh_cnv'),
-            'username' => env('CNV_DB_USERNAME', 'root'),
+            'username' => env('CNV_DB_USERNAME', 'fac_reader'),
             'password' => env('CNV_DB_PASSWORD', ''),
             'unix_socket' => env('CNV_DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
@@ -105,20 +103,20 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Connexion Logistiga Hors Libreville (READ ONLY)
+        | Connexion Hors Libreville (READ ONLY)
         |--------------------------------------------------------------------------
-        | Cette connexion permet à FAC de lire les fiches de dépenses hors Libreville.
+        | Fiches de dépenses hors Libreville
         */
         'horslbv' => [
             'driver' => 'mysql',
             'host' => env('HORSLBV_DB_HOST', '127.0.0.1'),
             'port' => env('HORSLBV_DB_PORT', '3306'),
             'database' => env('HORSLBV_DB_DATABASE', 'logiwkuh_horslbv'),
-            'username' => env('HORSLBV_DB_USERNAME', 'root'),
+            'username' => env('HORSLBV_DB_USERNAME', 'fac_reader'),
             'password' => env('HORSLBV_DB_PASSWORD', ''),
             'unix_socket' => env('HORSLBV_DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
@@ -132,18 +130,18 @@ return [
         |--------------------------------------------------------------------------
         | Connexion Garage (READ ONLY)
         |--------------------------------------------------------------------------
-        | Permet à FAC de lire les achats en attente de validation du Garage.
+        | Achats en attente de validation du Garage
         */
         'garage' => [
             'driver' => 'mysql',
             'host' => env('GARAGE_DB_HOST', '127.0.0.1'),
             'port' => env('GARAGE_DB_PORT', '3306'),
             'database' => env('GARAGE_DB_DATABASE', 'logiwkuh_gr'),
-            'username' => env('GARAGE_DB_USERNAME', 'root'),
+            'username' => env('GARAGE_DB_USERNAME', 'logiwkuh_lirgr'),
             'password' => env('GARAGE_DB_PASSWORD', ''),
             'unix_socket' => env('GARAGE_DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
