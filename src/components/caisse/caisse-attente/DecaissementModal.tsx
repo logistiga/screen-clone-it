@@ -39,7 +39,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
       const response = await api.post(endpoint, {
-        mode_paiement: modePaiement, reference, notes,
+        mode_paiement: modePaiement, reference, notes, source,
       });
       return response.data;
     },
@@ -48,9 +48,11 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-garage'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-garage-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
       onOpenChange(false);
