@@ -117,7 +117,7 @@ export default function CaisseEnAttentePage() {
             title="Total éléments"
             value={stats.nombre_primes}
             icon={Wallet}
-            subtitle="OPS + CNV + Hors LBV"
+            subtitle="OPS + CNV + Hors LBV + Garage"
             delay={0.3}
           />
         </div>
