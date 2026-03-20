@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  CheckCircle2, Wallet, Clock, Banknote, Truck, FileText, MapPin,
+  CheckCircle2, Wallet, Clock, Banknote, Truck, FileText, MapPin, Wrench,
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import api from "@/lib/api";
 import { DocumentStatCard } from "@/components/shared/documents";
 import { PrimesTable } from "@/components/caisse/caisse-attente/PrimesTable";
+import { GarageTable } from "@/components/caisse/caisse-attente/GarageTable";
 import { DecaissementModal } from "@/components/caisse/caisse-attente/DecaissementModal";
 import { RefusModal } from "@/components/caisse/caisse-attente/RefusModal";
 import { PrimeEnAttente, StatsResponse } from "@/components/caisse/caisse-attente/types";
@@ -113,7 +114,7 @@ export default function CaisseEnAttentePage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-lg">
+          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
             <TabsTrigger value="OPS" className="gap-2">
               <Truck className="h-4 w-4" />
               Conteneurs
@@ -125,6 +126,10 @@ export default function CaisseEnAttentePage() {
             <TabsTrigger value="HORSLBV" className="gap-2">
               <MapPin className="h-4 w-4" />
               Hors Libreville
+            </TabsTrigger>
+            <TabsTrigger value="GARAGE" className="gap-2">
+              <Wrench className="h-4 w-4" />
+              Garage
             </TabsTrigger>
           </TabsList>
 
@@ -138,6 +143,10 @@ export default function CaisseEnAttentePage() {
 
           <TabsContent value="HORSLBV" className="mt-4">
             <PrimesTable source="HORSLBV" onDecaisser={openDecaissementModal} onRefuser={openRefusModal} />
+          </TabsContent>
+
+          <TabsContent value="GARAGE" className="mt-4">
+            <GarageTable />
           </TabsContent>
         </Tabs>
       </div>

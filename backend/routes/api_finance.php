@@ -207,6 +207,18 @@ Route::prefix('caisse-horslbv')->middleware('audit')->group(function () {
 });
 
 // ============================================
+// CAISSE EN ATTENTE - GARAGE (achats validation)
+// ============================================
+Route::prefix('caisse-garage')->middleware('audit')->group(function () {
+    Route::get('/stats', [CaisseGarageController::class, 'stats'])
+        ->middleware('permission:caisse.voir');
+    Route::get('/', [CaisseGarageController::class, 'index'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/{type}/{id}/valider', [CaisseGarageController::class, 'valider'])
+        ->middleware('permission:caisse.creer');
+});
+
+// ============================================
 // CATÉGORIES DE DÉPENSES
 // ============================================
 Route::prefix('categories-depenses')->middleware('audit')->group(function () {
