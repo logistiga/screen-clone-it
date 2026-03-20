@@ -207,14 +207,16 @@ Route::prefix('caisse-horslbv')->middleware('audit')->group(function () {
 });
 
 // ============================================
-// CAISSE EN ATTENTE - GARAGE (achats validation)
+// CAISSE EN ATTENTE - GARAGE (achats validés → décaissement)
 // ============================================
 Route::prefix('caisse-garage')->middleware('audit')->group(function () {
     Route::get('/stats', [CaisseGarageController::class, 'stats'])
         ->middleware('permission:caisse.voir');
     Route::get('/', [CaisseGarageController::class, 'index'])
         ->middleware('permission:caisse.voir');
-    Route::post('/{type}/{id}/valider', [CaisseGarageController::class, 'valider'])
+    Route::post('/{itemId}/decaisser', [CaisseGarageController::class, 'decaisser'])
+        ->middleware('permission:caisse.creer');
+    Route::post('/{itemId}/refuser', [CaisseGarageController::class, 'refuser'])
         ->middleware('permission:caisse.creer');
 });
 
