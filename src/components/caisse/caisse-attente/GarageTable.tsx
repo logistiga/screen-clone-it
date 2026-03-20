@@ -42,14 +42,14 @@ interface GarageStatsResponse {
 }
 
 const statutOptions = [
+  { value: "all", label: "Tous les statuts" },
   { value: "en_attente", label: "En attente de validation" },
   { value: "valide", label: "Validés" },
-  { value: "all", label: "Tous" },
 ];
 
 function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | 'autres' }) {
   const [search, setSearch] = useState("");
-  const [statut, setStatut] = useState("en_attente");
+  const [statut, setStatut] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
