@@ -159,7 +159,7 @@ function GarageSubTable({ fournisseurFilter }: { fournisseurFilter: 'piston' | '
                         <Wallet className="h-8 w-8 opacity-50" />
                         <p>Aucun achat {label} trouvé</p>
                         {hasFilters && (
-                          <Button variant="link" onClick={() => { setSearch(""); setStatut("en_attente"); setPage(1); }} className="text-primary">
+                          <Button variant="link" onClick={() => { setSearch(""); setStatut("all"); setPage(1); }} className="text-primary">
                             Réinitialiser les filtres
                           </Button>
                         )}
