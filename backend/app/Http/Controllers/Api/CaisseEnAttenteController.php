@@ -201,7 +201,7 @@ class CaisseEnAttenteController extends Controller
             $beneficiaire = $prime->beneficiaire ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
 
-            $description = "Prime {$prime->type} - {$beneficiaire}";
+            $description = ($source === 'GARAGE' ? "Achat Garage" : "Prime {$prime->type}") . " - {$beneficiaire}";
             $numeroPaiement = $prime->numero_paiement ?? null;
             if ($numeroPaiement) {
                 $description .= " - {$numeroPaiement}";
