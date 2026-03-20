@@ -34,6 +34,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       const endpointMap: Record<string, string> = {
         CNV: `/caisse-cnv/${primeId}/decaisser`,
         HORSLBV: `/caisse-horslbv/${primeId}/decaisser`,
+        GARAGE: `/caisse-garage/${primeId}/decaisser`,
         OPS: `/caisse-en-attente/${primeId}/decaisser`,
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
