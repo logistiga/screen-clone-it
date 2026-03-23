@@ -101,6 +101,7 @@ const BanquePage = lazy(() => import("./pages/Banque"));
 const CaisseGlobalePage = lazy(() => import("./pages/CaisseGlobale"));
 const PrimesDecaissementPage = lazy(() => import("./pages/PrimesDecaissement"));
 const CaisseEnAttentePage = lazy(() => import("./pages/CaisseEnAttente"));
+const PaiementsFournisseursPage = lazy(() => import("./pages/PaiementsFournisseurs"));
 const FacturesExonereesPage = lazy(() => import("./pages/FacturesExonerees"));
 const ReportingPage = lazy(() => import("./pages/Reporting"));
 const ReportingPDFPage = lazy(() => import("./pages/ReportingPDF"));
