@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,7 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Wallet, Coins, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Wallet, Coins, Loader2, AlertTriangle } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -28,6 +29,42 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   const [modePaiement, setModePaiement] = useState("Espèces");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [categorie, setCategorie] = useState("");
+  const [montantDecaisse, setMontantDecaisse] = useState("");
+  const [paiementPartiel, setPaiementPartiel] = useState(false);
+
+  // Charger les catégories de dépenses
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories-depenses', { type: 'Sortie', actif: true }],
+    queryFn: async () => {
+      const response = await api.get('/categories-depenses', { params: { type: 'Sortie', actif: true } });
+      return response.data;
+    },
+    enabled: open,
+  });
+
+  const categories = categoriesData?.data || [];
+
+  // Pré-remplir quand la prime change
+  useEffect(() => {
+    if (prime && open) {
+      setMontantDecaisse(String(prime.montant));
+      setPaiementPartiel(false);
+      // Pré-remplir catégorie selon la source
+      const defaultCat = prime.source === 'GARAGE' ? 'Achats Garage' :
+        prime.source === 'HORSLBV' ? 'Primes Hors Libreville' :
+        prime.source === 'CNV' ? 'Primes Conventionnel' : 'Primes OPS';
+      setCategorie(defaultCat);
+      // Pré-remplir notes
+      const autoNotes = [
+        prime.type && `Type: ${prime.type}`,
+        prime.numero_paiement && `N°: ${prime.numero_paiement}`,
+        prime.camion_plaque && `Camion: ${prime.camion_plaque}`,
+        prime.parc && `Parc: ${prime.parc}`,
+      ].filter(Boolean).join(' | ');
+      setNotes(autoNotes);
+    }
+  }, [prime, open]);
 
   const mutation = useMutation({
     mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
@@ -38,8 +75,15 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
         OPS: `/caisse-en-attente/${primeId}/decaisser`,
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
+      const montant = paiementPartiel ? parseFloat(montantDecaisse) : prime?.montant;
       const response = await api.post(endpoint, {
-        mode_paiement: modePaiement, reference, notes, source,
+        mode_paiement: modePaiement,
+        reference,
+        notes,
+        source,
+        categorie,
+        montant: montant,
+        paiement_partiel: paiementPartiel,
       });
       return response.data;
     },
@@ -55,6 +99,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       queryClient.invalidateQueries({ queryKey: ['caisse-garage-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      queryClient.invalidateQueries({ queryKey: ['paiements-fournisseurs'] });
       onOpenChange(false);
       resetForm();
     },
@@ -67,87 +112,129 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
     setModePaiement("Espèces");
     setReference("");
     setNotes("");
+    setCategorie("");
+    setMontantDecaisse("");
+    setPaiementPartiel(false);
   };
 
   const handleConfirm = () => {
     if (!prime) return;
+    const montant = parseFloat(montantDecaisse);
+    if (isNaN(montant) || montant <= 0) {
+      toast.error("Montant invalide");
+      return;
+    }
+    if (montant > prime.montant) {
+      toast.error("Le montant ne peut pas dépasser le montant total");
+      return;
+    }
     mutation.mutate({ primeId: prime.id, source: prime.source });
   };
 
+  const montantNum = parseFloat(montantDecaisse) || 0;
+  const reste = prime ? prime.montant - montantNum : 0;
+  const sourceLabel = prime?.source === 'OPS' ? 'Conteneurs (OPS)' :
+    prime?.source === 'CNV' ? 'Conventionnel (CNV)' :
+    prime?.source === 'HORSLBV' ? 'Hors Libreville' :
+    prime?.source === 'GARAGE' ? 'Garage' : '-';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-primary" />
             Valider le décaissement
           </DialogTitle>
           <DialogDescription>
-            Cette action va créer une sortie de caisse pour cette prime.
+            Formulaire pré-rempli. Modifiez les champs si nécessaire.
           </DialogDescription>
         </DialogHeader>
 
         {prime && (
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
+            {/* Résumé de l'opération */}
             <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Source:</span>
-                <Badge variant="secondary">
-                  {prime.source === 'OPS' ? 'Conteneurs (OPS)' : prime.source === 'CNV' ? 'Conventionnel (CNV)' : 'Hors Libreville'}
-                </Badge>
+                <Badge variant="secondary">{sourceLabel}</Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Montant:</span>
+                <span className="text-sm text-muted-foreground">Montant total:</span>
                 <span className="font-semibold text-lg">{formatMontant(prime.montant)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Type:</span>
-                <span className="capitalize">{prime.type || '-'}</span>
-              </div>
+              {prime.type && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Type:</span>
+                  <span className="capitalize">{prime.type}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Bénéficiaire:</span>
                 <span className="font-medium">{prime.beneficiaire || '-'}</span>
               </div>
-              {prime.camion_plaque && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Camion:</span>
-                  <span>{prime.camion_plaque}</span>
-                </div>
-              )}
-              {prime.parc && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Parc:</span>
-                  <span>{prime.parc}</span>
-                </div>
-              )}
-              {prime.prestataire_nom && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Prestataire:</span>
-                  <span>{prime.prestataire_nom}</span>
-                </div>
-              )}
-              {(prime.responsable_nom || prime.responsable) && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Responsable:</span>
-                  <span>{prime.responsable_nom || prime.responsable}</span>
-                </div>
-              )}
               {prime.numero_paiement && (
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">N° Paiement:</span>
                   <span className="font-medium font-mono">{prime.numero_paiement}</span>
                 </div>
               )}
-              {prime.reference_paiement && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Réf. Paiement:</span>
-                  <span>{prime.reference_paiement}</span>
+            </div>
+
+            {/* Paiement partiel toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Paiement partiel (avance)</Label>
+                <p className="text-xs text-muted-foreground">Payer une partie du montant uniquement</p>
+              </div>
+              <Switch checked={paiementPartiel} onCheckedChange={setPaiementPartiel} />
+            </div>
+
+            {/* Montant à décaisser */}
+            <div className="space-y-2">
+              <Label>Montant à décaisser *</Label>
+              <Input
+                type="number"
+                value={montantDecaisse}
+                onChange={(e) => setMontantDecaisse(e.target.value)}
+                disabled={!paiementPartiel}
+                min={0}
+                max={prime.montant}
+                step={100}
+              />
+              {paiementPartiel && montantNum > 0 && montantNum < prime.montant && (
+                <div className="flex items-center gap-2 text-sm text-warning">
+                  <AlertTriangle className="h-4 w-4" />
+                  Reste à payer: {formatMontant(reste)}
                 </div>
               )}
             </div>
 
+            {/* Catégorie */}
             <div className="space-y-2">
-              <Label>Mode de paiement</Label>
+              <Label>Catégorie de dépense *</Label>
+              <Select value={categorie} onValueChange={setCategorie}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger>
+                <SelectContent>
+                  {/* Catégories par défaut */}
+                  <SelectItem value="Primes OPS">Primes OPS</SelectItem>
+                  <SelectItem value="Primes Conventionnel">Primes Conventionnel</SelectItem>
+                  <SelectItem value="Primes Hors Libreville">Primes Hors Libreville</SelectItem>
+                  <SelectItem value="Achats Garage">Achats Garage</SelectItem>
+                  {/* Catégories personnalisées */}
+                  {categories
+                    .filter((c: any) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage'].includes(c.nom))
+                    .map((c: any) => (
+                      <SelectItem key={c.id} value={c.nom}>{c.nom}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Mode de paiement */}
+            <div className="space-y-2">
+              <Label>Mode de paiement *</Label>
               <Select value={modePaiement} onValueChange={setModePaiement}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -159,6 +246,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               </Select>
             </div>
 
+            {/* Référence */}
             <div className="space-y-2">
               <Label>Référence (optionnel)</Label>
               <Input
@@ -168,8 +256,9 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               />
             </div>
 
+            {/* Notes */}
             <div className="space-y-2">
-              <Label>Notes (optionnel)</Label>
+              <Label>Notes</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -186,7 +275,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || !categorie || montantNum <= 0}
             className="gap-2"
           >
             {mutation.isPending ? (
@@ -194,7 +283,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
             ) : (
               <Coins className="h-4 w-4" />
             )}
-            Confirmer le décaissement
+            {paiementPartiel ? `Décaisser ${formatMontant(montantNum)}` : 'Confirmer le décaissement'}
           </Button>
         </DialogFooter>
       </DialogContent>
