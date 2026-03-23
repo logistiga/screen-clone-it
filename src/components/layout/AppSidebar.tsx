@@ -63,6 +63,7 @@ const menuItems = {
     items: [
       { title: "Caisse", url: "/caisse", icon: Wallet },
       { title: "Caisse en attente", url: "/caisse-en-attente", icon: Clock },
+      { title: "Paiements fournisseurs", url: "/paiements-fournisseurs", icon: Receipt },
       { title: "Banque", url: "/banque", icon: Building2 },
       { title: "Caisse Globale", url: "/caisse-globale", icon: PiggyBank },
       { title: "Primes à décaisser", url: "/primes-decaissement", icon: Wallet },

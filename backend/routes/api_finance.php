@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CaisseEnAttenteController;
 use App\Http\Controllers\Api\CaisseCnvController;
 use App\Http\Controllers\Api\CaisseHorslbvController;
 use App\Http\Controllers\Api\CaisseGarageController;
+use App\Http\Controllers\Api\PaiementFournisseurController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use Illuminate\Support\Facades\Route;
@@ -272,4 +273,22 @@ Route::prefix('taxes')->middleware('audit')->group(function () {
         ->middleware('permission:configuration.modifier');
     Route::post('{taxe}/toggle-active', [TaxeController::class, 'toggleActive'])
         ->middleware('permission:configuration.modifier');
+});
+
+// ============================================
+// PAIEMENTS FOURNISSEURS (par tranche/avance)
+// ============================================
+Route::prefix('paiements-fournisseurs')->middleware('audit')->group(function () {
+    Route::get('/', [PaiementFournisseurController::class, 'index'])
+        ->middleware('permission:caisse.voir');
+    Route::get('stats', [PaiementFournisseurController::class, 'stats'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/', [PaiementFournisseurController::class, 'store'])
+        ->middleware('permission:caisse.creer');
+    Route::get('{id}', [PaiementFournisseurController::class, 'show'])
+        ->middleware('permission:caisse.voir');
+    Route::post('{id}/avancer', [PaiementFournisseurController::class, 'avancer'])
+        ->middleware('permission:caisse.creer');
+    Route::delete('{id}', [PaiementFournisseurController::class, 'destroy'])
+        ->middleware('permission:caisse.supprimer');
 });

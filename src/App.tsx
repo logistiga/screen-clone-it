@@ -101,6 +101,7 @@ const BanquePage = lazy(() => import("./pages/Banque"));
 const CaisseGlobalePage = lazy(() => import("./pages/CaisseGlobale"));
 const PrimesDecaissementPage = lazy(() => import("./pages/PrimesDecaissement"));
 const CaisseEnAttentePage = lazy(() => import("./pages/CaisseEnAttente"));
+const PaiementsFournisseursPage = lazy(() => import("./pages/PaiementsFournisseurs"));
 const FacturesExonereesPage = lazy(() => import("./pages/FacturesExonerees"));
 const ReportingPage = lazy(() => import("./pages/Reporting"));
 const ReportingPDFPage = lazy(() => import("./pages/ReportingPDF"));
@@ -235,6 +236,7 @@ const App = () => (
                 <Route path="/caisse-globale" element={<ProtectedRoute requiredPermission={P.caisse.view}><CaisseGlobalePage /></ProtectedRoute>} />
                 <Route path="/primes-decaissement" element={<ProtectedRoute requiredPermission={P.caisse.view}><PrimesDecaissementPage /></ProtectedRoute>} />
                 <Route path="/caisse-en-attente" element={<ProtectedRoute requiredPermission={P.caisse.view}><CaisseEnAttentePage /></ProtectedRoute>} />
+                <Route path="/paiements-fournisseurs" element={<ProtectedRoute requiredPermission={P.caisse.view}><PaiementsFournisseursPage /></ProtectedRoute>} />
                 <Route path="/factures-exonerees" element={<ProtectedRoute requiredPermission={P.factures.view}><FacturesExonereesPage /></ProtectedRoute>} />
                 
                 {/* Routes protégées - Reporting */}
