@@ -156,6 +156,9 @@ class CaisseEnAttenteController extends Controller
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
             'source' => 'nullable|in:OPS,CNV,HORSLBV,GARAGE',
+            'categorie' => 'nullable|string|max:100',
+            'montant' => 'nullable|numeric|min:1',
+            'paiement_partiel' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -172,11 +175,6 @@ class CaisseEnAttenteController extends Controller
                 default => $this->ops,
             };
 
-            $validationError = $handler->decaisser($request, $primeId);
-            if ($validationError) {
-                return $validationError;
-            }
-
             $prime = $handler->getPrimeForDecaissement($primeId);
             if (!$prime) {
                 return response()->json(['message' => 'Prime non trouvée'], 404);
@@ -189,19 +187,81 @@ class CaisseEnAttenteController extends Controller
                 default => CaisseOpsController::buildRef($primeId),
             };
 
-            $categorie = match ($source) {
+            $categorie = $request->get('categorie') ?: match ($source) {
                 'CNV' => CaisseCnvController::categorie(),
                 'HORSLBV' => CaisseHorslbvController::categorie(),
                 'GARAGE' => CaisseGarageController::categorie(),
                 default => CaisseOpsController::categorie(),
             };
 
+            $isPaiementPartiel = $request->boolean('paiement_partiel', false);
+            $montantDecaisse = $isPaiementPartiel && $request->has('montant')
+                ? (float) $request->montant
+                : (float) $prime->montant;
+
+            // Vérifier montant partiel
+            if ($montantDecaisse > $prime->montant) {
+                return response()->json(['message' => 'Le montant dépasse le montant de la prime'], 422);
+            }
+
+            // Pour un paiement partiel, créer/récupérer un paiement fournisseur
+            if ($isPaiementPartiel && $montantDecaisse < $prime->montant) {
+                // Vérifier si déjà en cours de paiement par tranches
+                $existingPF = DB::table('paiements_fournisseurs')
+                    ->where('source', $source)
+                    ->where('source_id', $primeId)
+                    ->first();
+
+                if (!$existingPF) {
+                    // Créer automatiquement le suivi par tranches
+                    $pfId = DB::table('paiements_fournisseurs')->insertGetId([
+                        'fournisseur' => $prime->beneficiaire ?? $prime->fournisseur_nom ?? 'N/A',
+                        'reference' => $prime->numero_paiement ?? $refUnique,
+                        'description' => ($source === 'GARAGE' ? "Achat Garage" : "Prime {$source}") . " - " . ($prime->beneficiaire ?? 'N/A'),
+                        'montant_total' => $prime->montant,
+                        'date_facture' => now()->toDateString(),
+                        'source' => $source,
+                        'source_id' => $primeId,
+                        'created_by' => $request->user()?->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $existingPF = (object) ['id' => $pfId];
+                }
+
+                // Vérifier le reste à payer
+                $totalDejaPaye = DB::table('tranches_paiement_fournisseur')
+                    ->where('paiement_fournisseur_id', $existingPF->id)
+                    ->sum('montant');
+
+                $reste = $prime->montant - $totalDejaPaye;
+                if ($montantDecaisse > $reste) {
+                    return response()->json([
+                        'message' => "Le montant ({$montantDecaisse}) dépasse le reste à payer ({$reste})",
+                    ], 422);
+                }
+
+                $numTranche = DB::table('tranches_paiement_fournisseur')
+                    ->where('paiement_fournisseur_id', $existingPF->id)
+                    ->count() + 1;
+
+                $refUnique = $refUnique . '-T' . $numTranche;
+            } else {
+                // Paiement complet: vérifier si déjà décaissé
+                if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+                    return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
+                }
+            }
+
             DB::beginTransaction();
 
-            $beneficiaire = $prime->beneficiaire ?? 'N/A';
+            $beneficiaire = $prime->beneficiaire ?? $prime->fournisseur_nom ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
 
             $description = ($source === 'GARAGE' ? "Achat Garage" : "Prime {$prime->type}") . " - {$beneficiaire}";
+            if ($isPaiementPartiel) {
+                $description = "Avance - " . $description;
+            }
             $numeroPaiement = $prime->numero_paiement ?? null;
             if ($numeroPaiement) {
                 $description .= " - {$numeroPaiement}";
@@ -210,7 +270,7 @@ class CaisseEnAttenteController extends Controller
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
                 'categorie' => $categorie,
-                'montant' => $prime->montant,
+                'montant' => $montantDecaisse,
                 'description' => $description,
                 'beneficiaire' => $beneficiaire,
                 'reference' => $refUnique,
@@ -220,12 +280,29 @@ class CaisseEnAttenteController extends Controller
                 'banque_id' => $request->banque_id,
             ]);
 
-            Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime {$source}: {$prime->montant} - {$beneficiaire}", $mouvement->id);
+            // Si paiement partiel, enregistrer la tranche
+            if ($isPaiementPartiel && $montantDecaisse < $prime->montant && isset($existingPF)) {
+                DB::table('tranches_paiement_fournisseur')->insert([
+                    'paiement_fournisseur_id' => $existingPF->id,
+                    'montant' => $montantDecaisse,
+                    'mode_paiement' => $request->mode_paiement,
+                    'reference' => $request->reference,
+                    'notes' => $request->notes,
+                    'date_paiement' => now()->toDateString(),
+                    'numero_tranche' => $numTranche ?? 1,
+                    'mouvement_id' => $mouvement->id,
+                    'created_by' => $request->user()?->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime {$source}: {$montantDecaisse} - {$beneficiaire}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Décaissement validé avec succès',
+                'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
                 'mouvement' => $mouvement,
             ], 201);
 
