@@ -69,6 +69,14 @@ export default function CaisseEnAttentePage() {
     },
   });
 
+  const { data: garagePrimesStatsData } = useQuery({
+    queryKey: ['caisse-garage-primes-stats'],
+    queryFn: async () => {
+      const response = await api.get<StatsResponse>('/caisse-garage/primes/stats');
+      return response.data;
+    },
+  });
+
   const emptyStats: StatsResponse = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
   const opsStats = opsStatsData || emptyStats;
   const cnvStats = cnvStatsData || emptyStats;
@@ -76,8 +84,9 @@ export default function CaisseEnAttentePage() {
   const garageStats = garageStatsData || emptyStats;
   const repStats = repStatsData || emptyStats;
   const transStats = transStatsData || emptyStats;
+  const garagePrimesStats = garagePrimesStatsData || emptyStats;
 
-  const allStats = [opsStats, cnvStats, horslbvStats, garageStats, repStats, transStats];
+  const allStats = [opsStats, cnvStats, horslbvStats, garageStats, repStats, transStats, garagePrimesStats];
   const stats = {
     total_valide: allStats.reduce((s, st) => s + st.total_valide, 0),
     nombre_primes: allStats.reduce((s, st) => s + st.nombre_primes, 0),
