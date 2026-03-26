@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  CheckCircle2, Wallet, Clock, Banknote, Truck, FileText, MapPin, Wrench,
+  CheckCircle2, Wallet, Clock, Banknote, Truck, FileText, MapPin, Wrench, Users, Building2,
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import api from "@/lib/api";
@@ -53,19 +53,38 @@ export default function CaisseEnAttentePage() {
     },
   });
 
+  const { data: repStatsData } = useQuery({
+    queryKey: ['caisse-primes-rep-stats'],
+    queryFn: async () => {
+      const response = await api.get<StatsResponse>('/caisse-primes-rep/stats');
+      return response.data;
+    },
+  });
+
+  const { data: transStatsData } = useQuery({
+    queryKey: ['caisse-primes-trans-stats'],
+    queryFn: async () => {
+      const response = await api.get<StatsResponse>('/caisse-primes-trans/stats');
+      return response.data;
+    },
+  });
+
   const emptyStats: StatsResponse = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
   const opsStats = opsStatsData || emptyStats;
   const cnvStats = cnvStatsData || emptyStats;
   const horslbvStats = horslbvStatsData || emptyStats;
   const garageStats = garageStatsData || emptyStats;
+  const repStats = repStatsData || emptyStats;
+  const transStats = transStatsData || emptyStats;
 
+  const allStats = [opsStats, cnvStats, horslbvStats, garageStats, repStats, transStats];
   const stats = {
-    total_valide: opsStats.total_valide + cnvStats.total_valide + horslbvStats.total_valide + garageStats.total_valide,
-    nombre_primes: opsStats.nombre_primes + cnvStats.nombre_primes + horslbvStats.nombre_primes + garageStats.nombre_primes,
-    total_a_decaisser: opsStats.total_a_decaisser + cnvStats.total_a_decaisser + horslbvStats.total_a_decaisser + garageStats.total_a_decaisser,
-    nombre_a_decaisser: opsStats.nombre_a_decaisser + cnvStats.nombre_a_decaisser + horslbvStats.nombre_a_decaisser + garageStats.nombre_a_decaisser,
-    deja_decaissees: opsStats.deja_decaissees + cnvStats.deja_decaissees + horslbvStats.deja_decaissees + garageStats.deja_decaissees,
-    total_decaisse: opsStats.total_decaisse + cnvStats.total_decaisse + horslbvStats.total_decaisse + garageStats.total_decaisse,
+    total_valide: allStats.reduce((s, st) => s + st.total_valide, 0),
+    nombre_primes: allStats.reduce((s, st) => s + st.nombre_primes, 0),
+    total_a_decaisser: allStats.reduce((s, st) => s + st.total_a_decaisser, 0),
+    nombre_a_decaisser: allStats.reduce((s, st) => s + st.nombre_a_decaisser, 0),
+    deja_decaissees: allStats.reduce((s, st) => s + st.deja_decaissees, 0),
+    total_decaisse: allStats.reduce((s, st) => s + st.total_decaisse, 0),
   };
 
   const openDecaissementModal = (prime: PrimeEnAttente) => {
@@ -117,28 +136,36 @@ export default function CaisseEnAttentePage() {
             title="Total éléments"
             value={stats.nombre_primes}
             icon={Wallet}
-            subtitle="OPS + CNV + Hors LBV + Garage"
+            subtitle="Toutes sources"
             delay={0.3}
           />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
-            <TabsTrigger value="OPS" className="gap-2">
+          <TabsList className="grid w-full grid-cols-6 max-w-4xl">
+            <TabsTrigger value="OPS" className="gap-1 text-xs">
               <Truck className="h-4 w-4" />
               Conteneurs
             </TabsTrigger>
-            <TabsTrigger value="CNV" className="gap-2">
+            <TabsTrigger value="CNV" className="gap-1 text-xs">
               <FileText className="h-4 w-4" />
               Conventionnel
             </TabsTrigger>
-            <TabsTrigger value="HORSLBV" className="gap-2">
+            <TabsTrigger value="HORSLBV" className="gap-1 text-xs">
               <MapPin className="h-4 w-4" />
-              Hors Libreville
+              Hors LBV
             </TabsTrigger>
-            <TabsTrigger value="GARAGE" className="gap-2">
+            <TabsTrigger value="GARAGE" className="gap-1 text-xs">
               <Wrench className="h-4 w-4" />
               Garage
+            </TabsTrigger>
+            <TabsTrigger value="PRIME_REP" className="gap-1 text-xs">
+              <Users className="h-4 w-4" />
+              P. Représentant
+            </TabsTrigger>
+            <TabsTrigger value="PRIME_TRANS" className="gap-1 text-xs">
+              <Building2 className="h-4 w-4" />
+              P. Transitaire
             </TabsTrigger>
           </TabsList>
 
@@ -156,6 +183,14 @@ export default function CaisseEnAttentePage() {
 
           <TabsContent value="GARAGE" className="mt-4">
             <GarageTable onDecaisser={openDecaissementModal} onRefuser={openRefusModal} />
+          </TabsContent>
+
+          <TabsContent value="PRIME_REP" className="mt-4">
+            <PrimesTable source="PRIME_REP" onDecaisser={openDecaissementModal} onRefuser={openRefusModal} />
+          </TabsContent>
+
+          <TabsContent value="PRIME_TRANS" className="mt-4">
+            <PrimesTable source="PRIME_TRANS" onDecaisser={openDecaissementModal} onRefuser={openRefusModal} />
           </TabsContent>
         </Tabs>
       </div>
