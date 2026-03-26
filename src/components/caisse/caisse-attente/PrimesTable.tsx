@@ -18,7 +18,7 @@ import { DocumentFilters, DocumentLoadingState } from "@/components/shared/docum
 import { PrimeEnAttente, statutFilterOptions, itemVariants } from "./types";
 
 interface PrimesTableProps {
-  source: 'OPS' | 'CNV' | 'HORSLBV';
+  source: 'OPS' | 'CNV' | 'HORSLBV' | 'PRIME_REP' | 'PRIME_TRANS';
   onDecaisser: (prime: PrimeEnAttente) => void;
   onRefuser: (prime: PrimeEnAttente) => void;
 }
@@ -30,17 +30,21 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const queryKeyMap = {
+  const queryKeyMap: Record<string, any[]> = {
     OPS: ['caisse-en-attente', 'OPS', page, pageSize, search, statut],
     CNV: ['caisse-cnv', page, pageSize, search, statut],
     HORSLBV: ['caisse-horslbv', page, pageSize, search, statut],
+    PRIME_REP: ['caisse-primes-rep', page, pageSize, search, statut],
+    PRIME_TRANS: ['caisse-primes-trans', page, pageSize, search, statut],
   };
   const queryKey = queryKeyMap[source];
 
-  const apiEndpointMap = {
+  const apiEndpointMap: Record<string, string> = {
     OPS: '/caisse-en-attente',
     CNV: '/caisse-cnv',
     HORSLBV: '/caisse-horslbv',
+    PRIME_REP: '/caisse-primes-rep',
+    PRIME_TRANS: '/caisse-primes-trans',
   };
   const apiEndpoint = apiEndpointMap[source];
 
@@ -94,7 +98,11 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
         searchTerm={search}
         onSearchChange={(value) => { setSearch(value); setPage(1); }}
         searchPlaceholder={
-          source === 'OPS'
+          source === 'PRIME_REP'
+            ? "Rechercher (nom représentant, description, montant)..."
+            : source === 'PRIME_TRANS'
+            ? "Rechercher (nom transitaire, description, montant)..."
+            : source === 'OPS'
             ? "Rechercher (bénéficiaire, camion, parc, prestataire, type)..."
             : source === 'CNV'
             ? "Rechercher (bénéficiaire, N° paiement, conventionné, type)..."
@@ -113,10 +121,16 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
               <Truck className="h-5 w-5 text-primary" />
             ) : source === 'CNV' ? (
               <FileText className="h-5 w-5 text-primary" />
+            ) : source === 'PRIME_REP' || source === 'PRIME_TRANS' ? (
+              <Coins className="h-5 w-5 text-primary" />
             ) : (
               <Truck className="h-5 w-5 text-primary" />
             )}
-            {source === 'OPS' ? 'Primes Conteneurs (OPS)' : source === 'CNV' ? 'Primes Conventionnel (CNV)' : 'Dépenses Hors Libreville'}
+            {source === 'OPS' ? 'Primes Conteneurs (OPS)' 
+              : source === 'CNV' ? 'Primes Conventionnel (CNV)' 
+              : source === 'PRIME_REP' ? 'Primes Représentant'
+              : source === 'PRIME_TRANS' ? 'Primes Transitaire'
+              : 'Dépenses Hors Libreville'}
             <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
           </CardTitle>
         </CardHeader>
@@ -145,6 +159,9 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                       <TableHead>N° Fiche</TableHead>
                       <TableHead>N° Dépense</TableHead>
                     </>
+                  )}
+                  {(source === 'PRIME_REP' || source === 'PRIME_TRANS') && (
+                    <TableHead>N° Facture</TableHead>
                   )}
                   <TableHead>N° Paiement</TableHead>
                   <TableHead>Réf. Paiement</TableHead>
@@ -224,6 +241,11 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                             {prime.numero_depense || '-'}
                           </TableCell>
                         </>
+                      )}
+                      {(source === 'PRIME_REP' || source === 'PRIME_TRANS') && (
+                        <TableCell className="text-sm font-mono">
+                          {prime.numero_paiement || '-'}
+                        </TableCell>
                       )}
                       <TableCell>
                         {prime.numero_paiement ? (
