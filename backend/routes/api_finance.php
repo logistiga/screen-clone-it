@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CaisseCnvController;
 use App\Http\Controllers\Api\CaisseHorslbvController;
 use App\Http\Controllers\Api\CaisseGarageController;
 use App\Http\Controllers\Api\PaiementFournisseurController;
+use App\Http\Controllers\Api\CaissePrimesLocalesController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
 use Illuminate\Support\Facades\Route;
