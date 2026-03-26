@@ -235,11 +235,12 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
                   <SelectItem value="Primes Conventionnel">Primes Conventionnel</SelectItem>
                   <SelectItem value="Primes Hors Libreville">Primes Hors Libreville</SelectItem>
                   <SelectItem value="Achats Garage">Achats Garage</SelectItem>
+                  <SelectItem value="Primes Garage">Primes Garage</SelectItem>
                   <SelectItem value="Prime représentant">Prime représentant</SelectItem>
                   <SelectItem value="Prime transitaire">Prime transitaire</SelectItem>
                   {/* Catégories personnalisées */}
                   {categories
-                    .filter((c: any) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage'].includes(c.nom))
+                    .filter((c: any) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage', 'Primes Garage', 'Prime représentant', 'Prime transitaire'].includes(c.nom))
                     .map((c: any) => (
                       <SelectItem key={c.id} value={c.nom}>{c.nom}</SelectItem>
                     ))
