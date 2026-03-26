@@ -293,3 +293,39 @@ Route::prefix('paiements-fournisseurs')->middleware('audit')->group(function () 
     Route::delete('{id}', [PaiementFournisseurController::class, 'destroy'])
         ->middleware('permission:caisse.supprimer');
 });
+
+// ============================================
+// CAISSE EN ATTENTE - PRIMES REPRÉSENTANT (locales)
+// ============================================
+Route::prefix('caisse-primes-rep')->middleware('audit')->group(function () {
+    Route::get('/stats', function () {
+        return app(CaissePrimesLocalesController::class)->stats('representant');
+    })->middleware('permission:caisse.voir');
+    Route::get('/', function (Request $request) {
+        return app(CaissePrimesLocalesController::class)->index($request, 'representant');
+    })->middleware('permission:caisse.voir');
+    Route::post('/{primeId}/decaisser', function (Request $request, string $primeId) {
+        return app(CaissePrimesLocalesController::class)->decaisser($request, $primeId, 'representant');
+    })->middleware('permission:caisse.creer');
+    Route::post('/{primeId}/refuser', function (Request $request, string $primeId) {
+        return app(CaissePrimesLocalesController::class)->refuser($request, $primeId, 'representant');
+    })->middleware('permission:caisse.creer');
+});
+
+// ============================================
+// CAISSE EN ATTENTE - PRIMES TRANSITAIRE (locales)
+// ============================================
+Route::prefix('caisse-primes-trans')->middleware('audit')->group(function () {
+    Route::get('/stats', function () {
+        return app(CaissePrimesLocalesController::class)->stats('transitaire');
+    })->middleware('permission:caisse.voir');
+    Route::get('/', function (Request $request) {
+        return app(CaissePrimesLocalesController::class)->index($request, 'transitaire');
+    })->middleware('permission:caisse.voir');
+    Route::post('/{primeId}/decaisser', function (Request $request, string $primeId) {
+        return app(CaissePrimesLocalesController::class)->decaisser($request, $primeId, 'transitaire');
+    })->middleware('permission:caisse.creer');
+    Route::post('/{primeId}/refuser', function (Request $request, string $primeId) {
+        return app(CaissePrimesLocalesController::class)->refuser($request, $primeId, 'transitaire');
+    })->middleware('permission:caisse.creer');
+});
