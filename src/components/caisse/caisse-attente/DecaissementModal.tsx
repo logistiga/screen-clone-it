@@ -52,6 +52,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       setPaiementPartiel(false);
       // Pré-remplir catégorie selon la source
       const defaultCat = prime.source === 'GARAGE' ? 'Achats Garage' :
+        prime.source === 'GARAGE_PRIME' ? 'Primes Garage' :
         prime.source === 'HORSLBV' ? 'Primes Hors Libreville' :
         prime.source === 'CNV' ? 'Primes Conventionnel' :
         prime.source === 'PRIME_REP' ? 'Prime représentant' :
@@ -74,6 +75,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
         CNV: `/caisse-cnv/${primeId}/decaisser`,
         HORSLBV: `/caisse-horslbv/${primeId}/decaisser`,
         GARAGE: `/caisse-garage/${primeId}/decaisser`,
+        GARAGE_PRIME: `/caisse-garage/primes/${primeId}/decaisser`,
         OPS: `/caisse-en-attente/${primeId}/decaisser`,
         PRIME_REP: `/caisse-primes-rep/${primeId}/decaisser`,
         PRIME_TRANS: `/caisse-primes-trans/${primeId}/decaisser`,
@@ -97,6 +99,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-garage'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-garage-primes'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
@@ -145,6 +148,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
     prime?.source === 'CNV' ? 'Conventionnel (CNV)' :
     prime?.source === 'HORSLBV' ? 'Hors Libreville' :
     prime?.source === 'GARAGE' ? 'Garage' :
+    prime?.source === 'GARAGE_PRIME' ? 'Prime Garage' :
     prime?.source === 'PRIME_REP' ? 'Prime Représentant' :
     prime?.source === 'PRIME_TRANS' ? 'Prime Transitaire' : '-';
 
