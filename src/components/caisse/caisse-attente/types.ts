@@ -15,7 +15,7 @@ export interface PrimeEnAttente {
   prestataire_nom: string | null;
   created_at: string;
   // Champs ajoutés par le backend
-  source: 'OPS' | 'CNV' | 'HORSLBV' | 'GARAGE';
+  source: 'OPS' | 'CNV' | 'HORSLBV' | 'GARAGE' | 'PRIME_REP' | 'PRIME_TRANS';
   decaisse: boolean;
   refusee: boolean;
   mouvement_id: number | null;

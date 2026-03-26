@@ -30,6 +30,8 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
         HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
         GARAGE: `/caisse-garage/${primeId}/refuser`,
         OPS: `/caisse-en-attente/${primeId}/refuser`,
+        PRIME_REP: `/caisse-primes-rep/${primeId}/refuser`,
+        PRIME_TRANS: `/caisse-primes-trans/${primeId}/refuser`,
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
       const response = await api.post(endpoint, { motif });
@@ -41,10 +43,14 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-garage'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-garage-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans-stats'] });
       onOpenChange(false);
       setMotif("");
     },
