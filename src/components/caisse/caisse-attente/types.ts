@@ -33,6 +33,8 @@ export interface PrimeEnAttente {
   prime_chauffeur?: number | null;
   gasoil_litres?: number | null;
   note?: string | null;
+  nombre_primes?: number;
+  prime_ids?: string[];
 }
 
 export interface StatsResponse {
