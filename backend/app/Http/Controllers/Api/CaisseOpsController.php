@@ -74,12 +74,52 @@ class CaisseOpsController extends Controller
             });
         }
 
-        return $query->orderBy('primes.created_at', 'desc')
-            ->get()
+        $primes = $query->orderBy('primes.created_at', 'desc')->get();
+
+        // Regrouper par numero_paiement
+        return $this->groupByNumeroPaiement($primes);
+    }
+
+    /**
+     * Regroupe les primes ayant le même numero_paiement en une seule ligne
+     * avec le montant cumulé. Les primes sans numero_paiement restent individuelles.
+     */
+    private function groupByNumeroPaiement(\Illuminate\Support\Collection $primes): \Illuminate\Support\Collection
+    {
+        $withNumero = $primes->filter(fn($p) => !empty($p->numero_paiement));
+        $withoutNumero = $primes->filter(fn($p) => empty($p->numero_paiement))
             ->map(function ($p) {
                 $p->source = 'OPS';
+                $p->prime_ids = [(string) $p->id];
+                $p->nombre_primes = 1;
                 return $p;
             });
+
+        $grouped = $withNumero->groupBy('numero_paiement')->map(function ($group) {
+            $first = $group->first();
+            $merged = clone $first;
+            $merged->montant = $group->sum('montant');
+            $merged->id = 'PAY-' . $first->numero_paiement; // ID composite
+            $merged->source = 'OPS';
+            $merged->prime_ids = $group->pluck('id')->map(fn($id) => (string) $id)->values()->toArray();
+            $merged->nombre_primes = $group->count();
+
+            // Collecter les types, bénéficiaires uniques
+            $types = $group->pluck('type')->unique()->filter()->implode(', ');
+            if ($types) $merged->type = $types;
+
+            $beneficiaires = $group->pluck('beneficiaire')->unique()->filter();
+            if ($beneficiaires->count() > 1) {
+                $merged->beneficiaire = $beneficiaires->first() . ' (+' . ($beneficiaires->count() - 1) . ')';
+            }
+
+            // Garder la date la plus récente
+            $merged->created_at = $group->max('created_at');
+
+            return $merged;
+        })->values();
+
+        return $withoutNumero->merge($grouped)->sortByDesc('created_at')->values();
     }
 
     /**
