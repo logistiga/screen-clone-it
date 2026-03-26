@@ -283,7 +283,7 @@ function GaragePrimesSubTable({ onDecaisser, onRefuser }: { onDecaisser: (prime:
 
   const items: PrimeEnAttente[] = (data?.data || []).map((item: any) => ({
     ...item,
-    source: 'GARAGE' as const,
+    source: 'GARAGE_PRIME' as const,
   }));
   const totalPages = data?.meta?.last_page || 1;
   const totalCount = data?.meta?.total || 0;
