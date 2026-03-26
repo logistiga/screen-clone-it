@@ -127,12 +127,28 @@ class CaisseOpsController extends Controller
      */
     public function fetchStats(): \Illuminate\Support\Collection
     {
-        return DB::connection('ops')
+        $primes = DB::connection('ops')
             ->table('primes')
             ->where('payee', true)
             ->where('paiement_valide', true)
-            ->get(['id', 'montant'])
-            ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => self::buildRef($p->id)]);
+            ->get(['id', 'montant', 'numero_paiement']);
+
+        // Regrouper par numero_paiement pour les stats aussi
+        $withNumero = $primes->filter(fn($p) => !empty($p->numero_paiement));
+        $withoutNumero = $primes->filter(fn($p) => empty($p->numero_paiement))
+            ->map(fn($p) => (object) ['id' => $p->id, 'montant' => $p->montant, 'ref' => self::buildRef((string) $p->id)]);
+
+        $grouped = $withNumero->groupBy('numero_paiement')->map(function ($group) {
+            $first = $group->first();
+            $id = 'PAY-' . $first->numero_paiement;
+            return (object) [
+                'id' => $id,
+                'montant' => $group->sum('montant'),
+                'ref' => self::buildRef($id),
+            ];
+        })->values();
+
+        return $withoutNumero->merge($grouped);
     }
 
     public static function buildRef(string $id): string
@@ -146,7 +162,7 @@ class CaisseOpsController extends Controller
     }
 
     /**
-     * Valider le décaissement d'une prime OPS
+     * Valider le décaissement d'une prime OPS (ou groupe de primes)
      */
     public function decaisser(Request $request, string $primeId): ?JsonResponse
     {
@@ -154,34 +170,58 @@ class CaisseOpsController extends Controller
             return response()->json(['message' => 'Connexion OPS indisponible'], 503);
         }
 
-        $prime = DB::connection('ops')->table('primes')->where('id', $primeId)->first();
+        // Si c'est un groupe (PAY-xxx), vérifier les primes du groupe
+        if (str_starts_with($primeId, 'PAY-')) {
+            $numeroPaiement = substr($primeId, 4);
+            $primes = DB::connection('ops')->table('primes')
+                ->where('numero_paiement', $numeroPaiement)
+                ->where('payee', true)
+                ->where('paiement_valide', true)
+                ->get();
 
-        if (!$prime) {
-            return response()->json(['message' => 'Prime OPS non trouvée'], 404);
-        }
-
-        if (!$prime->payee) {
-            return response()->json(['message' => "Cette prime n'est pas marquée comme payée"], 422);
-        }
-
-        if (!$prime->paiement_valide) {
-            return response()->json(['message' => "Cette prime n'est pas validée pour le paiement"], 422);
+            if ($primes->isEmpty()) {
+                return response()->json(['message' => 'Aucune prime trouvée pour ce paiement'], 404);
+            }
+        } else {
+            $prime = DB::connection('ops')->table('primes')->where('id', $primeId)->first();
+            if (!$prime) return response()->json(['message' => 'Prime OPS non trouvée'], 404);
+            if (!$prime->payee) return response()->json(['message' => "Cette prime n'est pas marquée comme payée"], 422);
+            if (!$prime->paiement_valide) return response()->json(['message' => "Cette prime n'est pas validée pour le paiement"], 422);
         }
 
         $refUnique = self::buildRef($primeId);
-
         if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
-            return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
+            return response()->json(['message' => 'Ce paiement a déjà été décaissé'], 422);
         }
 
-        return null; // Validation OK
+        return null;
     }
 
     /**
-     * Récupère les infos de la prime pour le décaissement
+     * Récupère les infos de la prime (ou groupe) pour le décaissement
      */
     public function getPrimeForDecaissement(string $primeId): ?object
     {
+        if (str_starts_with($primeId, 'PAY-')) {
+            $numeroPaiement = substr($primeId, 4);
+            $primes = DB::connection('ops')->table('primes')
+                ->where('numero_paiement', $numeroPaiement)
+                ->where('payee', true)
+                ->where('paiement_valide', true)
+                ->get();
+
+            if ($primes->isEmpty()) return null;
+
+            $first = $primes->first();
+            return (object) [
+                'id' => $primeId,
+                'montant' => $primes->sum('montant'),
+                'beneficiaire' => $first->beneficiaire ?: ($first->prestataire_nom ?: 'N/A'),
+                'type' => $primes->pluck('type')->unique()->filter()->implode(', ') ?: 'OPS',
+                'numero_paiement' => $numeroPaiement,
+            ];
+        }
+
         $prime = DB::connection('ops')->table('primes')->where('id', $primeId)->first();
         if ($prime) {
             $prime->beneficiaire = $prime->beneficiaire ?: ($prime->prestataire_nom ?: 'N/A');
