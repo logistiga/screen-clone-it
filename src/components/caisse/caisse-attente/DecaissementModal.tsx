@@ -53,7 +53,9 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       // Pré-remplir catégorie selon la source
       const defaultCat = prime.source === 'GARAGE' ? 'Achats Garage' :
         prime.source === 'HORSLBV' ? 'Primes Hors Libreville' :
-        prime.source === 'CNV' ? 'Primes Conventionnel' : 'Primes OPS';
+        prime.source === 'CNV' ? 'Primes Conventionnel' :
+        prime.source === 'PRIME_REP' ? 'Prime représentant' :
+        prime.source === 'PRIME_TRANS' ? 'Prime transitaire' : 'Primes OPS';
       setCategorie(defaultCat);
       // Pré-remplir notes
       const autoNotes = [
@@ -73,6 +75,8 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
         HORSLBV: `/caisse-horslbv/${primeId}/decaisser`,
         GARAGE: `/caisse-garage/${primeId}/decaisser`,
         OPS: `/caisse-en-attente/${primeId}/decaisser`,
+        PRIME_REP: `/caisse-primes-rep/${primeId}/decaisser`,
+        PRIME_TRANS: `/caisse-primes-trans/${primeId}/decaisser`,
       };
       const endpoint = endpointMap[source] || endpointMap.OPS;
       const montant = paiementPartiel ? parseFloat(montantDecaisse) : prime?.montant;
@@ -93,10 +97,14 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-garage'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-garage-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
       queryClient.invalidateQueries({ queryKey: ['paiements-fournisseurs'] });
@@ -136,7 +144,9 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   const sourceLabel = prime?.source === 'OPS' ? 'Conteneurs (OPS)' :
     prime?.source === 'CNV' ? 'Conventionnel (CNV)' :
     prime?.source === 'HORSLBV' ? 'Hors Libreville' :
-    prime?.source === 'GARAGE' ? 'Garage' : '-';
+    prime?.source === 'GARAGE' ? 'Garage' :
+    prime?.source === 'PRIME_REP' ? 'Prime Représentant' :
+    prime?.source === 'PRIME_TRANS' ? 'Prime Transitaire' : '-';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -221,6 +231,8 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
                   <SelectItem value="Primes Conventionnel">Primes Conventionnel</SelectItem>
                   <SelectItem value="Primes Hors Libreville">Primes Hors Libreville</SelectItem>
                   <SelectItem value="Achats Garage">Achats Garage</SelectItem>
+                  <SelectItem value="Prime représentant">Prime représentant</SelectItem>
+                  <SelectItem value="Prime transitaire">Prime transitaire</SelectItem>
                   {/* Catégories personnalisées */}
                   {categories
                     .filter((c: any) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage'].includes(c.nom))
