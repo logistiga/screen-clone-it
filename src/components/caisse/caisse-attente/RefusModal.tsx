@@ -29,6 +29,7 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
         CNV: `/caisse-cnv/${primeId}/refuser`,
         HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
         GARAGE: `/caisse-garage/${primeId}/refuser`,
+        GARAGE_PRIME: `/caisse-garage/primes/${primeId}/refuser`,
         OPS: `/caisse-en-attente/${primeId}/refuser`,
         PRIME_REP: `/caisse-primes-rep/${primeId}/refuser`,
         PRIME_TRANS: `/caisse-primes-trans/${primeId}/refuser`,
@@ -43,6 +44,7 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
       queryClient.invalidateQueries({ queryKey: ['caisse-cnv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-horslbv'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-garage'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-garage-primes'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente-stats'] });
