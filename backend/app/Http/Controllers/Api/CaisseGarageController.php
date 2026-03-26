@@ -464,4 +464,278 @@ class CaisseGarageController extends Controller
     {
         return $this->fetchAllValidated($search, 'all');
     }
-}
+
+    // ─── Primes Garage (prime_mecaniciens) ──────────────────
+
+    /**
+     * Récupère les primes garage validées depuis la table primes + prime_mecaniciens
+     */
+    public function fetchGaragePrimes(?string $search = null): \Illuminate\Support\Collection
+    {
+        if (!$this->isAvailable()) return collect();
+
+        $hasTable = Schema::connection('garage')->hasTable('primes');
+        if (!$hasTable) return collect();
+
+        $query = DB::connection('garage')
+            ->table('primes')
+            ->leftJoin('interventions', 'primes.intervention_id', '=', 'interventions.id')
+            ->where('primes.statut', 'validé')
+            ->whereNull('primes.deleted_at')
+            ->select([
+                'primes.id',
+                'primes.numero',
+                'primes.intervention_id',
+                'primes.observations',
+                'primes.created_at',
+                'interventions.numero as intervention_numero',
+            ]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('primes.numero', 'like', "%{$search}%")
+                  ->orWhere('primes.observations', 'like', "%{$search}%")
+                  ->orWhere('interventions.numero', 'like', "%{$search}%");
+            });
+        }
+
+        $primes = $query->orderBy('primes.created_at', 'desc')->get();
+
+        // Récupérer les montants depuis prime_mecaniciens
+        if ($primes->isEmpty()) return collect();
+
+        $primeIds = $primes->pluck('id')->toArray();
+
+        $totals = DB::connection('garage')
+            ->table('prime_mecaniciens')
+            ->whereIn('prime_id', $primeIds)
+            ->selectRaw('prime_id, SUM(montant_prime) as total_prime, SUM(montant_ration) as total_ration, COUNT(*) as nb_mecaniciens')
+            ->groupBy('prime_id')
+            ->get()
+            ->keyBy('prime_id');
+
+        // Récupérer les noms des mécaniciens
+        $mecaniciens = DB::connection('garage')
+            ->table('prime_mecaniciens')
+            ->leftJoin('mecaniciens', 'prime_mecaniciens.mecanicien_id', '=', 'mecaniciens.id')
+            ->whereIn('prime_mecaniciens.prime_id', $primeIds)
+            ->select(['prime_mecaniciens.prime_id', 'mecaniciens.nom', 'mecaniciens.prenom'])
+            ->get()
+            ->groupBy('prime_id');
+
+        return $primes->map(function ($p) use ($totals, $mecaniciens) {
+            $t = $totals[$p->id] ?? null;
+            $totalPrime = $t ? (float) $t->total_prime : 0;
+            $totalRation = $t ? (float) $t->total_ration : 0;
+            $montantTotal = $totalPrime + $totalRation;
+            $nbMeca = $t ? (int) $t->nb_mecaniciens : 0;
+
+            $mecaNames = isset($mecaniciens[$p->id])
+                ? $mecaniciens[$p->id]->map(fn($m) => trim(($m->nom ?? '') . ' ' . ($m->prenom ?? '')))->filter()->implode(', ')
+                : '';
+
+            return (object) [
+                'id' => 'gp-' . $p->id,
+                'type' => 'Prime garage',
+                'type_key' => 'prime_garage',
+                'numero' => $p->numero,
+                'beneficiaire' => $mecaNames ?: 'Mécaniciens',
+                'fournisseur_nom' => null,
+                'date' => $p->created_at,
+                'montant' => $montantTotal,
+                'total_prime' => $totalPrime,
+                'total_ration' => $totalRation,
+                'nb_mecaniciens' => $nbMeca,
+                'designation' => $p->observations,
+                'intervention_numero' => $p->intervention_numero,
+                'created_at' => $p->created_at,
+                'source' => 'GARAGE',
+            ];
+        })->filter(fn($p) => $p->montant > 0);
+    }
+
+    /**
+     * Stats des primes garage
+     */
+    public function primesStats(): JsonResponse
+    {
+        try {
+            $items = $this->fetchGaragePrimes();
+            $items = $this->attachPrimeDecaissementStatus($items);
+
+            $aDecaisser = $items->filter(fn($i) => !$i->decaisse && !$i->refusee);
+            $decaissees = $items->filter(fn($i) => $i->decaisse);
+
+            return response()->json([
+                'total_valide' => $items->sum('montant'),
+                'nombre_primes' => $items->count(),
+                'total_a_decaisser' => $aDecaisser->sum('montant'),
+                'nombre_a_decaisser' => $aDecaisser->count(),
+                'deja_decaissees' => $decaissees->count(),
+                'total_decaisse' => $decaissees->sum('montant'),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'total_valide' => 0, 'nombre_primes' => 0,
+                'total_a_decaisser' => 0, 'nombre_a_decaisser' => 0,
+                'deja_decaissees' => 0, 'total_decaisse' => 0,
+            ]);
+        }
+    }
+
+    /**
+     * Liste paginée des primes garage
+     */
+    public function primesIndex(Request $request): JsonResponse
+    {
+        try {
+            $perPage = (int) $request->get('per_page', 20);
+            $page = (int) $request->get('page', 1);
+            $search = $request->get('search');
+            $statut = $request->get('statut', 'a_decaisser');
+
+            $items = $this->fetchGaragePrimes($search);
+            $items = $this->attachPrimeDecaissementStatus($items);
+
+            if ($statut === 'a_decaisser') {
+                $items = $items->filter(fn($i) => !$i->decaisse && !$i->refusee);
+            } elseif ($statut === 'decaisse') {
+                $items = $items->filter(fn($i) => $i->decaisse);
+            } elseif ($statut === 'refusee') {
+                $items = $items->filter(fn($i) => $i->refusee);
+            }
+
+            $items = $items->sortByDesc('created_at')->values();
+            $total = $items->count();
+            $paginated = $items->forPage($page, $perPage)->values();
+
+            return response()->json([
+                'data' => $paginated,
+                'meta' => ['total' => $total, 'last_page' => max(1, ceil($total / $perPage)), 'current_page' => $page, 'per_page' => $perPage],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'data' => [], 'meta' => ['total' => 0, 'last_page' => 1, 'current_page' => 1, 'per_page' => 20],
+                'error' => $e->getMessage(),
+            ], 200);
+        }
+    }
+
+    /**
+     * Décaisser une prime garage
+     */
+    public function decaisserPrime(Request $request, string $itemId): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'mode_paiement' => 'required|in:Espèces,Virement,Chèque,Mobile Money',
+            'banque_id' => 'nullable|exists:banques,id',
+            'reference' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+            'categorie' => 'nullable|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $refUnique = self::buildPrimeRef($itemId);
+
+        if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+            return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
+        }
+
+        $items = $this->fetchGaragePrimes();
+        $item = $items->firstWhere('id', $itemId);
+        if (!$item) {
+            return response()->json(['message' => 'Prime garage non trouvée'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $beneficiaire = $item->beneficiaire ?: 'Mécaniciens';
+            $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
+            $categorie = $request->get('categorie', 'Primes Garage');
+
+            $mouvement = MouvementCaisse::create([
+                'type' => 'Sortie',
+                'categorie' => $categorie,
+                'montant' => $item->montant,
+                'description' => "Prime Garage - {$beneficiaire}" . ($item->numero ? " (N°{$item->numero})" : ''),
+                'beneficiaire' => $beneficiaire,
+                'reference' => $refUnique,
+                'mode_paiement' => $request->mode_paiement,
+                'date' => now()->toDateString(),
+                'source' => $isCaisse ? 'caisse' : 'banque',
+                'banque_id' => $request->banque_id,
+            ]);
+
+            Audit::log('create', 'decaissement_garage_prime', "Décaissement prime Garage: {$item->montant} - {$beneficiaire}", $mouvement->id);
+            DB::commit();
+
+            return response()->json(['message' => 'Décaissement validé avec succès', 'mouvement' => $mouvement], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Refuser une prime garage
+     */
+    public function refuserPrime(Request $request, string $itemId): JsonResponse
+    {
+        $reference = self::buildPrimeRef($itemId);
+
+        if (DB::table('primes_refusees')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Déjà refusée'], 422);
+        }
+        if (DB::table('mouvements_caisse')->where('reference', $reference)->exists()) {
+            return response()->json(['message' => 'Déjà décaissée'], 422);
+        }
+
+        try {
+            DB::table('primes_refusees')->insert([
+                'prime_id' => $itemId,
+                'source' => 'GARAGE_PRIME',
+                'reference' => $reference,
+                'motif' => $request->get('motif'),
+                'user_id' => $request->user()?->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Audit::log('create', 'refus_garage_prime', "Refus prime Garage: {$itemId}", null);
+            return response()->json(['message' => 'Prime refusée avec succès']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function attachPrimeDecaissementStatus(\Illuminate\Support\Collection $items): \Illuminate\Support\Collection
+    {
+        if ($items->isEmpty()) return $items;
+
+        $refs = $items->map(fn($i) => self::buildPrimeRef($i->id))->toArray();
+
+        $mouvements = DB::table('mouvements_caisse')
+            ->whereIn('reference', $refs)
+            ->get(['id', 'reference', 'date', 'mode_paiement'])
+            ->keyBy('reference');
+
+        $refusees = DB::table('primes_refusees')
+            ->whereIn('reference', $refs)
+            ->pluck('reference')
+            ->toArray();
+
+        return $items->map(function ($item) use ($mouvements, $refusees) {
+            $ref = self::buildPrimeRef($item->id);
+            $mouvement = $mouvements[$ref] ?? null;
+            $item->decaisse = $mouvement !== null;
+            $item->mouvement_id = $mouvement?->id;
+            $item->date_decaissement = $mouvement?->date;
+            $item->mode_paiement_decaissement = $mouvement?->mode_paiement;
+            $item->refusee = in_array($ref, $refusees);
+            return $item;
+        });
+    }
