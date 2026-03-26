@@ -259,7 +259,14 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
                         {prime.reference_paiement || '-'}
                       </TableCell>
                       <TableCell className="font-semibold">
-                        {formatMontant(prime.montant)}
+                        <div className="flex items-center gap-1">
+                          {formatMontant(prime.montant)}
+                          {prime.nombre_primes && prime.nombre_primes > 1 && (
+                            <Badge variant="outline" className="text-xs ml-1">
+                              {prime.nombre_primes} primes
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {prime.decaisse ? (
