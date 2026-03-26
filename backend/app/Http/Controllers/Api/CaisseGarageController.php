@@ -25,10 +25,16 @@ use Illuminate\Support\Facades\Validator;
 class CaisseGarageController extends Controller
 {
     private const PISTON_GABON = 'piston gabon';
+    private const GARAGE_PRIME_PREFIX = 'GARAGE-PRIME-';
 
     public static function buildRef(string $id): string
     {
         return 'GARAGE-ACHAT-' . $id;
+    }
+
+    public static function buildPrimeRef(string $id): string
+    {
+        return 'GARAGE-PRIME-' . $id;
     }
 
     public static function categorie(): string
