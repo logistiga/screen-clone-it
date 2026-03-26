@@ -220,6 +220,15 @@ Route::prefix('caisse-garage')->middleware('audit')->group(function () {
         ->middleware('permission:caisse.creer');
     Route::post('/{itemId}/refuser', [CaisseGarageController::class, 'refuser'])
         ->middleware('permission:caisse.creer');
+    // Primes garage
+    Route::get('/primes/stats', [CaisseGarageController::class, 'primesStats'])
+        ->middleware('permission:caisse.voir');
+    Route::get('/primes', [CaisseGarageController::class, 'primesIndex'])
+        ->middleware('permission:caisse.voir');
+    Route::post('/primes/{itemId}/decaisser', [CaisseGarageController::class, 'decaisserPrime'])
+        ->middleware('permission:caisse.creer');
+    Route::post('/primes/{itemId}/refuser', [CaisseGarageController::class, 'refuserPrime'])
+        ->middleware('permission:caisse.creer');
 });
 
 // ============================================

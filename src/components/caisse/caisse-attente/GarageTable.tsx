@@ -268,7 +268,7 @@ function GarageSubTable({
 export function GarageTable({ onDecaisser, onRefuser }: GarageTableProps) {
   return (
     <Tabs defaultValue="piston" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 max-w-md">
+      <TabsList className="grid w-full grid-cols-3 max-w-lg">
         <TabsTrigger value="piston" className="gap-2">
           <ShoppingCart className="h-4 w-4" />
           Piston Gabon
@@ -276,6 +276,10 @@ export function GarageTable({ onDecaisser, onRefuser }: GarageTableProps) {
         <TabsTrigger value="autres" className="gap-2">
           <Wrench className="h-4 w-4" />
           Autres Fournisseurs
+        </TabsTrigger>
+        <TabsTrigger value="primes" className="gap-2">
+          <Coins className="h-4 w-4" />
+          Primes
         </TabsTrigger>
       </TabsList>
 
@@ -285,6 +289,10 @@ export function GarageTable({ onDecaisser, onRefuser }: GarageTableProps) {
 
       <TabsContent value="autres" className="mt-4">
         <div><GarageSubTable fournisseurFilter="autres" onDecaisser={onDecaisser} onRefuser={onRefuser} /></div>
+      </TabsContent>
+
+      <TabsContent value="primes" className="mt-4">
+        <div><GaragePrimesSubTable onDecaisser={onDecaisser} onRefuser={onRefuser} /></div>
       </TabsContent>
     </Tabs>
   );
