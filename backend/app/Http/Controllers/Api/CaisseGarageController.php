@@ -196,14 +196,12 @@ class CaisseGarageController extends Controller
         $query = $this->applyFournisseurFilter($query, $fournisseurFilter, $hasFournisseursTable);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('bon_commandes.numero', 'like', "%{$search}%")
-                  ->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search, $hasFournisseursTable) {
+                $q->where('bon_commandes.numero', 'like', "%{$search}%");
+                if ($hasFournisseursTable) {
+                    $q->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
+                }
             });
-        }
-
-        if ($search && !$hasFournisseursTable) {
-            $query->where('bon_commandes.numero', 'like', "%{$search}%");
         }
 
         return $query->get()->map(fn($row) => (object) [
@@ -294,12 +292,11 @@ class CaisseGarageController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search, $hasFournisseursTable) {
                 $q->where('achats_divers.numero', 'like', "%{$search}%")
-                  ->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
-            });
-        }
 
-        if ($search && !$hasFournisseursTable) {
-            $query->where('achats_divers.numero', 'like', "%{$search}%");
+                if ($hasFournisseursTable) {
+                    $q->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
+                }
+            });
         }
 
         return $query->get()->map(fn($row) => (object) [
