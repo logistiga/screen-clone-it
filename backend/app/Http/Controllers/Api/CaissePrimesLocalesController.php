@@ -32,13 +32,27 @@ class CaissePrimesLocalesController extends Controller
     public function index(Request $request, string $type): JsonResponse
     {
         try {
+            if (!Schema::hasTable('primes')) {
+                return response()->json([
+                    'data' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'per_page' => 20, 'last_page' => 1],
+                    'message' => 'Table primes non disponible',
+                ]);
+            }
+
             $perPage = $request->get('per_page', 20);
             $page = $request->get('page', 1);
             $search = $request->get('search');
             $statut = $request->get('statut', 'a_decaisser');
 
-            $query = Prime::with(['representant', 'transitaire', 'facture'])
-                ->where('statut', 'Payée');
+            // Build query without eager-loading relations that may not exist
+            $query = Prime::query()->where('statut', 'Payée');
+
+            // Safely eager-load only existing relations
+            $eagerLoad = [];
+            if (Schema::hasTable('transitaires')) $eagerLoad[] = 'transitaire';
+            if (Schema::hasTable('representants')) $eagerLoad[] = 'representant';
+            if (Schema::hasTable('factures')) $eagerLoad[] = 'facture';
+            if (!empty($eagerLoad)) $query->with($eagerLoad);
 
             if ($type === 'representant') {
                 $query->whereNotNull('representant_id');
