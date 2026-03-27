@@ -86,7 +86,7 @@ class CaisseGarageController extends Controller
                 'deja_decaissees' => $decaissees->count(),
                 'total_decaisse' => $decaissees->sum('montant'),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'total_valide' => 0,
                 'nombre_primes' => 0,
@@ -145,7 +145,7 @@ class CaisseGarageController extends Controller
                     'per_page' => $perPage,
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'data' => [],
                 'meta' => ['total' => 0, 'last_page' => 1, 'current_page' => 1, 'per_page' => 20],
@@ -574,11 +574,12 @@ class CaisseGarageController extends Controller
                 'deja_decaissees' => $decaissees->count(),
                 'total_decaisse' => $decaissees->sum('montant'),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'total_valide' => 0, 'nombre_primes' => 0,
                 'total_a_decaisser' => 0, 'nombre_a_decaisser' => 0,
                 'deja_decaissees' => 0, 'total_decaisse' => 0,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -613,7 +614,7 @@ class CaisseGarageController extends Controller
                 'data' => $paginated,
                 'meta' => ['total' => $total, 'last_page' => max(1, ceil($total / $perPage)), 'current_page' => $page, 'per_page' => $perPage],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'data' => [], 'meta' => ['total' => 0, 'last_page' => 1, 'current_page' => 1, 'per_page' => 20],
                 'error' => $e->getMessage(),
@@ -674,7 +675,7 @@ class CaisseGarageController extends Controller
             DB::commit();
 
             return response()->json(['message' => 'Décaissement validé avec succès', 'mouvement' => $mouvement], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);
         }
@@ -707,7 +708,7 @@ class CaisseGarageController extends Controller
 
             Audit::log('create', 'refus_garage_prime', "Refus prime Garage: {$itemId}", null);
             return response()->json(['message' => 'Prime refusée avec succès']);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);
         }
     }

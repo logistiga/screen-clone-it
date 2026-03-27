@@ -82,7 +82,7 @@ class CaisseEnAttenteController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Erreur lors de la récupération des primes',
                 'error' => $e->getMessage(),
@@ -134,12 +134,14 @@ class CaisseEnAttenteController extends Controller
                 'total_decaisse' => $dejaDecaissees->sum('montant'),
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'total_valide' => 0,
                 'nombre_primes' => 0,
                 'total_a_decaisser' => 0,
+                'nombre_a_decaisser' => 0,
                 'deja_decaissees' => 0,
+                'total_decaisse' => 0,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -306,7 +308,7 @@ class CaisseEnAttenteController extends Controller
                 'mouvement' => $mouvement,
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Erreur lors du décaissement',
@@ -372,7 +374,7 @@ class CaisseEnAttenteController extends Controller
             Audit::log('create', 'refus_decaissement', "Refus décaissement prime {$source}: {$primeId}", null);
 
             return response()->json(['message' => 'Prime refusée avec succès'], 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Erreur lors du refus',
                 'error' => $e->getMessage(),
