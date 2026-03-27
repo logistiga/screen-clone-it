@@ -20,6 +20,7 @@ class CaissePrimesLocalesController extends Controller
 {
     public static function categorieRep(): string { return 'Prime représentant'; }
     public static function categorieTrans(): string { return 'Prime transitaire'; }
+
     public static function buildRef(string $id, string $type): string
     {
         $prefix = $type === 'transitaire' ? 'TRANS' : 'REP';
@@ -32,73 +33,110 @@ class CaissePrimesLocalesController extends Controller
     public function index(Request $request, string $type): JsonResponse
     {
         try {
-            if (!Schema::hasTable('primes')) {
-                return response()->json([
-                    'data' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'per_page' => 20, 'last_page' => 1],
-                    'message' => 'Table primes non disponible',
-                ]);
-            }
-
-            $perPage = $request->get('per_page', 20);
-            $page = $request->get('page', 1);
-            $search = $request->get('search');
+            $perPage = (int) $request->get('per_page', 20);
+            $page = (int) $request->get('page', 1);
+            $search = trim((string) $request->get('search', ''));
             $statut = $request->get('statut', 'a_decaisser');
 
-            // Build query without eager-loading relations that may not exist
-            $query = Prime::query()->where('statut', 'Payée');
-
-            // Safely eager-load only existing relations
-            $eagerLoad = [];
-            if (Schema::hasTable('transitaires')) $eagerLoad[] = 'transitaire';
-            if (Schema::hasTable('representants')) $eagerLoad[] = 'representant';
-            if (Schema::hasTable('factures')) $eagerLoad[] = 'facture';
-            if (!empty($eagerLoad)) $query->with($eagerLoad);
-
-            if ($type === 'representant') {
-                $query->whereNotNull('representant_id');
-            } else {
-                $query->whereNotNull('transitaire_id');
+            if (!Schema::hasTable('primes')) {
+                return $this->emptyIndexResponse($page, $perPage, 'Table primes non disponible');
             }
 
-            if ($search) {
-                $query->where(function ($q) use ($search, $type) {
-                    if ($type === 'representant') {
-                        $q->whereHas('representant', fn($r) => $r->where('nom', 'like', "%{$search}%")
-                            ->orWhere('prenom', 'like', "%{$search}%"));
-                    } else {
-                        $q->whereHas('transitaire', fn($r) => $r->where('nom', 'like', "%{$search}%"));
+            $foreignKey = $type === 'representant' ? 'representant_id' : 'transitaire_id';
+            if (!Schema::hasColumn('primes', $foreignKey)) {
+                return $this->emptyIndexResponse($page, $perPage, "Colonne {$foreignKey} non disponible");
+            }
+
+            $query = DB::table('primes')->select('primes.*');
+
+            if (Schema::hasColumn('primes', 'deleted_at')) {
+                $query->whereNull('primes.deleted_at');
+            }
+
+            if (Schema::hasColumn('primes', 'statut')) {
+                $query->whereIn('primes.statut', ['Payée', 'Payee', 'payee']);
+            }
+
+            $query->whereNotNull("primes.{$foreignKey}");
+
+            if ($search !== '') {
+                $searchLike = "%{$search}%";
+                $query->where(function ($q) use ($searchLike, $type, $foreignKey) {
+                    if (Schema::hasColumn('primes', 'description')) {
+                        $q->orWhere('primes.description', 'like', $searchLike);
                     }
-                    $q->orWhere('description', 'like', "%{$search}%")
-                      ->orWhere('montant', 'like', "%{$search}%");
+
+                    if (Schema::hasColumn('primes', 'montant')) {
+                        $q->orWhere('primes.montant', 'like', $searchLike);
+                    }
+
+                    if ($type === 'representant' && Schema::hasTable('representants')) {
+                        $q->orWhereExists(function ($sub) use ($searchLike, $foreignKey) {
+                            $sub->select(DB::raw(1))
+                                ->from('representants')
+                                ->whereColumn('representants.id', "primes.{$foreignKey}")
+                                ->where(function ($rep) use ($searchLike) {
+                                    if (Schema::hasColumn('representants', 'nom')) {
+                                        $rep->orWhere('representants.nom', 'like', $searchLike);
+                                    }
+                                    if (Schema::hasColumn('representants', 'prenom')) {
+                                        $rep->orWhere('representants.prenom', 'like', $searchLike);
+                                    }
+                                });
+
+                            if (Schema::hasColumn('representants', 'deleted_at')) {
+                                $sub->whereNull('representants.deleted_at');
+                            }
+                        });
+                    }
+
+                    if ($type === 'transitaire' && Schema::hasTable('transitaires') && Schema::hasColumn('transitaires', 'nom')) {
+                        $q->orWhereExists(function ($sub) use ($searchLike, $foreignKey) {
+                            $sub->select(DB::raw(1))
+                                ->from('transitaires')
+                                ->whereColumn('transitaires.id', "primes.{$foreignKey}")
+                                ->where('transitaires.nom', 'like', $searchLike);
+
+                            if (Schema::hasColumn('transitaires', 'deleted_at')) {
+                                $sub->whereNull('transitaires.deleted_at');
+                            }
+                        });
+                    }
                 });
             }
 
-            $primes = $query->orderBy('date_paiement', 'desc')->get();
+            if (Schema::hasColumn('primes', 'date_paiement')) {
+                $query->orderByDesc('primes.date_paiement');
+            } elseif (Schema::hasColumn('primes', 'created_at')) {
+                $query->orderByDesc('primes.created_at');
+            } else {
+                $query->orderByDesc('primes.id');
+            }
 
-            // Map to caisse-en-attente format
-            $mapped = $primes->map(function ($prime) use ($type) {
+            $primes = collect($query->get());
+            $factureNumbers = $this->loadFactureNumbers($primes);
+            $beneficiaires = $this->loadBeneficiaires($primes, $type);
+
+            $mapped = $primes->map(function ($prime) use ($type, $factureNumbers, $beneficiaires) {
                 $source = $type === 'representant' ? 'PRIME_REP' : 'PRIME_TRANS';
-                $beneficiaire = $type === 'representant'
-                    ? ($prime->representant ? "{$prime->representant->nom} {$prime->representant->prenom}" : 'N/A')
-                    : ($prime->transitaire?->nom ?? 'N/A');
 
                 return (object) [
                     'id' => (string) $prime->id,
-                    'type' => $prime->description ?? 'Prime',
-                    'beneficiaire' => $beneficiaire,
+                    'type' => property_exists($prime, 'description') && $prime->description ? $prime->description : 'Prime',
+                    'beneficiaire' => $beneficiaires[(int) $prime->id] ?? 'N/A',
                     'responsable' => null,
-                    'montant' => (float) $prime->montant,
+                    'montant' => (float) ($prime->montant ?? 0),
                     'payee' => true,
                     'reference_paiement' => null,
-                    'numero_paiement' => $prime->facture?->numero,
+                    'numero_paiement' => $factureNumbers[(int) $prime->id] ?? null,
                     'paiement_valide' => true,
                     'statut' => 'payee',
                     'camion_plaque' => null,
                     'parc' => null,
                     'responsable_nom' => null,
                     'prestataire_nom' => null,
-                    'created_at' => $prime->created_at->toISOString(),
-                    'date_paiement' => $prime->date_paiement?->toISOString(),
+                    'created_at' => $this->toIsoString($prime->created_at ?? null),
+                    'date_paiement' => $this->toIsoString($prime->date_paiement ?? null),
                     'source' => $source,
                     'decaisse' => false,
                     'refusee' => false,
@@ -108,10 +146,8 @@ class CaissePrimesLocalesController extends Controller
                 ];
             });
 
-            // Attach décaissement status
             $mapped = $this->attachDecaissementStatus($mapped);
 
-            // Filter by statut
             if ($statut === 'a_decaisser') {
                 $mapped = $mapped->filter(fn($p) => !$p->decaisse && !$p->refusee);
             } elseif ($statut === 'decaisse') {
@@ -122,16 +158,16 @@ class CaissePrimesLocalesController extends Controller
 
             $mapped = $mapped->values();
             $total = $mapped->count();
-            $paginated = $mapped->slice(($page - 1) * $perPage, $perPage)->values();
+            $paginated = $mapped->slice(max(0, ($page - 1) * $perPage), $perPage)->values();
 
             return response()->json([
                 'data' => $paginated,
                 'meta' => [
-                    'current_page' => (int) $page,
-                    'per_page' => (int) $perPage,
+                    'current_page' => $page,
+                    'per_page' => $perPage,
                     'total' => $total,
-                    'last_page' => max(1, ceil($total / $perPage)),
-                ]
+                    'last_page' => max(1, (int) ceil($total / max(1, $perPage))),
+                ],
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -139,7 +175,12 @@ class CaissePrimesLocalesController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 'data' => [],
-                'meta' => ['total' => 0],
+                'meta' => [
+                    'total' => 0,
+                    'current_page' => 1,
+                    'per_page' => 20,
+                    'last_page' => 1,
+                ],
             ], 200);
         }
     }
@@ -150,20 +191,34 @@ class CaissePrimesLocalesController extends Controller
     public function stats(string $type): JsonResponse
     {
         try {
-            $query = Prime::where('statut', 'Payée');
-            if ($type === 'representant') {
-                $query->whereNotNull('representant_id');
-            } else {
-                $query->whereNotNull('transitaire_id');
+            if (!Schema::hasTable('primes')) {
+                return response()->json($this->emptyStatsPayload());
             }
 
-            $primes = $query->get();
+            $foreignKey = $type === 'representant' ? 'representant_id' : 'transitaire_id';
+            if (!Schema::hasColumn('primes', $foreignKey)) {
+                return response()->json($this->emptyStatsPayload());
+            }
+
+            $query = DB::table('primes')->select(['id', 'montant']);
+
+            if (Schema::hasColumn('primes', 'deleted_at')) {
+                $query->whereNull('deleted_at');
+            }
+
+            if (Schema::hasColumn('primes', 'statut')) {
+                $query->whereIn('statut', ['Payée', 'Payee', 'payee']);
+            }
+
+            $query->whereNotNull($foreignKey);
+            $primes = collect($query->get());
 
             $mapped = $primes->map(function ($prime) use ($type) {
-                $ref = self::buildRef($prime->id, $type);
+                $ref = self::buildRef((string) $prime->id, $type);
+
                 return (object) [
                     'id' => $prime->id,
-                    'montant' => (float) $prime->montant,
+                    'montant' => (float) ($prime->montant ?? 0),
                     'ref' => $ref,
                 ];
             });
@@ -171,6 +226,7 @@ class CaissePrimesLocalesController extends Controller
             $refs = $mapped->pluck('ref')->toArray();
             $decaisseesRefs = [];
             $refuseesRefs = [];
+
             if (!empty($refs)) {
                 if (Schema::hasTable('mouvements_caisse')) {
                     $decaisseesRefs = DB::table('mouvements_caisse')
@@ -178,6 +234,7 @@ class CaissePrimesLocalesController extends Controller
                         ->pluck('reference')
                         ->toArray();
                 }
+
                 if (Schema::hasTable('primes_refusees')) {
                     $refuseesRefs = DB::table('primes_refusees')
                         ->whereIn('reference', $refs)
@@ -198,10 +255,7 @@ class CaissePrimesLocalesController extends Controller
                 'total_decaisse' => $dejaDecaissees->sum('montant'),
             ]);
         } catch (\Throwable $e) {
-            return response()->json([
-                'total_valide' => 0, 'nombre_primes' => 0,
-                'total_a_decaisser' => 0, 'nombre_a_decaisser' => 0,
-                'deja_decaissees' => 0, 'total_decaisse' => 0,
+            return response()->json($this->emptyStatsPayload() + [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -243,7 +297,6 @@ class CaissePrimesLocalesController extends Controller
                 return response()->json(['message' => 'Le montant dépasse le montant de la prime'], 422);
             }
 
-            // Partial payment logic
             if ($isPaiementPartiel && $montantDecaisse < $prime->montant) {
                 $existingPF = DB::table('paiements_fournisseurs')
                     ->where('source', $type === 'representant' ? 'PRIME_REP' : 'PRIME_TRANS')
@@ -334,7 +387,7 @@ class CaissePrimesLocalesController extends Controller
                 'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
                 'mouvement' => $mouvement,
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Erreur lors du décaissement', 'error' => $e->getMessage()], 500);
         }
@@ -368,16 +421,150 @@ class CaissePrimesLocalesController extends Controller
             Audit::log('create', 'refus_prime_locale', "Refus prime {$type}: {$primeId}", null);
 
             return response()->json(['message' => 'Prime refusée avec succès']);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);
         }
     }
 
     // ── Private ──
 
+    private function emptyIndexResponse(int $page, int $perPage, string $message): JsonResponse
+    {
+        return response()->json([
+            'data' => [],
+            'meta' => [
+                'total' => 0,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'last_page' => 1,
+            ],
+            'message' => $message,
+        ]);
+    }
+
+    private function emptyStatsPayload(): array
+    {
+        return [
+            'total_valide' => 0,
+            'nombre_primes' => 0,
+            'total_a_decaisser' => 0,
+            'nombre_a_decaisser' => 0,
+            'deja_decaissees' => 0,
+            'total_decaisse' => 0,
+        ];
+    }
+
+    private function loadFactureNumbers(\Illuminate\Support\Collection $primes): array
+    {
+        if (
+            $primes->isEmpty() ||
+            !Schema::hasTable('factures') ||
+            !Schema::hasColumn('primes', 'facture_id') ||
+            !Schema::hasColumn('factures', 'numero')
+        ) {
+            return [];
+        }
+
+        $factureIds = $primes->pluck('facture_id')->filter()->unique()->values();
+        if ($factureIds->isEmpty()) {
+            return [];
+        }
+
+        $query = DB::table('factures')->select(['id', 'numero'])->whereIn('id', $factureIds);
+        if (Schema::hasColumn('factures', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $factures = $query->pluck('numero', 'id');
+
+        return $primes
+            ->filter(fn($prime) => !empty($prime->facture_id) && isset($factures[$prime->facture_id]))
+            ->mapWithKeys(fn($prime) => [(int) $prime->id => $factures[$prime->facture_id]])
+            ->all();
+    }
+
+    private function loadBeneficiaires(\Illuminate\Support\Collection $primes, string $type): array
+    {
+        if ($primes->isEmpty()) {
+            return [];
+        }
+
+        if ($type === 'representant') {
+            if (!Schema::hasTable('representants') || !Schema::hasColumn('primes', 'representant_id')) {
+                return [];
+            }
+
+            $ids = $primes->pluck('representant_id')->filter()->unique()->values();
+            if ($ids->isEmpty()) {
+                return [];
+            }
+
+            $query = DB::table('representants')->select('id');
+            if (Schema::hasColumn('representants', 'nom')) {
+                $query->addSelect('nom');
+            }
+            if (Schema::hasColumn('representants', 'prenom')) {
+                $query->addSelect('prenom');
+            }
+            $query->whereIn('id', $ids);
+
+            if (Schema::hasColumn('representants', 'deleted_at')) {
+                $query->whereNull('deleted_at');
+            }
+
+            $beneficiaires = collect($query->get())->keyBy('id');
+
+            return $primes->mapWithKeys(function ($prime) use ($beneficiaires) {
+                $representant = $beneficiaires->get($prime->representant_id);
+                if (!$representant) {
+                    return [(int) $prime->id => 'N/A'];
+                }
+
+                $nom = trim(collect([$representant->nom ?? null, $representant->prenom ?? null])->filter()->implode(' '));
+
+                return [(int) $prime->id => $nom !== '' ? $nom : 'N/A'];
+            })->all();
+        }
+
+        if (!Schema::hasTable('transitaires') || !Schema::hasColumn('primes', 'transitaire_id')) {
+            return [];
+        }
+
+        $ids = $primes->pluck('transitaire_id')->filter()->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $query = DB::table('transitaires')->select(['id', 'nom'])->whereIn('id', $ids);
+        if (Schema::hasColumn('transitaires', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $beneficiaires = $query->pluck('nom', 'id');
+
+        return $primes->mapWithKeys(fn($prime) => [
+            (int) $prime->id => $beneficiaires[$prime->transitaire_id] ?? 'N/A',
+        ])->all();
+    }
+
+    private function toIsoString(mixed $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->toISOString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     private function attachDecaissementStatus(\Illuminate\Support\Collection $primes): \Illuminate\Support\Collection
     {
-        if ($primes->isEmpty()) return $primes;
+        if ($primes->isEmpty()) {
+            return $primes;
+        }
 
         $refs = $primes->map(fn($p) => self::buildRef($p->id, $p->source === 'PRIME_REP' ? 'representant' : 'transitaire'))->toArray();
 
