@@ -367,15 +367,22 @@ class CaissePrimesLocalesController extends Controller
 
         $refs = $primes->map(fn($p) => self::buildRef($p->id, $p->source === 'PRIME_REP' ? 'representant' : 'transitaire'))->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])
-            ->keyBy('reference');
+        $mouvements = collect();
+        $refusees = [];
 
-        $refusees = DB::table('primes_refusees')
-            ->whereIn('reference', $refs)
-            ->pluck('reference')
-            ->toArray();
+        if (Schema::hasTable('mouvements_caisse')) {
+            $mouvements = DB::table('mouvements_caisse')
+                ->whereIn('reference', $refs)
+                ->get(['id', 'reference', 'date', 'mode_paiement'])
+                ->keyBy('reference');
+        }
+
+        if (Schema::hasTable('primes_refusees')) {
+            $refusees = DB::table('primes_refusees')
+                ->whereIn('reference', $refs)
+                ->pluck('reference')
+                ->toArray();
+        }
 
         return $primes->map(function ($prime) use ($mouvements, $refusees) {
             $ref = self::buildRef($prime->id, $prime->source === 'PRIME_REP' ? 'representant' : 'transitaire');
