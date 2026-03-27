@@ -42,17 +42,30 @@ class CaisseEnAttenteController extends Controller
             $sourceFilter = $request->get('source', 'all');
 
             $allPrimes = collect();
+            $sourceErrors = [];
 
             if (in_array($sourceFilter, ['all', 'OPS']) && $this->ops->isAvailable()) {
-                $allPrimes = $allPrimes->merge($this->ops->fetchPrimes($search));
+                try {
+                    $allPrimes = $allPrimes->merge($this->ops->fetchPrimes($search));
+                } catch (\Throwable $e) {
+                    $sourceErrors['OPS'] = $e->getMessage();
+                }
             }
 
             if (in_array($sourceFilter, ['all', 'CNV']) && $this->cnv->isAvailable()) {
-                $allPrimes = $allPrimes->merge($this->cnv->fetchPrimes($search));
+                try {
+                    $allPrimes = $allPrimes->merge($this->cnv->fetchPrimes($search));
+                } catch (\Throwable $e) {
+                    $sourceErrors['CNV'] = $e->getMessage();
+                }
             }
 
             if (in_array($sourceFilter, ['all', 'HORSLBV']) && $this->horslbv->isAvailable()) {
-                $allPrimes = $allPrimes->merge($this->horslbv->fetchPrimes($search));
+                try {
+                    $allPrimes = $allPrimes->merge($this->horslbv->fetchPrimes($search));
+                } catch (\Throwable $e) {
+                    $sourceErrors['HORSLBV'] = $e->getMessage();
+                }
             }
 
             // Vérifier décaissements dans FAC
@@ -79,7 +92,8 @@ class CaisseEnAttenteController extends Controller
                     'per_page' => (int) $perPage,
                     'total' => $total,
                     'last_page' => max(1, ceil($total / $perPage)),
-                ]
+                ],
+                'source_errors' => (object) $sourceErrors,
             ]);
 
         } catch (\Throwable $e) {
@@ -99,17 +113,30 @@ class CaisseEnAttenteController extends Controller
     {
         try {
             $allPrimes = collect();
+            $sourceErrors = [];
 
             if ($this->ops->isAvailable()) {
-                $allPrimes = $allPrimes->merge($this->ops->fetchStats());
+                try {
+                    $allPrimes = $allPrimes->merge($this->ops->fetchStats());
+                } catch (\Throwable $e) {
+                    $sourceErrors['OPS'] = $e->getMessage();
+                }
             }
 
             if ($this->cnv->isAvailable()) {
-                $allPrimes = $allPrimes->merge($this->cnv->fetchStats());
+                try {
+                    $allPrimes = $allPrimes->merge($this->cnv->fetchStats());
+                } catch (\Throwable $e) {
+                    $sourceErrors['CNV'] = $e->getMessage();
+                }
             }
 
             if ($this->horslbv->isAvailable()) {
-                $allPrimes = $allPrimes->merge($this->horslbv->fetchStats());
+                try {
+                    $allPrimes = $allPrimes->merge($this->horslbv->fetchStats());
+                } catch (\Throwable $e) {
+                    $sourceErrors['HORSLBV'] = $e->getMessage();
+                }
             }
 
             $refs = $allPrimes->pluck('ref')->toArray();
@@ -132,6 +159,7 @@ class CaisseEnAttenteController extends Controller
                 'nombre_a_decaisser' => $aDecaisser->count(),
                 'deja_decaissees' => $dejaDecaissees->count(),
                 'total_decaisse' => $dejaDecaissees->sum('montant'),
+                'source_errors' => (object) $sourceErrors,
             ]);
 
         } catch (\Throwable $e) {
