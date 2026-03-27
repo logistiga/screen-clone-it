@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Factory/Router principal pour les services OrdreTravail.
- * Route vers le service spécialisé selon le type de document.
+ * Conversion/sync facture déléguées à OrdreConversionService.
  */
 class OrdreServiceFactory
 {
@@ -248,7 +248,8 @@ class OrdreServiceFactory
             // SYNCHRONISATION AUTOMATIQUE : Si l'ordre est facturé, mettre à jour la facture associée
             $ordre->load('facture');
             if ($ordre->facture) {
-                $this->synchroniserFacture($ordre, $data);
+                $conversionService = app(OrdreConversionService::class);
+                $conversionService->synchroniserFacture($ordre, $data);
             }
 
             Log::info('Ordre modifié via Factory', ['ordre_id' => $ordre->id]);
@@ -278,92 +279,11 @@ class OrdreServiceFactory
     }
 
     /**
-     * Synchroniser la facture associée avec les données de l'ordre
-     */
-    protected function synchroniserFacture(OrdreTravail $ordre, array $data): void
-    {
-        $facture = $ordre->facture;
-        $factureFactory = app(FactureServiceFactory::class);
-        $categorie = $ordre->categorie;
-
-        // Préparer les données de mise à jour de la facture
-        $factureData = [
-            'client_id' => $ordre->client_id,
-            'armateur_id' => $ordre->armateur_id,
-            'transitaire_id' => $ordre->transitaire_id,
-            'representant_id' => $ordre->representant_id,
-            'type_operation' => $ordre->type_operation,
-            'type_operation_indep' => $ordre->type_operation_indep,
-            'numero_bl' => $ordre->numero_bl,
-            'navire' => $ordre->navire,
-            'notes' => $ordre->notes,
-        ];
-
-        // Synchroniser les éléments selon le type
-        if ($categorie === 'conteneurs' && isset($data['conteneurs'])) {
-            $factureData['conteneurs'] = $data['conteneurs'];
-        } elseif ($categorie === 'conventionnel' && isset($data['lots'])) {
-            $factureData['lots'] = $data['lots'];
-        } elseif ($categorie === 'operations_independantes' && isset($data['lignes'])) {
-            $factureData['lignes'] = $data['lignes'];
-        } else {
-            // Copier les éléments existants de l'ordre vers la facture
-            $service = $this->getService($categorie);
-            $factureData = array_merge($factureData, $service->preparerPourConversion($ordre));
-        }
-
-        // Mettre à jour la facture
-        $factureFactory->modifier($facture, $factureData);
-
-        Log::info('Facture synchronisée avec ordre', [
-            'ordre_id' => $ordre->id,
-            'facture_id' => $facture->id,
-            'facture_numero' => $facture->numero,
-        ]);
-    }
-
-    /**
-     * Convertir un ordre de travail en facture
+     * Convertir un ordre de travail en facture (délégué à OrdreConversionService)
      */
     public function convertirEnFacture(OrdreTravail $ordre): \App\Models\Facture
     {
-        return DB::transaction(function () use ($ordre) {
-            $categorie = $ordre->categorie;
-            $service = $this->getService($categorie);
-
-            $factureFactory = app(FactureServiceFactory::class);
-
-            $factureData = [
-                'client_id' => $ordre->client_id,
-                'ordre_id' => $ordre->id,
-                'date_creation' => $ordre->date_creation?->toDateString() ?? now()->toDateString(),
-                'armateur_id' => $ordre->armateur_id,
-                'transitaire_id' => $ordre->transitaire_id,
-                'representant_id' => $ordre->representant_id,
-                'categorie' => $categorie,
-                'type_operation' => $ordre->type_operation,
-                'type_operation_indep' => $ordre->type_operation_indep,
-                'numero_bl' => $ordre->numero_bl,
-                'navire' => $ordre->navire,
-                'notes' => $ordre->notes,
-                'statut' => 'brouillon',
-            ];
-
-            // Ajouter les éléments spécifiques au type
-            $factureData = array_merge($factureData, $service->preparerPourConversion($ordre));
-
-            $facture = $factureFactory->creer($factureData);
-
-            $ordre->update(['statut' => 'facture']);
-
-            Log::info('Ordre converti en facture via Factory', [
-                'ordre_id' => $ordre->id,
-                'facture_id' => $facture->id,
-                'categorie' => $categorie,
-            ]);
-
-            return $facture;
-        });
+        return app(OrdreConversionService::class)->convertirEnFacture($ordre);
     }
 
     /**
