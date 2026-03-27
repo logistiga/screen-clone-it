@@ -8,6 +8,7 @@ use App\Models\MouvementCaisse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -27,7 +28,7 @@ class CaisseOpsController extends Controller
             $connection->getPdo();
 
             return $connection->getSchemaBuilder()->hasTable('primes');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return false;
         }
     }
@@ -37,46 +38,86 @@ class CaisseOpsController extends Controller
      */
     public function fetchPrimes(?string $search = null): \Illuminate\Support\Collection
     {
+        $schema = Schema::connection('ops');
+        $hasNumeroPaiement = $schema->hasColumn('primes', 'numero_paiement');
+        $hasCreatedAt = $schema->hasColumn('primes', 'created_at');
+        $optionalColumns = collect([
+            'type',
+            'beneficiaire',
+            'responsable',
+            'reference_paiement',
+            'numero_paiement',
+            'statut',
+            'camion_plaque',
+            'parc',
+            'responsable_nom',
+            'prestataire_nom',
+            'created_at',
+        ])->filter(fn($column) => $schema->hasColumn('primes', $column))->values()->all();
+
         $query = DB::connection('ops')
             ->table('primes')
-            ->select([
-                'primes.id',
-                'primes.type',
-                'primes.beneficiaire',
-                'primes.responsable',
-                'primes.montant',
-                'primes.payee',
-                'primes.reference_paiement',
-                'primes.numero_paiement',
-                'primes.paiement_valide',
-                'primes.statut',
-                'primes.camion_plaque',
-                'primes.parc',
-                'primes.responsable_nom',
-                'primes.prestataire_nom',
-                'primes.created_at',
-            ])
+            ->select(array_merge(
+                ['primes.id', 'primes.montant', 'primes.payee', 'primes.paiement_valide'],
+                array_map(fn($column) => 'primes.' . $column, $optionalColumns)
+            ))
             ->where('primes.payee', true)
             ->where('primes.paiement_valide', true);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('beneficiaire', 'like', "%{$search}%")
-                  ->orWhere('responsable', 'like', "%{$search}%")
-                  ->orWhere('reference_paiement', 'like', "%{$search}%")
-                  ->orWhere('numero_paiement', 'like', "%{$search}%")
-                  ->orWhere('camion_plaque', 'like', "%{$search}%")
-                  ->orWhere('parc', 'like', "%{$search}%")
-                  ->orWhere('responsable_nom', 'like', "%{$search}%")
-                  ->orWhere('prestataire_nom', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%")
-                  ->orWhere('statut', 'like', "%{$search}%");
-            });
+            $searchableColumns = array_values(array_filter([
+                'beneficiaire',
+                'responsable',
+                'reference_paiement',
+                'numero_paiement',
+                'camion_plaque',
+                'parc',
+                'responsable_nom',
+                'prestataire_nom',
+                'type',
+                'statut',
+            ], fn($column) => $schema->hasColumn('primes', $column)));
+
+            if (!empty($searchableColumns)) {
+                $query->where(function ($q) use ($search, $searchableColumns) {
+                    foreach ($searchableColumns as $index => $column) {
+                        if ($index === 0) {
+                            $q->where($column, 'like', "%{$search}%");
+                        } else {
+                            $q->orWhere($column, 'like', "%{$search}%");
+                        }
+                    }
+                });
+            }
         }
 
-        $primes = $query->orderBy('primes.created_at', 'desc')->get();
+        $primes = ($hasCreatedAt ? $query->orderBy('primes.created_at', 'desc') : $query->orderByDesc('primes.id'))
+            ->get()
+            ->map(function ($prime) use ($hasNumeroPaiement, $hasCreatedAt) {
+                $prime->type = $prime->type ?? null;
+                $prime->beneficiaire = $prime->beneficiaire ?? null;
+                $prime->responsable = $prime->responsable ?? null;
+                $prime->reference_paiement = $prime->reference_paiement ?? null;
+                $prime->numero_paiement = $hasNumeroPaiement ? ($prime->numero_paiement ?? null) : null;
+                $prime->statut = $prime->statut ?? null;
+                $prime->camion_plaque = $prime->camion_plaque ?? null;
+                $prime->parc = $prime->parc ?? null;
+                $prime->responsable_nom = $prime->responsable_nom ?? null;
+                $prime->prestataire_nom = $prime->prestataire_nom ?? null;
+                $prime->created_at = $hasCreatedAt ? ($prime->created_at ?? null) : null;
 
-        // Regrouper par numero_paiement
+                return $prime;
+            });
+
+        if (!$hasNumeroPaiement) {
+            return $primes->map(function ($p) {
+                $p->source = 'OPS';
+                $p->prime_ids = [(string) $p->id];
+                $p->nombre_primes = 1;
+                return $p;
+            })->values();
+        }
+
         return $this->groupByNumeroPaiement($primes);
     }
 
@@ -127,11 +168,21 @@ class CaisseOpsController extends Controller
      */
     public function fetchStats(): \Illuminate\Support\Collection
     {
+        $schema = Schema::connection('ops');
+        $hasNumeroPaiement = $schema->hasColumn('primes', 'numero_paiement');
+
         $primes = DB::connection('ops')
             ->table('primes')
             ->where('payee', true)
             ->where('paiement_valide', true)
-            ->get(['id', 'montant', 'numero_paiement']);
+            ->get($hasNumeroPaiement ? ['id', 'montant', 'numero_paiement'] : ['id', 'montant'])
+            ->map(function ($prime) use ($hasNumeroPaiement) {
+                if (!$hasNumeroPaiement) {
+                    $prime->numero_paiement = null;
+                }
+
+                return $prime;
+            });
 
         // Regrouper par numero_paiement pour les stats aussi
         $withNumero = $primes->filter(fn($p) => !empty($p->numero_paiement));
