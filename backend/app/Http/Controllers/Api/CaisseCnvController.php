@@ -147,6 +147,9 @@ class CaisseCnvController extends Controller
             'banque_id' => 'nullable|exists:banques,id',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
+            'categorie' => 'nullable|string|max:100',
+            'montant' => 'nullable|numeric|min:1',
+            'paiement_partiel' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -169,9 +172,51 @@ class CaisseCnvController extends Controller
             }
 
             $refUnique = self::buildRef($primeId);
+            $categorie = $request->get('categorie') ?: self::categorie();
+            $isPaiementPartiel = $request->boolean('paiement_partiel', false);
+            $montantDecaisse = $isPaiementPartiel && $request->has('montant')
+                ? (float) $request->montant
+                : (float) $prime->montant;
 
-            if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
-                return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
+            if ($montantDecaisse > $prime->montant) {
+                return response()->json(['message' => 'Le montant dépasse le montant de la prime'], 422);
+            }
+
+            $numTranche = null;
+            $existingPF = null;
+
+            if ($isPaiementPartiel && $montantDecaisse < $prime->montant) {
+                $existingPF = DB::table('paiements_fournisseurs')
+                    ->where('source', 'CNV')->where('source_id', $primeId)->first();
+
+                if (!$existingPF) {
+                    $pfId = DB::table('paiements_fournisseurs')->insertGetId([
+                        'fournisseur' => $prime->beneficiaire ?? 'N/A',
+                        'reference' => $prime->numero_paiement ?? $refUnique,
+                        'description' => "Prime CNV - " . ($prime->beneficiaire ?? 'N/A'),
+                        'montant_total' => $prime->montant,
+                        'date_facture' => now()->toDateString(),
+                        'source' => 'CNV', 'source_id' => $primeId,
+                        'created_by' => $request->user()?->id,
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    $existingPF = (object) ['id' => $pfId];
+                }
+
+                $totalDejaPaye = DB::table('tranches_paiement_fournisseur')
+                    ->where('paiement_fournisseur_id', $existingPF->id)->sum('montant');
+                $reste = $prime->montant - $totalDejaPaye;
+                if ($montantDecaisse > $reste) {
+                    return response()->json(['message' => "Le montant ({$montantDecaisse}) dépasse le reste à payer ({$reste})"], 422);
+                }
+
+                $numTranche = DB::table('tranches_paiement_fournisseur')
+                    ->where('paiement_fournisseur_id', $existingPF->id)->count() + 1;
+                $refUnique .= '-T' . $numTranche;
+            } else {
+                if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+                    return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
+                }
             }
 
             DB::beginTransaction();
@@ -181,14 +226,13 @@ class CaisseCnvController extends Controller
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
 
             $description = "Prime {$type} - {$beneficiaire}";
-            if ($prime->numero_paiement) {
-                $description .= " - {$prime->numero_paiement}";
-            }
+            if ($isPaiementPartiel) $description = "Avance - " . $description;
+            if ($prime->numero_paiement) $description .= " - {$prime->numero_paiement}";
 
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
-                'categorie' => self::categorie(),
-                'montant' => $prime->montant,
+                'categorie' => $categorie,
+                'montant' => $montantDecaisse,
                 'description' => $description,
                 'beneficiaire' => $beneficiaire,
                 'reference' => $refUnique,
@@ -198,15 +242,25 @@ class CaisseCnvController extends Controller
                 'banque_id' => $request->banque_id,
             ]);
 
-            Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime CNV: {$prime->montant} - {$beneficiaire}", $mouvement->id);
+            if ($isPaiementPartiel && $montantDecaisse < $prime->montant && isset($existingPF)) {
+                DB::table('tranches_paiement_fournisseur')->insert([
+                    'paiement_fournisseur_id' => $existingPF->id, 'montant' => $montantDecaisse,
+                    'mode_paiement' => $request->mode_paiement, 'reference' => $request->reference,
+                    'notes' => $request->notes, 'date_paiement' => now()->toDateString(),
+                    'numero_tranche' => $numTranche ?? 1, 'mouvement_id' => $mouvement->id,
+                    'created_by' => $request->user()?->id, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+
+            Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime CNV: {$montantDecaisse} - {$beneficiaire}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Décaissement validé avec succès',
+                'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
                 'mouvement' => $mouvement,
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Erreur lors du décaissement',

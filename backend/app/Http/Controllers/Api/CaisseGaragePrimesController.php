@@ -97,16 +97,12 @@ class CaisseGaragePrimesController extends Controller
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
             'categorie' => 'nullable|string|max:100',
+            'montant' => 'nullable|numeric|min:1',
+            'paiement_partiel' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $refUnique = CaisseGarageController::buildPrimeRef($itemId);
-
-        if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
-            return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
         }
 
         $items = $this->fetchGaragePrimes();
@@ -115,18 +111,69 @@ class CaisseGaragePrimesController extends Controller
             return response()->json(['message' => 'Prime garage non trouvée'], 404);
         }
 
+        $refUnique = CaisseGarageController::buildPrimeRef($itemId);
+        $categorie = $request->get('categorie', 'Primes Garage');
+        $isPaiementPartiel = $request->boolean('paiement_partiel', false);
+        $montantDecaisse = $isPaiementPartiel && $request->has('montant')
+            ? (float) $request->montant
+            : (float) $item->montant;
+
+        if ($montantDecaisse > $item->montant) {
+            return response()->json(['message' => 'Le montant dépasse le montant de la prime'], 422);
+        }
+
+        $numTranche = null;
+        $existingPF = null;
+
+        if ($isPaiementPartiel && $montantDecaisse < $item->montant) {
+            $existingPF = DB::table('paiements_fournisseurs')
+                ->where('source', 'GARAGE_PRIME')->where('source_id', $itemId)->first();
+
+            if (!$existingPF) {
+                $beneficiaire = $item->beneficiaire ?: 'Mécaniciens';
+                $pfId = DB::table('paiements_fournisseurs')->insertGetId([
+                    'fournisseur' => $beneficiaire,
+                    'reference' => $refUnique,
+                    'description' => "Prime Garage - {$beneficiaire}",
+                    'montant_total' => $item->montant,
+                    'date_facture' => now()->toDateString(),
+                    'source' => 'GARAGE_PRIME', 'source_id' => $itemId,
+                    'created_by' => $request->user()?->id,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                $existingPF = (object) ['id' => $pfId];
+            }
+
+            $totalDejaPaye = DB::table('tranches_paiement_fournisseur')
+                ->where('paiement_fournisseur_id', $existingPF->id)->sum('montant');
+            $reste = $item->montant - $totalDejaPaye;
+            if ($montantDecaisse > $reste) {
+                return response()->json(['message' => "Le montant ({$montantDecaisse}) dépasse le reste à payer ({$reste})"], 422);
+            }
+
+            $numTranche = DB::table('tranches_paiement_fournisseur')
+                ->where('paiement_fournisseur_id', $existingPF->id)->count() + 1;
+            $refUnique .= '-T' . $numTranche;
+        } else {
+            if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+                return response()->json(['message' => 'Cette prime a déjà été décaissée'], 422);
+            }
+        }
+
         try {
             DB::beginTransaction();
 
             $beneficiaire = $item->beneficiaire ?: 'Mécaniciens';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
-            $categorie = $request->get('categorie', 'Primes Garage');
+
+            $description = "Prime Garage - {$beneficiaire}" . ($item->numero ? " (N°{$item->numero})" : '');
+            if ($isPaiementPartiel) $description = "Avance - " . $description;
 
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
                 'categorie' => $categorie,
-                'montant' => $item->montant,
-                'description' => "Prime Garage - {$beneficiaire}" . ($item->numero ? " (N°{$item->numero})" : ''),
+                'montant' => $montantDecaisse,
+                'description' => $description,
                 'beneficiaire' => $beneficiaire,
                 'reference' => $refUnique,
                 'mode_paiement' => $request->mode_paiement,
@@ -135,10 +182,23 @@ class CaisseGaragePrimesController extends Controller
                 'banque_id' => $request->banque_id,
             ]);
 
-            Audit::log('create', 'decaissement_garage_prime', "Décaissement prime Garage: {$item->montant} - {$beneficiaire}", $mouvement->id);
+            if ($isPaiementPartiel && $montantDecaisse < $item->montant && isset($existingPF)) {
+                DB::table('tranches_paiement_fournisseur')->insert([
+                    'paiement_fournisseur_id' => $existingPF->id, 'montant' => $montantDecaisse,
+                    'mode_paiement' => $request->mode_paiement, 'reference' => $request->reference,
+                    'notes' => $request->notes, 'date_paiement' => now()->toDateString(),
+                    'numero_tranche' => $numTranche ?? 1, 'mouvement_id' => $mouvement->id,
+                    'created_by' => $request->user()?->id, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+
+            Audit::log('create', 'decaissement_garage_prime', "Décaissement prime Garage: {$montantDecaisse} - {$beneficiaire}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
             DB::commit();
 
-            return response()->json(['message' => 'Décaissement validé avec succès', 'mouvement' => $mouvement], 201);
+            return response()->json([
+                'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
+                'mouvement' => $mouvement,
+            ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);

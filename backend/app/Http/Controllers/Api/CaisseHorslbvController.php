@@ -145,6 +145,9 @@ class CaisseHorslbvController extends Controller
             'banque_id' => 'nullable|exists:banques,id',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
+            'categorie' => 'nullable|string|max:100',
+            'montant' => 'nullable|numeric|min:1',
+            'paiement_partiel' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -167,19 +170,13 @@ class CaisseHorslbvController extends Controller
             }
 
             $refUnique = self::buildRef($primeId);
-
-            if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
-                return response()->json(['message' => 'Cette fiche a déjà été décaissée'], 422);
-            }
-
-            DB::beginTransaction();
+            $categorie = $request->get('categorie') ?: self::categorie();
 
             $montantTotal = ($fiche->frais_route ?? 0)
                 + ($fiche->carburant ?? 0)
                 + ($fiche->logement ?? 0)
                 + ($fiche->prime ?? 0);
 
-            // Ajouter les charges supplémentaires si présentes
             if ($fiche->charges_supplementaires) {
                 $charges = json_decode($fiche->charges_supplementaires, true);
                 if (is_array($charges)) {
@@ -189,18 +186,65 @@ class CaisseHorslbvController extends Controller
                 }
             }
 
+            $isPaiementPartiel = $request->boolean('paiement_partiel', false);
+            $montantDecaisse = $isPaiementPartiel && $request->has('montant')
+                ? (float) $request->montant
+                : (float) $montantTotal;
+
+            if ($montantDecaisse > $montantTotal) {
+                return response()->json(['message' => 'Le montant dépasse le montant total de la fiche'], 422);
+            }
+
+            $numTranche = null;
+            $existingPF = null;
+
+            if ($isPaiementPartiel && $montantDecaisse < $montantTotal) {
+                $existingPF = DB::table('paiements_fournisseurs')
+                    ->where('source', 'HORSLBV')->where('source_id', $primeId)->first();
+
+                if (!$existingPF) {
+                    $pfId = DB::table('paiements_fournisseurs')->insertGetId([
+                        'fournisseur' => $fiche->numero_fiche ?? 'N/A',
+                        'reference' => $refUnique,
+                        'description' => "Dépense Hors LBV - " . ($fiche->numero_fiche ?? 'N/A'),
+                        'montant_total' => $montantTotal,
+                        'date_facture' => now()->toDateString(),
+                        'source' => 'HORSLBV', 'source_id' => $primeId,
+                        'created_by' => $request->user()?->id,
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    $existingPF = (object) ['id' => $pfId];
+                }
+
+                $totalDejaPaye = DB::table('tranches_paiement_fournisseur')
+                    ->where('paiement_fournisseur_id', $existingPF->id)->sum('montant');
+                $reste = $montantTotal - $totalDejaPaye;
+                if ($montantDecaisse > $reste) {
+                    return response()->json(['message' => "Le montant ({$montantDecaisse}) dépasse le reste à payer ({$reste})"], 422);
+                }
+
+                $numTranche = DB::table('tranches_paiement_fournisseur')
+                    ->where('paiement_fournisseur_id', $existingPF->id)->count() + 1;
+                $refUnique .= '-T' . $numTranche;
+            } else {
+                if (DB::table('mouvements_caisse')->where('reference', $refUnique)->exists()) {
+                    return response()->json(['message' => 'Cette fiche a déjà été décaissée'], 422);
+                }
+            }
+
+            DB::beginTransaction();
+
             $beneficiaire = $fiche->numero_fiche ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
 
             $description = "Dépense Hors LBV - {$fiche->numero_fiche}";
-            if ($fiche->numero_depense) {
-                $description .= " - {$fiche->numero_depense}";
-            }
+            if ($isPaiementPartiel) $description = "Avance - " . $description;
+            if ($fiche->numero_depense) $description .= " - {$fiche->numero_depense}";
 
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
-                'categorie' => self::categorie(),
-                'montant' => $montantTotal,
+                'categorie' => $categorie,
+                'montant' => $montantDecaisse,
                 'description' => $description,
                 'beneficiaire' => $beneficiaire,
                 'reference' => $refUnique,
@@ -210,15 +254,25 @@ class CaisseHorslbvController extends Controller
                 'banque_id' => $request->banque_id,
             ]);
 
-            Audit::log('create', 'decaissement_caisse_attente', "Décaissement dépense HORSLBV: {$montantTotal} - {$fiche->numero_fiche}", $mouvement->id);
+            if ($isPaiementPartiel && $montantDecaisse < $montantTotal && isset($existingPF)) {
+                DB::table('tranches_paiement_fournisseur')->insert([
+                    'paiement_fournisseur_id' => $existingPF->id, 'montant' => $montantDecaisse,
+                    'mode_paiement' => $request->mode_paiement, 'reference' => $request->reference,
+                    'notes' => $request->notes, 'date_paiement' => now()->toDateString(),
+                    'numero_tranche' => $numTranche ?? 1, 'mouvement_id' => $mouvement->id,
+                    'created_by' => $request->user()?->id, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+
+            Audit::log('create', 'decaissement_caisse_attente', "Décaissement dépense HORSLBV: {$montantDecaisse} - {$fiche->numero_fiche}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Décaissement validé avec succès',
+                'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
                 'mouvement' => $mouvement,
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Erreur lors du décaissement',
