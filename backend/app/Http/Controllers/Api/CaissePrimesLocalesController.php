@@ -118,10 +118,11 @@ class CaissePrimesLocalesController extends Controller
                     'last_page' => max(1, ceil($total / $perPage)),
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Erreur',
                 'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 'data' => [],
                 'meta' => ['total' => 0],
             ], 200);
