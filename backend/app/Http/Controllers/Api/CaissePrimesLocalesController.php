@@ -9,6 +9,7 @@ use App\Models\MouvementCaisse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -118,10 +119,11 @@ class CaissePrimesLocalesController extends Controller
                     'last_page' => max(1, ceil($total / $perPage)),
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Erreur',
                 'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 'data' => [],
                 'meta' => ['total' => 0],
             ], 200);
@@ -156,14 +158,18 @@ class CaissePrimesLocalesController extends Controller
             $decaisseesRefs = [];
             $refuseesRefs = [];
             if (!empty($refs)) {
-                $decaisseesRefs = DB::table('mouvements_caisse')
-                    ->whereIn('reference', $refs)
-                    ->pluck('reference')
-                    ->toArray();
-                $refuseesRefs = DB::table('primes_refusees')
-                    ->whereIn('reference', $refs)
-                    ->pluck('reference')
-                    ->toArray();
+                if (Schema::hasTable('mouvements_caisse')) {
+                    $decaisseesRefs = DB::table('mouvements_caisse')
+                        ->whereIn('reference', $refs)
+                        ->pluck('reference')
+                        ->toArray();
+                }
+                if (Schema::hasTable('primes_refusees')) {
+                    $refuseesRefs = DB::table('primes_refusees')
+                        ->whereIn('reference', $refs)
+                        ->pluck('reference')
+                        ->toArray();
+                }
             }
 
             $aDecaisser = $mapped->filter(fn($p) => !in_array($p->ref, $decaisseesRefs) && !in_array($p->ref, $refuseesRefs));
@@ -177,7 +183,7 @@ class CaissePrimesLocalesController extends Controller
                 'deja_decaissees' => $dejaDecaissees->count(),
                 'total_decaisse' => $dejaDecaissees->sum('montant'),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'total_valide' => 0, 'nombre_primes' => 0,
                 'total_a_decaisser' => 0, 'nombre_a_decaisser' => 0,
@@ -361,15 +367,22 @@ class CaissePrimesLocalesController extends Controller
 
         $refs = $primes->map(fn($p) => self::buildRef($p->id, $p->source === 'PRIME_REP' ? 'representant' : 'transitaire'))->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])
-            ->keyBy('reference');
+        $mouvements = collect();
+        $refusees = [];
 
-        $refusees = DB::table('primes_refusees')
-            ->whereIn('reference', $refs)
-            ->pluck('reference')
-            ->toArray();
+        if (Schema::hasTable('mouvements_caisse')) {
+            $mouvements = DB::table('mouvements_caisse')
+                ->whereIn('reference', $refs)
+                ->get(['id', 'reference', 'date', 'mode_paiement'])
+                ->keyBy('reference');
+        }
+
+        if (Schema::hasTable('primes_refusees')) {
+            $refusees = DB::table('primes_refusees')
+                ->whereIn('reference', $refs)
+                ->pluck('reference')
+                ->toArray();
+        }
 
         return $primes->map(function ($prime) use ($mouvements, $refusees) {
             $ref = self::buildRef($prime->id, $prime->source === 'PRIME_REP' ? 'representant' : 'transitaire');
