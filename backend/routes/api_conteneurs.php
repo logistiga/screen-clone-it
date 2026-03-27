@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ConteneurTraiteController;
 use App\Http\Controllers\Api\ConteneurAnomalieController;
 use App\Http\Controllers\Api\SyncDiagnosticController;
+use App\Http\Controllers\Api\DetentionEnAttenteController;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
@@ -51,4 +52,14 @@ Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
         ->middleware('permission:configuration.modifier');
     Route::post('sync-all', [SyncDiagnosticController::class, 'syncAll'])
         ->middleware('permission:configuration.modifier');
+});
+
+// ============================================
+// DÉTENTIONS EN ATTENTE (depuis TC)
+// ============================================
+Route::prefix('detentions-attente')->middleware('audit')->group(function () {
+    Route::get('/', [DetentionEnAttenteController::class, 'index'])
+        ->middleware('permission:ordres.voir');
+    Route::get('stats', [DetentionEnAttenteController::class, 'stats'])
+        ->middleware('permission:ordres.voir');
 });

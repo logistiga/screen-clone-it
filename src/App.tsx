@@ -76,6 +76,7 @@ const OrdrePDFPage = lazy(() => import("./pages/OrdrePDF"));
 const ConnaissementPDFPage = lazy(() => import("./pages/ConnaissementPDF"));
 const ModifierOrdrePage = lazy(() => import("./pages/ModifierOrdre"));
 const ConteneursEnAttentePage = lazy(() => import("./pages/ConteneursEnAttente"));
+const DetentionsEnAttentePage = lazy(() => import("./pages/DetentionsEnAttente"));
 
 const FacturesPage = lazy(() => import("./pages/Factures"));
 const NouvelleFacturePage = lazy(() => import("./pages/NouvelleFacture"));
@@ -207,6 +208,7 @@ const App = () => (
                 
                 {/* Routes protégées - Conteneurs en attente de facturation (depuis OPS) */}
                 <Route path="/conteneurs-en-attente" element={<ProtectedRoute requiredPermission={P.ordres.view}><ConteneursEnAttentePage /></ProtectedRoute>} />
+                <Route path="/detentions-en-attente" element={<ProtectedRoute requiredPermission={P.ordres.view}><DetentionsEnAttentePage /></ProtectedRoute>} />
                 
                 {/* Routes protégées - Factures */}
                 <Route path="/factures" element={<ProtectedRoute requiredPermission={P.factures.view}><FacturesPage /></ProtectedRoute>} />
