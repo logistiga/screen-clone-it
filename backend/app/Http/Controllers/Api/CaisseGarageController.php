@@ -534,7 +534,7 @@ class CaisseGarageController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search, $hasObservations, $hasInterventionsTable, $hasInterventionId) {
-                $q->where('primes.numero', 'like', "%{$search}%")
+                $q->where('primes.numero', 'like', "%{$search}%");
 
                 if ($hasObservations) {
                     $q->orWhere('primes.observations', 'like', "%{$search}%");
