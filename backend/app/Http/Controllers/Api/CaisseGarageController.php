@@ -48,7 +48,7 @@ class CaisseGarageController extends Controller
             $connection = DB::connection('garage');
             $connection->getPdo();
             return $connection->getSchemaBuilder()->hasTable('bon_commandes');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return false;
         }
     }
@@ -159,42 +159,51 @@ class CaisseGarageController extends Controller
     private function fetchAllValidated(?string $search, string $fournisseurFilter): \Illuminate\Support\Collection
     {
         $allItems = collect();
+        $hasFournisseursTable = Schema::connection('garage')->hasTable('fournisseurs');
 
         if (Schema::connection('garage')->hasTable('bon_commandes')) {
-            $allItems = $allItems->merge($this->fetchBonCommandes($search, $fournisseurFilter));
+            $allItems = $allItems->merge($this->fetchBonCommandes($search, $fournisseurFilter, $hasFournisseursTable));
         }
         if (Schema::connection('garage')->hasTable('achat_pneus')) {
-            $allItems = $allItems->merge($this->fetchAchatPneus($search, $fournisseurFilter));
+            $allItems = $allItems->merge($this->fetchAchatPneus($search, $fournisseurFilter, $hasFournisseursTable));
         }
         if (Schema::connection('garage')->hasTable('achats_divers')) {
-            $allItems = $allItems->merge($this->fetchAchatsDivers($search, $fournisseurFilter));
+            $allItems = $allItems->merge($this->fetchAchatsDivers($search, $fournisseurFilter, $hasFournisseursTable));
         }
 
         return $allItems;
     }
 
-    private function fetchBonCommandes(?string $search, string $fournisseurFilter): \Illuminate\Support\Collection
+    private function fetchBonCommandes(?string $search, string $fournisseurFilter, bool $hasFournisseursTable): \Illuminate\Support\Collection
     {
         $query = DB::connection('garage')
             ->table('bon_commandes')
-            ->leftJoin('fournisseurs', 'bon_commandes.fournisseur_id', '=', 'fournisseurs.id')
-            ->whereIn('bon_commandes.statut', ['validé', 'validated'])
-            ->select([
-                'bon_commandes.id',
-                'bon_commandes.numero',
-                'bon_commandes.date_commande as date',
-                'bon_commandes.montant_total as montant',
-                'bon_commandes.created_at',
-                'fournisseurs.raison_sociale as fournisseur_nom',
-            ]);
+            ->whereIn('bon_commandes.statut', ['validé', 'validated']);
 
-        $query = $this->applyFournisseurFilter($query, $fournisseurFilter);
+        if ($hasFournisseursTable) {
+            $query->leftJoin('fournisseurs', 'bon_commandes.fournisseur_id', '=', 'fournisseurs.id');
+        }
+
+        $query->select([
+            'bon_commandes.id',
+            'bon_commandes.numero',
+            'bon_commandes.date_commande as date',
+            'bon_commandes.montant_total as montant',
+            'bon_commandes.created_at',
+            DB::raw($hasFournisseursTable ? 'fournisseurs.raison_sociale as fournisseur_nom' : 'NULL as fournisseur_nom'),
+        ]);
+
+        $query = $this->applyFournisseurFilter($query, $fournisseurFilter, $hasFournisseursTable);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('bon_commandes.numero', 'like', "%{$search}%")
                   ->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
             });
+        }
+
+        if ($search && !$hasFournisseursTable) {
+            $query->where('bon_commandes.numero', 'like', "%{$search}%");
         }
 
         return $query->get()->map(fn($row) => (object) [
@@ -212,30 +221,37 @@ class CaisseGarageController extends Controller
         ]);
     }
 
-    private function fetchAchatPneus(?string $search, string $fournisseurFilter): \Illuminate\Support\Collection
+    private function fetchAchatPneus(?string $search, string $fournisseurFilter, bool $hasFournisseursTable): \Illuminate\Support\Collection
     {
         $query = DB::connection('garage')
             ->table('achat_pneus')
-            ->leftJoin('fournisseurs', 'achat_pneus.fournisseur_id', '=', 'fournisseurs.id')
-            ->whereIn('achat_pneus.statut', ['valide', 'validated'])
-            ->select([
-                'achat_pneus.id',
-                'achat_pneus.date_achat as date',
-                'achat_pneus.marque',
-                'achat_pneus.dimension',
-                'achat_pneus.quantite',
-                'achat_pneus.montant_total as montant',
-                'achat_pneus.created_at',
-                'fournisseurs.raison_sociale as fournisseur_nom',
-            ]);
+            ->whereIn('achat_pneus.statut', ['valide', 'validated']);
 
-        $query = $this->applyFournisseurFilter($query, $fournisseurFilter);
+        if ($hasFournisseursTable) {
+            $query->leftJoin('fournisseurs', 'achat_pneus.fournisseur_id', '=', 'fournisseurs.id');
+        }
+
+        $query->select([
+            'achat_pneus.id',
+            'achat_pneus.date_achat as date',
+            'achat_pneus.marque',
+            'achat_pneus.dimension',
+            'achat_pneus.quantite',
+            'achat_pneus.montant_total as montant',
+            'achat_pneus.created_at',
+            DB::raw($hasFournisseursTable ? 'fournisseurs.raison_sociale as fournisseur_nom' : 'NULL as fournisseur_nom'),
+        ]);
+
+        $query = $this->applyFournisseurFilter($query, $fournisseurFilter, $hasFournisseursTable);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search, $hasFournisseursTable) {
                 $q->where('achat_pneus.marque', 'like', "%{$search}%")
-                  ->orWhere('achat_pneus.dimension', 'like', "%{$search}%")
-                  ->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
+                  ->orWhere('achat_pneus.dimension', 'like', "%{$search}%");
+
+                if ($hasFournisseursTable) {
+                    $q->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
+                }
             });
         }
 
@@ -254,28 +270,36 @@ class CaisseGarageController extends Controller
         ]);
     }
 
-    private function fetchAchatsDivers(?string $search, string $fournisseurFilter): \Illuminate\Support\Collection
+    private function fetchAchatsDivers(?string $search, string $fournisseurFilter, bool $hasFournisseursTable): \Illuminate\Support\Collection
     {
         $query = DB::connection('garage')
             ->table('achats_divers')
-            ->leftJoin('fournisseurs', 'achats_divers.fournisseur_id', '=', 'fournisseurs.id')
-            ->whereIn('achats_divers.statut', ['valide', 'validated'])
-            ->select([
-                'achats_divers.id',
-                'achats_divers.numero',
-                'achats_divers.date_achat as date',
-                'achats_divers.montant_total as montant',
-                'achats_divers.created_at',
-                'fournisseurs.raison_sociale as fournisseur_nom',
-            ]);
+            ->whereIn('achats_divers.statut', ['valide', 'validated']);
 
-        $query = $this->applyFournisseurFilter($query, $fournisseurFilter);
+        if ($hasFournisseursTable) {
+            $query->leftJoin('fournisseurs', 'achats_divers.fournisseur_id', '=', 'fournisseurs.id');
+        }
+
+        $query->select([
+            'achats_divers.id',
+            'achats_divers.numero',
+            'achats_divers.date_achat as date',
+            'achats_divers.montant_total as montant',
+            'achats_divers.created_at',
+            DB::raw($hasFournisseursTable ? 'fournisseurs.raison_sociale as fournisseur_nom' : 'NULL as fournisseur_nom'),
+        ]);
+
+        $query = $this->applyFournisseurFilter($query, $fournisseurFilter, $hasFournisseursTable);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search, $hasFournisseursTable) {
                 $q->where('achats_divers.numero', 'like', "%{$search}%")
                   ->orWhere('fournisseurs.raison_sociale', 'like', "%{$search}%");
             });
+        }
+
+        if ($search && !$hasFournisseursTable) {
+            $query->where('achats_divers.numero', 'like', "%{$search}%");
         }
 
         return $query->get()->map(fn($row) => (object) [
@@ -353,7 +377,7 @@ class CaisseGarageController extends Controller
                 'mouvement' => $mouvement,
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Erreur lors du décaissement',
@@ -391,7 +415,7 @@ class CaisseGarageController extends Controller
             Audit::log('create', 'refus_garage', "Refus achat Garage: {$itemId}", null);
 
             return response()->json(['message' => 'Achat refusé avec succès'], 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Erreur lors du refus',
                 'error' => $e->getMessage(),
@@ -401,8 +425,12 @@ class CaisseGarageController extends Controller
 
     // ─── Helpers ─────────────────────────────────────────────
 
-    private function applyFournisseurFilter($query, string $filter)
+    private function applyFournisseurFilter($query, string $filter, bool $hasFournisseursTable)
     {
+        if (!$hasFournisseursTable) {
+            return $query;
+        }
+
         if ($filter === 'piston') {
             $query->whereRaw('LOWER(fournisseurs.raison_sociale) LIKE ?', ['%' . self::PISTON_GABON . '%']);
         } elseif ($filter === 'autres') {
@@ -474,28 +502,50 @@ class CaisseGarageController extends Controller
     {
         if (!$this->isAvailable()) return collect();
 
-        $hasTable = Schema::connection('garage')->hasTable('primes');
-        if (!$hasTable) return collect();
+        $schema = Schema::connection('garage');
+        $hasPrimesTable = $schema->hasTable('primes');
+        $hasPrimeMecaniciensTable = $schema->hasTable('prime_mecaniciens');
+
+        if (!$hasPrimesTable || !$hasPrimeMecaniciensTable) return collect();
+
+        $hasInterventionsTable = $schema->hasTable('interventions');
+        $hasMecaniciensTable = $schema->hasTable('mecaniciens');
+        $hasDeletedAt = $schema->hasColumn('primes', 'deleted_at');
+        $hasInterventionId = $schema->hasColumn('primes', 'intervention_id');
+        $hasObservations = $schema->hasColumn('primes', 'observations');
 
         $query = DB::connection('garage')
             ->table('primes')
-            ->leftJoin('interventions', 'primes.intervention_id', '=', 'interventions.id')
-            ->where('primes.statut', 'validé')
-            ->whereNull('primes.deleted_at')
-            ->select([
-                'primes.id',
-                'primes.numero',
-                'primes.intervention_id',
-                'primes.observations',
-                'primes.created_at',
-                'interventions.numero as intervention_numero',
-            ]);
+            ->where('primes.statut', 'validé');
+
+        if ($hasInterventionsTable && $hasInterventionId) {
+            $query->leftJoin('interventions', 'primes.intervention_id', '=', 'interventions.id');
+        }
+
+        if ($hasDeletedAt) {
+            $query->whereNull('primes.deleted_at');
+        }
+
+        $query->select([
+            'primes.id',
+            'primes.numero',
+            'primes.created_at',
+            DB::raw($hasInterventionId ? 'primes.intervention_id' : 'NULL as intervention_id'),
+            DB::raw($hasObservations ? 'primes.observations' : 'NULL as observations'),
+            DB::raw($hasInterventionsTable && $hasInterventionId ? 'interventions.numero as intervention_numero' : 'NULL as intervention_numero'),
+        ]);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search, $hasObservations, $hasInterventionsTable, $hasInterventionId) {
                 $q->where('primes.numero', 'like', "%{$search}%")
-                  ->orWhere('primes.observations', 'like', "%{$search}%")
-                  ->orWhere('interventions.numero', 'like', "%{$search}%");
+
+                if ($hasObservations) {
+                    $q->orWhere('primes.observations', 'like', "%{$search}%");
+                }
+
+                if ($hasInterventionsTable && $hasInterventionId) {
+                    $q->orWhere('interventions.numero', 'like', "%{$search}%");
+                }
             });
         }
 
@@ -515,11 +565,20 @@ class CaisseGarageController extends Controller
             ->keyBy('prime_id');
 
         // Récupérer les noms des mécaniciens
-        $mecaniciens = DB::connection('garage')
+        $mecaniciensQuery = DB::connection('garage')
             ->table('prime_mecaniciens')
-            ->leftJoin('mecaniciens', 'prime_mecaniciens.mecanicien_id', '=', 'mecaniciens.id')
-            ->whereIn('prime_mecaniciens.prime_id', $primeIds)
-            ->select(['prime_mecaniciens.prime_id', 'mecaniciens.nom', 'mecaniciens.prenom'])
+            ->whereIn('prime_mecaniciens.prime_id', $primeIds);
+
+        if ($hasMecaniciensTable) {
+            $mecaniciensQuery->leftJoin('mecaniciens', 'prime_mecaniciens.mecanicien_id', '=', 'mecaniciens.id');
+        }
+
+        $mecaniciens = $mecaniciensQuery
+            ->select([
+                'prime_mecaniciens.prime_id',
+                DB::raw($hasMecaniciensTable ? 'mecaniciens.nom as nom' : 'NULL as nom'),
+                DB::raw($hasMecaniciensTable ? 'mecaniciens.prenom as prenom' : 'NULL as prenom'),
+            ])
             ->get()
             ->groupBy('prime_id');
 
