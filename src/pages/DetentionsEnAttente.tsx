@@ -76,7 +76,10 @@ export default function DetentionsEnAttente() {
               <TablePagination
                 currentPage={data.meta.current_page}
                 totalPages={data.meta.last_page}
+                pageSize={data.meta.per_page}
+                totalItems={data.meta.total}
                 onPageChange={setPage}
+                onPageSizeChange={() => {}}
               />
             )}
 
