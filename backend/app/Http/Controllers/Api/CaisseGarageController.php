@@ -507,9 +507,22 @@ class CaisseGarageController extends Controller
 
         $hasInterventionsTable = $schema->hasTable('interventions');
         $hasMecaniciensTable = $schema->hasTable('mecaniciens');
+        $hasStatut = $schema->hasColumn('primes', 'statut');
+        $hasNumero = $schema->hasColumn('primes', 'numero');
+        $hasCreatedAt = $schema->hasColumn('primes', 'created_at');
         $hasDeletedAt = $schema->hasColumn('primes', 'deleted_at');
         $hasInterventionId = $schema->hasColumn('primes', 'intervention_id');
         $hasObservations = $schema->hasColumn('primes', 'observations');
+        $hasPrimeId = $schema->hasColumn('prime_mecaniciens', 'prime_id');
+        $hasMontantPrime = $schema->hasColumn('prime_mecaniciens', 'montant_prime');
+        $hasMontantRation = $schema->hasColumn('prime_mecaniciens', 'montant_ration');
+        $hasMecanicienId = $schema->hasColumn('prime_mecaniciens', 'mecanicien_id');
+        $hasMecanicienNom = $hasMecaniciensTable && $schema->hasColumn('mecaniciens', 'nom');
+        $hasMecanicienPrenom = $hasMecaniciensTable && $schema->hasColumn('mecaniciens', 'prenom');
+
+        if (!$hasStatut || !$hasPrimeId) {
+            return collect();
+        }
 
         $query = DB::connection('garage')
             ->table('primes')
@@ -525,28 +538,34 @@ class CaisseGarageController extends Controller
 
         $query->select([
             'primes.id',
-            'primes.numero',
-            'primes.created_at',
+            DB::raw($hasNumero ? 'primes.numero' : 'NULL as numero'),
+            DB::raw($hasCreatedAt ? 'primes.created_at' : 'NULL as created_at'),
             DB::raw($hasInterventionId ? 'primes.intervention_id' : 'NULL as intervention_id'),
             DB::raw($hasObservations ? 'primes.observations' : 'NULL as observations'),
             DB::raw($hasInterventionsTable && $hasInterventionId ? 'interventions.numero as intervention_numero' : 'NULL as intervention_numero'),
         ]);
 
         if ($search) {
-            $query->where(function ($q) use ($search, $hasObservations, $hasInterventionsTable, $hasInterventionId) {
-                $q->where('primes.numero', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search, $hasNumero, $hasObservations, $hasInterventionsTable, $hasInterventionId) {
+                if ($hasNumero) {
+                    $q->where('primes.numero', 'like', "%{$search}%");
+                }
 
                 if ($hasObservations) {
-                    $q->orWhere('primes.observations', 'like', "%{$search}%");
+                    $hasNumero
+                        ? $q->orWhere('primes.observations', 'like', "%{$search}%")
+                        : $q->where('primes.observations', 'like', "%{$search}%");
                 }
 
                 if ($hasInterventionsTable && $hasInterventionId) {
-                    $q->orWhere('interventions.numero', 'like', "%{$search}%");
+                    ($hasNumero || $hasObservations)
+                        ? $q->orWhere('interventions.numero', 'like', "%{$search}%")
+                        : $q->where('interventions.numero', 'like', "%{$search}%");
                 }
             });
         }
 
-        $primes = $query->orderBy('primes.created_at', 'desc')->get();
+        $primes = ($hasCreatedAt ? $query->orderBy('primes.created_at', 'desc') : $query->orderByDesc('primes.id'))->get();
 
         // Récupérer les montants depuis prime_mecaniciens
         if ($primes->isEmpty()) return collect();
@@ -556,7 +575,11 @@ class CaisseGarageController extends Controller
         $totals = DB::connection('garage')
             ->table('prime_mecaniciens')
             ->whereIn('prime_id', $primeIds)
-            ->selectRaw('prime_id, SUM(montant_prime) as total_prime, SUM(montant_ration) as total_ration, COUNT(*) as nb_mecaniciens')
+            ->selectRaw(sprintf(
+                'prime_id, SUM(%s) as total_prime, SUM(%s) as total_ration, COUNT(*) as nb_mecaniciens',
+                $hasMontantPrime ? 'montant_prime' : '0',
+                $hasMontantRation ? 'montant_ration' : '0'
+            ))
             ->groupBy('prime_id')
             ->get()
             ->keyBy('prime_id');
@@ -566,15 +589,15 @@ class CaisseGarageController extends Controller
             ->table('prime_mecaniciens')
             ->whereIn('prime_mecaniciens.prime_id', $primeIds);
 
-        if ($hasMecaniciensTable) {
+        if ($hasMecaniciensTable && $hasMecanicienId) {
             $mecaniciensQuery->leftJoin('mecaniciens', 'prime_mecaniciens.mecanicien_id', '=', 'mecaniciens.id');
         }
 
         $mecaniciens = $mecaniciensQuery
             ->select([
                 'prime_mecaniciens.prime_id',
-                DB::raw($hasMecaniciensTable ? 'mecaniciens.nom as nom' : 'NULL as nom'),
-                DB::raw($hasMecaniciensTable ? 'mecaniciens.prenom as prenom' : 'NULL as prenom'),
+                DB::raw($hasMecanicienNom ? 'mecaniciens.nom as nom' : 'NULL as nom'),
+                DB::raw($hasMecanicienPrenom ? 'mecaniciens.prenom as prenom' : 'NULL as prenom'),
             ])
             ->get()
             ->groupBy('prime_id');
@@ -636,7 +659,7 @@ class CaisseGarageController extends Controller
                 'total_a_decaisser' => 0, 'nombre_a_decaisser' => 0,
                 'deja_decaissees' => 0, 'total_decaisse' => 0,
                 'error' => $e->getMessage(),
-            ]);
+            ], 200);
         }
     }
 
