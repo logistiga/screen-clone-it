@@ -150,7 +150,7 @@ class CaisseGarageController extends Controller
                 'data' => [],
                 'meta' => ['total' => 0, 'last_page' => 1, 'current_page' => 1, 'per_page' => 20],
                 'error' => 'Erreur: ' . $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 
