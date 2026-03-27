@@ -9,6 +9,7 @@ use App\Models\MouvementCaisse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -157,14 +158,18 @@ class CaissePrimesLocalesController extends Controller
             $decaisseesRefs = [];
             $refuseesRefs = [];
             if (!empty($refs)) {
-                $decaisseesRefs = DB::table('mouvements_caisse')
-                    ->whereIn('reference', $refs)
-                    ->pluck('reference')
-                    ->toArray();
-                $refuseesRefs = DB::table('primes_refusees')
-                    ->whereIn('reference', $refs)
-                    ->pluck('reference')
-                    ->toArray();
+                if (Schema::hasTable('mouvements_caisse')) {
+                    $decaisseesRefs = DB::table('mouvements_caisse')
+                        ->whereIn('reference', $refs)
+                        ->pluck('reference')
+                        ->toArray();
+                }
+                if (Schema::hasTable('primes_refusees')) {
+                    $refuseesRefs = DB::table('primes_refusees')
+                        ->whereIn('reference', $refs)
+                        ->pluck('reference')
+                        ->toArray();
+                }
             }
 
             $aDecaisser = $mapped->filter(fn($p) => !in_array($p->ref, $decaisseesRefs) && !in_array($p->ref, $refuseesRefs));
@@ -178,7 +183,7 @@ class CaissePrimesLocalesController extends Controller
                 'deja_decaissees' => $dejaDecaissees->count(),
                 'total_decaisse' => $dejaDecaissees->sum('montant'),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'total_valide' => 0, 'nombre_primes' => 0,
                 'total_a_decaisser' => 0, 'nombre_a_decaisser' => 0,
