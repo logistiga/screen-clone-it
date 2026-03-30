@@ -199,9 +199,7 @@ export default function NouveauDevisPage() {
 
   const montantHT = getMontantHT();
   const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
-  const css = Math.round(montantHTApresRemise * TAUX_CSS);
-  const montantTTC = montantHTApresRemise + tva + css;
+  const { tva, css, montantTTC } = calculateTaxes(montantHTApresRemise, taxesSelectionData);
 
   // Client sélectionné pour la preview
   const selectedClient = useMemo(() => {
