@@ -107,6 +107,44 @@ export default function NouveauDevisPage() {
     montantCalcule: 0,
   });
 
+  // État de la sélection des taxes
+  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
+    selectedTaxCodes: [],
+    hasExoneration: false,
+    exoneratedTaxCodes: [],
+    motifExoneration: "",
+  }));
+
+  const taxesInitRef = useRef(false);
+
+  // Synchroniser les taxes recommandées quand elles sont chargées
+  useEffect(() => {
+    if (taxesInitRef.current) return;
+    if (taxesLoading || availableTaxes.length === 0) return;
+    taxesInitRef.current = true;
+    const recommendedCodes = availableTaxes
+      .filter(t => t.obligatoire)
+      .map(t => t.code.toUpperCase());
+    setTaxesSelectionData(prev => {
+      if (prev.selectedTaxCodes.length > 0) return prev;
+      return { ...prev, selectedTaxCodes: recommendedCodes };
+    });
+  }, [taxesLoading, availableTaxes]);
+
+  // Handler stable pour TaxesSelector
+  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
+    setTaxesSelectionData(prev => {
+      const same =
+        prev.hasExoneration === next.hasExoneration &&
+        prev.motifExoneration === next.motifExoneration &&
+        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
+        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
+        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
+        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
+      return same ? prev : next;
+    });
+  }, []);
+
   // Auto-save hook
   const autoSave = useAutoSave<DevisDraftData>({
     key: 'nouveau_devis',
