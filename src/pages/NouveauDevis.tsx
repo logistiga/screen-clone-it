@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, FileText, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ApiErrorState } from "@/components/ApiErrorState";
-import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useTaxes } from "@/hooks/use-commercial";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis } from "@/hooks/use-commercial";
+import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import { useDocumentTaxes } from "@/hooks/useDocumentTaxes";
 import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
 import {
   CategorieSelector,
