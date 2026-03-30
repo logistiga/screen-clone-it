@@ -257,10 +257,12 @@ class Devis extends Model
     {
         $this->load(['lignes', 'conteneurs.operations', 'lots']);
 
-        // Récupérer les taux de taxes
-        $taxesConfig = Configuration::where('key', 'taxes')->first();
-        $tauxTVA = ($taxesConfig->data['tva_taux'] ?? 18) / 100;
-        $tauxCSS = ($taxesConfig->data['css_taux'] ?? 1) / 100;
+        // Récupérer les taux de taxes depuis la table taxes
+        $taxes = \App\Models\Taxe::where('active', true)->get()->keyBy(function ($t) {
+            return strtoupper($t->code);
+        });
+        $tauxTVA = isset($taxes['TVA']) ? (float) $taxes['TVA']->taux / 100 : 0.18;
+        $tauxCSS = isset($taxes['CSS']) ? (float) $taxes['CSS']->taux / 100 : 0.01;
 
         // Calculer le montant HT brut selon la catégorie
         $montantHTBrut = $this->calculerMontantHTBrut();
@@ -269,9 +271,23 @@ class Devis extends Model
         $remiseMontant = $this->calculerRemise($montantHTBrut);
         $montantHT = $montantHTBrut - $remiseMontant;
 
-        // Calculer les taxes sur le montant HT après remise
-        $montantTVA = $montantHT * $tauxTVA;
-        $montantCSS = $montantHT * $tauxCSS;
+        // Déterminer les taxes sélectionnées depuis taxes_selection JSON
+        $taxesSelection = $this->taxes_selection;
+        $selectedCodes = $taxesSelection['selected_tax_codes'] ?? ['TVA', 'CSS'];
+        $hasExoneration = $taxesSelection['has_exoneration'] ?? false;
+        $exoneratedCodes = $taxesSelection['exonerated_tax_codes'] ?? [];
+
+        // Calculer les taxes en fonction de la sélection
+        $montantTVA = 0;
+        $montantCSS = 0;
+
+        if (in_array('TVA', $selectedCodes)) {
+            $montantTVA = ($hasExoneration && in_array('TVA', $exoneratedCodes)) ? 0 : $montantHT * $tauxTVA;
+        }
+        if (in_array('CSS', $selectedCodes)) {
+            $montantCSS = ($hasExoneration && in_array('CSS', $exoneratedCodes)) ? 0 : $montantHT * $tauxCSS;
+        }
+
         $montantTTC = $montantHT + $montantTVA + $montantCSS;
 
         // Mise à jour directe sans passer par fillable
