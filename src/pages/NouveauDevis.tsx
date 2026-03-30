@@ -51,8 +51,16 @@ export default function NouveauDevisPage() {
   const { data: armateursData, isLoading: loadingArmateurs, error: armateursError } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires, error: transitairesError } = useTransitaires();
   const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants({ per_page: 500 });
-  const { data: taxesData, error: taxesError } = useTaxes();
   const createDevisMutation = useCreateDevis();
+
+  // Hook unifié pour les taxes
+  const { 
+    taxRates, 
+    availableTaxes, 
+    isLoading: taxesLoading,
+    calculateTaxes,
+    toApiPayload 
+  } = useDocumentTaxes();
 
   const clients = clientsData?.data || [];
   const armateurs = Array.isArray(armateursData)
@@ -70,12 +78,6 @@ export default function NouveauDevisPage() {
     : Array.isArray((representantsData as any)?.data)
       ? (representantsData as any).data
       : [];
-  
-  const taxesList = Array.isArray(taxesData) ? taxesData : Array.isArray((taxesData as any)?.data) ? (taxesData as any).data : [];
-  const tvaTax = taxesList.find((t: any) => t.code === 'TVA' || t.nom?.toLowerCase().includes('tva'));
-  const cssTax = taxesList.find((t: any) => t.code === 'CSS' || t.nom?.toLowerCase().includes('css'));
-  const TAUX_TVA = tvaTax?.taux ? parseFloat(tvaTax.taux) / 100 : 0.18;
-  const TAUX_CSS = cssTax?.taux ? parseFloat(cssTax.taux) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
 
