@@ -53,6 +53,7 @@ class Devis extends Model
         'tva' => 'decimal:2',
         'css' => 'decimal:2',
         'montant_ttc' => 'decimal:2',
+        'taxes_selection' => 'array',
     ];
 
     // =========================================
