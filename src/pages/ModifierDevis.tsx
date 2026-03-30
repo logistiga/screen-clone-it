@@ -484,16 +484,28 @@ export default function ModifierDevisPage() {
                   />
                 )}
 
+                {/* Sélection des taxes */}
+                {montantHTApresRemise > 0 && (
+                  <TaxesSelector
+                    taxes={availableTaxes}
+                    montantHT={montantHTApresRemise}
+                    onChange={handleTaxesChange}
+                    value={taxesSelectionData}
+                  />
+                )}
+
                 <RecapitulatifCard
                   montantHT={montantHT}
                   tva={tva}
                   css={css}
                   montantTTC={montantTTC}
-                  tauxTva={Math.round(TAUX_TVA * 100)}
-                  tauxCss={Math.round(TAUX_CSS * 100)}
+                  tauxTva={taxRates.TVA}
+                  tauxCss={taxRates.CSS}
                   remiseMontant={remiseData.montantCalcule}
                   remiseType={remiseData.type}
                   remiseValeur={remiseData.valeur}
+                  selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+                  {...toApiPayload(taxesSelectionData)}
                 />
               </div>
             )}
