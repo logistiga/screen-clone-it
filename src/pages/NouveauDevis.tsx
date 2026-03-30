@@ -286,6 +286,7 @@ export default function NouveauDevisPage() {
       remise_type: remiseData.type === "none" ? null : remiseData.type,
       remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
       remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
+      ...toApiPayload(taxesSelectionData),
       lignes: [],
       conteneurs: [],
       lots: [],
