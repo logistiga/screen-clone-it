@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, FileText, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,9 @@ import {
   useArmateurs, 
   useTransitaires, 
   useRepresentants, 
-  useTaxes 
 } from "@/hooks/use-commercial";
+import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import { 
   ClientInfoCard, 
   RecapitulatifCard,
