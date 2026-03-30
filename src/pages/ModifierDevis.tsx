@@ -96,6 +96,30 @@ export default function ModifierDevisPage() {
     montantCalcule: 0,
   });
 
+  // État de la sélection des taxes
+  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
+    selectedTaxCodes: [],
+    hasExoneration: false,
+    exoneratedTaxCodes: [],
+    motifExoneration: "",
+  }));
+
+  const taxesInitRef = useRef(false);
+
+  // Handler stable pour TaxesSelector
+  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
+    setTaxesSelectionData(prev => {
+      const same =
+        prev.hasExoneration === next.hasExoneration &&
+        prev.motifExoneration === next.motifExoneration &&
+        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
+        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
+        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
+        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
+      return same ? prev : next;
+    });
+  }, []);
+
   // Populate form when data loads
   useEffect(() => {
     if (devisData && !isInitialized) {
@@ -118,10 +142,37 @@ export default function ModifierDevisPage() {
           montantCalcule: (devisData as any).remise_montant || 0,
         });
       }
+
+      // Initialiser la sélection des taxes depuis le devis existant
+      const taxesSelectionJson = (devisData as any).taxes_selection;
+      if (taxesSelectionJson && typeof taxesSelectionJson === 'object' && taxesSelectionJson.selected_tax_codes) {
+        setTaxesSelectionData({
+          selectedTaxCodes: taxesSelectionJson.selected_tax_codes || [],
+          hasExoneration: taxesSelectionJson.has_exoneration || false,
+          exoneratedTaxCodes: taxesSelectionJson.exonerated_tax_codes || [],
+          motifExoneration: taxesSelectionJson.motif_exoneration || "",
+        });
+        taxesInitRef.current = true;
+      }
       
       setIsInitialized(true);
     }
   }, [devisData, isInitialized]);
+
+  // Initialiser les taxes par défaut si pas de données existantes
+  useEffect(() => {
+    if (taxesInitRef.current) return;
+    if (taxesLoading || availableTaxes.length === 0) return;
+    if (!isInitialized) return;
+    taxesInitRef.current = true;
+    const recommendedCodes = availableTaxes
+      .filter(t => t.obligatoire)
+      .map(t => t.code.toUpperCase());
+    setTaxesSelectionData(prev => {
+      if (prev.selectedTaxCodes.length > 0) return prev;
+      return { ...prev, selectedTaxCodes: recommendedCodes };
+    });
+  }, [taxesLoading, availableTaxes, isInitialized]);
 
   const getMontantHT = (): number => {
     if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
@@ -132,9 +183,10 @@ export default function ModifierDevisPage() {
 
   const montantHT = getMontantHT();
   const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
-  const css = Math.round(montantHTApresRemise * TAUX_CSS);
-  const montantTTC = montantHTApresRemise + tva + css;
+  const taxesResult = calculateTaxes(montantHTApresRemise, taxesSelectionData);
+  const tva = taxesResult.tva;
+  const css = taxesResult.css;
+  const montantTTC = montantHTApresRemise + taxesResult.totalTaxes;
 
   // Client sélectionné pour la preview
   const selectedClient = useMemo(() => {
