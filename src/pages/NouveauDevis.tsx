@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, FileText, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ApiErrorState } from "@/components/ApiErrorState";
-import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis, useTaxes } from "@/hooks/use-commercial";
+import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis } from "@/hooks/use-commercial";
+import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
+import { useDocumentTaxes } from "@/hooks/useDocumentTaxes";
 import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
 import {
   CategorieSelector,
@@ -49,8 +51,16 @@ export default function NouveauDevisPage() {
   const { data: armateursData, isLoading: loadingArmateurs, error: armateursError } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires, error: transitairesError } = useTransitaires();
   const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants({ per_page: 500 });
-  const { data: taxesData, error: taxesError } = useTaxes();
   const createDevisMutation = useCreateDevis();
+
+  // Hook unifié pour les taxes
+  const { 
+    taxRates, 
+    availableTaxes, 
+    isLoading: taxesLoading,
+    calculateTaxes,
+    toApiPayload 
+  } = useDocumentTaxes();
 
   const clients = clientsData?.data || [];
   const armateurs = Array.isArray(armateursData)
@@ -68,12 +78,6 @@ export default function NouveauDevisPage() {
     : Array.isArray((representantsData as any)?.data)
       ? (representantsData as any).data
       : [];
-  
-  const taxesList = Array.isArray(taxesData) ? taxesData : Array.isArray((taxesData as any)?.data) ? (taxesData as any).data : [];
-  const tvaTax = taxesList.find((t: any) => t.code === 'TVA' || t.nom?.toLowerCase().includes('tva'));
-  const cssTax = taxesList.find((t: any) => t.code === 'CSS' || t.nom?.toLowerCase().includes('css'));
-  const TAUX_TVA = tvaTax?.taux ? parseFloat(tvaTax.taux) / 100 : 0.18;
-  const TAUX_CSS = cssTax?.taux ? parseFloat(cssTax.taux) / 100 : 0.01;
   
   const categoriesLabels = getCategoriesLabels();
 
@@ -102,6 +106,44 @@ export default function NouveauDevisPage() {
     valeur: 0,
     montantCalcule: 0,
   });
+
+  // État de la sélection des taxes
+  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
+    selectedTaxCodes: [],
+    hasExoneration: false,
+    exoneratedTaxCodes: [],
+    motifExoneration: "",
+  }));
+
+  const taxesInitRef = useRef(false);
+
+  // Synchroniser les taxes recommandées quand elles sont chargées
+  useEffect(() => {
+    if (taxesInitRef.current) return;
+    if (taxesLoading || availableTaxes.length === 0) return;
+    taxesInitRef.current = true;
+    const recommendedCodes = availableTaxes
+      .filter(t => t.obligatoire)
+      .map(t => t.code.toUpperCase());
+    setTaxesSelectionData(prev => {
+      if (prev.selectedTaxCodes.length > 0) return prev;
+      return { ...prev, selectedTaxCodes: recommendedCodes };
+    });
+  }, [taxesLoading, availableTaxes]);
+
+  // Handler stable pour TaxesSelector
+  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
+    setTaxesSelectionData(prev => {
+      const same =
+        prev.hasExoneration === next.hasExoneration &&
+        prev.motifExoneration === next.motifExoneration &&
+        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
+        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
+        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
+        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
+      return same ? prev : next;
+    });
+  }, []);
 
   // Auto-save hook
   const autoSave = useAutoSave<DevisDraftData>({
@@ -157,9 +199,10 @@ export default function NouveauDevisPage() {
 
   const montantHT = getMontantHT();
   const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  const tva = Math.round(montantHTApresRemise * TAUX_TVA);
-  const css = Math.round(montantHTApresRemise * TAUX_CSS);
-  const montantTTC = montantHTApresRemise + tva + css;
+  const taxesResult = calculateTaxes(montantHTApresRemise, taxesSelectionData);
+  const tva = taxesResult.tva;
+  const css = taxesResult.css;
+  const montantTTC = montantHTApresRemise + taxesResult.totalTaxes;
 
   // Client sélectionné pour la preview
   const selectedClient = useMemo(() => {
@@ -243,6 +286,7 @@ export default function NouveauDevisPage() {
       remise_type: remiseData.type === "none" ? null : remiseData.type,
       remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
       remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
+      ...toApiPayload(taxesSelectionData),
       lignes: [],
       conteneurs: [],
       lots: [],
@@ -308,7 +352,7 @@ export default function NouveauDevisPage() {
   };
 
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
-  const loadError = clientsError || armateursError || transitairesError || representantsError || taxesError;
+  const loadError = clientsError || armateursError || transitairesError || representantsError;
 
   if (loadError) {
     return (
@@ -491,16 +535,28 @@ export default function NouveauDevisPage() {
                   <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
                 )}
 
+                {/* Sélection des taxes */}
+                {montantHTApresRemise > 0 && (
+                  <TaxesSelector
+                    taxes={availableTaxes}
+                    montantHT={montantHTApresRemise}
+                    onChange={handleTaxesChange}
+                    value={taxesSelectionData}
+                  />
+                )}
+
                 <RecapitulatifCard
                   montantHT={montantHT}
                   tva={tva}
                   css={css}
                   montantTTC={montantTTC}
-                  tauxTva={Math.round(TAUX_TVA * 100)}
-                  tauxCss={Math.round(TAUX_CSS * 100)}
+                  tauxTva={taxRates.TVA}
+                  tauxCss={taxRates.CSS}
                   remiseMontant={remiseData.montantCalcule}
                   remiseType={remiseData.type}
                   remiseValeur={remiseData.valeur}
+                  selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+                  {...toApiPayload(taxesSelectionData)}
                 />
               </div>
             )}

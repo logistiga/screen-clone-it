@@ -38,6 +38,15 @@ class StoreDevisRequest extends FormRequest
             'remise_type' => 'nullable|string|in:pourcentage,montant',
             'remise_valeur' => 'nullable|numeric|min:0',
             
+            // Sélection des taxes (JSON)
+            'taxes_selection' => 'nullable|array',
+            'taxes_selection.selected_tax_codes' => 'nullable|array|max:20',
+            'taxes_selection.selected_tax_codes.*' => 'string|max:20|regex:/^[A-Z0-9_]+$/',
+            'taxes_selection.has_exoneration' => 'nullable|boolean',
+            'taxes_selection.exonerated_tax_codes' => 'nullable|array|max:20',
+            'taxes_selection.exonerated_tax_codes.*' => 'string|max:20|regex:/^[A-Z0-9_]+$/',
+            'taxes_selection.motif_exoneration' => 'required_if:taxes_selection.has_exoneration,true|nullable|string|max:255',
+            
             // Lignes (opérations indépendantes)
             'lignes' => 'nullable|array',
             'lignes.*.type_operation' => 'nullable|string|max:100',
