@@ -31,6 +31,7 @@ class Devis extends Model
         'remise_valeur',
         'statut',
         'notes',
+        'taxes_selection',
     ];
 
     // Champs calculés/générés (non mass-assignable pour sécurité)
