@@ -348,7 +348,7 @@ export default function NouveauDevisPage() {
   };
 
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
-  const loadError = clientsError || armateursError || transitairesError || representantsError || taxesError;
+  const loadError = clientsError || armateursError || transitairesError || representantsError;
 
   if (loadError) {
     return (
