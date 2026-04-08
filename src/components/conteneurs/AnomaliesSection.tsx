@@ -168,7 +168,27 @@ export function AnomaliesSection() {
   };
 
   if (nombreAnomalies === 0 && !isLoading) {
-    return null; // Ne pas afficher la section s'il n'y a pas d'anomalies
+    return (
+      <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mb-4" />
+          <p className="text-lg font-medium">Aucune anomalie détectée</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Tous les conteneurs sont correctement associés aux ordres de travail.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 gap-2"
+            onClick={() => detecterMutation.mutate()}
+            disabled={detecterMutation.isPending}
+          >
+            <Search className={`h-4 w-4 ${detecterMutation.isPending ? 'animate-spin' : ''}`} />
+            Lancer une détection
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
