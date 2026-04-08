@@ -400,7 +400,7 @@ export default function OrdrePDFPage() {
 
             {/* Motif d'exonération */}
             {ordre.motif_exoneration && (
-              <div className="mb-2 p-1.5 bg-amber-50 border border-amber-200 rounded text-[8px]">
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs">
                 <strong className="text-amber-700">Exonération:</strong>{" "}
                 <span className="text-amber-600">{ordre.motif_exoneration}</span>
               </div>
@@ -408,9 +408,9 @@ export default function OrdrePDFPage() {
 
             {/* Notes */}
             {ordre.notes && (
-              <div className="mb-2 border p-1.5 rounded">
-                <h3 className="text-[8px] font-bold mb-0.5">NOTES</h3>
-                <p className="text-[7px]">{ordre.notes}</p>
+              <div className="mb-4 border p-3 rounded">
+                <h3 className="text-xs font-bold mb-1">NOTES</h3>
+                <p className="text-xs">{ordre.notes}</p>
               </div>
             )}
           </div>
