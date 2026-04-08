@@ -164,7 +164,7 @@ export default function DevisPDFPage() {
       <div className="container py-8 print:py-0 flex justify-center">
         <Card 
           ref={contentRef} 
-          className="bg-white print:shadow-none print:border-none relative"
+          className="bg-white print:shadow-none print:border-none relative flex flex-col"
           style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
         >
           {/* Watermark si annulé */}
@@ -284,6 +284,9 @@ export default function DevisPDFPage() {
               <li>Délai de réalisation: selon disponibilité</li>
             </ul>
           </div>
+
+          {/* Spacer to push footer to bottom */}
+          <div className="flex-grow" />
 
           {/* Footer */}
           <DocumentFooter />
