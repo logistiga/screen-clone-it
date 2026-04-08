@@ -411,115 +411,134 @@ export default function ConteneursEnAttentePage() {
           onRetrySync={() => syncAndDetectMutation.mutate()}
         />
 
-        {/* Section Anomalies */}
-        <AnomaliesSection />
-
-        {/* Table */}
-        <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-          <CardHeader className="bg-muted/30">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Package className="h-5 w-5" />
+        {/* Onglets : Liste des conteneurs / Anomalies */}
+        <Tabs defaultValue="conteneurs" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="conteneurs" className="gap-2">
+              <Package className="h-4 w-4" />
               Liste des conteneurs
-              <Badge variant="secondary" className="ml-2">{conteneurs.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {conteneurs.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">Aucun résultat</p>
-                <p className="text-muted-foreground">
-                  Modifiez vos filtres pour voir plus de conteneurs
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Conteneur</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>N° BL</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Armateur</TableHead>
-                      <TableHead>Transitaire</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="w-48">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {conteneurs.map((conteneur) => (
-                      <TableRow key={conteneur.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="font-medium font-mono">
-                          {conteneur.numero_conteneur}
-                        </TableCell>
-                        <TableCell>
-                          {conteneur.type_conteneur ? (
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {conteneur.type_conteneur}
-                            </Badge>
-                          ) : "-"}
-                        </TableCell>
-                        <TableCell>{conteneur.numero_bl || "-"}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">{conteneur.client_nom || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Ship className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="truncate max-w-[100px]">
-                              {conteneur.armateur_nom || conteneur.armateur_code || "-"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
-                        <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
-                        <TableCell>
-                          {conteneur.statut !== 'facture' ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-1">
-                                  Actions
-                                  <ArrowRight className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleCreerOrdre(conteneur)}>
-                                  <PlusCircle className="h-4 w-4 mr-2" />
-                                  Créer un ordre
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleAffecterClick(conteneur)}>
-                                  <LinkIcon className="h-4 w-4 mr-2" />
-                                  Affecter à un ordre
-                                </DropdownMenuItem>
-                                {conteneur.ordre_travail && (
-                                  <DropdownMenuItem onClick={() => navigate(`/ordres/${conteneur.ordre_travail_id}`)}>
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Voir OT {conteneur.ordre_travail.numero}
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem 
-                                  onClick={() => ignorerMutation.mutate(conteneur.id)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Ignorer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Terminé
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              <Badge variant="secondary" className="ml-1 text-xs">{conteneurs.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="anomalies" className="gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Anomalies détectées
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Onglet Liste des conteneurs */}
+          <TabsContent value="conteneurs" className="mt-4">
+            <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
+              <CardHeader className="bg-muted/30">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Package className="h-5 w-5" />
+                  Liste des conteneurs
+                  <Badge variant="secondary" className="ml-2">{conteneurs.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {conteneurs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-lg font-medium">Aucun résultat</p>
+                    <p className="text-muted-foreground">
+                      Modifiez vos filtres pour voir plus de conteneurs
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>Conteneur</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>N° BL</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Armateur</TableHead>
+                          <TableHead>Transitaire</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead className="w-48">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {conteneurs.map((conteneur) => (
+                          <TableRow key={conteneur.id} className="hover:bg-muted/30 transition-colors">
+                            <TableCell className="font-medium font-mono">
+                              {conteneur.numero_conteneur}
+                            </TableCell>
+                            <TableCell>
+                              {conteneur.type_conteneur ? (
+                                <Badge variant="outline" className="text-xs font-normal">
+                                  {conteneur.type_conteneur}
+                                </Badge>
+                              ) : "-"}
+                            </TableCell>
+                            <TableCell>{conteneur.numero_bl || "-"}</TableCell>
+                            <TableCell className="max-w-[150px] truncate">{conteneur.client_nom || "-"}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <Ship className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="truncate max-w-[100px]">
+                                  {conteneur.armateur_nom || conteneur.armateur_code || "-"}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
+                            <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
+                            <TableCell>
+                              {conteneur.statut !== 'facture' ? (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-1">
+                                      Actions
+                                      <ArrowRight className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleCreerOrdre(conteneur)}>
+                                      <PlusCircle className="h-4 w-4 mr-2" />
+                                      Créer un ordre
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleAffecterClick(conteneur)}>
+                                      <LinkIcon className="h-4 w-4 mr-2" />
+                                      Affecter à un ordre
+                                    </DropdownMenuItem>
+                                    {conteneur.ordre_travail && (
+                                      <DropdownMenuItem onClick={() => navigate(`/ordres/${conteneur.ordre_travail_id}`)}>
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        Voir OT {conteneur.ordre_travail.numero}
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem 
+                                      onClick={() => ignorerMutation.mutate(conteneur.id)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Ignorer
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Terminé
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Onglet Anomalies détectées */}
+          <TabsContent value="anomalies" className="mt-4">
+            <AnomaliesSection />
+          </TabsContent>
+        </Tabs>
 
         {/* Dialog Affecter à un ordre */}
         <Dialog open={isAffecterDialogOpen} onOpenChange={setIsAffecterDialogOpen}>
