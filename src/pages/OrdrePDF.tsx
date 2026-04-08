@@ -183,7 +183,7 @@ export default function OrdrePDFPage() {
         <Card 
           ref={contentRef} 
           className="bg-white print:shadow-none print:border-none relative flex flex-col"
-          style={{ width: '210mm', minHeight: '297mm', padding: '8mm' }}
+          style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
         >
           {/* Watermark si annulé */}
           {isAnnule && (
@@ -197,20 +197,20 @@ export default function OrdrePDFPage() {
           {/* Contenu principal - grandit pour pousser le footer en bas */}
           <div className="flex-1">
             {/* Header avec logo et QR code */}
-            <div className="flex justify-between items-start mb-2 border-b-2 border-primary pb-2">
-              <img src={logoLogistiga} alt="LOGISTIGA" className="h-16 w-auto" />
+            <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
+              <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
               <div className="text-center">
-                <h1 className="text-base font-bold text-primary">CONNAISSEMENT</h1>
-                <p className="text-[10px] font-semibold">{ordre.numero}</p>
+                <h1 className="text-xl font-bold text-primary">CONNAISSEMENT</h1>
+                <p className="text-sm font-semibold">{ordre.numero}</p>
               </div>
-              <div className="flex flex-col items-end gap-0.5">
-                <QRCodeSVG value={qrData} size={40} level="M" />
-                <p className="text-[6px] text-muted-foreground">Scannez pour vérifier</p>
+              <div className="flex flex-col items-end gap-1">
+                <QRCodeSVG value={qrData} size={60} level="M" />
+                <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
               </div>
             </div>
 
             {/* Infos document */}
-            <div className="flex justify-between text-[9px] mb-2">
+            <div className="flex justify-between text-xs mb-4">
               <div>
                 <p><span className="font-semibold">Date:</span> {formatDate(ordre.date || ordre.created_at)}</p>
               </div>
@@ -223,20 +223,20 @@ export default function OrdrePDFPage() {
             </div>
 
             {/* Client (gauche) + Informations Opération (droite) */}
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               {/* Client */}
-              <div className="border p-1.5 rounded">
-                <h3 className="text-[9px] font-bold text-primary mb-0.5">CLIENT</h3>
-                <p className="font-semibold text-[10px]">{client?.nom}</p>
-                <p className="text-[8px] text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-                <p className="text-[8px] text-muted-foreground">Tél: {client?.telephone}</p>
-                <p className="text-[8px] text-muted-foreground">Email: {client?.email}</p>
+              <div className="border p-3 rounded">
+                <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
+                <p className="font-semibold text-sm">{client?.nom}</p>
+                <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+                <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
+                <p className="text-xs text-muted-foreground">Email: {client?.email}</p>
               </div>
 
               {/* Informations Opération */}
-              <div className="border p-1.5 rounded">
-                <h3 className="text-[9px] font-bold text-primary mb-0.5">INFORMATIONS OPÉRATION</h3>
-                <div className="text-[8px] space-y-0.5">
+              <div className="border p-3 rounded">
+                <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
+                <div className="text-xs space-y-0.5">
                   <p><span className="font-semibold">Catégorie:</span> {getTypeOperationLabel(ordre.type_document)}</p>
                   {isConteneur && ordre.type_operation && (
                     <p><span className="font-semibold">Type:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
