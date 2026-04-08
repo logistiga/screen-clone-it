@@ -138,7 +138,7 @@ export function useDescriptionSuggestions(search?: string) {
 }
 
 // Factures hooks
-export function useFactures(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
+export function useFactures(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) {
   const queryClient = useQueryClient();
   
   const query = useQuery({

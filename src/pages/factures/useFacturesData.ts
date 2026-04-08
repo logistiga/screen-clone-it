@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { roundMoney } from "@/lib/utils";
 import { useFactures, useDeleteFacture } from "@/hooks/use-commercial";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export function useFacturesData() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -12,10 +13,16 @@ export function useFacturesData() {
 
   const debouncedSearch = useDebounce(searchTerm, 500);
 
+  const now = new Date();
+  const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
+  const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
+
   const { data: facturesData, isLoading, isFetching, error, refetch } = useFactures({
     search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
+    date_debut: dateDebut,
+    date_fin: dateFin,
     page: currentPage,
     per_page: pageSize,
   });
