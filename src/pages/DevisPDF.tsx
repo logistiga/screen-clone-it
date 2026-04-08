@@ -189,13 +189,64 @@ export default function DevisPDFPage() {
             </div>
           </div>
 
-          {/* Infos document */}
+          {/* Infos document + catégorie */}
           <div className="flex justify-between text-xs mb-4">
             <div>
               <p><span className="font-semibold">Date:</span> {formatDate(devisData.date_creation || devisData.date)}</p>
               <p><span className="font-semibold">Validité:</span> {formatDate(devisData.date_validite)}</p>
             </div>
+            <div className="text-right">
+              <p>
+                <span className="font-semibold">Catégorie:</span>{" "}
+                {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
+              </p>
+              {devisData.type_operation && (
+                <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
+              )}
+            </div>
           </div>
+
+          {/* Détails opération selon catégorie */}
+          {(devisData.type_document === 'Conteneur' && (devisData.armateur?.nom || devisData.transitaire?.nom || devisData.numero_bl || devisData.navire)) && (
+            <div className="mb-4 border p-3 rounded bg-blue-50/50">
+              <h3 className="text-xs font-bold text-blue-700 mb-2">INFORMATIONS OPÉRATION</h3>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                {devisData.type_operation && (
+                  <p><span className="font-semibold">Type d'opération:</span> {devisData.type_operation}</p>
+                )}
+                {devisData.numero_bl && (
+                  <p><span className="font-semibold">Numéro BL:</span> {devisData.numero_bl}</p>
+                )}
+                {devisData.armateur?.nom && (
+                  <p><span className="font-semibold">Armateur:</span> {devisData.armateur.nom}</p>
+                )}
+                {devisData.transitaire?.nom && (
+                  <p><span className="font-semibold">Transitaire:</span> {devisData.transitaire.nom}</p>
+                )}
+                {devisData.navire && (
+                  <p><span className="font-semibold">Navire:</span> {devisData.navire}</p>
+                )}
+                {devisData.representant?.nom && (
+                  <p><span className="font-semibold">Représentant:</span> {devisData.representant.nom}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Trajet pour opérations indépendantes / transport */}
+          {devisData.type_document === 'Independant' && devisData.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
+            <div className="mb-4 border p-3 rounded bg-purple-50/50">
+              <h3 className="text-xs font-bold text-purple-700 mb-2">TRAJETS</h3>
+              <div className="text-xs space-y-1">
+                {devisData.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
+                  <p key={i}>
+                    <span className="font-semibold">{l.description || `Prestation ${i + 1}`}:</span>{" "}
+                    {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Client */}
           <div className="mb-4 border p-3 rounded">
