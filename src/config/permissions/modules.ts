@@ -1,0 +1,58 @@
+import type { ModuleDefinition } from './actions';
+
+// Configuration des modules/pages de l'application
+export const MODULES: ModuleDefinition[] = [
+  // === COMMERCIAL ===
+  { key: 'clients', label: 'Clients', description: 'Gestion des clients et prospects', icon: 'Users', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export', 'import', 'merge'] } },
+  { key: 'devis', label: 'Devis', description: 'Création et suivi des devis', icon: 'FileText', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'cancel', 'duplicate', 'export', 'print', 'send', 'convert'] } },
+  { key: 'ordres', label: 'Ordres de travail', description: 'Gestion des ordres de travail', icon: 'ClipboardList', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'cancel', 'export', 'print', 'send', 'convert', 'payment', 'download'] } },
+  { key: 'factures', label: 'Factures', description: 'Facturation et suivi', icon: 'Receipt', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'cancel', 'export', 'print', 'send'] } },
+  { key: 'partenaires', label: 'Partenaires', description: 'Gestion des partenaires commerciaux', icon: 'Handshake', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export'] } },
+  { key: 'transitaires', label: 'Transitaires', description: 'Gestion des transitaires', icon: 'Ship', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export', 'assign'] } },
+  { key: 'transporteurs', label: 'Transporteurs', description: 'Gestion des transporteurs', icon: 'Truck', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export'] } },
+  { key: 'fournisseurs', label: 'Fournisseurs', description: 'Gestion des fournisseurs', icon: 'Store', category: 'commercial',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export', 'import'] } },
+  // === FINANCE ===
+  { key: 'paiements', label: 'Paiements', description: 'Enregistrement des paiements', icon: 'CreditCard', category: 'finance',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'cancel', 'export'] } },
+  { key: 'caisse', label: 'Caisse', description: 'Gestion de la caisse', icon: 'Wallet', category: 'finance',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'cancel', 'export', 'close'] } },
+  { key: 'banques', label: 'Banques', description: 'Comptes bancaires et opérations', icon: 'Building2', category: 'finance',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export'] } },
+  { key: 'credits', label: 'Crédits', description: 'Gestion des crédits clients', icon: 'TrendingUp', category: 'finance',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'approve', 'reject', 'export'] } },
+  { key: 'taxes', label: 'Taxes', description: 'Gestion des taxes TVA et CSS', icon: 'Percent', category: 'finance',
+    actions: { global: ['view', 'edit'], specific: ['export', 'close'] } },
+  { key: 'notes', label: 'Notes de frais', description: 'Gestion des notes de frais', icon: 'FileSpreadsheet', category: 'finance',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['validate', 'approve', 'reject', 'export', 'print', 'send', 'payment', 'download'] } },
+  // === STOCK & PRODUITS ===
+  { key: 'produits', label: 'Produits', description: 'Catalogue de produits', icon: 'Package', category: 'stock',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['export', 'import', 'activate', 'deactivate'] } },
+  { key: 'stocks', label: 'Stocks', description: 'Gestion des stocks', icon: 'Warehouse', category: 'stock',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['stockIn', 'stockOut', 'inventory', 'export'] } },
+  // === ADMINISTRATION ===
+  { key: 'utilisateurs', label: 'Utilisateurs', description: 'Gestion des utilisateurs', icon: 'Users', category: 'administration',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['activate', 'deactivate', 'assignRole', 'export'] } },
+  { key: 'roles', label: 'Rôles', description: 'Gestion des rôles et permissions', icon: 'Shield', category: 'administration',
+    actions: { global: ['view', 'create', 'edit', 'delete'], specific: ['assign', 'duplicate'] } },
+  { key: 'configuration', label: 'Configuration', description: 'Paramètres de l\'application', icon: 'Settings', category: 'administration',
+    actions: { global: ['view', 'edit'], specific: ['export', 'import'] } },
+  // === REPORTING & SECURITE ===
+  { key: 'reporting', label: 'Rapports', description: 'Tableaux de bord et rapports', icon: 'BarChart3', category: 'reporting',
+    actions: { global: ['view'], specific: ['export', 'print'] } },
+  { key: 'dashboard', label: 'Dashboard', description: 'Tableau de bord principal', icon: 'LayoutDashboard', category: 'reporting',
+    actions: { global: ['view'], specific: ['export'] } },
+  { key: 'audit', label: 'Audit', description: 'Journal d\'audit et traçabilité', icon: 'History', category: 'reporting',
+    actions: { global: ['view'], specific: ['export'] } },
+  { key: 'securite', label: 'Sécurité', description: 'Paramètres de sécurité', icon: 'ShieldCheck', category: 'reporting',
+    actions: { global: ['view', 'edit'], specific: ['export'] } },
+  { key: 'exports', label: 'Exports', description: 'Gestion des exports de données', icon: 'Download', category: 'reporting',
+    actions: { global: ['view', 'create'], specific: [] } },
+];
