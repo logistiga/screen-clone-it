@@ -289,18 +289,18 @@ export default function FacturePDFPage() {
               <tbody>
                 {lignesConteneur.map((ligne, index) => (
                   <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                    <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
-                    <td className="py-1.5 px-2 border-r border-b font-mono">{ligne.numero}</td>
-                    <td className="text-center py-1.5 px-2 border-r border-b">{ligne.taille}</td>
-                    <td className="text-right py-1.5 px-2 font-medium border-b">{formatMontant(ligne.montant)}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b font-mono align-middle">{ligne.numero}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.taille}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 10 - lignesConteneur.length) }).map((_, i) => (
                   <tr key={`empty-${i}`} className="h-6">
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
                   </tr>
                 ))}
               </tbody>
@@ -322,20 +322,20 @@ export default function FacturePDFPage() {
               <tbody>
                 {lignesConventionnel.map((ligne, index) => (
                   <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                    <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
-                    <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
-                    <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
-                    <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                    <td className="text-right py-1.5 px-2 font-medium border-b">{formatMontant(ligne.montant)}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
+                    <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 10 - lignesConventionnel.length) }).map((_, i) => (
                   <tr key={`empty-${i}`} className="h-6">
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
                   </tr>
                 ))}
               </tbody>
@@ -357,20 +357,20 @@ export default function FacturePDFPage() {
               <tbody>
                 {lignesIndependant.map((ligne, index) => (
                   <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                    <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
-                    <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
-                    <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
-                    <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                    <td className="text-right py-1.5 px-2 font-medium border-b">{formatMontant(ligne.montant)}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
+                    <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 10 - lignesIndependant.length) }).map((_, i) => (
                   <tr key={`empty-${i}`} className="h-6">
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
                   </tr>
                 ))}
               </tbody>

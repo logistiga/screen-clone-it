@@ -284,11 +284,11 @@ export default function DevisPDFPage() {
             <tbody>
               {lignesAffichage.map((ligne, index) => (
                 <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
-                  <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
-                  <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
-                  <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-1.5 px-2 font-medium border-b">
+                  <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                  <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
+                  <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
+                  <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
+                  <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
                     {formatMontant(ligne.montantHT)}
                   </td>
                 </tr>
@@ -296,11 +296,11 @@ export default function DevisPDFPage() {
               {/* Lignes vides pour remplir (min 8 lignes) */}
               {Array.from({ length: Math.max(0, 8 - lignesAffichage.length) }).map((_, i) => (
                 <tr key={`empty-${i}`} className="h-6">
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-b">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                  <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
