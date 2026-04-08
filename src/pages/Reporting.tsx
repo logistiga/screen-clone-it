@@ -1,89 +1,52 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend 
-} from "recharts";
-import { 
-  FileText, Download, TrendingUp, TrendingDown, Users, FileCheck, 
-  Receipt, Wallet, CreditCard, Building2, Calendar, BarChart3,
-  AlertTriangle, ArrowUpRight, ArrowDownRight, RefreshCw, PieChart as PieChartIcon
+import {
+  FileText, Download, TrendingUp, TrendingDown, Users, FileCheck,
+  Receipt, Wallet, CreditCard, Calendar, BarChart3, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { ExportDataModal } from "@/components/reporting/ExportDataModal";
-import { 
-  useTableauDeBord, 
-  useChiffreAffaires, 
-  useCreances, 
-  useRentabilite,
-  useStatistiquesDocuments,
-  useActiviteClients,
-  useComparatif,
-  useTresorerie
+import {
+  useTableauDeBord, useChiffreAffaires, useCreances, useRentabilite,
+  useStatistiquesDocuments, useActiviteClients, useComparatif, useTresorerie,
 } from "@/hooks/use-reporting";
 import { DocumentStatCard, DocumentStatCardSkeleton } from "@/components/shared/documents/DocumentStatCard";
 import { DocumentLoadingState } from "@/components/shared/documents/DocumentLoadingState";
 import { DocumentEmptyState } from "@/components/shared/documents/DocumentEmptyState";
-
-const COLORS = ["#E63946", "#4A4A4A", "#F4A261", "#2A9D8F", "#264653", "#8338EC", "#FF006E"];
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
-};
+import { ChiffreAffairesTab, CreancesTab, RentabiliteTab, TresorerieTab, ComparatifTab } from "./reporting/ReportingCharts";
+import { DocumentsTab } from "./reporting/ReportingDocumentsTab";
 
 const formatMontant = (montant: number | null | undefined): string => {
   const value = Number(montant);
-  if (isNaN(value) || montant === null || montant === undefined) {
-    return '0 FCFA';
-  }
-  return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(value)) + ' FCFA';
+  if (isNaN(value) || montant === null || montant === undefined) return '0 FCFA';
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(value)) + ' FCFA';
 };
 
 const moisLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 
+const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+
 export default function ReportingPage() {
   const [anneeSelectionnee, setAnneeSelectionnee] = useState(new Date().getFullYear());
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  
-  // Dates pour trésorerie
-  const [dateDebutTresorerie, setDateDebutTresorerie] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return date.toISOString().split('T')[0];
-  });
-  const [dateFinTresorerie, setDateFinTresorerie] = useState(() => 
-    new Date().toISOString().split('T')[0]
-  );
+  const [dateDebutTresorerie, setDateDebutTresorerie] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split('T')[0]; });
+  const [dateFinTresorerie, setDateFinTresorerie] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Dates pour activité clients
   const dateDebutAnnee = `${anneeSelectionnee}-01-01`;
   const dateFinAnnee = `${anneeSelectionnee}-12-31`;
-
-  // Années disponibles
   const anneesDisponibles = [2024, 2025, 2026];
 
-  // ============ QUERIES API ============
   const { data: tableauDeBord, isLoading: loadingTableau, refetch: refetchTableau } = useTableauDeBord(anneeSelectionnee);
   const { data: chiffreAffaires, isLoading: loadingCA } = useChiffreAffaires(anneeSelectionnee);
   const { data: creances, isLoading: loadingCreances } = useCreances();
@@ -93,226 +56,86 @@ export default function ReportingPage() {
   const { data: comparatif, isLoading: loadingComparatif } = useComparatif(anneeSelectionnee - 1, anneeSelectionnee);
   const { data: tresorerie, isLoading: loadingTresorerie } = useTresorerie(dateDebutTresorerie, dateFinTresorerie);
 
-  // Fetch clients pour le modal d'export
   const { data: clientsData } = useQuery({
     queryKey: ['clients-list'],
-    queryFn: async () => {
-      const response = await api.get('/clients');
-      return response.data.data || [];
-    },
+    queryFn: async () => { const r = await api.get('/clients'); return r.data.data || []; },
     staleTime: 10 * 60 * 1000,
   });
-
   const clients = clientsData?.map((c: any) => ({ id: String(c.id), nom: c.nom })) || [];
 
-  // ============ DONNÉES FORMATÉES ============
   const evolutionMensuelle = useMemo(() => {
     if (!chiffreAffaires?.mensuel) return [];
-    return chiffreAffaires.mensuel.map((m: any) => ({
-      mois: moisLabels[m.mois - 1] || m.label,
-      ca: m.total_ttc,
-      nbFactures: m.nb_factures,
-    }));
+    return chiffreAffaires.mensuel.map((m: any) => ({ mois: moisLabels[m.mois - 1] || m.label, ca: m.total_ttc, nbFactures: m.nb_factures }));
   }, [chiffreAffaires]);
 
   const dataCreancesParTranche = useMemo(() => {
     if (!creances?.par_tranche) return [];
-    return creances.par_tranche.map((t: any) => ({
-      name: t.tranche,
-      value: t.montant,
-      nb: t.nb_factures,
-    }));
+    return creances.par_tranche.map((t: any) => ({ name: t.tranche, value: t.montant, nb: t.nb_factures }));
   }, [creances]);
-
-  const topDebiteurs = creances?.top_debiteurs || [];
-  const topClientsActivite = (activiteClients?.top_clients || []).map((c: any) => ({
-    ...c,
-    ca_total: Number(c.ca_total) || 0,
-    nb_factures: Number(c.nb_factures) || 0,
-    paiements: Number(c.paiements) || 0,
-    solde_du: Number(c.solde_du) || 0,
-    client_nom: c.client_nom || 'Client inconnu',
-  }));
 
   const rentabiliteMensuelle = useMemo(() => {
     if (!rentabilite?.mensuel) return [];
-    return rentabilite.mensuel.map((m: any) => ({
-      mois: moisLabels[m.mois - 1] || m.label,
-      ca: m.ca,
-      charges: m.charges,
-      marge: m.marge,
-    }));
+    return rentabilite.mensuel.map((m: any) => ({ mois: moisLabels[m.mois - 1] || m.label, ca: m.ca, charges: m.charges, marge: m.marge }));
   }, [rentabilite]);
 
   const tresorerieQuotidienne = useMemo(() => {
     if (!tresorerie?.mouvements_quotidiens) return [];
-    return tresorerie.mouvements_quotidiens.map((m: any) => ({
-      date: new Date(m.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
-      entrees: m.entrees,
-      sorties: m.sorties,
-      solde: m.solde,
-    }));
+    return tresorerie.mouvements_quotidiens.map((m: any) => ({ date: new Date(m.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }), entrees: m.entrees, sorties: m.sorties, solde: m.solde }));
   }, [tresorerie]);
 
-  // ============ HANDLERS ============
-  const handleRefresh = () => {
-    refetchTableau();
-    toast.success("Données actualisées");
-  };
+  const topDebiteurs = creances?.top_debiteurs || [];
+  const topClientsActivite = (activiteClients?.top_clients || []).map((c: any) => ({ ...c, ca_total: Number(c.ca_total) || 0, nb_factures: Number(c.nb_factures) || 0, paiements: Number(c.paiements) || 0, solde_du: Number(c.solde_du) || 0, client_nom: c.client_nom || 'Client inconnu' }));
 
-  // État de chargement global
-  const isInitialLoading = loadingTableau && !tableauDeBord;
-
-  if (isInitialLoading) {
-    return (
-      <MainLayout title="Reporting Commercial">
-        <DocumentLoadingState message="Chargement des données de reporting..." />
-      </MainLayout>
-    );
-  }
+  if (loadingTableau && !tableauDeBord) return <MainLayout title="Reporting Commercial"><DocumentLoadingState message="Chargement des données de reporting..." /></MainLayout>;
 
   return (
     <MainLayout title="Reporting Commercial">
-      <motion.div 
-        className="space-y-5"
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
-      >
-        {/* Header */}
-        <motion.div 
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-          variants={itemVariants}
-        >
+      <motion.div className="space-y-5" initial="hidden" animate="visible" variants={containerVariants}>
+        <motion.div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" variants={itemVariants}>
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Reporting Commercial</h1>
-            <p className="text-sm text-muted-foreground">Vue d'ensemble de l'activité — {anneeSelectionnee}</p>
+            <p className="text-sm text-muted-foreground">Vue d'ensemble — {anneeSelectionnee}</p>
           </div>
           <div className="flex gap-2 items-center">
-            <Select 
-              value={String(anneeSelectionnee)} 
-              onValueChange={(v) => setAnneeSelectionnee(Number(v))}
-            >
-              <SelectTrigger className="w-[110px] h-9 text-sm">
-                <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                <SelectValue placeholder="Année" />
-              </SelectTrigger>
-              <SelectContent>
-                {anneesDisponibles.map(a => (
-                  <SelectItem key={a} value={String(a)}>{a}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={String(anneeSelectionnee)} onValueChange={(v) => setAnneeSelectionnee(Number(v))}>
+              <SelectTrigger className="w-[110px] h-9 text-sm"><Calendar className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="Année" /></SelectTrigger>
+              <SelectContent>{anneesDisponibles.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}</SelectContent>
             </Select>
-            <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={handleRefresh}>
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="sm" className="h-9 gap-1.5" onClick={() => setExportModalOpen(true)}>
-              <Download className="h-3.5 w-3.5" />
-              Exporter
-            </Button>
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={() => { refetchTableau(); toast.success("Données actualisées"); }}><RefreshCw className="h-3.5 w-3.5" /></Button>
+            <Button size="sm" className="h-9 gap-1.5" onClick={() => setExportModalOpen(true)}><Download className="h-3.5 w-3.5" />Exporter</Button>
           </div>
         </motion.div>
 
-        {/* KPIs — 4 principaux en haut */}
+        {/* KPIs */}
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-          {loadingTableau ? (
+          {loadingTableau ? [...Array(4)].map((_, i) => <DocumentStatCardSkeleton key={i} />) : (
             <>
-              {[...Array(4)].map((_, i) => <DocumentStatCardSkeleton key={i} />)}
-            </>
-          ) : (
-            <>
-              <DocumentStatCard
-                title="CA Total"
-                value={formatMontant(tableauDeBord?.kpis?.ca_total || 0)}
-                icon={Receipt}
-                variant="primary"
-                delay={0}
-              />
-              <DocumentStatCard
-                title="CA Mois Courant"
-                value={formatMontant(tableauDeBord?.kpis?.ca_mois_courant || 0)}
-                icon={Calendar}
-                variant="info"
-                delay={0.05}
-              />
-              <DocumentStatCard
-                title="Créances"
-                value={formatMontant(tableauDeBord?.kpis?.creances_totales || 0)}
-                icon={TrendingDown}
-                variant="danger"
-                delay={0.1}
-              />
-              <DocumentStatCard
-                title="Recouvrement"
-                value={`${tableauDeBord?.kpis?.taux_recouvrement || 0}%`}
-                icon={TrendingUp}
-                variant="success"
-                delay={0.15}
-              />
+              <DocumentStatCard title="CA Total" value={formatMontant(tableauDeBord?.kpis?.ca_total || 0)} icon={Receipt} variant="primary" delay={0} />
+              <DocumentStatCard title="CA Mois Courant" value={formatMontant(tableauDeBord?.kpis?.ca_mois_courant || 0)} icon={Calendar} variant="info" delay={0.05} />
+              <DocumentStatCard title="Créances" value={formatMontant(tableauDeBord?.kpis?.creances_totales || 0)} icon={TrendingDown} variant="danger" delay={0.1} />
+              <DocumentStatCard title="Recouvrement" value={`${tableauDeBord?.kpis?.taux_recouvrement || 0}%`} icon={TrendingUp} variant="success" delay={0.15} />
             </>
           )}
         </div>
-
-        {/* KPIs secondaires — compteurs */}
         <div className="grid gap-3 grid-cols-4">
-          {loadingTableau ? (
+          {loadingTableau ? [...Array(4)].map((_, i) => <DocumentStatCardSkeleton key={i} />) : (
             <>
-              {[...Array(4)].map((_, i) => <DocumentStatCardSkeleton key={i} />)}
-            </>
-          ) : (
-            <>
-              <DocumentStatCard
-                title="Factures"
-                value={tableauDeBord?.kpis?.nb_factures || 0}
-                icon={FileCheck}
-                variant="default"
-                delay={0.2}
-                compact
-              />
-              <DocumentStatCard
-                title="Devis"
-                value={tableauDeBord?.kpis?.nb_devis || 0}
-                icon={FileText}
-                variant="default"
-                delay={0.25}
-                compact
-              />
-              <DocumentStatCard
-                title="Ordres"
-                value={tableauDeBord?.kpis?.nb_ordres || 0}
-                icon={BarChart3}
-                variant="default"
-                delay={0.3}
-                compact
-              />
-              <DocumentStatCard
-                title="Clients"
-                value={tableauDeBord?.kpis?.nb_clients || 0}
-                icon={Users}
-                variant="default"
-                delay={0.35}
-                compact
-              />
+              <DocumentStatCard title="Factures" value={tableauDeBord?.kpis?.nb_factures || 0} icon={FileCheck} variant="default" delay={0.2} compact />
+              <DocumentStatCard title="Devis" value={tableauDeBord?.kpis?.nb_devis || 0} icon={FileText} variant="default" delay={0.25} compact />
+              <DocumentStatCard title="Ordres" value={tableauDeBord?.kpis?.nb_ordres || 0} icon={BarChart3} variant="default" delay={0.3} compact />
+              <DocumentStatCard title="Clients" value={tableauDeBord?.kpis?.nb_clients || 0} icon={Users} variant="default" delay={0.35} compact />
             </>
           )}
         </div>
 
         {/* Alertes */}
-        {tableauDeBord?.alertes && tableauDeBord.alertes.length > 0 && (
-          <motion.div 
-            className="flex flex-wrap gap-2"
-            variants={itemVariants}
-          >
-            {tableauDeBord.alertes.map((alerte: any, index: number) => (
-              <div 
-                key={index} 
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-sm"
-              >
+        {tableauDeBord?.alertes?.length > 0 && (
+          <motion.div className="flex flex-wrap gap-2" variants={itemVariants}>
+            {tableauDeBord.alertes.map((alerte: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                 <span className="font-medium text-amber-800 dark:text-amber-300">{alerte.message}</span>
-                <Badge variant="secondary" className="text-[10px] bg-amber-200/50 dark:bg-amber-800/50 text-amber-700 dark:text-amber-300">
-                  {alerte.count}
-                </Badge>
+                <Badge variant="secondary" className="text-[10px] bg-amber-200/50 dark:bg-amber-800/50 text-amber-700 dark:text-amber-300">{alerte.count}</Badge>
               </div>
             ))}
           </motion.div>
@@ -322,719 +145,64 @@ export default function ReportingPage() {
         <motion.div variants={itemVariants}>
           <Tabs defaultValue="chiffre-affaires" className="space-y-4">
             <TabsList className="flex-wrap h-auto gap-0.5 bg-muted/40 p-0.5 rounded-lg border">
-              <TabsTrigger value="chiffre-affaires" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <Receipt className="h-3.5 w-3.5" />
-                Chiffre d'Affaires
-              </TabsTrigger>
-              <TabsTrigger value="creances" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <TrendingDown className="h-3.5 w-3.5" />
-                Créances
-              </TabsTrigger>
-              <TabsTrigger value="rentabilite" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <TrendingUp className="h-3.5 w-3.5" />
-                Rentabilité
-              </TabsTrigger>
-              <TabsTrigger value="tresorerie" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <Wallet className="h-3.5 w-3.5" />
-                Trésorerie
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <FileText className="h-3.5 w-3.5" />
-                Documents
-              </TabsTrigger>
-              <TabsTrigger value="clients" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <Users className="h-3.5 w-3.5" />
-                Clients
-              </TabsTrigger>
-              <TabsTrigger value="comparatif" className="gap-1.5 text-xs data-[state=active]:shadow-sm">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Comparatif
-              </TabsTrigger>
+              <TabsTrigger value="chiffre-affaires" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><Receipt className="h-3.5 w-3.5" />Chiffre d'Affaires</TabsTrigger>
+              <TabsTrigger value="creances" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><TrendingDown className="h-3.5 w-3.5" />Créances</TabsTrigger>
+              <TabsTrigger value="rentabilite" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><TrendingUp className="h-3.5 w-3.5" />Rentabilité</TabsTrigger>
+              <TabsTrigger value="tresorerie" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><Wallet className="h-3.5 w-3.5" />Trésorerie</TabsTrigger>
+              <TabsTrigger value="documents" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><FileText className="h-3.5 w-3.5" />Documents</TabsTrigger>
+              <TabsTrigger value="clients" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><Users className="h-3.5 w-3.5" />Clients</TabsTrigger>
+              <TabsTrigger value="comparatif" className="gap-1.5 text-xs data-[state=active]:shadow-sm"><BarChart3 className="h-3.5 w-3.5" />Comparatif</TabsTrigger>
             </TabsList>
 
-            {/* Chiffre d'Affaires */}
             <TabsContent value="chiffre-affaires" className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-3">
-                <Card className="lg:col-span-2 rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <Receipt className="h-4 w-4 text-primary" />
-                      Évolution mensuelle du CA
-                    </CardTitle>
-                    <CardDescription className="text-xs">Chiffre d'affaires TTC par mois en {anneeSelectionnee}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    {loadingCA ? (
-                      <Skeleton className="h-[300px] w-full" />
-                    ) : evolutionMensuelle.length === 0 ? (
-                      <div className="h-[300px] flex items-center justify-center">
-                        <DocumentEmptyState 
-                          icon={Receipt}
-                          title="Aucune donnée"
-                          description="Pas de données de chiffre d'affaires pour cette année"
-                        />
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={evolutionMensuelle}>
-                          <defs>
-                            <linearGradient id="colorCA" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis dataKey="mois" className="text-xs" />
-                          <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} className="text-xs" />
-                          <Tooltip 
-                            formatter={(value: number) => formatMontant(value)}
-                            labelStyle={{ color: 'hsl(var(--foreground))' }}
-                            contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="ca" 
-                            stroke="hsl(var(--primary))" 
-                            fill="url(#colorCA)" 
-                            name="CA TTC"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="text-sm font-semibold">Récapitulatif Annuel</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-4">
-                    {loadingCA ? (
-                      <Skeleton className="h-32 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="text-muted-foreground">Total HT</span>
-                          <span className="font-bold">{formatMontant(chiffreAffaires?.total_annuel?.total_ht || 0)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="text-muted-foreground">TVA</span>
-                          <span className="font-bold">{formatMontant(chiffreAffaires?.total_annuel?.total_tva || 0)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="text-muted-foreground">CSS</span>
-                          <span className="font-bold">{formatMontant(chiffreAffaires?.total_annuel?.total_css || 0)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 bg-primary/10 rounded-lg px-3">
-                          <span className="font-semibold">Total TTC</span>
-                          <span className="font-bold text-primary">{formatMontant(chiffreAffaires?.total_annuel?.total_ttc || 0)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 text-sm">
-                          <span className="text-muted-foreground">Nombre de factures</span>
-                          <Badge variant="secondary">{chiffreAffaires?.total_annuel?.nb_factures || 0}</Badge>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <ChiffreAffairesTab loadingCA={loadingCA} evolutionMensuelle={evolutionMensuelle} chiffreAffaires={chiffreAffaires} annee={anneeSelectionnee} />
             </TabsContent>
-
-            {/* Créances */}
             <TabsContent value="creances" className="space-y-4">
-              {/* Stats créances */}
-              <div className="grid gap-4 sm:grid-cols-3">
-                <DocumentStatCard
-                  title="Total Créances"
-                  value={formatMontant(creances?.total_creances || 0)}
-                  icon={TrendingDown}
-                  variant="danger"
-                  delay={0}
-                />
-                <DocumentStatCard
-                  title="Factures Impayées"
-                  value={creances?.nb_factures_impayees || 0}
-                  icon={FileCheck}
-                  variant="warning"
-                  delay={0.1}
-                />
-                <DocumentStatCard
-                  title="Âge Moyen"
-                  value={`${creances?.age_moyen || 0} jours`}
-                  icon={Calendar}
-                  variant="info"
-                  delay={0.2}
-                />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <PieChartIcon className="h-4 w-4 text-destructive" />
-                      Créances par ancienneté
-                    </CardTitle>
-                    <CardDescription className="text-xs">Répartition des impayés par tranche de jours</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    {loadingCreances ? (
-                      <Skeleton className="h-[300px] w-full" />
-                    ) : dataCreancesParTranche.length === 0 ? (
-                      <div className="h-[300px] flex items-center justify-center">
-                        <DocumentEmptyState 
-                          icon={TrendingDown}
-                          title="Aucune créance"
-                          description="Félicitations ! Vous n'avez pas de créances"
-                        />
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={dataCreancesParTranche}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={5}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                          >
-                            {dataCreancesParTranche.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value: number) => formatMontant(value)} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <Users className="h-4 w-4 text-destructive" />
-                      Top 10 Débiteurs
-                    </CardTitle>
-                    <CardDescription className="text-xs">Clients avec le plus d'impayés</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {loadingCreances ? (
-                      <div className="p-6">
-                        <Skeleton className="h-[300px] w-full" />
-                      </div>
-                    ) : topDebiteurs.length === 0 ? (
-                      <div className="py-12">
-                        <DocumentEmptyState 
-                          icon={Users}
-                          title="Aucun débiteur"
-                          description="Tous vos clients sont à jour"
-                        />
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Client</TableHead>
-                            <TableHead className="text-right">Montant dû</TableHead>
-                            <TableHead className="text-center">Factures</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {topDebiteurs.slice(0, 10).map((client: any, i: number) => (
-                            <TableRow key={i} className="hover:bg-muted/50">
-                              <TableCell className="font-medium">{client.client_nom}</TableCell>
-                              <TableCell className="text-right text-red-600 dark:text-red-400 font-semibold">
-                                {formatMontant(client.montant_du)}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="outline">{client.nb_factures}</Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <CreancesTab loadingCreances={loadingCreances} dataCreancesParTranche={dataCreancesParTranche} topDebiteurs={topDebiteurs} creances={creances} />
             </TabsContent>
-
-            {/* Rentabilité */}
             <TabsContent value="rentabilite" className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <DocumentStatCard
-                  title="Chiffre d'Affaires"
-                  value={formatMontant(rentabilite?.chiffre_affaires || 0)}
-                  icon={Receipt}
-                  variant="primary"
-                  delay={0}
-                />
-                <DocumentStatCard
-                  title="Charges"
-                  value={formatMontant((rentabilite?.charges_exploitation || 0) + (rentabilite?.charges_financieres || 0))}
-                  icon={TrendingDown}
-                  variant="warning"
-                  delay={0.1}
-                />
-                <DocumentStatCard
-                  title="Résultat Net"
-                  value={formatMontant(rentabilite?.resultat_net || 0)}
-                  icon={TrendingUp}
-                  variant={(rentabilite?.resultat_net || 0) >= 0 ? "success" : "danger"}
-                  delay={0.2}
-                />
-                <DocumentStatCard
-                  title="Taux de Marge"
-                  value={`${rentabilite?.taux_marge || 0}%`}
-                  icon={BarChart3}
-                  variant="info"
-                  delay={0.3}
-                />
-              </div>
-
-              <Card className="rounded-xl border shadow-sm overflow-hidden">
-                <CardHeader className="pb-2 border-b bg-muted/20">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    Évolution de la Rentabilité
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  {loadingRentabilite ? (
-                    <Skeleton className="h-[300px] w-full" />
-                  ) : rentabiliteMensuelle.length === 0 ? (
-                    <div className="h-[300px] flex items-center justify-center">
-                      <DocumentEmptyState 
-                        icon={TrendingUp}
-                        title="Aucune donnée"
-                        description="Pas de données de rentabilité pour cette année"
-                      />
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={rentabiliteMensuelle}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="mois" className="text-xs" />
-                        <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} className="text-xs" />
-                        <Tooltip formatter={(value: number) => formatMontant(value)} />
-                        <Legend />
-                        <Bar dataKey="ca" name="CA" fill="hsl(var(--primary))" />
-                        <Bar dataKey="charges" name="Charges" fill="#F4A261" />
-                        <Bar dataKey="marge" name="Marge" fill="#2A9D8F" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
+              <RentabiliteTab loading={loadingRentabilite} rentabilite={rentabilite} rentabiliteMensuelle={rentabiliteMensuelle} />
             </TabsContent>
-
-            {/* Trésorerie */}
             <TabsContent value="tresorerie" className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <DocumentStatCard
-                  title="Solde Initial"
-                  value={formatMontant(tresorerie?.solde_initial || 0)}
-                  icon={Wallet}
-                  variant="info"
-                  delay={0}
-                />
-                <DocumentStatCard
-                  title="Total Entrées"
-                  value={formatMontant(tresorerie?.total_entrees || 0)}
-                  icon={ArrowUpRight}
-                  variant="success"
-                  delay={0.1}
-                />
-                <DocumentStatCard
-                  title="Total Sorties"
-                  value={formatMontant(tresorerie?.total_sorties || 0)}
-                  icon={ArrowDownRight}
-                  variant="danger"
-                  delay={0.2}
-                />
-                <DocumentStatCard
-                  title="Solde Final"
-                  value={formatMontant(tresorerie?.solde_final || 0)}
-                  icon={CreditCard}
-                  variant={(tresorerie?.solde_final || 0) >= 0 ? "primary" : "danger"}
-                  delay={0.3}
-                />
-              </div>
-
-              <Card className="rounded-xl border shadow-sm overflow-hidden">
-                <CardHeader className="pb-2 border-b bg-muted/20">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                        <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        Flux de Trésorerie
-                      </CardTitle>
-                      <CardDescription className="text-xs">Entrées et sorties de fonds</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">Du</Label>
-                        <Input 
-                          type="date" 
-                          value={dateDebutTresorerie} 
-                          onChange={(e) => setDateDebutTresorerie(e.target.value)}
-                          className="w-auto"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">Au</Label>
-                        <Input 
-                          type="date" 
-                          value={dateFinTresorerie} 
-                          onChange={(e) => setDateFinTresorerie(e.target.value)}
-                          className="w-auto"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {loadingTresorerie ? (
-                    <Skeleton className="h-[300px] w-full" />
-                  ) : tresorerieQuotidienne.length === 0 ? (
-                    <div className="h-[300px] flex items-center justify-center">
-                      <DocumentEmptyState 
-                        icon={Wallet}
-                        title="Aucun mouvement"
-                        description="Pas de mouvements de trésorerie sur cette période"
-                      />
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={tresorerieQuotidienne}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="date" className="text-xs" />
-                        <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} className="text-xs" />
-                        <Tooltip formatter={(value: number) => formatMontant(value)} />
-                        <Legend />
-                        <Line type="monotone" dataKey="entrees" name="Entrées" stroke="#2A9D8F" strokeWidth={2} />
-                        <Line type="monotone" dataKey="sorties" name="Sorties" stroke="#E63946" strokeWidth={2} />
-                        <Line type="monotone" dataKey="solde" name="Solde" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
+              <TresorerieTab loading={loadingTresorerie} tresorerie={tresorerie} tresorerieQuotidienne={tresorerieQuotidienne} dateDebut={dateDebutTresorerie} dateFin={dateFinTresorerie} onDateDebutChange={setDateDebutTresorerie} onDateFinChange={setDateFinTresorerie} />
             </TabsContent>
-
-            {/* Documents */}
             <TabsContent value="documents" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* Devis */}
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      Devis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pt-4">
-                    {loadingStats ? (
-                      <Skeleton className="h-32 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
-                          <span className="font-medium">Total</span>
-                          <Badge>{statsDocuments?.devis?.total || 0}</Badge>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-muted-foreground">Brouillon</span>
-                          <span>{statsDocuments?.devis?.brouillon || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-muted-foreground">Envoyé</span>
-                          <span>{statsDocuments?.devis?.envoye || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-emerald-600 dark:text-emerald-400">Accepté</span>
-                          <span className="font-semibold">{statsDocuments?.devis?.accepte || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-red-600 dark:text-red-400">Refusé</span>
-                          <span>{statsDocuments?.devis?.refuse || 0}</span>
-                        </div>
-                        <div className="pt-2 border-t">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Taux de conversion</span>
-                            <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                              {statsDocuments?.devis?.taux_conversion || 0}%
-                            </Badge>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Ordres */}
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <BarChart3 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                      Ordres de Travail
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pt-4">
-                    {loadingStats ? (
-                      <Skeleton className="h-32 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
-                          <span className="font-medium">Total</span>
-                          <Badge>{statsDocuments?.ordres?.total || 0}</Badge>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-amber-600 dark:text-amber-400">En cours</span>
-                          <span>{statsDocuments?.ordres?.en_cours || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-emerald-600 dark:text-emerald-400">Terminé</span>
-                          <span>{statsDocuments?.ordres?.termine || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-primary">Facturé</span>
-                          <span className="font-semibold">{statsDocuments?.ordres?.facture || 0}</span>
-                        </div>
-                        <div className="pt-2 border-t">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Taux de facturation</span>
-                            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                              {statsDocuments?.ordres?.taux_facturation || 0}%
-                            </Badge>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Factures */}
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <Receipt className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      Factures
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pt-4">
-                    {loadingStats ? (
-                      <Skeleton className="h-32 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
-                          <span className="font-medium">Total</span>
-                          <Badge>{statsDocuments?.factures?.total || 0}</Badge>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-muted-foreground">Validée</span>
-                          <span>{statsDocuments?.factures?.validee || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-amber-600 dark:text-amber-400">Partiellement payée</span>
-                          <span>{statsDocuments?.factures?.partiellement_payee || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-emerald-600 dark:text-emerald-400">Payée</span>
-                          <span className="font-semibold">{statsDocuments?.factures?.payee || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm py-1">
-                          <span className="text-red-600 dark:text-red-400">Annulée</span>
-                          <span>{statsDocuments?.factures?.annulee || 0}</span>
-                        </div>
-                        <div className="pt-2 border-t">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Taux de recouvrement</span>
-                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                              {statsDocuments?.factures?.taux_recouvrement || 0}%
-                            </Badge>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <DocumentsTab loadingStats={loadingStats} statsDocuments={statsDocuments} />
             </TabsContent>
-
-            {/* Clients */}
             <TabsContent value="clients" className="space-y-4">
               <Card className="rounded-xl border shadow-sm overflow-hidden">
                 <CardHeader className="pb-2 border-b bg-muted/20">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <Users className="h-4 w-4 text-primary" />
-                    Top Clients par Chiffre d'Affaires
-                  </CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-primary" />Top Clients par CA</CardTitle>
                   <CardDescription className="text-xs">Année {anneeSelectionnee}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {loadingClients ? (
-                    <div className="p-6">
-                      <Skeleton className="h-[300px] w-full" />
-                    </div>
-                  ) : topClientsActivite.length === 0 ? (
-                    <div className="py-12">
-                      <DocumentEmptyState 
-                        icon={Users}
-                        title="Aucun client actif"
-                        description="Aucune activité client enregistrée pour cette année"
-                      />
-                    </div>
+                  {loadingClients ? <div className="p-6"><Skeleton className="h-[300px] w-full" /></div> : topClientsActivite.length === 0 ? (
+                    <div className="py-12"><DocumentEmptyState icon={Users} title="Aucun client actif" description="Aucune activité client enregistrée" /></div>
                   ) : (
                     <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>#</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead className="text-right">CA Total</TableHead>
-                          <TableHead className="text-center">Factures</TableHead>
-                          <TableHead className="text-right">Paiements</TableHead>
-                          <TableHead className="text-right">Solde dû</TableHead>
+                      <TableHeader><TableRow className="bg-muted/50"><TableHead>#</TableHead><TableHead>Client</TableHead><TableHead className="text-right">CA Total</TableHead><TableHead className="text-center">Factures</TableHead><TableHead className="text-right">Paiements</TableHead><TableHead className="text-right">Solde dû</TableHead></TableRow></TableHeader>
+                      <TableBody>{topClientsActivite.map((c: any, i: number) => (
+                        <TableRow key={i} className="hover:bg-muted/50">
+                          <TableCell><Badge variant="outline" className={i < 3 ? "bg-primary/10 text-primary" : ""}>{i + 1}</Badge></TableCell>
+                          <TableCell className="font-medium">{c.client_nom}</TableCell>
+                          <TableCell className="text-right font-semibold">{formatMontant(c.ca_total)}</TableCell>
+                          <TableCell className="text-center"><Badge variant="secondary">{c.nb_factures}</Badge></TableCell>
+                          <TableCell className="text-right text-emerald-600 dark:text-emerald-400">{formatMontant(c.paiements)}</TableCell>
+                          <TableCell className={`text-right ${c.solde_du > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : ''}`}>{formatMontant(c.solde_du)}</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {topClientsActivite.map((client: any, i: number) => (
-                          <TableRow key={i} className="hover:bg-muted/50">
-                            <TableCell>
-                              <Badge variant="outline" className={i < 3 ? "bg-primary/10 text-primary" : ""}>
-                                {i + 1}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium">{client.client_nom}</TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {formatMontant(client.ca_total)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="secondary">{client.nb_factures}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
-                              {formatMontant(client.paiements)}
-                            </TableCell>
-                            <TableCell className={`text-right ${client.solde_du > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : ''}`}>
-                              {formatMontant(client.solde_du)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
+                      ))}</TableBody>
                     </Table>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
-
-            {/* Comparatif */}
             <TabsContent value="comparatif" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                      <Receipt className="h-3.5 w-3.5" />
-                      Chiffre d'Affaires
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    {loadingComparatif ? (
-                      <Skeleton className="h-16 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold">{formatMontant(comparatif?.ca_annee2 || 0)}</span>
-                          <Badge 
-                            className={`gap-1 ${(comparatif?.variation_ca || 0) >= 0 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                              : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}
-                          >
-                            {(comparatif?.variation_ca || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                            {comparatif?.variation_ca || 0}%
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          vs {formatMontant(comparatif?.ca_annee1 || 0)} en {comparatif?.annee1}
-                        </p>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                      <FileCheck className="h-3.5 w-3.5" />
-                      Nombre de Factures
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    {loadingComparatif ? (
-                      <Skeleton className="h-16 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold">{comparatif?.nb_factures_annee2 || 0}</span>
-                          <Badge 
-                            className={`gap-1 ${(comparatif?.variation_factures || 0) >= 0 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                              : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}
-                          >
-                            {(comparatif?.variation_factures || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                            {comparatif?.variation_factures || 0}%
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          vs {comparatif?.nb_factures_annee1 || 0} en {comparatif?.annee1}
-                        </p>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border shadow-sm overflow-hidden">
-                  <CardHeader className="pb-2 border-b bg-muted/20">
-                    <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5" />
-                      Clients Actifs
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    {loadingComparatif ? (
-                      <Skeleton className="h-16 w-full" />
-                    ) : (
-                      <>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold">{comparatif?.nb_clients_annee2 || 0}</span>
-                          <Badge 
-                            className={`gap-1 ${(comparatif?.variation_clients || 0) >= 0 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                              : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}
-                          >
-                            {(comparatif?.variation_clients || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                            {comparatif?.variation_clients || 0}%
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          vs {comparatif?.nb_clients_annee1 || 0} en {comparatif?.annee1}
-                        </p>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <ComparatifTab loading={loadingComparatif} comparatif={comparatif} />
             </TabsContent>
           </Tabs>
         </motion.div>
       </motion.div>
-
-      {/* Modal d'export */}
-      <ExportDataModal 
-        open={exportModalOpen} 
-        onOpenChange={setExportModalOpen}
-        clients={clients}
-      />
+      <ExportDataModal open={exportModalOpen} onOpenChange={setExportModalOpen} clients={clients} />
     </MainLayout>
   );
 }
