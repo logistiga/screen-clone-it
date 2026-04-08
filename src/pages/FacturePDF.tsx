@@ -205,22 +205,74 @@ export default function FacturePDFPage() {
             <div>
               <p><span className="font-semibold">Date:</span> {formatDate(facture.date_facture || facture.created_at)}</p>
               <p><span className="font-semibold">Échéance:</span> {formatDate(facture.date_echeance)}</p>
-              {facture.bl_numero && (
-                <p><span className="font-semibold">N° BL:</span> {facture.bl_numero}</p>
+            </div>
+            <div className="text-right">
+              <p>
+                <span className="font-semibold">Catégorie:</span>{" "}
+                {isConteneur ? 'Conteneurs' : isConventionnel ? 'Conventionnel' : 'Opérations Indépendantes'}
+              </p>
+              {typeOperation && (
+                <p><span className="font-semibold">Type:</span> {typeOperation}</p>
               )}
             </div>
           </div>
 
-          {/* Client */}
-          <div className="mb-4 border p-3 rounded">
-            <h3 className="text-xs font-bold text-primary mb-1">FACTURER À</h3>
-            <p className="font-semibold text-sm">{client?.nom}</p>
-            <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-            <p className="text-xs text-muted-foreground">
-              Tél: {client?.telephone} | Email: {client?.email}
-              {client?.nif && ` | NIF: ${client.nif}`}
-              {client?.rccm && ` | RCCM: ${client.rccm}`}
-            </p>
+          {/* Client (gauche) + Informations Opération (droite) */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* Client */}
+            <div className="border p-3 rounded">
+              <h3 className="text-xs font-bold text-primary mb-1">FACTURER À</h3>
+              <p className="font-semibold text-sm">{client?.nom}</p>
+              <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+              <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
+              <p className="text-xs text-muted-foreground">Email: {client?.email}</p>
+              {(client?.nif || client?.rccm) && (
+                <p className="text-xs text-muted-foreground">
+                  {client?.nif && `NIF: ${client.nif}`}
+                  {client?.nif && client?.rccm && ' | '}
+                  {client?.rccm && `RCCM: ${client.rccm}`}
+                </p>
+              )}
+            </div>
+
+            {/* Informations Opération */}
+            <div className="border p-3 rounded">
+              <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
+              <div className="text-xs space-y-0.5">
+                <p>
+                  <span className="font-semibold">Catégorie:</span>{" "}
+                  {isConteneur ? 'Conteneurs' : isConventionnel ? 'Conventionnel' : 'Opérations Indépendantes'}
+                </p>
+                {typeOperation && (
+                  <p><span className="font-semibold">Type:</span> {typeOperation}</p>
+                )}
+                {facture.bl_numero && (
+                  <p><span className="font-semibold">N° BL:</span> {facture.bl_numero}</p>
+                )}
+                {(facture as any).armateur?.nom && (
+                  <p><span className="font-semibold">Armateur:</span> {(facture as any).armateur.nom}</p>
+                )}
+                {(facture as any).transitaire?.nom && (
+                  <p><span className="font-semibold">Transitaire:</span> {(facture as any).transitaire.nom}</p>
+                )}
+                {(facture as any).navire && (
+                  <p><span className="font-semibold">Navire:</span> {(facture as any).navire}</p>
+                )}
+                {(facture as any).representant?.nom && (
+                  <p><span className="font-semibold">Représentant:</span> {(facture as any).representant.nom}</p>
+                )}
+                {isIndependant && facture.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
+                  <>
+                    {facture.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
+                      <p key={i}>
+                        <span className="font-semibold">Trajet:</span>{" "}
+                        {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
+                      </p>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Tableau des lignes - MODÈLE CONTENEUR */}
