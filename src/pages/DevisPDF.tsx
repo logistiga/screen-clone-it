@@ -16,7 +16,8 @@ export default function DevisPDFPage() {
   const navigate = useNavigate();
 
   // Utiliser les vraies données de l'API
-  const { data: devisData, isLoading } = useDevisById(id || '');
+  const { data: devisResponse, isLoading } = useDevisById(id || '');
+  const devisData = devisResponse as any;
 
   const { contentRef, downloadPdf, generatePdfBlob } = usePdfDownload({ 
     filename: `Devis_${devisData?.numero || 'unknown'}` 
