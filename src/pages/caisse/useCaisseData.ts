@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { startOfMonth, endOfMonth, format } from "date-fns";
 import api from "@/lib/api";
 
 interface MouvementCaisse {
@@ -32,6 +33,10 @@ interface SoldeResponse {
 }
 
 export function useCaisseData() {
+  const now = new Date();
+  const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
+  const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
+
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,13 +70,27 @@ export function useCaisseData() {
     },
   });
 
+  // Mouvements du mois en cours pour les totaux mensuels
+  const { data: mouvementsMoisData } = useQuery({
+    queryKey: ['caisse-mouvements-mois', dateDebut, dateFin],
+    queryFn: async () => {
+      const params = { source: 'caisse', date_debut: dateDebut, date_fin: dateFin, per_page: 10000 };
+      const response = await api.get<CaisseResponse>('/caisse', { params });
+      return response.data;
+    },
+  });
+
   const mouvements = mouvementsData?.data || [];
   const totalPages = mouvementsData?.meta?.last_page || 1;
   const totalItems = mouvementsData?.meta?.total || 0;
 
   const soldeCaisse = soldeData?.solde || 0;
-  const totalEntrees = soldeData?.total_entrees || 0;
-  const totalSorties = soldeData?.total_sorties || 0;
+
+  // Totaux du mois en cours
+  const mouvementsMois = mouvementsMoisData?.data || [];
+  const totalEntrees = mouvementsMois.filter((m: MouvementCaisse) => m.type === 'entree').reduce((sum: number, m: MouvementCaisse) => sum + (m.montant || 0), 0);
+  const totalSorties = mouvementsMois.filter((m: MouvementCaisse) => m.type === 'sortie').reduce((sum: number, m: MouvementCaisse) => sum + (m.montant || 0), 0);
+
   const soldeJour = soldeJourData?.solde ?? 0;
   const entreesJour = soldeJourData?.entrees ?? 0;
   const sortiesJour = soldeJourData?.sorties ?? 0;
