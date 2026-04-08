@@ -1,4 +1,4 @@
-import api from '../api';
+import api from '@/lib/api';
 import type {
   ChiffreAffairesData, RentabiliteData, CreancesData, TresorerieData,
   ComparatifData, ActiviteClientsData, StatistiquesDocumentsData, TableauDeBordData,
