@@ -5,6 +5,7 @@ import { useNotesDebut, useDeleteNoteDebut } from "@/hooks/use-notes-debut";
 import { NoteDebut } from "@/lib/api/notes-debut";
 import { toast } from "sonner";
 import { formatMontant } from "@/data/mockData";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
   ouverture_port: { label: "Ouverture de port", icon: null, color: "bg-primary/10 text-primary border-primary/20" },
@@ -60,9 +61,15 @@ export function useNotesDebutData() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const now = new Date();
+  const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
+  const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
+
   const { data: notesData, isLoading, isFetching, refetch } = useNotesDebut({
     search: debouncedSearch || undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
+    date_debut: dateDebut,
+    date_fin: dateFin,
     page: currentPage,
     per_page: pageSize,
   });

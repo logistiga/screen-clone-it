@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Anchor, Container, Wrench, PackageOpen, FileText, Calculator } from "lucide-react";
+import { Anchor, Container, Wrench, PackageOpen, FileText, Calculator, CreditCard, Clock } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { DocumentStatCard } from "@/components/shared/documents";
-import { getNoteAmount } from "./useNotesDebutData";
+import { getNoteAmount, getNotePaid, getNoteAdvance, getNoteRemaining } from "./useNotesDebutData";
 
 const typeIcons: Record<string, any> = {
   ouverture_port: Anchor,
@@ -35,6 +35,9 @@ interface NotesStatsCardsProps {
 }
 
 export function NotesStatsCards({ notes, totalNotes, totalMontant, meta, pageSize }: NotesStatsCardsProps) {
+  const totalPaye = notes.reduce((acc: number, n: any) => acc + getNotePaid(n) + getNoteAdvance(n), 0);
+  const totalRestant = notes.reduce((acc: number, n: any) => acc + Math.max(0, getNoteRemaining(n)), 0);
+
   return (
     <>
       {/* Récap par type */}
@@ -71,8 +74,8 @@ export function NotesStatsCards({ notes, totalNotes, totalMontant, meta, pageSiz
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <DocumentStatCard title="Total notes" value={totalNotes} icon={FileText} subtitle="notes" delay={0} />
         <DocumentStatCard title="Montant total" value={formatMontant(totalMontant)} icon={Calculator} subtitle="FCFA" variant="primary" delay={0.1} />
-        <DocumentStatCard title="Page actuelle" value={`${meta.current_page}/${meta.last_page}`} icon={FileText} subtitle={`${notes.length} affichées`} delay={0.2} />
-        <DocumentStatCard title="Par page" value={pageSize} icon={FileText} subtitle="documents" delay={0.3} />
+        <DocumentStatCard title="Total payé" value={formatMontant(totalPaye)} icon={CreditCard} subtitle={`${totalMontant > 0 ? Math.round((totalPaye / totalMontant) * 100) : 0}% encaissé`} variant="success" delay={0.2} />
+        <DocumentStatCard title="Reste à payer" value={formatMontant(totalRestant)} icon={Clock} subtitle="en attente" variant="warning" delay={0.3} />
       </div>
     </>
   );
