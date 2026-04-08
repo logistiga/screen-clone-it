@@ -213,24 +213,61 @@ export default function OrdrePDFPage() {
             <div className="flex justify-between text-[9px] mb-2">
               <div>
                 <p><span className="font-semibold">Date:</span> {formatDate(ordre.date || ordre.created_at)}</p>
+              </div>
+              <div className="text-right">
                 <p><span className="font-semibold">Type:</span> {getTypeOperationLabel(ordre.type_document)}</p>
                 {isConteneur && ordre.type_operation && (
                   <p><span className="font-semibold">Opération:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
                 )}
-                {ordre.bl_numero && (
-                  <p><span className="font-semibold">N° BL:</span> {ordre.bl_numero}</p>
-                )}
               </div>
             </div>
 
-            {/* Client - compact */}
-            <div className="mb-2 border p-1.5 rounded">
-              <h3 className="text-[9px] font-bold text-primary mb-0.5">CLIENT</h3>
-              <p className="font-semibold text-[10px]">{client?.nom}</p>
-              <p className="text-[8px] text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-              <p className="text-[8px] text-muted-foreground">
-                Tél: {client?.telephone} | Email: {client?.email}
-              </p>
+            {/* Client (gauche) + Informations Opération (droite) */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              {/* Client */}
+              <div className="border p-1.5 rounded">
+                <h3 className="text-[9px] font-bold text-primary mb-0.5">CLIENT</h3>
+                <p className="font-semibold text-[10px]">{client?.nom}</p>
+                <p className="text-[8px] text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+                <p className="text-[8px] text-muted-foreground">Tél: {client?.telephone}</p>
+                <p className="text-[8px] text-muted-foreground">Email: {client?.email}</p>
+              </div>
+
+              {/* Informations Opération */}
+              <div className="border p-1.5 rounded">
+                <h3 className="text-[9px] font-bold text-primary mb-0.5">INFORMATIONS OPÉRATION</h3>
+                <div className="text-[8px] space-y-0.5">
+                  <p><span className="font-semibold">Catégorie:</span> {getTypeOperationLabel(ordre.type_document)}</p>
+                  {isConteneur && ordre.type_operation && (
+                    <p><span className="font-semibold">Type:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
+                  )}
+                  {ordre.bl_numero && (
+                    <p><span className="font-semibold">N° BL:</span> {ordre.bl_numero}</p>
+                  )}
+                  {(ordre as any).armateur?.nom && (
+                    <p><span className="font-semibold">Armateur:</span> {(ordre as any).armateur.nom}</p>
+                  )}
+                  {(ordre as any).transitaire?.nom && (
+                    <p><span className="font-semibold">Transitaire:</span> {(ordre as any).transitaire.nom}</p>
+                  )}
+                  {(ordre as any).navire && (
+                    <p><span className="font-semibold">Navire:</span> {(ordre as any).navire}</p>
+                  )}
+                  {(ordre as any).representant?.nom && (
+                    <p><span className="font-semibold">Représentant:</span> {(ordre as any).representant.nom}</p>
+                  )}
+                  {isIndependant && ordre.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
+                    <>
+                      {ordre.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
+                        <p key={i}>
+                          <span className="font-semibold">Trajet:</span>{" "}
+                          {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
+                        </p>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* TABLEAU CONTENEURS */}
