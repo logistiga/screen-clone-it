@@ -272,32 +272,32 @@ export default function OrdrePDFPage() {
 
             {/* TABLEAU CONTENEURS */}
             {isConteneur && (
-              <table className="w-full mb-2 text-[9px] border-collapse border">
+              <table className="w-full mb-4 text-xs border-collapse border">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-1 px-1.5 font-semibold w-6 border-r">N°</th>
-                    <th className="text-left py-1 px-1.5 font-semibold border-r">Conteneur</th>
-                    <th className="text-center py-1 px-1.5 font-semibold w-14 border-r">Taille</th>
-                    <th className="text-right py-1 px-1.5 font-semibold w-24">Montant</th>
+                    <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                    <th className="text-left py-2 px-2 font-semibold border-r">Conteneur</th>
+                    <th className="text-center py-2 px-2 font-semibold w-20 border-r">Taille</th>
+                    <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lignesConteneur.map((ligne, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-0.5 px-1.5 border-r border-b">{index + 1}</td>
-                      <td className="py-0.5 px-1.5 border-r border-b font-mono">{ligne.numero}</td>
-                      <td className="text-center py-0.5 px-1.5 border-r border-b">{ligne.taille}'</td>
-                      <td className="text-right py-0.5 px-1.5 font-medium border-b">
+                      <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
+                      <td className="py-1.5 px-2 border-r border-b font-mono">{ligne.numero}</td>
+                      <td className="text-center py-1.5 px-2 border-r border-b">{ligne.taille}'</td>
+                      <td className="text-right py-1.5 px-2 font-medium border-b">
                         {formatMontant(ligne.montant)}
                       </td>
                     </tr>
                   ))}
                   {Array.from({ length: Math.max(0, 6 - lignesConteneur.length) }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-4">
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-b">&nbsp;</td>
+                    <tr key={`empty-${i}`} className="h-6">
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-b">&nbsp;</td>
                     </tr>
                   ))}
                 </tbody>
@@ -306,35 +306,35 @@ export default function OrdrePDFPage() {
 
             {/* TABLEAU CONVENTIONNEL */}
             {isConventionnel && (
-              <table className="w-full mb-2 text-[9px] border-collapse border">
+              <table className="w-full mb-4 text-xs border-collapse border">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-1 px-1.5 font-semibold w-6 border-r">N°</th>
-                    <th className="text-left py-1 px-1.5 font-semibold border-r">Description</th>
-                    <th className="text-center py-1 px-1.5 font-semibold w-10 border-r">Qté</th>
-                    <th className="text-right py-1 px-1.5 font-semibold w-16 border-r">Prix unit.</th>
-                    <th className="text-right py-1 px-1.5 font-semibold w-20">Montant</th>
+                    <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                    <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
+                    <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
+                    <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
+                    <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lignesConventionnel.map((ligne, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-0.5 px-1.5 border-r border-b">{index + 1}</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">{ligne.description}</td>
-                      <td className="text-center py-0.5 px-1.5 border-r border-b">{ligne.quantite}</td>
-                      <td className="text-right py-0.5 px-1.5 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                      <td className="text-right py-0.5 px-1.5 font-medium border-b">
+                      <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
+                      <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
+                      <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
+                      <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
+                      <td className="text-right py-1.5 px-2 font-medium border-b">
                         {formatMontant(ligne.montant)}
                       </td>
                     </tr>
                   ))}
                   {Array.from({ length: Math.max(0, 6 - lignesConventionnel.length) }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-4">
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-b">&nbsp;</td>
+                    <tr key={`empty-${i}`} className="h-6">
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-b">&nbsp;</td>
                     </tr>
                   ))}
                 </tbody>
@@ -343,53 +343,53 @@ export default function OrdrePDFPage() {
 
             {/* TABLEAU OPERATIONS INDEPENDANTES */}
             {isIndependant && (
-              <table className="w-full mb-2 text-[9px] border-collapse border">
+              <table className="w-full mb-4 text-xs border-collapse border">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-1 px-1.5 font-semibold w-6 border-r">N°</th>
-                    <th className="text-left py-1 px-1.5 font-semibold border-r">Prestation</th>
-                    <th className="text-center py-1 px-1.5 font-semibold w-10 border-r">Qté</th>
-                    <th className="text-right py-1 px-1.5 font-semibold w-16 border-r">Prix unit.</th>
-                    <th className="text-right py-1 px-1.5 font-semibold w-20">Montant</th>
+                    <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                    <th className="text-left py-2 px-2 font-semibold border-r">Prestation</th>
+                    <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
+                    <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
+                    <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lignesIndependant.map((ligne, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-0.5 px-1.5 border-r border-b">{index + 1}</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">{ligne.description}</td>
-                      <td className="text-center py-0.5 px-1.5 border-r border-b">{ligne.quantite}</td>
-                      <td className="text-right py-0.5 px-1.5 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
-                      <td className="text-right py-0.5 px-1.5 font-medium border-b">
+                      <td className="py-1.5 px-2 border-r border-b">{index + 1}</td>
+                      <td className="py-1.5 px-2 border-r border-b">{ligne.description}</td>
+                      <td className="text-center py-1.5 px-2 border-r border-b">{ligne.quantite}</td>
+                      <td className="text-right py-1.5 px-2 border-r border-b">{formatMontant(ligne.prixUnitaire)}</td>
+                      <td className="text-right py-1.5 px-2 font-medium border-b">
                         {formatMontant(ligne.montant)}
                       </td>
                     </tr>
                   ))}
                   {Array.from({ length: Math.max(0, 6 - lignesIndependant.length) }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-4">
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-r border-b">&nbsp;</td>
-                      <td className="py-0.5 px-1.5 border-b">&nbsp;</td>
+                    <tr key={`empty-${i}`} className="h-6">
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-r border-b">&nbsp;</td>
+                      <td className="py-1.5 px-2 border-b">&nbsp;</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
 
-            {/* Totaux - à droite (sans détail taxes sur connaissement) */}
-            <div className="flex justify-end mb-2">
-              <div className="w-44 border text-[9px]">
-                <div className="flex justify-between py-0.5 px-1.5 bg-primary text-primary-foreground font-bold border-b">
+            {/* Totaux */}
+            <div className="flex justify-end mb-4">
+              <div className="w-56 border text-xs">
+                <div className="flex justify-between py-1 px-3 bg-primary text-primary-foreground font-bold border-b">
                   <span>Total</span>
                   <span>{formatMontant(ordre.montant_ttc)}</span>
                 </div>
-                <div className="flex justify-between py-0.5 px-1.5 border-b">
+                <div className="flex justify-between py-1 px-3 border-b">
                   <span>Payé</span>
                   <span className="text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
                 </div>
-                <div className="flex justify-between py-0.5 px-1.5 font-bold">
+                <div className="flex justify-between py-1 px-3 font-bold">
                   <span>Reste à payer</span>
                   <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
                     {formatMontant(resteAPayer)}
