@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, LogIn, Eye, EyeOff, Truck } from "lucide-react";
 import { triggerPWAInstallAfterLogin } from "@/components/pwa/PWAInstallPrompt";
-import loginAnimation from "@/assets/login-animation.gif";
+import loginAnimation from "@/assets/login-bg.jpg";
 
 const LoginPage = forwardRef<HTMLDivElement, object>(function LoginPage(_props, ref) {
   const navigate = useNavigate();

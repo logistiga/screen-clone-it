@@ -56,7 +56,9 @@ import LoginPage from "./pages/Login";
 import PendingApprovalPage from "./pages/PendingApproval";
 import SecurityActionPage from "./pages/SecurityAction";
 import NotFound from "./pages/NotFound";
-import DashboardPage from "./pages/Dashboard";
+
+// Dashboard en lazy loading (chargé après login)
+const DashboardPage = lazy(() => import("./pages/Dashboard"));
 
 // Pages chargées en lazy loading (non critiques)
 const ClientsPage = lazy(() => import("./pages/Clients"));
