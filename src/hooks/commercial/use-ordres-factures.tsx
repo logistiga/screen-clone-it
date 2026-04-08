@@ -7,7 +7,7 @@ const CACHE_TIME = 5 * 60 * 1000;
 const STALE_TIME = 2 * 60 * 1000;
 
 // Ordres hooks
-export function useOrdres(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; page?: number; per_page?: number }) {
+export function useOrdres(params?: { search?: string; statut?: string; categorie?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) {
   const queryClient = useQueryClient();
   
   const query = useQuery({

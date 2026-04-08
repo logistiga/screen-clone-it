@@ -9,6 +9,7 @@ import { AnimatedTableBody } from "@/components/ui/animated-table";
 import { Plus, Download, CreditCard, ClipboardList, Clock, TrendingUp } from "lucide-react";
 import { useOrdres, useDeleteOrdre, useConvertOrdreToFacture } from "@/hooks/use-commercial";
 import { formatMontant, getStatutLabel } from "@/data/mockData";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "sonner";
 import { openWhatsAppShare } from "@/lib/whatsapp";
@@ -38,10 +39,16 @@ export default function OrdresTravailPage() {
 
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch]);
 
+  const now = new Date();
+  const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
+  const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
+
   const { data: ordresData, isLoading, isFetching, error, refetch } = useOrdres({
     search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
+    date_debut: dateDebut,
+    date_fin: dateFin,
     page: currentPage, per_page: pageSize,
   });
 
