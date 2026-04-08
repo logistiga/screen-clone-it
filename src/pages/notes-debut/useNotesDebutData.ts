@@ -78,7 +78,7 @@ export function useNotesDebutData() {
     [debouncedSearch, typeFilter, currentPage, pageSize, meta.total, notes]
   );
 
-  const hasFilters = searchTerm || typeFilter !== "all";
+  const hasFilters = !!searchTerm || typeFilter !== "all";
   const isAllSelected = selectedIds.length === notes.length && notes.length > 0;
 
   const handleSelectAll = () => setSelectedIds(selectedIds.length === notes.length ? [] : notes.map((n: any) => n.id));
