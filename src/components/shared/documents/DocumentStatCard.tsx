@@ -99,13 +99,14 @@ export const DocumentStatCard = React.forwardRef<
         </div>
         <motion.div
           className={cn(
-            "font-bold tracking-tight leading-none",
+            "font-bold tracking-tight leading-none truncate",
             styles.valueColor,
-            compact ? "text-lg" : "text-xl"
+            compact ? "text-lg" : "text-lg sm:text-xl"
           )}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: delay + 0.15, duration: 0.25 }}
+          title={String(value)}
         >
           {value}
         </motion.div>
