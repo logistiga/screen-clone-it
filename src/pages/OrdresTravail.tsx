@@ -43,13 +43,19 @@ export default function OrdresTravailPage() {
   const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
   const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
 
+  // Main query: NO date filter — shows all data in the table
   const { data: ordresData, isLoading, isFetching, error, refetch } = useOrdres({
     search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
+    page: currentPage, per_page: pageSize,
+  });
+
+  // Separate query for monthly stats (recap cards only)
+  const { data: ordresMoisData } = useOrdres({
     date_debut: dateDebut,
     date_fin: dateFin,
-    page: currentPage, per_page: pageSize,
+    per_page: 10000,
   });
 
   const deleteOrdreMutation = useDeleteOrdre();
@@ -85,11 +91,14 @@ export default function OrdresTravailPage() {
   const totalItems = ordresData?.meta?.total || 0;
   const tableRenderKey = [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, ordresList.map((o: any) => o.id).join("-")].join("|");
 
+  // Stats from monthly data only (for recap cards)
+  const ordresMoisList = Array.isArray(ordresMoisData?.data) ? ordresMoisData.data : [];
   const stats = useMemo(() => ({
-    totalOrdres: ordresList.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0),
-    totalPaye: ordresList.reduce((sum: number, o: any) => sum + (o.montant_paye || 0), 0),
-    ordresEnCours: ordresList.filter((o: any) => o.statut === "en_cours").length,
-  }), [ordresList]);
+    totalOrdres: ordresMoisList.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0),
+    totalPaye: ordresMoisList.reduce((sum: number, o: any) => sum + (o.montant_paye || 0), 0),
+    ordresEnCours: ordresMoisList.filter((o: any) => o.statut === "en_cours").length,
+    count: ordresMoisData?.meta?.total || 0,
+  }), [ordresMoisList, ordresMoisData?.meta?.total]);
 
   if (ordresData) hasLoadedOnce.current = true;
 
@@ -103,10 +112,10 @@ export default function OrdresTravailPage() {
     <MainLayout title="Ordres de Travail">
       <div className="space-y-6 animate-fade-in">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <DocumentStatCard title="Total Ordres" value={totalItems} icon={ClipboardList} variant="primary" subtitle="Documents créés" delay={0} />
-          <DocumentStatCard title="Montant Total" value={formatMontant(stats.totalOrdres)} icon={TrendingUp} variant="info" subtitle="Valeur cumulée" delay={0.1} />
+          <DocumentStatCard title="Total Ordres" value={stats.count} icon={ClipboardList} variant="primary" subtitle="Ce mois" delay={0} />
+          <DocumentStatCard title="Montant Total" value={formatMontant(stats.totalOrdres)} icon={TrendingUp} variant="info" subtitle="Ce mois" delay={0.1} />
           <DocumentStatCard title="Total Payé" value={formatMontant(stats.totalPaye)} icon={CreditCard} variant="success" subtitle={`${stats.totalOrdres > 0 ? Math.round((stats.totalPaye / stats.totalOrdres) * 100) : 0}% encaissé`} delay={0.2} />
-          <DocumentStatCard title="En cours" value={stats.ordresEnCours} icon={Clock} variant="warning" subtitle="Ordres actifs" delay={0.3} />
+          <DocumentStatCard title="En cours" value={stats.ordresEnCours} icon={Clock} variant="warning" subtitle="Ce mois" delay={0.3} />
         </div>
 
         <DocumentFilters searchTerm={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Rechercher par numéro, client, conteneur..." statutFilter={statutFilter} onStatutChange={setStatutFilter} statutOptions={statutOptions} categorieFilter={categorieFilter} onCategorieChange={setCategorieFilter} categorieOptions={categorieOptions} isSearching={searchTerm !== debouncedSearch || (isFetching && !!debouncedSearch)} />
