@@ -1,4 +1,4 @@
-import { Bell, Package, FileText, DollarSign, AlertTriangle, Check, Trash2 } from 'lucide-react';
+import { Bell, Package, FileText, DollarSign, AlertTriangle, Check, Trash2, Ship, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,7 +8,8 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRealtimeNotifications, NotificationType } from '@/hooks/useRealtimeNotifications';
+import { useNotificationStore } from '@/stores/notificationStore';
+import type { NotificationType } from '@/stores/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -17,10 +18,15 @@ const typeConfig: Record<NotificationType, { icon: React.ElementType; color: str
   'facture.created': { icon: FileText, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30' },
   'caisse.mouvement': { icon: DollarSign, color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
   'anomalie.detectee': { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30' },
+  'armateur.synced': { icon: Ship, color: 'text-indigo-600', bg: 'bg-indigo-100 dark:bg-indigo-900/30' },
+  'sync.error': { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10' },
 };
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markAllRead, clearAll } = useRealtimeNotifications();
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = useNotificationStore(s => s.notifications.filter(n => !n.read).length);
+  const markAllRead = useNotificationStore(s => s.markAllRead);
+  const clearAll = useNotificationStore(s => s.clearAll);
 
   return (
     <DropdownMenu>

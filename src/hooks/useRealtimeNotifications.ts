@@ -1,47 +1,28 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import echo from '@/lib/echo';
 import { useAuth } from '@/hooks/use-auth';
-
-export type NotificationType =
-  | 'conteneur.synced'
-  | 'facture.created'
-  | 'caisse.mouvement'
-  | 'anomalie.detectee';
-
-export interface RealtimeNotification {
-  id: string;
-  type: NotificationType;
-  message: string;
-  data?: Record<string, any>;
-  timestamp: Date;
-  read: boolean;
-}
+import { useQueryClient } from '@tanstack/react-query';
+import { useNotificationStore, NotificationType } from '@/stores/notificationStore';
 
 const CHANNEL_NAME = 'logistiga-cnv';
 
+/**
+ * Hook qui écoute les events Pusher/Echo ET le store partagé.
+ * Les events Pusher ajoutent au store + invalident les queries.
+ * Fonctionne en complément du polling (use-auto-sync).
+ */
 export function useRealtimeNotifications() {
   const { isAuthenticated } = useAuth();
-  const [notifications, setNotifications] = useState<RealtimeNotification[]>([]);
+  const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
-
-  const addNotification = useCallback((type: NotificationType, message: string, data?: Record<string, any>) => {
-    const notif: RealtimeNotification = {
-      id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      type,
-      message,
-      data,
-      timestamp: new Date(),
-      read: false,
-    };
-    setNotifications(prev => [notif, ...prev].slice(0, 50)); // max 50
-  }, []);
+  const { addNotification } = useNotificationStore();
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
     if (!pusherKey) {
-      console.warn('[RealtimeNotifications] VITE_PUSHER_APP_KEY non configurée, notifications temps réel désactivées.');
+      console.warn('[RealtimeNotifications] VITE_PUSHER_APP_KEY non configurée, Pusher désactivé (polling actif).');
       return;
     }
 
@@ -58,6 +39,8 @@ export function useRealtimeNotifications() {
             : 'Synchronisation conteneurs terminée',
           e
         );
+        queryClient.invalidateQueries({ queryKey: ['conteneurs-traites'] });
+        queryClient.invalidateQueries({ queryKey: ['conteneurs-traites-stats'] });
       });
 
       channel.listen('.facture.created', (e: any) => {
@@ -67,6 +50,7 @@ export function useRealtimeNotifications() {
           numero ? `Nouvelle facture ${numero} créée` : 'Nouvelle facture créée',
           e
         );
+        queryClient.invalidateQueries({ queryKey: ['factures'] });
       });
 
       channel.listen('.caisse.mouvement', (e: any) => {
@@ -77,6 +61,7 @@ export function useRealtimeNotifications() {
           `${type} caisse${montant ? ` : ${montant}` : ''}`,
           e
         );
+        queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
       });
 
       channel.listen('.anomalie.detectee', (e: any) => {
@@ -86,6 +71,7 @@ export function useRealtimeNotifications() {
           `${count} anomalie${count > 1 ? 's' : ''} détectée${count > 1 ? 's' : ''}`,
           e
         );
+        queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies'] });
       });
 
       console.log('[RealtimeNotifications] Connecté au channel', CHANNEL_NAME);
@@ -94,22 +80,18 @@ export function useRealtimeNotifications() {
     }
 
     return () => {
-      try {
-        echo.leave(CHANNEL_NAME);
-      } catch {}
+      try { echo.leave(CHANNEL_NAME); } catch {}
       channelRef.current = null;
     };
-  }, [isAuthenticated, addNotification]);
+  }, [isAuthenticated, addNotification, queryClient]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAllRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setNotifications([]);
-  }, []);
+  // Re-export from store for backward compatibility
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = useNotificationStore(s => s.notifications.filter(n => !n.read).length);
+  const markAllRead = useNotificationStore(s => s.markAllRead);
+  const clearAll = useNotificationStore(s => s.clearAll);
 
   return { notifications, unreadCount, markAllRead, clearAll };
 }
+
+export type { NotificationType };
