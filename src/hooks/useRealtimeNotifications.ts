@@ -46,6 +46,7 @@ export function useRealtimeNotifications() {
       });
 
       channel.listen('.facture.created', (e: any) => {
+        console.log('Echo: event reçu .facture.created', e);
         const numero = e?.numero ?? '';
         addNotification(
           'facture.created',
@@ -56,6 +57,7 @@ export function useRealtimeNotifications() {
       });
 
       channel.listen('.caisse.mouvement', (e: any) => {
+        console.log('Echo: event reçu .caisse.mouvement', e);
         const type = e?.type === 'entree' ? 'Entrée' : 'Sortie';
         const montant = e?.montant ? `${Number(e.montant).toLocaleString('fr-FR')} FCFA` : '';
         addNotification(
