@@ -59,6 +59,9 @@ export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(
         {/* Notifications */}
         <NotificationCenter />
         
+        {/* Notifications temps réel (Pusher) */}
+        <NotificationBell />
+        
         {/* Theme Toggle */}
         <ThemeToggle />
 
