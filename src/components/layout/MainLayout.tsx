@@ -1,4 +1,5 @@
 import { ReactNode, forwardRef } from "react";
+import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
