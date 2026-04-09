@@ -121,6 +121,14 @@ class CaisseController extends Controller
 
             Audit::log('create', 'caisse', "Mouvement {$request->source}: {$request->type} - {$request->montant}", $mouvement->id);
 
+            // Broadcaster l'event caisse
+            event(new \App\Events\CaisseMouvement(
+                $request->type === 'Entrée' ? 'entree' : 'sortie',
+                $request->montant,
+                $request->description ?? '',
+                $request->source ?? 'caisse'
+            ));
+
             return response()->json(new MouvementCaisseResource($mouvement), 201);
 
         } catch (\Exception $e) {

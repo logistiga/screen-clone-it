@@ -103,6 +103,9 @@ class FactureController extends Controller
 
             Audit::log('create', 'facture', "Facture créée: {$facture->numero}", $facture->id);
 
+            // Broadcaster l'event facture
+            event(new \App\Events\FactureCreated($facture));
+
             return response()->json(new FactureResource($facture), 201);
 
         } catch (\Exception $e) {

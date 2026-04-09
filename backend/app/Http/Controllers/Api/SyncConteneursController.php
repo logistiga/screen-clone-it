@@ -26,6 +26,11 @@ class SyncConteneursController extends Controller
 
             $result = $this->executeSyncConteneurs();
 
+            // Broadcaster l'event si des conteneurs ont été importés
+            if ($result['conteneurs_importes'] > 0) {
+                event(new \App\Events\ConteneurSynced($result['conteneurs_importes'], 0, "{$result['conteneurs_importes']} conteneur(s) importé(s) depuis OPS"));
+            }
+
             return response()->json(['success' => true, 'message' => 'Synchronisation des conteneurs réussie', 'data' => $result]);
 
         } catch (\Exception $e) {
