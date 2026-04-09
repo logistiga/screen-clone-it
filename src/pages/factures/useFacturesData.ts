@@ -17,14 +17,20 @@ export function useFacturesData() {
   const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
   const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
 
+  // Main query: NO date filter — shows all data in the table
   const { data: facturesData, isLoading, isFetching, error, refetch } = useFactures({
     search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
-    date_debut: dateDebut,
-    date_fin: dateFin,
     page: currentPage,
     per_page: pageSize,
+  });
+
+  // Separate query for monthly stats (recap cards only)
+  const { data: facturesMoisData } = useFactures({
+    date_debut: dateDebut,
+    date_fin: dateFin,
+    per_page: 10000,
   });
 
   const deleteFactureMutation = useDeleteFacture();
@@ -58,9 +64,11 @@ export function useFacturesData() {
     [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, facturesList]
   );
 
-  const totalFactures = facturesList.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
-  const totalPaye = facturesList.reduce((sum: number, f: any) => sum + (f.montant_paye || 0), 0);
-  const facturesEnAttente = facturesList.filter((f: any) => f.statut === 'brouillon' || f.statut === 'validee').length;
+  // Stats from monthly data only (for recap cards)
+  const facturesMoisList = facturesMoisData?.data || [];
+  const totalFactures = facturesMoisList.reduce((sum: number, f: any) => sum + (f.montant_ttc || 0), 0);
+  const totalPaye = facturesMoisList.reduce((sum: number, f: any) => sum + (f.montant_paye || 0), 0);
+  const facturesEnAttente = facturesMoisList.filter((f: any) => f.statut === 'brouillon' || f.statut === 'validee').length;
 
   return {
     searchTerm, setSearchTerm, statutFilter, setStatutFilter,
