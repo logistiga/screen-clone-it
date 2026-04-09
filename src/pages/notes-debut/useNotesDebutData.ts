@@ -65,13 +65,19 @@ export function useNotesDebutData() {
   const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
   const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
 
+  // Main query: NO date filter — shows all data in the table
   const { data: notesData, isLoading, isFetching, refetch } = useNotesDebut({
     search: debouncedSearch || undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
-    date_debut: dateDebut,
-    date_fin: dateFin,
     page: currentPage,
     per_page: pageSize,
+  });
+
+  // Separate query for monthly stats (recap cards only)
+  const { data: notesMoisData } = useNotesDebut({
+    date_debut: dateDebut,
+    date_fin: dateFin,
+    per_page: 10000,
   });
 
   const deleteNote = useDeleteNoteDebut();
@@ -108,8 +114,10 @@ export function useNotesDebutData() {
 
   const handlePaiementSuccess = () => { refetch(); setSelectedNote(null); };
 
-  const totalNotes = meta.total;
-  const totalMontant = notes.reduce((acc: number, n: any) => acc + getNoteAmount(n), 0);
+  // Stats from monthly data only (for recap cards)
+  const notesMoisList = notesMoisData?.data || [];
+  const totalNotes = notesMoisData?.meta?.total || 0;
+  const totalMontant = notesMoisList.reduce((acc: number, n: any) => acc + getNoteAmount(n), 0);
 
   return {
     searchTerm, setSearchTerm, typeFilter, setTypeFilter,

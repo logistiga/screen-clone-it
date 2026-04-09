@@ -43,13 +43,19 @@ export default function OrdresTravailPage() {
   const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
   const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
 
+  // Main query: NO date filter — shows all data in the table
   const { data: ordresData, isLoading, isFetching, error, refetch } = useOrdres({
     search: debouncedSearch || undefined,
     statut: statutFilter !== "all" ? statutFilter : undefined,
     categorie: categorieFilter !== "all" ? categorieFilter : undefined,
+    page: currentPage, per_page: pageSize,
+  });
+
+  // Separate query for monthly stats (recap cards only)
+  const { data: ordresMoisData } = useOrdres({
     date_debut: dateDebut,
     date_fin: dateFin,
-    page: currentPage, per_page: pageSize,
+    per_page: 10000,
   });
 
   const deleteOrdreMutation = useDeleteOrdre();
@@ -85,11 +91,14 @@ export default function OrdresTravailPage() {
   const totalItems = ordresData?.meta?.total || 0;
   const tableRenderKey = [debouncedSearch, statutFilter, categorieFilter, currentPage, pageSize, totalItems, ordresList.map((o: any) => o.id).join("-")].join("|");
 
+  // Stats from monthly data only (for recap cards)
+  const ordresMoisList = Array.isArray(ordresMoisData?.data) ? ordresMoisData.data : [];
   const stats = useMemo(() => ({
-    totalOrdres: ordresList.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0),
-    totalPaye: ordresList.reduce((sum: number, o: any) => sum + (o.montant_paye || 0), 0),
-    ordresEnCours: ordresList.filter((o: any) => o.statut === "en_cours").length,
-  }), [ordresList]);
+    totalOrdres: ordresMoisList.reduce((sum: number, o: any) => sum + (o.montant_ttc || 0), 0),
+    totalPaye: ordresMoisList.reduce((sum: number, o: any) => sum + (o.montant_paye || 0), 0),
+    ordresEnCours: ordresMoisList.filter((o: any) => o.statut === "en_cours").length,
+    count: ordresMoisData?.meta?.total || 0,
+  }), [ordresMoisList, ordresMoisData?.meta?.total]);
 
   if (ordresData) hasLoadedOnce.current = true;
 
