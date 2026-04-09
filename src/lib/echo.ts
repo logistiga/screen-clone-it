@@ -15,4 +15,6 @@ const echo = new Echo({
   forceTLS: true,
 });
 
+console.log('[Echo] Initialized with key:', import.meta.env.VITE_PUSHER_APP_KEY || 'f58a72a4b49731f59fa9', 'cluster:', import.meta.env.VITE_PUSHER_APP_CLUSTER || 'eu');
+
 export default echo;
