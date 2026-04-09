@@ -23,7 +23,10 @@ const typeConfig: Record<NotificationType, { icon: React.ElementType; color: str
 };
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markAllRead, clearAll } = useRealtimeNotifications();
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = useNotificationStore(s => s.notifications.filter(n => !n.read).length);
+  const markAllRead = useNotificationStore(s => s.markAllRead);
+  const clearAll = useNotificationStore(s => s.clearAll);
 
   return (
     <DropdownMenu>
