@@ -112,10 +112,10 @@ export default function OrdresTravailPage() {
     <MainLayout title="Ordres de Travail">
       <div className="space-y-6 animate-fade-in">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <DocumentStatCard title="Total Ordres" value={totalItems} icon={ClipboardList} variant="primary" subtitle="Documents créés" delay={0} />
-          <DocumentStatCard title="Montant Total" value={formatMontant(stats.totalOrdres)} icon={TrendingUp} variant="info" subtitle="Valeur cumulée" delay={0.1} />
+          <DocumentStatCard title="Total Ordres" value={stats.count} icon={ClipboardList} variant="primary" subtitle="Ce mois" delay={0} />
+          <DocumentStatCard title="Montant Total" value={formatMontant(stats.totalOrdres)} icon={TrendingUp} variant="info" subtitle="Ce mois" delay={0.1} />
           <DocumentStatCard title="Total Payé" value={formatMontant(stats.totalPaye)} icon={CreditCard} variant="success" subtitle={`${stats.totalOrdres > 0 ? Math.round((stats.totalPaye / stats.totalOrdres) * 100) : 0}% encaissé`} delay={0.2} />
-          <DocumentStatCard title="En cours" value={stats.ordresEnCours} icon={Clock} variant="warning" subtitle="Ordres actifs" delay={0.3} />
+          <DocumentStatCard title="En cours" value={stats.ordresEnCours} icon={Clock} variant="warning" subtitle="Ce mois" delay={0.3} />
         </div>
 
         <DocumentFilters searchTerm={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Rechercher par numéro, client, conteneur..." statutFilter={statutFilter} onStatutChange={setStatutFilter} statutOptions={statutOptions} categorieFilter={categorieFilter} onCategorieChange={setCategorieFilter} categorieOptions={categorieOptions} isSearching={searchTerm !== debouncedSearch || (isFetching && !!debouncedSearch)} />
