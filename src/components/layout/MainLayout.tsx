@@ -1,4 +1,5 @@
 import { ReactNode, forwardRef } from "react";
+import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
@@ -24,6 +25,7 @@ export const MainLayout = forwardRef<HTMLDivElement, MainLayoutProps>(
     if (isMobile) {
       return (
         <div ref={ref} className="flex min-h-screen w-full flex-col">
+          <PWAUpdatePrompt />
           <MobileHeader title={title} />
           <main className="flex-1 overflow-auto bg-muted/30 p-3 pb-20">
             <PageTransition>
@@ -39,6 +41,7 @@ export const MainLayout = forwardRef<HTMLDivElement, MainLayoutProps>(
     return (
       <SidebarProvider>
         <div ref={ref} className="flex min-h-screen w-full">
+          <PWAUpdatePrompt />
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col">
             <AppHeader title={title} />
