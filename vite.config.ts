@@ -101,7 +101,7 @@ export default defineConfig(({ mode }) => ({
           },
           {
             // Cache API pour le backend sur le même domaine
-            urlPattern: /\/backend\/api\/.*/i,
+            urlPattern: /\/backend\/(?:public\/)?api\/.*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",
