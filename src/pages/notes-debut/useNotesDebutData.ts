@@ -123,7 +123,7 @@ export function useNotesDebutData() {
     searchTerm, setSearchTerm, typeFilter, setTypeFilter,
     currentPage, setCurrentPage, pageSize, setPageSize,
     isLoading, isSearching, hasFilters, clearFilters,
-    notes, meta, tableRenderKey, totalNotes, totalMontant,
+    notes, meta, notesMoisList, tableRenderKey, totalNotes, totalMontant,
     selectedIds, setSelectedIds, isAllSelected, handleSelectAll, handleSelectOne,
     selectedNote, setSelectedNote,
     showPaiementModal, setShowPaiementModal,

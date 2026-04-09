@@ -32,7 +32,7 @@ export default function NotesDebut() {
           <Button onClick={() => navigate("/notes-debut/nouvelle")}><Plus className="h-4 w-4 mr-2" />Nouvelle note</Button>
         </div>
 
-        <NotesStatsCards notes={d.notes} totalNotes={d.totalNotes} totalMontant={d.totalMontant} meta={d.meta} pageSize={d.pageSize} />
+        <NotesStatsCards notes={d.notesMoisList} totalNotes={d.totalNotes} totalMontant={d.totalMontant} meta={d.meta} pageSize={d.pageSize} />
 
         <DocumentFilters
           searchTerm={d.searchTerm} onSearchChange={(v) => { d.setSearchTerm(v); d.setCurrentPage(1); }}
