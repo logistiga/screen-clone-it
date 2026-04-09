@@ -27,10 +27,12 @@ export function useRealtimeNotifications() {
     }
 
     try {
+      console.log('Echo: subscribing to channel', CHANNEL_NAME);
       const channel = echo.channel(CHANNEL_NAME);
       channelRef.current = channel;
 
       channel.listen('.conteneur.synced', (e: any) => {
+        console.log('Echo: event reçu .conteneur.synced', e);
         const count = e?.count ?? e?.total ?? 0;
         addNotification(
           'conteneur.synced',
