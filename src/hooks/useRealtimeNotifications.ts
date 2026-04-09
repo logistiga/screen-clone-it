@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotificationStore, NotificationType } from '@/stores/notificationStore';
 
-const CHANNEL_NAME = 'logistiga-fac';
+const CHANNEL_NAME = 'logistiga-cnv';
 
 /**
  * Hook qui écoute les events Pusher/Echo ET le store partagé.
@@ -27,10 +27,12 @@ export function useRealtimeNotifications() {
     }
 
     try {
+      console.log('Echo: subscribing to channel', CHANNEL_NAME);
       const channel = echo.channel(CHANNEL_NAME);
       channelRef.current = channel;
 
       channel.listen('.conteneur.synced', (e: any) => {
+        console.log('Echo: event reçu .conteneur.synced', e);
         const count = e?.count ?? e?.total ?? 0;
         addNotification(
           'conteneur.synced',
@@ -44,6 +46,7 @@ export function useRealtimeNotifications() {
       });
 
       channel.listen('.facture.created', (e: any) => {
+        console.log('Echo: event reçu .facture.created', e);
         const numero = e?.numero ?? '';
         addNotification(
           'facture.created',
@@ -54,6 +57,7 @@ export function useRealtimeNotifications() {
       });
 
       channel.listen('.caisse.mouvement', (e: any) => {
+        console.log('Echo: event reçu .caisse.mouvement', e);
         const type = e?.type === 'entree' ? 'Entrée' : 'Sortie';
         const montant = e?.montant ? `${Number(e.montant).toLocaleString('fr-FR')} FCFA` : '';
         addNotification(
@@ -65,6 +69,7 @@ export function useRealtimeNotifications() {
       });
 
       channel.listen('.anomalie.detectee', (e: any) => {
+        console.log('Echo: event reçu .anomalie.detectee', e);
         const count = e?.count ?? 1;
         addNotification(
           'anomalie.detectee',
