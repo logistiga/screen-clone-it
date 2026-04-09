@@ -25,6 +25,7 @@ export const MainLayout = forwardRef<HTMLDivElement, MainLayoutProps>(
     if (isMobile) {
       return (
         <div ref={ref} className="flex min-h-screen w-full flex-col">
+          <PWAUpdatePrompt />
           <MobileHeader title={title} />
           <main className="flex-1 overflow-auto bg-muted/30 p-3 pb-20">
             <PageTransition>
