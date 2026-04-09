@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotificationStore, NotificationType } from '@/stores/notificationStore';
 
-const CHANNEL_NAME = 'logistiga-fac';
+const CHANNEL_NAME = 'logistiga-cnv';
 
 /**
  * Hook qui écoute les events Pusher/Echo ET le store partagé.
