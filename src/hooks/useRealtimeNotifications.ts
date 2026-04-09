@@ -70,6 +70,7 @@ export function useRealtimeNotifications() {
 
       channel.listen('.anomalie.detectee', (e: any) => {
         console.log('Echo: event reçu .anomalie.detectee', e);
+        const count = e?.count ?? 1;
         addNotification(
           'anomalie.detectee',
           `${count} anomalie${count > 1 ? 's' : ''} détectée${count > 1 ? 's' : ''}`,
