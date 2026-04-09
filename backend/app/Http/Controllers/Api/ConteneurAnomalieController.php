@@ -236,6 +236,16 @@ class ConteneurAnomalieController extends Controller
         try {
             $nouvelles = $this->executeDetectionAnomalies();
 
+            // Broadcaster si des anomalies ont été trouvées
+            if ($nouvelles > 0) {
+                event(new \App\Events\AnomalieDetectee(
+                    'oublie',
+                    $nouvelles >= 5 ? 'critical' : 'warning',
+                    "{$nouvelles} nouvelle(s) anomalie(s) détectée(s)",
+                    ['count' => $nouvelles]
+                ));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => "Détection terminée. {$nouvelles} nouvelle(s) anomalie(s) trouvée(s).",
