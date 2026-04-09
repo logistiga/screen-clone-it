@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { NotificationBell } from "@/components/NotificationBell";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +58,9 @@ export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(
         
         {/* Notifications */}
         <NotificationCenter />
+        
+        {/* Notifications temps réel (Pusher) */}
+        <NotificationBell />
         
         {/* Theme Toggle */}
         <ThemeToggle />
