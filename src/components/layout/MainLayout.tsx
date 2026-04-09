@@ -41,6 +41,7 @@ export const MainLayout = forwardRef<HTMLDivElement, MainLayoutProps>(
     return (
       <SidebarProvider>
         <div ref={ref} className="flex min-h-screen w-full">
+          <PWAUpdatePrompt />
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col">
             <AppHeader title={title} />
