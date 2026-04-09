@@ -2,31 +2,26 @@
 
 namespace App\Events;
 
-use App\Models\Facture;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class FactureCreated implements ShouldBroadcast
+class ConteneurSynced implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public int $facture_id;
-    public string $numero;
-    public string $client;
-    public float $montant;
+    public int $nouveaux;
+    public int $mis_a_jour;
     public string $message;
     public string $timestamp;
 
-    public function __construct(Facture $facture)
+    public function __construct(int $nouveaux = 0, int $mis_a_jour = 0, string $message = '')
     {
-        $this->facture_id = $facture->id;
-        $this->numero = $facture->numero ?? '';
-        $this->client = $facture->client->nom ?? '';
-        $this->montant = $facture->montant_ttc ?? 0;
-        $this->message = "Facture {$this->numero} créée pour {$this->client}";
+        $this->nouveaux = $nouveaux;
+        $this->mis_a_jour = $mis_a_jour;
+        $this->message = $message ?: "{$nouveaux} nouveau(x) conteneur(s) synchronisé(s)";
         $this->timestamp = now()->toIso8601String();
     }
 
@@ -37,16 +32,14 @@ class FactureCreated implements ShouldBroadcast
 
     public function broadcastAs(): string
     {
-        return 'facture.created';
+        return 'conteneur.synced';
     }
 
     public function broadcastWith(): array
     {
         return [
-            'facture_id' => $this->facture_id,
-            'numero' => $this->numero,
-            'client' => $this->client,
-            'montant' => $this->montant,
+            'nouveaux' => $this->nouveaux,
+            'mis_a_jour' => $this->mis_a_jour,
             'message' => $this->message,
             'timestamp' => $this->timestamp,
         ];

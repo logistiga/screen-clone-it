@@ -2,31 +2,28 @@
 
 namespace App\Events;
 
-use App\Models\Facture;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class FactureCreated implements ShouldBroadcast
+class AnomalieDetectee implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public int $facture_id;
-    public string $numero;
-    public string $client;
-    public float $montant;
+    public string $type;
+    public string $severity;
     public string $message;
+    public array $details;
     public string $timestamp;
 
-    public function __construct(Facture $facture)
+    public function __construct(string $type, string $severity, string $message, array $details = [])
     {
-        $this->facture_id = $facture->id;
-        $this->numero = $facture->numero ?? '';
-        $this->client = $facture->client->nom ?? '';
-        $this->montant = $facture->montant_ttc ?? 0;
-        $this->message = "Facture {$this->numero} créée pour {$this->client}";
+        $this->type = $type;
+        $this->severity = $severity;
+        $this->message = $message;
+        $this->details = $details;
         $this->timestamp = now()->toIso8601String();
     }
 
@@ -37,17 +34,16 @@ class FactureCreated implements ShouldBroadcast
 
     public function broadcastAs(): string
     {
-        return 'facture.created';
+        return 'anomalie.detectee';
     }
 
     public function broadcastWith(): array
     {
         return [
-            'facture_id' => $this->facture_id,
-            'numero' => $this->numero,
-            'client' => $this->client,
-            'montant' => $this->montant,
+            'type' => $this->type,
+            'severity' => $this->severity,
             'message' => $this->message,
+            'details' => $this->details,
             'timestamp' => $this->timestamp,
         ];
     }
