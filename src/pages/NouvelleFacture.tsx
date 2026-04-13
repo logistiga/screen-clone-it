@@ -536,8 +536,8 @@ export default function NouvelleFacturePage() {
     }
   };
 
-  // Get client for preview
   const selectedClient = clients.find(c => String(c.id) === clientId);
+  const isMobile = useIsMobile();
 
   return (
     <MainLayout title="Nouvelle facture">

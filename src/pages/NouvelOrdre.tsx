@@ -646,7 +646,7 @@ export default function NouvelOrdrePage() {
 
   // Get client for preview
   const selectedClient = clients.find(c => String(c.id) === clientId);
-
+  const isMobile = useIsMobile();
   return (
     <MainLayout title="Nouvel ordre de travail">
       <div className="mb-6 animate-fade-in">
