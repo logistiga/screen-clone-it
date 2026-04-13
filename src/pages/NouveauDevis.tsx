@@ -415,15 +415,17 @@ export default function NouveauDevisPage() {
         />
       )}
 
-      {/* Stepper */}
-      <DevisStepper 
-        currentStep={currentStep} 
-        onStepClick={(step) => {
-          if (step <= calculateCurrentStep() + 1) {
-            setCurrentStep(step);
-          }
-        }} 
-      />
+      {/* Stepper - mobile only */}
+      {isMobile && (
+        <DevisStepper 
+          currentStep={currentStep} 
+          onStepClick={(step) => {
+            if (step <= calculateCurrentStep() + 1) {
+              setCurrentStep(step);
+            }
+          }} 
+        />
+      )}
 
       {createDevisMutation.error && (
         <div className="mb-6 animate-fade-in">
@@ -441,24 +443,26 @@ export default function NouveauDevisPage() {
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Étape 1: Catégorie */}
-            {currentStep === 1 && (
+            {(isMobile ? currentStep === 1 : true) && (
               <div className="animate-fade-in">
-                <CategorieSelector onSelect={handleCategorieChange} />
+                <CategorieSelector onSelect={handleCategorieChange} selected={categorie || undefined} />
               </div>
             )}
 
             {/* Étape 2: Client */}
-            {currentStep === 2 && categorie && (
+            {(isMobile ? currentStep === 2 && categorie : !!categorie) && (
               <div className="animate-fade-in space-y-4">
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                    {categoriesLabels[categorie].icon}
-                    <span>{categoriesLabels[categorie].label}</span>
-                  </Badge>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => { setCategorie(""); setCurrentStep(1); }} className="text-muted-foreground transition-all duration-200 hover:text-primary">
-                    Changer
-                  </Button>
-                </div>
+                {isMobile && (
+                  <div className="flex items-center gap-3">
+                    <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                      {categoriesLabels[categorie!].icon}
+                      <span>{categoriesLabels[categorie!].label}</span>
+                    </Badge>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setCategorie(""); setCurrentStep(1); }} className="text-muted-foreground transition-all duration-200 hover:text-primary">
+                      Changer
+                    </Button>
+                  </div>
+                )}
 
                 <ClientInfoCard
                   clientId={clientId}
@@ -471,7 +475,7 @@ export default function NouveauDevisPage() {
             )}
 
             {/* Étape 3: Détails */}
-            {currentStep === 3 && categorie && (
+            {(isMobile ? currentStep === 3 && categorie : !!categorie) && (
               <div className="animate-fade-in">
                 {categorie === "conteneurs" && (
                   <DevisConteneursForm
@@ -517,7 +521,7 @@ export default function NouveauDevisPage() {
             )}
 
             {/* Étape 4: Récapitulatif */}
-            {currentStep === 4 && categorie && (
+            {(isMobile ? currentStep === 4 && categorie : !!categorie) && (
               <div className="animate-fade-in space-y-6">
                 <Card>
                   <CardHeader>
@@ -563,8 +567,8 @@ export default function NouveauDevisPage() {
               </div>
             )}
 
-            {/* Étape 5: Aperçu final */}
-            {currentStep === 5 && categorie && (
+            {/* Étape 5: Aperçu final - mobile only */}
+            {isMobile && currentStep === 5 && categorie && (
               <div className="animate-fade-in">
                 <Card className="border-primary/20">
                   <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
@@ -575,7 +579,7 @@ export default function NouveauDevisPage() {
                   </CardHeader>
                   <CardContent className="pt-6">
                     <p className="text-muted-foreground mb-4">
-                      Vérifiez les informations dans l'aperçu à droite avant de créer le devis.
+                      Vérifiez les informations dans l'aperçu avant de créer le devis.
                     </p>
                     <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                       <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -597,7 +601,7 @@ export default function NouveauDevisPage() {
             {categorie && (
               <div className="flex justify-between gap-4 pb-6 animate-fade-in">
                 <div>
-                  {currentStep > 1 && (
+                  {isMobile && currentStep > 1 && (
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -615,7 +619,7 @@ export default function NouveauDevisPage() {
                     Annuler
                   </Button>
                   
-                  {currentStep < 5 ? (
+                  {isMobile && currentStep < 5 ? (
                     <Button 
                       type="button" 
                       onClick={handleNextStep}
@@ -637,8 +641,8 @@ export default function NouveauDevisPage() {
           </form>
         </div>
 
-        {/* Preview panel */}
-        <div className="lg:col-span-1">
+        {/* Preview panel - desktop only */}
+        <div className="hidden lg:block lg:col-span-1">
           <DevisPreview
             categorie={categorie}
             client={selectedClient}
