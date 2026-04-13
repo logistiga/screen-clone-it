@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use App\Support\DocumentCategory;
 
 class OrdreTravail extends Model
 {
@@ -205,7 +206,7 @@ class OrdreTravail extends Model
 
     public function scopeCategorie($query, $categorie)
     {
-        return $query->where('categorie', $categorie);
+        return $query->whereIn('categorie', DocumentCategory::equivalentValues($categorie));
     }
 
     /**

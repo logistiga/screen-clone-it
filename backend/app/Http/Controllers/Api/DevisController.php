@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateDevisRequest;
 use App\Http\Resources\DevisResource;
 use App\Models\Devis;
 use App\Models\Audit;
+use App\Support\DocumentCategory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -99,20 +100,26 @@ class DevisController extends Controller
                 unset($data['conteneurs'], $data['lots'], $data['lignes']);
 
                 if (isset($data['bl_numero'])) { $data['numero_bl'] = $data['bl_numero']; unset($data['bl_numero']); }
-                unset($data['numero'], $data['date_creation']);
+                if (isset($data['categorie']) || isset($data['type_document'])) {
+                    $data['categorie'] = DocumentCategory::normalize(
+                        $data['categorie'] ?? $devis->categorie,
+                        $data['type_document'] ?? null,
+                    );
+                }
+                unset($data['numero'], $data['date_creation'], $data['type_document']);
 
                 $devis->update($data);
 
-                if ($conteneurs !== null && $devis->categorie === 'conteneurs') {
+                if ($conteneurs !== null && DocumentCategory::isConteneurs($devis->categorie)) {
                     $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
                     $devis->conteneurs()->delete();
                     $this->creerConteneurs($devis, $conteneurs);
                 }
-                if ($lots !== null && $devis->categorie === 'conventionnel') {
+                if ($lots !== null && DocumentCategory::isConventionnel($devis->categorie)) {
                     $devis->lots()->delete();
                     $this->creerLots($devis, $lots);
                 }
-                if ($lignes !== null && $devis->categorie === 'operations_independantes') {
+                if ($lignes !== null && DocumentCategory::isIndependant($devis->categorie)) {
                     $devis->lignes()->delete();
                     $this->creerLignes($devis, $lignes);
                 }
@@ -159,9 +166,10 @@ class DevisController extends Controller
     // === Méthodes privées ===
     private function normaliserDonnees(array $data): array
     {
-        if (isset($data['type_document']) && !isset($data['categorie'])) {
-            $data['categorie'] = match ($data['type_document']) { 'Conteneur' => 'conteneurs', 'Lot' => 'conventionnel', 'Independant' => 'operations_independantes', default => 'conteneurs' };
-        }
+        $data['categorie'] = DocumentCategory::normalize(
+            $data['categorie'] ?? null,
+            $data['type_document'] ?? null,
+        );
         unset($data['type_document']);
         if (isset($data['bl_numero']) && !isset($data['numero_bl'])) { $data['numero_bl'] = $data['bl_numero']; }
         unset($data['bl_numero']);
@@ -176,10 +184,10 @@ class DevisController extends Controller
 
     private function creerElements(Devis $devis, array $lignes, array $conteneurs, array $lots): void
     {
-        switch ($devis->categorie) {
-            case 'conteneurs': $this->creerConteneurs($devis, $conteneurs); break;
-            case 'conventionnel': $this->creerLots($devis, $lots); break;
-            case 'operations_independantes': $this->creerLignes($devis, $lignes); break;
+        switch (DocumentCategory::normalize($devis->categorie)) {
+            case DocumentCategory::CONTENEURS: $this->creerConteneurs($devis, $conteneurs); break;
+            case DocumentCategory::CONVENTIONNEL: $this->creerLots($devis, $lots); break;
+            case DocumentCategory::INDEPENDANT: $this->creerLignes($devis, $lignes); break;
         }
     }
 

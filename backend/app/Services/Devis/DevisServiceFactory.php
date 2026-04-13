@@ -4,6 +4,7 @@ namespace App\Services\Devis;
 
 use App\Models\Devis;
 use App\Models\Configuration;
+use App\Support\DocumentCategory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -32,10 +33,10 @@ class DevisServiceFactory
      */
     public function getService(string $categorie): DevisConteneursService|DevisConventionnelService|DevisIndependantService
     {
-        return match ($categorie) {
-            'conteneurs', 'Conteneur' => $this->conteneursService,
-            'conventionnel', 'Lot' => $this->conventionnelService,
-            'operations_independantes', 'Independant' => $this->independantService,
+        return match (DocumentCategory::normalize($categorie)) {
+            DocumentCategory::CONTENEURS => $this->conteneursService,
+            DocumentCategory::CONVENTIONNEL => $this->conventionnelService,
+            DocumentCategory::INDEPENDANT => $this->independantService,
             default => $this->conteneursService,
         };
     }
@@ -45,33 +46,16 @@ class DevisServiceFactory
      */
     public function normaliserDonnees(array $data): array
     {
-        // type_document (API) -> categorie (DB)
-        if (!isset($data['categorie']) && isset($data['type_document'])) {
-            $data['categorie'] = match ($data['type_document']) {
-                'Conteneur' => 'conteneurs',
-                'Lot' => 'conventionnel',
-                'Independant' => 'operations_independantes',
-                default => 'conteneurs',
-            };
-        }
+        $data['categorie'] = DocumentCategory::normalize(
+            $data['categorie'] ?? null,
+            $data['type_document'] ?? null,
+        );
 
-        // bl_numero (API) -> numero_bl (DB)
         if (isset($data['bl_numero']) && !isset($data['numero_bl'])) {
             $data['numero_bl'] = $data['bl_numero'];
         }
         unset($data['bl_numero'], $data['type_document']);
 
-        // type_operation pour conteneurs (import/export)
-        if (isset($data['type_operation'])) {
-            // Garder tel quel, le modèle l'attend
-        }
-
-        // type_operation_indep pour opérations indépendantes
-        if (isset($data['type_operation_indep'])) {
-            // Garder tel quel, le modèle l'attend
-        }
-
-        // Dates
         $data['date_creation'] = $data['date_creation'] ?? now()->toDateString();
         $data['date'] = $data['date'] ?? now()->toDateString();
 
@@ -92,7 +76,8 @@ class DevisServiceFactory
     {
         return DB::transaction(function () use ($data) {
             $data = $this->normaliserDonnees($data);
-            $categorie = $data['categorie'] ?? 'conteneurs';
+            $categorie = DocumentCategory::normalize($data['categorie'] ?? null);
+            $data['categorie'] = $categorie;
 
             // Générer le numéro
             $data['numero'] = $this->genererNumero();
@@ -137,7 +122,8 @@ class DevisServiceFactory
     public function modifier(Devis $devis, array $data): Devis
     {
         return DB::transaction(function () use ($devis, $data) {
-            $categorie = $devis->categorie;
+            $categorie = DocumentCategory::normalize($data['categorie'] ?? $devis->categorie);
+            $data['categorie'] = $categorie;
             $service = $this->getService($categorie);
 
             // Normaliser les champs API -> DB (sans écraser date_creation)
@@ -184,7 +170,7 @@ class DevisServiceFactory
     public function convertirEnOrdre(Devis $devis): \App\Models\OrdreTravail
     {
         return DB::transaction(function () use ($devis) {
-            $categorie = $devis->categorie;
+            $categorie = DocumentCategory::normalize($devis->categorie);
             $service = $this->getService($categorie);
 
             $ordreFactory = app(\App\Services\OrdreTravail\OrdreServiceFactory::class);
@@ -195,7 +181,7 @@ class DevisServiceFactory
                 'armateur_id' => $devis->armateur_id,
                 'transitaire_id' => $devis->transitaire_id,
                 'representant_id' => $devis->representant_id,
-                'type_document' => $devis->type_document,
+                'type_document' => DocumentCategory::toTypeDocument($categorie),
                 'categorie' => $categorie,
                 'bl_numero' => $devis->bl_numero,
                 'navire' => $devis->navire,

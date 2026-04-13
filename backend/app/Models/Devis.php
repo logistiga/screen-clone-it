@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\DocumentCategory;
 
 class Devis extends Model
 {
@@ -307,8 +308,8 @@ class Devis extends Model
     {
         $montantHT = 0;
 
-        switch ($this->categorie) {
-            case 'conteneurs':
+        switch (DocumentCategory::normalize($this->categorie)) {
+            case DocumentCategory::CONTENEURS:
                 foreach ($this->conteneurs as $conteneur) {
                     $montantHT += (float) ($conteneur->prix_unitaire ?? 0);
                     foreach ($conteneur->operations as $op) {
@@ -317,13 +318,13 @@ class Devis extends Model
                 }
                 break;
 
-            case 'conventionnel':
+            case DocumentCategory::CONVENTIONNEL:
                 foreach ($this->lots as $lot) {
                     $montantHT += (float) $lot->quantite * (float) $lot->prix_unitaire;
                 }
                 break;
 
-            case 'operations_independantes':
+            case DocumentCategory::INDEPENDANT:
                 foreach ($this->lignes as $ligne) {
                     $montantHT += (float) $ligne->quantite * (float) $ligne->prix_unitaire;
                 }
