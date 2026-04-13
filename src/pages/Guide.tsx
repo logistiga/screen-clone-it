@@ -364,6 +364,8 @@ export default function Guide() {
               Actualiser l'application
             </Button>
           </CardContent>
+        </Card>
+
 
         {/* Guide par page */}
         <Card>
