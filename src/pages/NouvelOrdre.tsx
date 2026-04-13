@@ -23,7 +23,7 @@ import {
   OrdreIndependantData,
 } from "@/components/ordres/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
-import { OrdreStepper, OrdrePreview } from "@/components/ordres/shared";
+import { OrdreStepper } from "@/components/ordres/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
@@ -700,236 +700,210 @@ export default function NouvelOrdrePage() {
 
       <div 
         onKeyDown={(e) => {
-          // Empêcher la soumission sur Entrée
           if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
             e.preventDefault();
           }
         }}
         className="animate-fade-in"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main form area */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Step 1: Catégorie */}
-            {(isMobile ? currentStep === 1 : true) && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Step 1: Catégorie */}
+          {(isMobile ? currentStep === 1 : true) && (
+            <Card className="transition-all duration-300 hover:shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Catégorie d'ordre</CardTitle>
+                <CardDescription>Sélectionnez le type d'ordre de travail</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => {
+                    const cat = categoriesLabels[key];
+                    const isSelected = categorie === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleCategorieChange(key)}
+                        className={`p-4 rounded-lg border-2 text-left transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
+                          isSelected 
+                            ? "border-primary bg-primary/10" 
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                            {cat.icon}
+                          </div>
+                          <span className="font-semibold">{cat.label}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{cat.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 2: Client */}
+          {(isMobile ? currentStep === 2 : !!categorie) && (
+            <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                  Client
+                </CardTitle>
+                <CardDescription>Sélectionnez le client pour cet ordre</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="max-w-md">
+                  <Label htmlFor="client">Nom du client *</Label>
+                  <ClientCombobox
+                    clients={clients}
+                    value={clientId}
+                    onChange={setClientId}
+                    placeholder="Rechercher un client..."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Détails */}
+          {(isMobile ? currentStep === 3 : !!categorie) && (
+            <div className="space-y-6 animate-fade-in">
+              {categorie === "conteneurs" && (
+                <OrdreConteneursForm
+                  armateurs={armateurs}
+                  transitaires={transitaires}
+                  representants={representants}
+                  onDataChange={setConteneursData}
+                  initialData={conteneursData ? {
+                    typeOperation: conteneursData.typeOperation,
+                    numeroBL: conteneursData.numeroBL,
+                    armateurId: conteneursData.armateurId,
+                    transitaireId: conteneursData.transitaireId,
+                    representantId: conteneursData.representantId,
+                    conteneurs: conteneursData.conteneurs,
+                    primeTransitaire: conteneursData.primeTransitaire,
+                    primeRepresentant: conteneursData.primeRepresentant,
+                  } : undefined}
+                />
+              )}
+
+              {categorie === "conventionnel" && (
+                <OrdreConventionnelForm 
+                  onDataChange={setConventionnelData}
+                  initialData={conventionnelData ? {
+                    numeroBL: conventionnelData.numeroBL,
+                    lieuChargement: conventionnelData.lieuChargement,
+                    lieuDechargement: conventionnelData.lieuDechargement,
+                    lots: conventionnelData.lots,
+                  } : undefined}
+                />
+              )}
+
+              {categorie === "operations_independantes" && (
+                <OrdreIndependantForm 
+                  onDataChange={setIndependantData}
+                  initialData={independantData ? {
+                    typeOperationIndep: independantData.typeOperationIndep,
+                    prestations: independantData.prestations,
+                  } : undefined}
+                />
+              )}
+
+              {/* Notes */}
               <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-lg">Catégorie d'ordre</CardTitle>
-                  <CardDescription>Sélectionnez le type d'ordre de travail</CardDescription>
+                  <CardTitle className="text-lg">Notes / Observations</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => {
-                      const cat = categoriesLabels[key];
-                      const isSelected = categorie === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => handleCategorieChange(key)}
-                          className={`p-4 rounded-lg border-2 text-left transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
-                            isSelected 
-                              ? "border-primary bg-primary/10" 
-                              : "border-border hover:border-primary/50 hover:bg-muted/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`${isSelected ? "text-primary" : "text-muted-foreground"}`}>
-                              {cat.icon}
-                            </div>
-                            <span className="font-semibold">{cat.label}</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{cat.description}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Textarea 
+                    placeholder="Ajouter des notes ou observations..." 
+                    value={notes} 
+                    onChange={(e) => setNotes(e.target.value)} 
+                    rows={3}
+                  />
                 </CardContent>
               </Card>
-            )}
 
-            {/* Step 2: Client */}
-            {(isMobile ? currentStep === 2 : !!categorie) && (
-              <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5 text-primary" />
-                    Client
-                  </CardTitle>
-                  <CardDescription>Sélectionnez le client pour cet ordre</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="max-w-md">
-                    <Label htmlFor="client">Nom du client *</Label>
-                    <ClientCombobox
-                      clients={clients}
-                      value={clientId}
-                      onChange={setClientId}
-                      placeholder="Rechercher un client..."
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Step 3: Détails */}
-            {(isMobile ? currentStep === 3 : !!categorie) && (
-              <div className="space-y-6 animate-fade-in">
-                {categorie === "conteneurs" && (
-                  <OrdreConteneursForm
-                    armateurs={armateurs}
-                    transitaires={transitaires}
-                    representants={representants}
-                    onDataChange={setConteneursData}
-                    initialData={conteneursData ? {
-                      typeOperation: conteneursData.typeOperation,
-                      numeroBL: conteneursData.numeroBL,
-                      armateurId: conteneursData.armateurId,
-                      transitaireId: conteneursData.transitaireId,
-                      representantId: conteneursData.representantId,
-                      conteneurs: conteneursData.conteneurs,
-                      primeTransitaire: conteneursData.primeTransitaire,
-                      primeRepresentant: conteneursData.primeRepresentant,
-                    } : undefined}
-                  />
-                )}
-
-                {categorie === "conventionnel" && (
-                  <OrdreConventionnelForm 
-                    onDataChange={setConventionnelData}
-                    initialData={conventionnelData ? {
-                      numeroBL: conventionnelData.numeroBL,
-                      lieuChargement: conventionnelData.lieuChargement,
-                      lieuDechargement: conventionnelData.lieuDechargement,
-                      lots: conventionnelData.lots,
-                    } : undefined}
-                  />
-                )}
-
-                {categorie === "operations_independantes" && (
-                  <OrdreIndependantForm 
-                    onDataChange={setIndependantData}
-                    initialData={independantData ? {
-                      typeOperationIndep: independantData.typeOperationIndep,
-                      prestations: independantData.prestations,
-                    } : undefined}
-                  />
-                )}
-
-                {/* Notes */}
-                <Card className="transition-all duration-300 hover:shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Notes / Observations</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea 
-                      placeholder="Ajouter des notes ou observations..." 
-                      value={notes} 
-                      onChange={(e) => setNotes(e.target.value)} 
-                      rows={3}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Remise */}
-                {montantHT > 0 && (
-                  <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
-                )}
-              </div>
-            )}
-
-            {/* Step 4: Récapitulatif */}
-            {(isMobile ? currentStep === 4 : !!categorie) && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Sélection des taxes */}
-                {montantHTApresRemise > 0 && (
-                  <TaxesSelector
-                    taxes={availableTaxes}
-                    montantHT={montantHTApresRemise}
-                    onChange={handleTaxesChange}
-                    value={taxesSelectionData}
-                  />
-                )}
-
-                <RecapitulatifCard
-                  montantHT={montantHT}
-                  tauxTva={taxRates.TVA}
-                  tauxCss={taxRates.CSS}
-                  tva={tva}
-                  css={css}
-                  montantTTC={montantTTC}
-                  remiseMontant={remiseData.montantCalcule}
-                  remiseType={remiseData.type}
-                  remiseValeur={remiseData.valeur}
-                  selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-                  {...toApiPayload(taxesSelectionData)}
-                />
-              </div>
-            )}
-
-            {/* Navigation buttons */}
-            <div className="flex justify-between pt-4">
-              {isMobile && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handlePrevStep}
-                  disabled={currentStep === 1}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Précédent
-                </Button>
-              )}
-              {!isMobile && <div />}
-
-              {isMobile && currentStep < 4 ? (
-                <Button 
-                  type="button" 
-                  onClick={handleNextStep}
-                  disabled={!canProceedToStep(currentStep + 1)}
-                >
-                  Suivant
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              ) : (
-                <Button 
-                  type="button"
-                  onClick={handleOpenConfirmModal}
-                  size="lg" 
-                  disabled={createOrdreMutation.isPending}
-                  className="transition-all duration-200 hover:scale-105 hover:shadow-md"
-                >
-                  {createOrdreMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Créer l'ordre de travail
-                </Button>
+              {/* Remise */}
+              {montantHT > 0 && (
+                <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
               )}
             </div>
-          </div>
+          )}
 
-          {/* Preview sidebar */}
-          <div className="hidden lg:block">
-            <OrdrePreview
-              categorie={categorie}
-              client={selectedClient ? { id: selectedClient.id, nom: selectedClient.nom } : null}
-              montantHT={montantHT}
-              tva={tva}
-              css={css}
-              montantTTC={montantTTC}
-              numeroBL={conteneursData?.numeroBL || conventionnelData?.numeroBL}
-              typeOperation={conteneursData?.typeOperation}
-              typeOperationIndep={independantData?.typeOperationIndep}
-              conteneurs={conteneursData?.conteneurs}
-              lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite }))}
-              prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
-              notes={notes}
-              descriptionConventionnel={conventionnelData?.description}
-              currentStep={currentStep}
-              selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-            />
+          {/* Step 4: Récapitulatif */}
+          {(isMobile ? currentStep === 4 : !!categorie) && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Sélection des taxes */}
+              {montantHTApresRemise > 0 && (
+                <TaxesSelector
+                  taxes={availableTaxes}
+                  montantHT={montantHTApresRemise}
+                  onChange={handleTaxesChange}
+                  value={taxesSelectionData}
+                />
+              )}
+
+              <RecapitulatifCard
+                montantHT={montantHT}
+                tauxTva={taxRates.TVA}
+                tauxCss={taxRates.CSS}
+                tva={tva}
+                css={css}
+                montantTTC={montantTTC}
+                remiseMontant={remiseData.montantCalcule}
+                remiseType={remiseData.type}
+                remiseValeur={remiseData.valeur}
+                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+                {...toApiPayload(taxesSelectionData)}
+              />
+            </div>
+          )}
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between pt-4">
+            {isMobile && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handlePrevStep}
+                disabled={currentStep === 1}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Précédent
+              </Button>
+            )}
+            {!isMobile && <div />}
+
+            {isMobile && currentStep < 4 ? (
+              <Button 
+                type="button" 
+                onClick={handleNextStep}
+                disabled={!canProceedToStep(currentStep + 1)}
+              >
+                Suivant
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button 
+                type="button"
+                onClick={handleOpenConfirmModal}
+                size="lg" 
+                disabled={createOrdreMutation.isPending}
+                className="transition-all duration-200 hover:scale-105 hover:shadow-md"
+              >
+                {createOrdreMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Créer l'ordre de travail
+              </Button>
+            )}
           </div>
         </div>
       </div>

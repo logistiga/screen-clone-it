@@ -24,7 +24,7 @@ import {
   FactureIndependantData,
 } from "@/components/factures/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
-import { FactureStepper, FacturePreview } from "@/components/factures/shared";
+import { FactureStepper } from "@/components/factures/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
@@ -596,228 +596,200 @@ export default function NouvelleFacturePage() {
         }}
         className="animate-fade-in"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main form area */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Step 1: Catégorie */}
-            {(isMobile ? currentStep === 1 : true) && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Step 1: Catégorie */}
+          {(isMobile ? currentStep === 1 : true) && (
+            <Card className="transition-all duration-300 hover:shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Catégorie de facture</CardTitle>
+                <CardDescription>Sélectionnez le type de facture</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => {
+                    const cat = categoriesLabels[key];
+                    const isSelected = categorie === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleCategorieChange(key)}
+                        className={`p-4 rounded-lg border-2 text-left transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
+                          isSelected 
+                            ? "border-primary bg-primary/10" 
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                            {cat.icon}
+                          </div>
+                          <span className="font-semibold">{cat.label}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{cat.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 2: Client */}
+          {(isMobile ? currentStep === 2 : !!categorie) && (
+            <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                  Client & Échéance
+                </CardTitle>
+                <CardDescription>Sélectionnez le client et la date d'échéance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nom du client *</Label>
+                    <ClientCombobox
+                      clients={clients}
+                      value={clientId}
+                      onChange={setClientId}
+                      placeholder="Rechercher un client..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Date d'échéance
+                    </Label>
+                    <Input 
+                      type="date" 
+                      value={dateEcheance} 
+                      onChange={(e) => setDateEcheance(e.target.value)} 
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Détails */}
+          {(isMobile ? currentStep === 3 : !!categorie) && (
+            <div className="space-y-6 animate-fade-in">
+              {categorie === "conteneurs" && (
+                <FactureConteneursForm
+                  armateurs={armateurs}
+                  transitaires={transitaires}
+                  representants={representants}
+                  onDataChange={setConteneursData}
+                  initialData={conteneursData || undefined}
+                />
+              )}
+
+              {categorie === "conventionnel" && (
+                <FactureConventionnelForm 
+                  onDataChange={setConventionnelData} 
+                  initialData={conventionnelData || undefined}
+                />
+              )}
+
+              {categorie === "operations_independantes" && (
+                <FactureIndependantForm 
+                  onDataChange={setIndependantData} 
+                  initialData={independantData || undefined}
+                />
+              )}
+
+              {/* Notes */}
               <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-lg">Catégorie de facture</CardTitle>
-                  <CardDescription>Sélectionnez le type de facture</CardDescription>
+                  <CardTitle className="text-lg">Notes / Observations</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => {
-                      const cat = categoriesLabels[key];
-                      const isSelected = categorie === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => handleCategorieChange(key)}
-                          className={`p-4 rounded-lg border-2 text-left transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
-                            isSelected 
-                              ? "border-primary bg-primary/10" 
-                              : "border-border hover:border-primary/50 hover:bg-muted/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`${isSelected ? "text-primary" : "text-muted-foreground"}`}>
-                              {cat.icon}
-                            </div>
-                            <span className="font-semibold">{cat.label}</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{cat.description}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Textarea
+                    placeholder="Ajouter des notes ou observations..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                  />
                 </CardContent>
               </Card>
-            )}
 
-            {/* Step 2: Client */}
-            {(isMobile ? currentStep === 2 : !!categorie) && (
-              <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5 text-primary" />
-                    Client & Échéance
-                  </CardTitle>
-                  <CardDescription>Sélectionnez le client et la date d'échéance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nom du client *</Label>
-                      <ClientCombobox
-                        clients={clients}
-                        value={clientId}
-                        onChange={setClientId}
-                        placeholder="Rechercher un client..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Date d'échéance
-                      </Label>
-                      <Input 
-                        type="date" 
-                        value={dateEcheance} 
-                        onChange={(e) => setDateEcheance(e.target.value)} 
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Step 3: Détails */}
-            {(isMobile ? currentStep === 3 : !!categorie) && (
-              <div className="space-y-6 animate-fade-in">
-                {categorie === "conteneurs" && (
-                  <FactureConteneursForm
-                    armateurs={armateurs}
-                    transitaires={transitaires}
-                    representants={representants}
-                    onDataChange={setConteneursData}
-                    initialData={conteneursData || undefined}
-                  />
-                )}
-
-                {categorie === "conventionnel" && (
-                  <FactureConventionnelForm 
-                    onDataChange={setConventionnelData} 
-                    initialData={conventionnelData || undefined}
-                  />
-                )}
-
-                {categorie === "operations_independantes" && (
-                  <FactureIndependantForm 
-                    onDataChange={setIndependantData} 
-                    initialData={independantData || undefined}
-                  />
-                )}
-
-                {/* Notes */}
-                <Card className="transition-all duration-300 hover:shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Notes / Observations</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      placeholder="Ajouter des notes ou observations..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Remise */}
-                {montantHT > 0 && (
-                  <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
-                )}
-              </div>
-            )}
-
-            {/* Step 4: Récapitulatif */}
-            {(isMobile ? currentStep === 4 : !!categorie) && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Sélection des taxes */}
-                {montantHTApresRemise > 0 && (
-                  <TaxesSelector
-                    taxes={availableTaxes}
-                    montantHT={montantHTApresRemise}
-                    onChange={handleTaxesChange}
-                    value={taxesSelectionData}
-                  />
-                )}
-
-                <RecapitulatifCard
-                  montantHT={montantHT}
-                  tva={tva}
-                  css={css}
-                  montantTTC={montantTTC}
-                  tauxTva={taxRates.TVA}
-                  tauxCss={taxRates.CSS}
-                  remiseMontant={remiseData.montantCalcule}
-                  remiseType={remiseData.type}
-                  remiseValeur={remiseData.valeur}
-                  {...toApiPayload(taxesSelectionData)}
-                />
-              </div>
-            )}
-
-            {/* Navigation buttons */}
-            <div className="flex justify-between pt-4">
-              {isMobile && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handlePrevStep}
-                  disabled={currentStep === 1}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Précédent
-                </Button>
-              )}
-              {!isMobile && <div />}
-
-              {isMobile && currentStep < 4 ? (
-                <Button 
-                  type="button" 
-                  onClick={handleNextStep}
-                  disabled={!canProceedToStep(currentStep + 1)}
-                >
-                  Suivant
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              ) : (
-                <Button 
-                  type="button"
-                  onClick={handleOpenConfirmModal}
-                  size="lg" 
-                  disabled={createFactureMutation.isPending}
-                  className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
-                >
-                  {createFactureMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  Créer la facture
-                </Button>
+              {/* Remise */}
+              {montantHT > 0 && (
+                <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
               )}
             </div>
-          </div>
+          )}
 
-          {/* Preview sidebar */}
-          <div className="hidden lg:block">
-            <FacturePreview
-              categorie={categorie}
-              client={selectedClient ? { id: selectedClient.id, nom: selectedClient.nom } : null}
-              montantHT={montantHT}
-              tva={tva}
-              css={css}
-              montantTTC={montantTTC}
-              numeroBL={conteneursData?.numeroBL || conventionnelData?.numeroBL}
-              dateEcheance={dateEcheance}
-              typeOperation={conteneursData?.typeOperation}
-              typeOperationIndep={independantData?.typeOperationIndep}
-              conteneurs={conteneursData?.conteneurs}
-              lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite }))}
-              prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite }))}
-              notes={notes}
-              remiseMontant={remiseData.montantCalcule}
-              currentStep={currentStep}
-              selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-              tauxTva={taxRates.TVA}
-              tauxCss={taxRates.CSS}
-            />
+          {/* Step 4: Récapitulatif */}
+          {(isMobile ? currentStep === 4 : !!categorie) && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Sélection des taxes */}
+              {montantHTApresRemise > 0 && (
+                <TaxesSelector
+                  taxes={availableTaxes}
+                  montantHT={montantHTApresRemise}
+                  onChange={handleTaxesChange}
+                  value={taxesSelectionData}
+                />
+              )}
+
+              <RecapitulatifCard
+                montantHT={montantHT}
+                tva={tva}
+                css={css}
+                montantTTC={montantTTC}
+                tauxTva={taxRates.TVA}
+                tauxCss={taxRates.CSS}
+                remiseMontant={remiseData.montantCalcule}
+                remiseType={remiseData.type}
+                remiseValeur={remiseData.valeur}
+                {...toApiPayload(taxesSelectionData)}
+              />
+            </div>
+          )}
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between pt-4">
+            {isMobile && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handlePrevStep}
+                disabled={currentStep === 1}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Précédent
+              </Button>
+            )}
+            {!isMobile && <div />}
+
+            {isMobile && currentStep < 4 ? (
+              <Button 
+                type="button" 
+                onClick={handleNextStep}
+                disabled={!canProceedToStep(currentStep + 1)}
+              >
+                Suivant
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button 
+                type="button"
+                onClick={handleOpenConfirmModal}
+                size="lg" 
+                disabled={createFactureMutation.isPending}
+                className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+              >
+                {createFactureMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Créer la facture
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -18,7 +18,6 @@ import {
   ClientInfoCard,
   RecapitulatifCard,
   DevisStepper,
-  DevisPreview,
   AutoSaveIndicator,
 } from "@/components/devis/shared";
 import {
@@ -438,229 +437,205 @@ export default function NouveauDevisPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulaire principal */}
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Étape 1: Catégorie */}
-            {(isMobile ? currentStep === 1 : true) && (
-              <div className="animate-fade-in">
-                <CategorieSelector onSelect={handleCategorieChange} />
-              </div>
-            )}
+      <div className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Étape 1: Catégorie */}
+          {(isMobile ? currentStep === 1 : true) && (
+            <div className="animate-fade-in">
+              <CategorieSelector onSelect={handleCategorieChange} />
+            </div>
+          )}
 
-            {/* Étape 2: Client */}
-            {(isMobile ? currentStep === 2 && categorie : !!categorie) && (
-              <div className="animate-fade-in space-y-4">
-                {isMobile && (
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                      {categoriesLabels[categorie!].icon}
-                      <span>{categoriesLabels[categorie!].label}</span>
-                    </Badge>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => { setCategorie(""); setCurrentStep(1); }} className="text-muted-foreground transition-all duration-200 hover:text-primary">
-                      Changer
-                    </Button>
-                  </div>
-                )}
-
-                <ClientInfoCard
-                  clientId={clientId}
-                  setClientId={setClientId}
-                  dateValidite={dateValidite}
-                  setDateValidite={setDateValidite}
-                  clients={clients}
-                />
-              </div>
-            )}
-
-            {/* Étape 3: Détails */}
-            {(isMobile ? currentStep === 3 && categorie : !!categorie) && (
-              <div className="animate-fade-in">
-                {categorie === "conteneurs" && (
-                  <DevisConteneursForm
-                    armateurs={armateurs}
-                    transitaires={transitaires}
-                    representants={representants}
-                    onDataChange={setConteneursData}
-                    initialData={isRestoredFromDraft && conteneursData ? {
-                      typeOperation: conteneursData.typeOperation,
-                      numeroBL: conteneursData.numeroBL,
-                      armateurId: conteneursData.armateurId,
-                      transitaireId: conteneursData.transitaireId,
-                      representantId: conteneursData.representantId,
-                      conteneurs: conteneursData.conteneurs,
-                    } : undefined}
-                  />
-                )}
-
-                {categorie === "conventionnel" && (
-                  <DevisConventionnelForm 
-                    onDataChange={setConventionnelData}
-                    initialData={isRestoredFromDraft && conventionnelData ? {
-                      numeroBL: conventionnelData.numeroBL,
-                      lieuChargement: conventionnelData.lieuChargement,
-                      lieuDechargement: conventionnelData.lieuDechargement,
-                      lots: conventionnelData.lots,
-                    } : undefined}
-                  />
-                )}
-
-                {categorie === "operations_independantes" && (
-                  <DevisIndependantForm 
-                    onDataChange={setIndependantData}
-                    initialData={isRestoredFromDraft && independantData ? {
-                      typeOperationIndep: independantData.typeOperationIndep,
-                      lieuChargement: independantData.lieuChargement,
-                      lieuDechargement: independantData.lieuDechargement,
-                      prestations: independantData.prestations,
-                    } : undefined}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Étape 4: Récapitulatif */}
-            {(isMobile ? currentStep === 4 && categorie : !!categorie) && (
-              <div className="animate-fade-in space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Conditions et notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Conditions particulières, notes..."
-                      rows={4}
-                    />
-                  </CardContent>
-                </Card>
-
-                {montantHT > 0 && (
-                  <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
-                )}
-
-                {/* Sélection des taxes */}
-                {montantHTApresRemise > 0 && (
-                  <TaxesSelector
-                    taxes={availableTaxes}
-                    montantHT={montantHTApresRemise}
-                    onChange={handleTaxesChange}
-                    value={taxesSelectionData}
-                  />
-                )}
-
-                <RecapitulatifCard
-                  montantHT={montantHT}
-                  tva={tva}
-                  css={css}
-                  montantTTC={montantTTC}
-                  tauxTva={taxRates.TVA}
-                  tauxCss={taxRates.CSS}
-                  remiseMontant={remiseData.montantCalcule}
-                  remiseType={remiseData.type}
-                  remiseValeur={remiseData.valeur}
-                  selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-                  {...toApiPayload(taxesSelectionData)}
-                />
-              </div>
-            )}
-
-            {/* Étape 5: Aperçu final - mobile only */}
-            {isMobile && currentStep === 5 && categorie && (
-              <div className="animate-fade-in">
-                <Card className="border-primary/20">
-                  <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
-                      Vérification finale
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <p className="text-muted-foreground mb-4">
-                      Vérifiez les informations dans l'aperçu avant de créer le devis.
-                    </p>
-                    <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <FileText className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-green-700 dark:text-green-400">Prêt à créer</p>
-                        <p className="text-sm text-green-600 dark:text-green-500">
-                          Montant TTC: {montantTTC.toLocaleString("fr-FR")} XAF
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Navigation buttons */}
-            {categorie && (
-              <div className="flex justify-between gap-4 pb-6 animate-fade-in">
-                <div>
-                  {isMobile && currentStep > 1 && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={handlePrevStep}
-                      className="gap-2"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Précédent
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="flex gap-4">
-                  <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending} className="transition-all duration-200 hover:scale-105">
-                    Annuler
+          {/* Étape 2: Client */}
+          {(isMobile ? currentStep === 2 && categorie : !!categorie) && (
+            <div className="animate-fade-in space-y-4">
+              {isMobile && (
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                    {categoriesLabels[categorie!].icon}
+                    <span>{categoriesLabels[categorie!].label}</span>
+                  </Badge>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => { setCategorie(""); setCurrentStep(1); }} className="text-muted-foreground transition-all duration-200 hover:text-primary">
+                    Changer
                   </Button>
-                  
-                  {isMobile && currentStep < 5 ? (
-                    <Button 
-                      type="button" 
-                      onClick={handleNextStep}
-                      disabled={!canProceedToNext()}
-                      className="gap-2 transition-all duration-200 hover:scale-105"
-                    >
-                      Suivant
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={createDevisMutation.isPending}>
-                      {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      Créer le devis
-                    </Button>
-                  )}
                 </div>
-              </div>
-            )}
-          </form>
-        </div>
+              )}
 
-        {/* Preview panel - desktop only */}
-        <div className="hidden lg:block lg:col-span-1">
-          <DevisPreview
-            categorie={categorie}
-            client={selectedClient}
-            dateValidite={dateValidite}
-            notes={notes}
-            conteneursData={conteneursData}
-            conventionnelData={conventionnelData}
-            independantData={independantData}
-            montantHT={montantHT}
-            tva={tva}
-            css={css}
-            montantTTC={montantTTC}
-            remiseData={remiseData}
-            armateurs={armateurs}
-            transitaires={transitaires}
-            representants={representants}
-          />
-        </div>
+              <ClientInfoCard
+                clientId={clientId}
+                setClientId={setClientId}
+                dateValidite={dateValidite}
+                setDateValidite={setDateValidite}
+                clients={clients}
+              />
+            </div>
+          )}
+
+          {/* Étape 3: Détails */}
+          {(isMobile ? currentStep === 3 && categorie : !!categorie) && (
+            <div className="animate-fade-in">
+              {categorie === "conteneurs" && (
+                <DevisConteneursForm
+                  armateurs={armateurs}
+                  transitaires={transitaires}
+                  representants={representants}
+                  onDataChange={setConteneursData}
+                  initialData={isRestoredFromDraft && conteneursData ? {
+                    typeOperation: conteneursData.typeOperation,
+                    numeroBL: conteneursData.numeroBL,
+                    armateurId: conteneursData.armateurId,
+                    transitaireId: conteneursData.transitaireId,
+                    representantId: conteneursData.representantId,
+                    conteneurs: conteneursData.conteneurs,
+                  } : undefined}
+                />
+              )}
+
+              {categorie === "conventionnel" && (
+                <DevisConventionnelForm 
+                  onDataChange={setConventionnelData}
+                  initialData={isRestoredFromDraft && conventionnelData ? {
+                    numeroBL: conventionnelData.numeroBL,
+                    lieuChargement: conventionnelData.lieuChargement,
+                    lieuDechargement: conventionnelData.lieuDechargement,
+                    lots: conventionnelData.lots,
+                  } : undefined}
+                />
+              )}
+
+              {categorie === "operations_independantes" && (
+                <DevisIndependantForm 
+                  onDataChange={setIndependantData}
+                  initialData={isRestoredFromDraft && independantData ? {
+                    typeOperationIndep: independantData.typeOperationIndep,
+                    lieuChargement: independantData.lieuChargement,
+                    lieuDechargement: independantData.lieuDechargement,
+                    prestations: independantData.prestations,
+                  } : undefined}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Étape 4: Récapitulatif */}
+          {(isMobile ? currentStep === 4 && categorie : !!categorie) && (
+            <div className="animate-fade-in space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Conditions et notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Conditions particulières, notes..."
+                    rows={4}
+                  />
+                </CardContent>
+              </Card>
+
+              {montantHT > 0 && (
+                <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+              )}
+
+              {/* Sélection des taxes */}
+              {montantHTApresRemise > 0 && (
+                <TaxesSelector
+                  taxes={availableTaxes}
+                  montantHT={montantHTApresRemise}
+                  onChange={handleTaxesChange}
+                  value={taxesSelectionData}
+                />
+              )}
+
+              <RecapitulatifCard
+                montantHT={montantHT}
+                tva={tva}
+                css={css}
+                montantTTC={montantTTC}
+                tauxTva={taxRates.TVA}
+                tauxCss={taxRates.CSS}
+                remiseMontant={remiseData.montantCalcule}
+                remiseType={remiseData.type}
+                remiseValeur={remiseData.valeur}
+                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
+                {...toApiPayload(taxesSelectionData)}
+              />
+            </div>
+          )}
+
+          {/* Étape 5: Aperçu final - mobile only */}
+          {isMobile && currentStep === 5 && categorie && (
+            <div className="animate-fade-in">
+              <Card className="border-primary/20">
+                <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Vérification finale
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <p className="text-muted-foreground mb-4">
+                    Vérifiez les informations dans l'aperçu avant de créer le devis.
+                  </p>
+                  <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-700 dark:text-green-400">Prêt à créer</p>
+                      <p className="text-sm text-green-600 dark:text-green-500">
+                        Montant TTC: {montantTTC.toLocaleString("fr-FR")} XAF
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Navigation buttons */}
+          {categorie && (
+            <div className="flex justify-between gap-4 pb-6 animate-fade-in">
+              <div>
+                {isMobile && currentStep > 1 && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handlePrevStep}
+                    className="gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                )}
+              </div>
+              
+              <div className="flex gap-4">
+                <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending} className="transition-all duration-200 hover:scale-105">
+                  Annuler
+                </Button>
+                
+                {isMobile && currentStep < 5 ? (
+                  <Button 
+                    type="button" 
+                    onClick={handleNextStep}
+                    disabled={!canProceedToNext()}
+                    className="gap-2 transition-all duration-200 hover:scale-105"
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={createDevisMutation.isPending}>
+                    {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Créer le devis
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </form>
       </div>
     </MainLayout>
   );
