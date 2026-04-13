@@ -711,7 +711,7 @@ export default function NouvelOrdrePage() {
           {/* Main form area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: Catégorie */}
-            {currentStep === 1 && (
+            {(isMobile ? currentStep === 1 : true) && (
               <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-lg">Catégorie d'ordre</CardTitle>
@@ -749,7 +749,7 @@ export default function NouvelOrdrePage() {
             )}
 
             {/* Step 2: Client */}
-            {currentStep === 2 && (
+            {(isMobile ? currentStep === 2 : !!categorie) && (
               <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -773,7 +773,7 @@ export default function NouvelOrdrePage() {
             )}
 
             {/* Step 3: Détails */}
-            {currentStep === 3 && (
+            {(isMobile ? currentStep === 3 : !!categorie) && (
               <div className="space-y-6 animate-fade-in">
                 {categorie === "conteneurs" && (
                   <OrdreConteneursForm
@@ -839,7 +839,7 @@ export default function NouvelOrdrePage() {
             )}
 
             {/* Step 4: Récapitulatif */}
-            {currentStep === 4 && (
+            {(isMobile ? currentStep === 4 : !!categorie) && (
               <div className="space-y-6 animate-fade-in">
                 {/* Sélection des taxes */}
                 {montantHTApresRemise > 0 && (
