@@ -47,10 +47,25 @@ class OrdreConversionService
             $service = $this->getService($categorie);
             $factureFactory = app(FactureServiceFactory::class);
 
+            // Construire taxes_selection avec fallback robuste
+            $taxesSelection = $ordre->taxes_selection;
+            if (empty($taxesSelection) || !is_array($taxesSelection) || !isset($taxesSelection['selected_tax_codes'])) {
+                // Fallback: appliquer TVA + CSS par défaut
+                $taxesSelection = [
+                    'selected_tax_codes' => ['TVA', 'CSS'],
+                    'has_exoneration' => (bool) ($ordre->exonere_tva || $ordre->exonere_css),
+                    'exonerated_tax_codes' => array_filter([
+                        $ordre->exonere_tva ? 'TVA' : null,
+                        $ordre->exonere_css ? 'CSS' : null,
+                    ]),
+                    'motif_exoneration' => $ordre->motif_exoneration ?? '',
+                ];
+            }
+
             $factureData = [
                 'client_id' => $ordre->client_id,
                 'ordre_id' => $ordre->id,
-                'date_creation' => $ordre->date_creation?->toDateString() ?? now()->toDateString(),
+                'date_creation' => now()->toDateString(),
                 'armateur_id' => $ordre->armateur_id,
                 'transitaire_id' => $ordre->transitaire_id,
                 'representant_id' => $ordre->representant_id,
@@ -60,10 +75,13 @@ class OrdreConversionService
                 'numero_bl' => $ordre->numero_bl,
                 'navire' => $ordre->navire,
                 'notes' => $ordre->notes,
-                'statut' => 'brouillon',
+                'statut' => 'emise',
                 'remise_type' => $ordre->remise_type ?? null,
                 'remise_valeur' => $ordre->remise_valeur ?? 0,
-                'taxes_selection' => $ordre->taxes_selection,
+                'taxes_selection' => $taxesSelection,
+                'exonere_tva' => $ordre->exonere_tva ?? false,
+                'exonere_css' => $ordre->exonere_css ?? false,
+                'motif_exoneration' => $ordre->motif_exoneration ?? null,
             ];
 
             $conversionData = $service->preparerPourConversion($ordre);

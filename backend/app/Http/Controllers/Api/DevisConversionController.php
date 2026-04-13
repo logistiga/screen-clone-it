@@ -134,18 +134,29 @@ class DevisConversionController extends Controller
 
                 $categorieNormalisee = DocumentCategory::normalize($devis->categorie);
 
-                Log::info('DEBUG conversion devis->facture', [
+                // Construire taxes_selection avec fallback robuste
+                $taxesSelection = $devis->taxes_selection;
+                if (empty($taxesSelection) || !is_array($taxesSelection) || !isset($taxesSelection['selected_tax_codes'])) {
+                    $taxesSelection = [
+                        'selected_tax_codes' => ['TVA', 'CSS'],
+                        'has_exoneration' => (bool) ($devis->exonere_tva || $devis->exonere_css),
+                        'exonerated_tax_codes' => array_filter([
+                            $devis->exonere_tva ? 'TVA' : null,
+                            $devis->exonere_css ? 'CSS' : null,
+                        ]),
+                        'motif_exoneration' => $devis->motif_exoneration ?? '',
+                    ];
+                }
+
+                Log::info('Conversion devis->facture', [
                     'devis_id' => $devis->id,
-                    'devis_numero' => $devis->numero,
-                    'devis_categorie_raw' => $devis->categorie,
-                    'categorie_normalisee' => $categorieNormalisee,
-                    'client_id' => $devis->client_id,
+                    'categorie' => $categorieNormalisee,
                     'montant_ht_devis' => $devis->montant_ht,
                     'montant_ttc_devis' => $devis->montant_ttc,
                     'nb_lignes' => $devis->lignes->count(),
                     'nb_conteneurs' => $devis->conteneurs->count(),
                     'nb_lots' => $devis->lots->count(),
-                    'taxes_selection' => $devis->taxes_selection,
+                    'taxes_selection' => $taxesSelection,
                 ]);
 
                 $factureData = [
@@ -164,7 +175,7 @@ class DevisConversionController extends Controller
                     'statut' => 'emise',
                     'remise_type' => $devis->remise_type,
                     'remise_valeur' => $devis->remise_valeur,
-                    'taxes_selection' => $devis->taxes_selection,
+                    'taxes_selection' => $taxesSelection,
                     'exonere_tva' => $devis->exonere_tva ?? false,
                     'exonere_css' => $devis->exonere_css ?? false,
                     'motif_exoneration' => $devis->motif_exoneration,
