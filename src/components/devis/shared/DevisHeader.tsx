@@ -115,7 +115,7 @@ export function DevisHeader({ devis, onConvert, isConverting, onWhatsApp, onEmai
             variant="outline"
             size="sm"
             className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80"
-            onClick={downloadPdf}
+            onClick={() => window.open(`/devis/${devis.id}/pdf`, '_blank')}
           >
             <Download className="h-4 w-4" />
             Télécharger PDF
