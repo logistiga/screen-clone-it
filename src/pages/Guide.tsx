@@ -322,6 +322,49 @@ export default function Guide() {
           </CardContent>
         </Card>
 
+        {/* Mise à jour */}
+        <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              Mise à jour de l'application
+            </CardTitle>
+            <CardDescription>
+              Vérifiez et appliquez les dernières modifications du frontend
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Si des modifications ont été déployées, cliquez sur le bouton ci-dessous pour forcer le rechargement et récupérer la dernière version.
+            </p>
+            <Button
+              size="lg"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of registrations) {
+                      await reg.unregister();
+                    }
+                  }
+                  if ('caches' in window) {
+                    const keys = await caches.keys();
+                    for (const key of keys) {
+                      await caches.delete(key);
+                    }
+                  }
+                  window.location.reload();
+                } catch {
+                  window.location.reload();
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualiser l'application
+            </Button>
+          </CardContent>
+
         {/* Guide par page */}
         <Card>
           <CardHeader>
