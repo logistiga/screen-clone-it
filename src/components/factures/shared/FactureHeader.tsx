@@ -20,7 +20,6 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { formatDate, getStatutLabel } from "@/data/mockData";
-import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { openWhatsAppShare } from "@/lib/whatsapp";
 import {
   AlertDialog,
