@@ -130,7 +130,10 @@ class FactureServiceFactory
                 $this->independantService->creerLignes($facture, $lignes);
             }
 
-            // IMPORTANT: Forcer le rechargement des relations depuis la DB avant le calcul
+            // IMPORTANT: Forcer le rechargement COMPLET depuis la DB avant le calcul
+            // Supprimer les relations cachées pour éviter toute donnée stale
+            $facture->unsetRelations();
+            $facture->refresh();
             $facture->load(['conteneurs.operations', 'lots', 'lignes']);
 
             // Calculer les totaux avec le bon service
@@ -138,6 +141,19 @@ class FactureServiceFactory
 
             // Recharger pour avoir les montants à jour
             $facture->refresh();
+
+            // Vérification: si montant_ttc est toujours 0 mais qu'il y a des éléments, recalculer
+            $nbElements = $facture->conteneurs->count() + $facture->lots->count() + $facture->lignes->count();
+            if ($nbElements > 0 && (float) $facture->montant_ttc == 0) {
+                Log::warning('Factory::creer - montant_ttc=0 malgré éléments, recalcul forcé', [
+                    'facture_id' => $facture->id,
+                    'nb_elements' => $nbElements,
+                ]);
+                $facture->unsetRelations();
+                $facture->load(['conteneurs.operations', 'lots', 'lignes']);
+                $service->calculerTotaux($facture);
+                $facture->refresh();
+            }
 
             Log::info('Factory::creer - après calcul totaux', [
                 'facture_id' => $facture->id,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Ship, Save, Loader2, ArrowRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -645,7 +646,7 @@ export default function NouvelOrdrePage() {
 
   // Get client for preview
   const selectedClient = clients.find(c => String(c.id) === clientId);
-
+  const isMobile = useIsMobile();
   return (
     <MainLayout title="Nouvel ordre de travail">
       <div className="mb-6 animate-fade-in">
@@ -687,13 +688,15 @@ export default function NouvelOrdrePage() {
         />
       )}
 
-      {/* Stepper */}
-      <OrdreStepper 
-        currentStep={currentStep} 
-        categorie={categorie || undefined}
-        onStepClick={handleStepClick}
-        stepsValidation={stepsValidation}
-      />
+      {/* Stepper - mobile only */}
+      {isMobile && (
+        <OrdreStepper 
+          currentStep={currentStep} 
+          categorie={categorie || undefined}
+          onStepClick={handleStepClick}
+          stepsValidation={stepsValidation}
+        />
+      )}
 
       <div 
         onKeyDown={(e) => {
@@ -708,7 +711,7 @@ export default function NouvelOrdrePage() {
           {/* Main form area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: Catégorie */}
-            {currentStep === 1 && (
+            {(isMobile ? currentStep === 1 : true) && (
               <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-lg">Catégorie d'ordre</CardTitle>
@@ -746,7 +749,7 @@ export default function NouvelOrdrePage() {
             )}
 
             {/* Step 2: Client */}
-            {currentStep === 2 && (
+            {(isMobile ? currentStep === 2 : !!categorie) && (
               <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -770,7 +773,7 @@ export default function NouvelOrdrePage() {
             )}
 
             {/* Step 3: Détails */}
-            {currentStep === 3 && (
+            {(isMobile ? currentStep === 3 : !!categorie) && (
               <div className="space-y-6 animate-fade-in">
                 {categorie === "conteneurs" && (
                   <OrdreConteneursForm
@@ -836,7 +839,7 @@ export default function NouvelOrdrePage() {
             )}
 
             {/* Step 4: Récapitulatif */}
-            {currentStep === 4 && (
+            {(isMobile ? currentStep === 4 : !!categorie) && (
               <div className="space-y-6 animate-fade-in">
                 {/* Sélection des taxes */}
                 {montantHTApresRemise > 0 && (
@@ -866,17 +869,20 @@ export default function NouvelOrdrePage() {
 
             {/* Navigation buttons */}
             <div className="flex justify-between pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handlePrevStep}
-                disabled={currentStep === 1}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Précédent
-              </Button>
+              {isMobile && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handlePrevStep}
+                  disabled={currentStep === 1}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Précédent
+                </Button>
+              )}
+              {!isMobile && <div />}
 
-              {currentStep < 4 ? (
+              {isMobile && currentStep < 4 ? (
                 <Button 
                   type="button" 
                   onClick={handleNextStep}
