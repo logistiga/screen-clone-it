@@ -113,6 +113,15 @@ class FactureServiceFactory
             // Créer les éléments selon le type
             $service = $this->getService($categorie);
 
+            Log::info('Factory::creer - avant création éléments', [
+                'facture_id' => $facture->id,
+                'categorie' => $categorie,
+                'nb_conteneurs_data' => count($conteneurs),
+                'nb_lots_data' => count($lots),
+                'nb_lignes_data' => count($lignes),
+                'taxes_selection' => $facture->taxes_selection,
+            ]);
+
             if ($categorie === 'conteneurs' && !empty($conteneurs)) {
                 $this->conteneursService->creerConteneurs($facture, $conteneurs);
             } elseif ($categorie === 'conventionnel' && !empty($lots)) {
@@ -121,8 +130,25 @@ class FactureServiceFactory
                 $this->independantService->creerLignes($facture, $lignes);
             }
 
+            // IMPORTANT: Forcer le rechargement des relations depuis la DB avant le calcul
+            $facture->load(['conteneurs.operations', 'lots', 'lignes']);
+
             // Calculer les totaux avec le bon service
             $service->calculerTotaux($facture);
+
+            // Recharger pour avoir les montants à jour
+            $facture->refresh();
+
+            Log::info('Factory::creer - après calcul totaux', [
+                'facture_id' => $facture->id,
+                'montant_ht' => $facture->montant_ht,
+                'tva' => $facture->tva,
+                'css' => $facture->css,
+                'montant_ttc' => $facture->montant_ttc,
+                'nb_conteneurs_db' => $facture->conteneurs->count(),
+                'nb_lots_db' => $facture->lots->count(),
+                'nb_lignes_db' => $facture->lignes->count(),
+            ]);
 
             // Créer les primes si présentes
             $this->creerPrimes($facture, $primeTransitaire, $primeRepresentant);
@@ -137,6 +163,7 @@ class FactureServiceFactory
                 'facture_id' => $facture->id,
                 'numero' => $facture->numero,
                 'categorie' => $categorie,
+                'montant_ttc' => $facture->montant_ttc,
             ]);
 
             return $facture->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'primes']);

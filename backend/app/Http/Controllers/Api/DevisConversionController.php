@@ -127,6 +127,7 @@ class DevisConversionController extends Controller
 
         try {
             $facture = DB::transaction(function () use ($devis) {
+                // IMPORTANT: Charger toutes les relations AVANT la conversion
                 $devis->load(['lignes', 'conteneurs.operations', 'lots']);
 
                 $factureFactory = app(FactureServiceFactory::class);
@@ -139,9 +140,12 @@ class DevisConversionController extends Controller
                     'devis_categorie_raw' => $devis->categorie,
                     'categorie_normalisee' => $categorieNormalisee,
                     'client_id' => $devis->client_id,
+                    'montant_ht_devis' => $devis->montant_ht,
+                    'montant_ttc_devis' => $devis->montant_ttc,
                     'nb_lignes' => $devis->lignes->count(),
                     'nb_conteneurs' => $devis->conteneurs->count(),
                     'nb_lots' => $devis->lots->count(),
+                    'taxes_selection' => $devis->taxes_selection,
                 ]);
 
                 $factureData = [
@@ -160,6 +164,10 @@ class DevisConversionController extends Controller
                     'statut' => 'emise',
                     'remise_type' => $devis->remise_type,
                     'remise_valeur' => $devis->remise_valeur,
+                    'taxes_selection' => $devis->taxes_selection,
+                    'exonere_tva' => $devis->exonere_tva ?? false,
+                    'exonere_css' => $devis->exonere_css ?? false,
+                    'motif_exoneration' => $devis->motif_exoneration,
                 ];
 
                 if ($categorieNormalisee === 'conteneurs') {

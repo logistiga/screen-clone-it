@@ -3,31 +3,27 @@
 namespace App\Console\Commands;
 
 use App\Models\Facture;
-use App\Models\Configuration;
+use App\Services\Facture\FactureServiceFactory;
+use App\Support\DocumentCategory;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RecalculerTotauxFactures extends Command
 {
-    protected $signature = 'factures:recalculer-totaux {--all : Recalculer toutes les factures, pas seulement celles à zéro}';
-    protected $description = 'Recalcule les totaux (HT, TVA, CSS, TTC) pour les factures dont les montants sont à zéro';
+    protected $signature = 'factures:recalculer-totaux {--all : Recalculer toutes les factures, pas seulement celles à zéro} {--id= : Recalculer une facture spécifique par ID}';
+    protected $description = 'Recalcule les totaux (HT, TVA, CSS, TTC) pour les factures via les services spécialisés';
 
     public function handle(): int
     {
-        $this->info('=== Recalcul des totaux des factures ===');
+        $this->info('=== Recalcul des totaux des factures (via services) ===');
 
-        // Récupérer les taux de taxes
-        $taxesConfig = Configuration::getOrCreate('taxes');
-        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
-        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
+        $factureFactory = app(FactureServiceFactory::class);
 
-        $this->info("Taux TVA: {$tauxTVA}% | Taux CSS: {$tauxCSS}%");
-
-        // Sélectionner les factures à recalculer
         $query = Facture::with(['conteneurs.operations', 'lots', 'lignes']);
-        
-        if (!$this->option('all')) {
+
+        if ($this->option('id')) {
+            $query->where('id', $this->option('id'));
+        } elseif (!$this->option('all')) {
             $query->where(function ($q) {
                 $q->whereNull('montant_ttc')
                   ->orWhere('montant_ttc', 0)
@@ -52,38 +48,33 @@ class RecalculerTotauxFactures extends Command
 
         foreach ($factures as $facture) {
             try {
-                DB::transaction(function () use ($facture, $tauxTVA, $tauxCSS, &$updated) {
-                    $montantHT = $this->calculerMontantHT($facture);
+                $categorie = DocumentCategory::normalize($facture->categorie);
+                $service = $factureFactory->getService($categorie);
 
-                    // Calculer selon la catégorie
-                    if ($facture->categorie === 'non_assujetti') {
-                        $montantTVA = 0;
-                        $montantCSS = 0;
-                    } else {
-                        $montantTVA = $montantHT * ($tauxTVA / 100);
-                        $montantCSS = $montantHT * ($tauxCSS / 100);
-                    }
+                $ancienTTC = $facture->montant_ttc;
+                $service->calculerTotaux($facture);
+                $facture->refresh();
 
-                    $montantTTC = $montantHT + $montantTVA + $montantCSS;
+                $this->newLine();
+                $this->line("  [{$facture->numero}] cat={$categorie} | HT={$facture->montant_ht} TVA={$facture->tva} CSS={$facture->css} TTC={$facture->montant_ttc} (avant: {$ancienTTC})");
+                $this->line("    conteneurs=" . $facture->conteneurs->count() . " lots=" . $facture->lots->count() . " lignes=" . $facture->lignes->count());
 
-                    $facture->update([
-                        'montant_ht' => $montantHT,
-                        'montant_tva' => $montantTVA,
-                        'montant_css' => $montantCSS,
-                        'montant_ttc' => $montantTTC,
-                    ]);
+                $updated++;
 
-                    $updated++;
-
-                    Log::info('Facture recalculée', [
-                        'facture_id' => $facture->id,
-                        'numero' => $facture->numero,
-                        'montant_ht' => $montantHT,
-                        'montant_ttc' => $montantTTC,
-                    ]);
-                });
+                Log::info('Facture recalculée via service', [
+                    'facture_id' => $facture->id,
+                    'numero' => $facture->numero,
+                    'categorie' => $categorie,
+                    'montant_ht' => $facture->montant_ht,
+                    'tva' => $facture->tva,
+                    'css' => $facture->css,
+                    'montant_ttc' => $facture->montant_ttc,
+                    'ancien_ttc' => $ancienTTC,
+                ]);
             } catch (\Throwable $e) {
                 $errors++;
+                $this->newLine();
+                $this->error("  Erreur [{$facture->numero}]: {$e->getMessage()}");
                 Log::error('Erreur recalcul facture', [
                     'facture_id' => $facture->id,
                     'error' => $e->getMessage(),
@@ -99,32 +90,5 @@ class RecalculerTotauxFactures extends Command
         $this->info("Résultat: {$updated} factures mises à jour, {$errors} erreurs");
 
         return $errors > 0 ? Command::FAILURE : Command::SUCCESS;
-    }
-
-    /**
-     * Calculer le montant HT
-     */
-    protected function calculerMontantHT(Facture $facture): float
-    {
-        $montant = 0;
-
-        // Lignes directes
-        foreach ($facture->lignes as $ligne) {
-            $montant += ($ligne->quantite ?? 1) * ($ligne->prix_unitaire ?? 0);
-        }
-
-        // Opérations des conteneurs
-        foreach ($facture->conteneurs as $conteneur) {
-            foreach ($conteneur->operations as $op) {
-                $montant += ($op->quantite ?? 1) * ($op->prix_unitaire ?? 0);
-            }
-        }
-
-        // Lots
-        foreach ($facture->lots as $lot) {
-            $montant += ($lot->quantite ?? 1) * ($lot->prix_unitaire ?? 0);
-        }
-
-        return $montant;
     }
 }
