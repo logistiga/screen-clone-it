@@ -14,6 +14,7 @@ class Facture extends Model
     protected $fillable = [
         'numero',
         'ordre_id',
+        'devis_id',
         'client_id',
         'date_creation',
         'date_echeance',

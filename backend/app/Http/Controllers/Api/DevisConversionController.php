@@ -133,6 +133,17 @@ class DevisConversionController extends Controller
 
                 $categorieNormalisee = DocumentCategory::normalize($devis->categorie);
 
+                Log::info('DEBUG conversion devis->facture', [
+                    'devis_id' => $devis->id,
+                    'devis_numero' => $devis->numero,
+                    'devis_categorie_raw' => $devis->categorie,
+                    'categorie_normalisee' => $categorieNormalisee,
+                    'client_id' => $devis->client_id,
+                    'nb_lignes' => $devis->lignes->count(),
+                    'nb_conteneurs' => $devis->conteneurs->count(),
+                    'nb_lots' => $devis->lots->count(),
+                ]);
+
                 $factureData = [
                     'client_id' => $devis->client_id,
                     'devis_id' => $devis->id,
