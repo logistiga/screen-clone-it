@@ -10,6 +10,7 @@ use App\Models\Devis;
 use App\Models\OrdreTravail;
 use App\Models\Audit;
 use App\Services\Facture\FactureServiceFactory;
+use App\Support\DocumentCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,13 +30,7 @@ class DevisConversionController extends Controller
             $ordre = DB::transaction(function () use ($devis) {
                 $devis->load(['lignes', 'conteneurs.operations', 'lots']);
 
-                // Normaliser la catégorie
-                $categorieMap = [
-                    'Conteneur' => 'conteneurs',
-                    'Lot' => 'conventionnel',
-                    'Independant' => 'operations_independantes',
-                ];
-                $categorieNormalisee = $categorieMap[$devis->categorie] ?? $devis->categorie;
+                $categorieNormalisee = DocumentCategory::normalize($devis->categorie);
 
                 $ordre = OrdreTravail::create([
                     'numero' => OrdreTravail::genererNumero(),
@@ -136,16 +131,7 @@ class DevisConversionController extends Controller
 
                 $factureFactory = app(FactureServiceFactory::class);
 
-                // Normaliser la catégorie du devis vers le format interne facture
-                $categorieMap = [
-                    'Conteneur' => 'conteneurs',
-                    'conteneurs' => 'conteneurs',
-                    'Lot' => 'conventionnel',
-                    'conventionnel' => 'conventionnel',
-                    'Independant' => 'operations_independantes',
-                    'operations_independantes' => 'operations_independantes',
-                ];
-                $categorieNormalisee = $categorieMap[$devis->categorie] ?? $devis->categorie;
+                $categorieNormalisee = DocumentCategory::normalize($devis->categorie);
 
                 $factureData = [
                     'client_id' => $devis->client_id,
@@ -241,7 +227,7 @@ class DevisConversionController extends Controller
                 $newDevis = new Devis();
                 $newDevis->fill([
                     'client_id' => $devis->client_id,
-                    'categorie' => $devis->categorie,
+                    'categorie' => DocumentCategory::normalize($devis->categorie),
                     'type_operation' => $devis->type_operation,
                     'type_operation_indep' => $devis->type_operation_indep,
                     'armateur_id' => $devis->armateur_id,

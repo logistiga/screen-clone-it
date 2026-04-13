@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Carbon\Carbon;
+use App\Support\DocumentCategory;
 
 class DevisResource extends JsonResource
 {
@@ -32,13 +33,8 @@ class DevisResource extends JsonResource
             'date_validite' => $dateValidite?->toDateString(),
 
             // Catégorie et type
-            'categorie' => $this->categorie,
-            'type_document' => match ($this->categorie) {
-                'conteneurs' => 'Conteneur',
-                'conventionnel' => 'Lot',
-                'operations_independantes' => 'Independant',
-                default => $this->categorie,
-            },
+            'categorie' => DocumentCategory::normalize($this->categorie),
+            'type_document' => DocumentCategory::toTypeDocument($this->categorie),
             'type_operation' => $this->type_operation,
             'type_operation_indep' => $this->type_operation_indep,
             'statut' => $this->statut,

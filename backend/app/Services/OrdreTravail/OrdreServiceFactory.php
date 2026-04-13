@@ -6,6 +6,7 @@ use App\Models\OrdreTravail;
 use App\Models\Configuration;
 use App\Models\Prime;
 use App\Services\Facture\FactureServiceFactory;
+use App\Support\DocumentCategory;
 use App\Traits\CalculeTaxesTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -36,10 +37,10 @@ class OrdreServiceFactory
      */
     public function getService(string $categorie): OrdreConteneursService|OrdreConventionnelService|OrdreIndependantService
     {
-        return match ($categorie) {
-            'conteneurs', 'Conteneur' => $this->conteneursService,
-            'conventionnel', 'Lot' => $this->conventionnelService,
-            'operations_independantes', 'Independant' => $this->independantService,
+        return match (DocumentCategory::normalize($categorie)) {
+            DocumentCategory::CONTENEURS => $this->conteneursService,
+            DocumentCategory::CONVENTIONNEL => $this->conventionnelService,
+            DocumentCategory::INDEPENDANT => $this->independantService,
             default => $this->conteneursService,
         };
     }
@@ -49,23 +50,16 @@ class OrdreServiceFactory
      */
     public function normaliserDonnees(array $data): array
     {
-        // type_document (API) -> categorie (DB)
-        if (!isset($data['categorie']) && isset($data['type_document'])) {
-            $data['categorie'] = match ($data['type_document']) {
-                'Conteneur' => 'conteneurs',
-                'Lot' => 'conventionnel',
-                'Independant' => 'operations_independantes',
-                default => 'conteneurs',
-            };
-        }
+        $data['categorie'] = DocumentCategory::normalize(
+            $data['categorie'] ?? null,
+            $data['type_document'] ?? null,
+        );
 
-        // bl_numero (API) -> numero_bl (DB)
         if (isset($data['bl_numero']) && !isset($data['numero_bl'])) {
             $data['numero_bl'] = $data['bl_numero'];
         }
         unset($data['bl_numero'], $data['type_document']);
 
-        // Date par défaut (API peut envoyer "date" ou "date_creation")
         $dateCreation = $data['date_creation'] ?? null;
         $date = $data['date'] ?? null;
 
@@ -79,8 +73,6 @@ class OrdreServiceFactory
 
         unset($data['date']);
 
-        // Fallback: si armateur_id n'est pas envoyé au niveau ordre,
-        // le déduire du premier conteneur (si présent)
         if (empty($data['armateur_id']) && !empty($data['conteneurs']) && is_array($data['conteneurs'])) {
             foreach ($data['conteneurs'] as $conteneur) {
                 if (!empty($conteneur['armateur_id'])) {
@@ -100,7 +92,8 @@ class OrdreServiceFactory
     {
         return DB::transaction(function () use ($data) {
             $data = $this->normaliserDonnees($data);
-            $categorie = $data['categorie'] ?? 'conteneurs';
+            $categorie = DocumentCategory::normalize($data['categorie'] ?? null);
+            $data['categorie'] = $categorie;
 
             // Générer le numéro
             $data['numero'] = $this->genererNumero();
@@ -200,7 +193,8 @@ class OrdreServiceFactory
     public function modifier(OrdreTravail $ordre, array $data): OrdreTravail
     {
         return DB::transaction(function () use ($ordre, $data) {
-            $categorie = $ordre->categorie;
+            $categorie = DocumentCategory::normalize($data['categorie'] ?? $ordre->categorie);
+            $data['categorie'] = $categorie;
             $service = $this->getService($categorie);
 
             // Sauvegarder l'état avant modification pour recalcul des taxes

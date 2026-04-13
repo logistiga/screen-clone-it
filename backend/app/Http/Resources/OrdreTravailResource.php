@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Support\DocumentCategory;
 
 class OrdreTravailResource extends JsonResource
 {
@@ -14,13 +15,8 @@ class OrdreTravailResource extends JsonResource
             'numero' => $this->numero,
             'date' => $this->date_creation?->toDateString(),
             'date_creation' => $this->date_creation?->toDateString(),
-            'type_document' => match ($this->categorie) {
-                'conteneurs' => 'Conteneur',
-                'conventionnel' => 'Lot',
-                'operations_independantes' => 'Independant',
-                default => $this->categorie,
-            },
-            'categorie' => $this->categorie,
+            'type_document' => DocumentCategory::toTypeDocument($this->categorie),
+            'categorie' => DocumentCategory::normalize($this->categorie),
             'type_operation' => $this->type_operation,
             'type_operation_indep' => $this->type_operation_indep,
             'statut' => $this->statut,

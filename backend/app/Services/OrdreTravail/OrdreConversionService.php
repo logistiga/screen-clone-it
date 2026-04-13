@@ -4,6 +4,7 @@ namespace App\Services\OrdreTravail;
 
 use App\Models\OrdreTravail;
 use App\Services\Facture\FactureServiceFactory;
+use App\Support\DocumentCategory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -28,10 +29,10 @@ class OrdreConversionService
 
     public function getService(string $categorie): OrdreConteneursService|OrdreConventionnelService|OrdreIndependantService
     {
-        return match ($categorie) {
-            'conteneurs', 'Conteneur' => $this->conteneursService,
-            'conventionnel', 'Lot' => $this->conventionnelService,
-            'operations_independantes', 'Independant' => $this->independantService,
+        return match (DocumentCategory::normalize($categorie)) {
+            DocumentCategory::CONTENEURS => $this->conteneursService,
+            DocumentCategory::CONVENTIONNEL => $this->conventionnelService,
+            DocumentCategory::INDEPENDANT => $this->independantService,
             default => $this->conteneursService,
         };
     }
@@ -39,7 +40,7 @@ class OrdreConversionService
     public function convertirEnFacture(OrdreTravail $ordre): \App\Models\Facture
     {
         return DB::transaction(function () use ($ordre) {
-            $categorie = $ordre->categorie;
+            $categorie = DocumentCategory::normalize($ordre->categorie);
             $service = $this->getService($categorie);
             $factureFactory = app(FactureServiceFactory::class);
 
@@ -75,7 +76,7 @@ class OrdreConversionService
     {
         $facture = $ordre->facture;
         $factureFactory = app(FactureServiceFactory::class);
-        $categorie = $ordre->categorie;
+        $categorie = DocumentCategory::normalize($ordre->categorie);
 
         $factureData = [
             'client_id' => $ordre->client_id,
@@ -89,11 +90,11 @@ class OrdreConversionService
             'notes' => $ordre->notes,
         ];
 
-        if ($categorie === 'conteneurs' && isset($data['conteneurs'])) {
+        if (DocumentCategory::isConteneurs($categorie) && isset($data['conteneurs'])) {
             $factureData['conteneurs'] = $data['conteneurs'];
-        } elseif ($categorie === 'conventionnel' && isset($data['lots'])) {
+        } elseif (DocumentCategory::isConventionnel($categorie) && isset($data['lots'])) {
             $factureData['lots'] = $data['lots'];
-        } elseif ($categorie === 'operations_independantes' && isset($data['lignes'])) {
+        } elseif (DocumentCategory::isIndependant($categorie) && isset($data['lignes'])) {
             $factureData['lignes'] = $data['lignes'];
         } else {
             $service = $this->getService($categorie);

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Support\DocumentCategory;
 
 class FactureResource extends JsonResource
 {
@@ -31,13 +32,8 @@ class FactureResource extends JsonResource
             'date_facture' => $this->date_creation?->toDateString(),
             'date_creation' => $this->date_creation?->toDateString(),
             'date_echeance' => $this->date_echeance?->toDateString(),
-            'type_document' => match ($this->categorie) {
-                'conteneurs' => 'Conteneur',
-                'conventionnel' => 'Lot',
-                'operations_independantes' => 'Independant',
-                default => $this->categorie,
-            },
-            'categorie' => $this->categorie,
+            'type_document' => DocumentCategory::toTypeDocument($this->categorie),
+            'categorie' => DocumentCategory::normalize($this->categorie),
             'type_operation' => $this->type_operation,
             'type_operation_indep' => $this->type_operation_indep,
             'statut' => $this->statut,

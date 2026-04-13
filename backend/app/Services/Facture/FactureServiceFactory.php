@@ -6,6 +6,7 @@ use App\Models\Facture;
 use App\Models\Client;
 use App\Models\Configuration;
 use App\Models\Prime;
+use App\Support\DocumentCategory;
 use App\Traits\CalculeTaxesTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -36,10 +37,10 @@ class FactureServiceFactory
      */
     public function getService(string $categorie): FactureConteneursService|FactureConventionnelService|FactureIndependantService
     {
-        return match ($categorie) {
-            'conteneurs', 'Conteneur' => $this->conteneursService,
-            'conventionnel', 'Lot' => $this->conventionnelService,
-            'operations_independantes', 'Independant' => $this->independantService,
+        return match (DocumentCategory::normalize($categorie)) {
+            DocumentCategory::CONTENEURS => $this->conteneursService,
+            DocumentCategory::CONVENTIONNEL => $this->conventionnelService,
+            DocumentCategory::INDEPENDANT => $this->independantService,
             default => $this->conteneursService,
         };
     }
@@ -49,23 +50,16 @@ class FactureServiceFactory
      */
     public function normaliserDonnees(array $data): array
     {
-        // type_document (API) -> categorie (DB)
-        if (!isset($data['categorie']) && isset($data['type_document'])) {
-            $data['categorie'] = match ($data['type_document']) {
-                'Conteneur' => 'conteneurs',
-                'Lot' => 'conventionnel',
-                'Independant' => 'operations_independantes',
-                default => 'conteneurs',
-            };
-        }
+        $data['categorie'] = DocumentCategory::normalize(
+            $data['categorie'] ?? null,
+            $data['type_document'] ?? null,
+        );
 
-        // bl_numero (API) -> numero_bl (DB)
         if (isset($data['bl_numero']) && !isset($data['numero_bl'])) {
             $data['numero_bl'] = $data['bl_numero'];
         }
         unset($data['bl_numero'], $data['type_document']);
 
-        // Dates (DB: date_creation, date_echeance)
         $dateCreation = $data['date_creation']
             ?? $data['date_facture']
             ?? $data['date']
@@ -73,11 +67,10 @@ class FactureServiceFactory
 
         $data['date_creation'] = !empty($dateCreation) ? $dateCreation : now()->toDateString();
 
-        // Nettoyer les alias API
         unset($data['date'], $data['date_facture']);
 
         if (!isset($data['date_echeance'])) {
-            $echeanceJours = 30; // Par défaut 30 jours
+            $echeanceJours = 30;
             $data['date_echeance'] = \Carbon\Carbon::parse($data['date_creation'])->addDays($echeanceJours)->toDateString();
         }
 
@@ -91,7 +84,8 @@ class FactureServiceFactory
     {
         return DB::transaction(function () use ($data) {
             $data = $this->normaliserDonnees($data);
-            $categorie = $data['categorie'] ?? 'conteneurs';
+            $categorie = DocumentCategory::normalize($data['categorie'] ?? null);
+            $data['categorie'] = $categorie;
 
             // Générer le numéro
             $data['numero'] = $this->genererNumero();
@@ -198,7 +192,8 @@ class FactureServiceFactory
     {
         return DB::transaction(function () use ($facture, $data) {
             $ancienClientId = $facture->client_id;
-            $categorie = $facture->categorie;
+            $categorie = DocumentCategory::normalize($data['categorie'] ?? $facture->categorie);
+            $data['categorie'] = $categorie;
             $service = $this->getService($categorie);
 
             // Sauvegarder l'état avant modification pour recalcul des taxes

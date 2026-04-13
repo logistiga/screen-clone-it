@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Support\DocumentCategory;
 
 class Facture extends Model
 {
@@ -170,17 +171,19 @@ class Facture extends Model
     {
         $tauxTva = config('logistiga.taux_tva', 18) / 100;
         $tauxCss = config('logistiga.taux_css', 1) / 100;
+        $categorie = DocumentCategory::normalize($this->categorie);
 
-        if ($this->categorie === 'conteneurs') {
+        if (DocumentCategory::isConteneurs($categorie)) {
             $this->montant_ht = $this->conteneurs->sum(function ($c) {
                 return $c->prix_unitaire + $c->operations->sum('prix_total');
             });
-        } elseif ($this->categorie === 'conventionnel') {
+        } elseif (DocumentCategory::isConventionnel($categorie)) {
             $this->montant_ht = $this->lots->sum('prix_total');
         } else {
             $this->montant_ht = $this->lignes->sum('montant_ht');
         }
 
+        $this->categorie = $categorie;
         $this->tva = $this->montant_ht * $tauxTva;
         $this->css = $this->montant_ht * $tauxCss;
         $this->montant_ttc = $this->montant_ht + $this->tva + $this->css;
