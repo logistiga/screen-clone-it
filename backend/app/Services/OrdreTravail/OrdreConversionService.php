@@ -121,16 +121,37 @@ class OrdreConversionService
         $factureFactory = app(FactureServiceFactory::class);
         $categorie = DocumentCategory::normalize($ordre->categorie);
 
+        $taxesSelection = $ordre->taxes_selection;
+        if (empty($taxesSelection) || !is_array($taxesSelection) || !isset($taxesSelection['selected_tax_codes'])) {
+            $taxesSelection = [
+                'selected_tax_codes' => ['TVA', 'CSS'],
+                'has_exoneration' => (bool) ($ordre->exonere_tva || $ordre->exonere_css),
+                'exonerated_tax_codes' => array_filter([
+                    $ordre->exonere_tva ? 'TVA' : null,
+                    $ordre->exonere_css ? 'CSS' : null,
+                ]),
+                'motif_exoneration' => $ordre->motif_exoneration ?? '',
+            ];
+        }
+
         $factureData = [
             'client_id' => $ordre->client_id,
             'armateur_id' => $ordre->armateur_id,
             'transitaire_id' => $ordre->transitaire_id,
             'representant_id' => $ordre->representant_id,
+            'categorie' => $categorie,
             'type_operation' => $ordre->type_operation,
             'type_operation_indep' => $ordre->type_operation_indep,
             'numero_bl' => $ordre->numero_bl,
             'navire' => $ordre->navire,
             'notes' => $ordre->notes,
+            'remise_type' => $ordre->remise_type,
+            'remise_valeur' => $ordre->remise_valeur ?? 0,
+            'remise_montant' => $ordre->remise_montant ?? 0,
+            'taxes_selection' => $taxesSelection,
+            'exonere_tva' => $ordre->exonere_tva ?? false,
+            'exonere_css' => $ordre->exonere_css ?? false,
+            'motif_exoneration' => $ordre->motif_exoneration,
         ];
 
         if (DocumentCategory::isConteneurs($categorie) && isset($data['conteneurs'])) {
