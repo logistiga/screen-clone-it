@@ -164,6 +164,10 @@ class DevisConversionController extends Controller
                     'statut' => 'emise',
                     'remise_type' => $devis->remise_type,
                     'remise_valeur' => $devis->remise_valeur,
+                    'taxes_selection' => $devis->taxes_selection,
+                    'exonere_tva' => $devis->exonere_tva ?? false,
+                    'exonere_css' => $devis->exonere_css ?? false,
+                    'motif_exoneration' => $devis->motif_exoneration,
                 ];
 
                 if ($categorieNormalisee === 'conteneurs') {
