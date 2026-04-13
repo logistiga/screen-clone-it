@@ -32,6 +32,20 @@ class DevisConversionController extends Controller
 
                 $categorieNormalisee = DocumentCategory::normalize($devis->categorie);
 
+                // Construire taxes_selection avec fallback robuste
+                $taxesSelection = $devis->taxes_selection;
+                if (empty($taxesSelection) || !is_array($taxesSelection) || !isset($taxesSelection['selected_tax_codes'])) {
+                    $taxesSelection = [
+                        'selected_tax_codes' => ['TVA', 'CSS'],
+                        'has_exoneration' => (bool) ($devis->exonere_tva || $devis->exonere_css),
+                        'exonerated_tax_codes' => array_filter([
+                            $devis->exonere_tva ? 'TVA' : null,
+                            $devis->exonere_css ? 'CSS' : null,
+                        ]),
+                        'motif_exoneration' => $devis->motif_exoneration ?? '',
+                    ];
+                }
+
                 $ordre = OrdreTravail::create([
                     'numero' => OrdreTravail::genererNumero(),
                     'devis_id' => $devis->id,
@@ -52,6 +66,13 @@ class DevisConversionController extends Controller
                     'montant_paye' => 0,
                     'statut' => 'en_cours',
                     'notes' => $devis->notes,
+                    'remise_type' => $devis->remise_type,
+                    'remise_valeur' => $devis->remise_valeur,
+                    'remise_montant' => $devis->remise_montant,
+                    'taxes_selection' => $taxesSelection,
+                    'exonere_tva' => $devis->exonere_tva ?? false,
+                    'exonere_css' => $devis->exonere_css ?? false,
+                    'motif_exoneration' => $devis->motif_exoneration,
                 ]);
 
                 foreach ($devis->lignes as $ligne) {
