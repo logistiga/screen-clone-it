@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, FileText, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -352,6 +353,7 @@ export default function NouveauDevisPage() {
   };
 
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
+  const isMobile = useIsMobile();
   const loadError = clientsError || armateursError || transitairesError || representantsError;
 
   if (loadError) {
