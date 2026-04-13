@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Receipt, Save, Loader2, Users, Calendar, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Receipt, Save, Loader2, Users, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
