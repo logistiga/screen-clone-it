@@ -445,7 +445,7 @@ export default function NouveauDevisPage() {
             {/* Étape 1: Catégorie */}
             {(isMobile ? currentStep === 1 : true) && (
               <div className="animate-fade-in">
-                <CategorieSelector onSelect={handleCategorieChange} selected={categorie || undefined} />
+                <CategorieSelector onSelect={handleCategorieChange} />
               </div>
             )}
 
