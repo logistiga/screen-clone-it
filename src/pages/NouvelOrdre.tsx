@@ -869,17 +869,20 @@ export default function NouvelOrdrePage() {
 
             {/* Navigation buttons */}
             <div className="flex justify-between pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handlePrevStep}
-                disabled={currentStep === 1}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Précédent
-              </Button>
+              {isMobile && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handlePrevStep}
+                  disabled={currentStep === 1}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Précédent
+                </Button>
+              )}
+              {!isMobile && <div />}
 
-              {currentStep < 4 ? (
+              {isMobile && currentStep < 4 ? (
                 <Button 
                   type="button" 
                   onClick={handleNextStep}
