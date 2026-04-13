@@ -9,8 +9,9 @@ import {
   Download, Smartphone, Monitor, CheckCircle2, Info, 
   Users, FileText, ClipboardList, Receipt, Wallet, 
   BarChart3, Settings, Shield, HelpCircle, BookOpen,
-  ArrowRight, Sparkles
+  ArrowRight, Sparkles, RefreshCw
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
