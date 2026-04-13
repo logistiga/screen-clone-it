@@ -128,6 +128,17 @@ class DevisConversionController extends Controller
 
                 $factureFactory = app(FactureServiceFactory::class);
 
+                // Normaliser la catégorie du devis vers le format interne facture
+                $categorieMap = [
+                    'Conteneur' => 'conteneurs',
+                    'conteneurs' => 'conteneurs',
+                    'Lot' => 'conventionnel',
+                    'conventionnel' => 'conventionnel',
+                    'Independant' => 'operations_independantes',
+                    'operations_independantes' => 'operations_independantes',
+                ];
+                $categorieNormalisee = $categorieMap[$devis->categorie] ?? $devis->categorie;
+
                 $factureData = [
                     'client_id' => $devis->client_id,
                     'devis_id' => $devis->id,
@@ -135,7 +146,7 @@ class DevisConversionController extends Controller
                     'armateur_id' => $devis->armateur_id,
                     'transitaire_id' => $devis->transitaire_id,
                     'representant_id' => $devis->representant_id,
-                    'categorie' => $devis->categorie,
+                    'categorie' => $categorieNormalisee,
                     'type_operation' => $devis->type_operation,
                     'type_operation_indep' => $devis->type_operation_indep,
                     'numero_bl' => $devis->numero_bl,
@@ -146,7 +157,7 @@ class DevisConversionController extends Controller
                     'remise_valeur' => $devis->remise_valeur,
                 ];
 
-                if ($devis->categorie === 'conteneurs') {
+                if ($categorieNormalisee === 'conteneurs') {
                     $factureData['conteneurs'] = $devis->conteneurs->map(function ($c) {
                         return [
                             'numero' => $c->numero,
@@ -164,7 +175,7 @@ class DevisConversionController extends Controller
                             })->toArray(),
                         ];
                     })->toArray();
-                } elseif ($devis->categorie === 'conventionnel') {
+                } elseif ($categorieNormalisee === 'conventionnel') {
                     $factureData['lots'] = $devis->lots->map(function ($l) {
                         return [
                             'numero_lot' => $l->numero_lot,
@@ -176,7 +187,7 @@ class DevisConversionController extends Controller
                             'prix_total' => $l->prix_total,
                         ];
                     })->toArray();
-                } elseif ($devis->categorie === 'operations_independantes') {
+                } elseif ($categorieNormalisee === 'operations_independantes') {
                     $factureData['lignes'] = $devis->lignes->map(function ($l) {
                         return [
                             'description' => $l->description,
