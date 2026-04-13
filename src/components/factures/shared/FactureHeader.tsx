@@ -20,7 +20,6 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { formatDate, getStatutLabel } from "@/data/mockData";
-import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { openWhatsAppShare } from "@/lib/whatsapp";
 import {
   AlertDialog,
@@ -97,7 +96,6 @@ export function FactureHeader({
   onDeleteClick,
 }: FactureHeaderProps) {
   const navigate = useNavigate();
-  const { downloadPdf } = usePdfDownload({ filename: `facture-${facture.numero}.pdf` });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const client = facture.client;
@@ -174,7 +172,7 @@ L'équipe LOGISTIGA`;
                 variant="outline"
                 size="sm"
                 className="gap-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
-                onClick={downloadPdf}
+                onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}
               >
                 <Download className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">PDF</span>
