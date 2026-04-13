@@ -40,6 +40,9 @@ class OrdreConversionService
     public function convertirEnFacture(OrdreTravail $ordre): \App\Models\Facture
     {
         return DB::transaction(function () use ($ordre) {
+            // IMPORTANT: Charger les relations AVANT la conversion
+            $ordre->load(['conteneurs.operations', 'lots', 'lignes']);
+
             $categorie = DocumentCategory::normalize($ordre->categorie);
             $service = $this->getService($categorie);
             $factureFactory = app(FactureServiceFactory::class);
@@ -58,14 +61,36 @@ class OrdreConversionService
                 'navire' => $ordre->navire,
                 'notes' => $ordre->notes,
                 'statut' => 'brouillon',
+                'remise_type' => $ordre->remise_type ?? null,
+                'remise_valeur' => $ordre->remise_valeur ?? 0,
+                'taxes_selection' => $ordre->taxes_selection,
             ];
 
-            $factureData = array_merge($factureData, $service->preparerPourConversion($ordre));
+            $conversionData = $service->preparerPourConversion($ordre);
+            $factureData = array_merge($factureData, $conversionData);
+
+            Log::info('DEBUG conversion ordre->facture', [
+                'ordre_id' => $ordre->id,
+                'ordre_numero' => $ordre->numero,
+                'categorie' => $categorie,
+                'nb_conteneurs' => $ordre->conteneurs->count(),
+                'nb_lots' => $ordre->lots->count(),
+                'nb_lignes' => $ordre->lignes->count(),
+                'conversion_keys' => array_keys($conversionData),
+                'conteneurs_count_in_data' => count($factureData['conteneurs'] ?? []),
+                'lots_count_in_data' => count($factureData['lots'] ?? []),
+                'lignes_count_in_data' => count($factureData['lignes'] ?? []),
+            ]);
+
             $facture = $factureFactory->creer($factureData);
             $ordre->update(['statut' => 'facture']);
 
-            Log::info('Ordre converti en facture', [
-                'ordre_id' => $ordre->id, 'facture_id' => $facture->id, 'categorie' => $categorie,
+            Log::info('Ordre converti en facture OK', [
+                'ordre_id' => $ordre->id,
+                'facture_id' => $facture->id,
+                'facture_numero' => $facture->numero,
+                'montant_ht' => $facture->montant_ht,
+                'montant_ttc' => $facture->montant_ttc,
             ]);
 
             return $facture;
