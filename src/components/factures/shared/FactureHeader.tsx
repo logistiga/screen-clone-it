@@ -97,7 +97,6 @@ export function FactureHeader({
   onDeleteClick,
 }: FactureHeaderProps) {
   const navigate = useNavigate();
-  const { downloadPdf } = usePdfDownload({ filename: `facture-${facture.numero}.pdf` });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const client = facture.client;
