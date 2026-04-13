@@ -23,7 +23,7 @@ import {
   OrdreIndependantData,
 } from "@/components/ordres/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
-import { OrdreStepper, OrdrePreview } from "@/components/ordres/shared";
+import { OrdreStepper } from "@/components/ordres/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";

@@ -18,7 +18,6 @@ import {
   ClientInfoCard,
   RecapitulatifCard,
   DevisStepper,
-  DevisPreview,
   AutoSaveIndicator,
 } from "@/components/devis/shared";
 import {

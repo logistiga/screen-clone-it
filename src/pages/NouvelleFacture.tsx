@@ -24,7 +24,7 @@ import {
   FactureIndependantData,
 } from "@/components/factures/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
-import { FactureStepper, FacturePreview } from "@/components/factures/shared";
+import { FactureStepper } from "@/components/factures/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateFacture } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { extractApiErrorInfo } from "@/lib/api-error";
