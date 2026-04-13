@@ -118,7 +118,7 @@ export function FacturesTable({
                       <Button variant="ghost" size="icon" title="Email" className="text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => onEmail(facture)}><Mail className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Voir PDF" onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')} className="transition-all duration-200 hover:scale-110 hover:bg-muted"><Eye className="h-4 w-4 text-indigo-600" /></Button>
                       <Button variant="ghost" size="icon" title="Télécharger PDF" className="transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
-                        onClick={() => { const link = document.createElement('a'); link.href = `/factures/${facture.id}/pdf`; link.setAttribute('download', `${facture.numero}.pdf`); link.target = '_blank'; document.body.appendChild(link); link.click(); document.body.removeChild(link); }}>
+                        onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}>
                         <Download className="h-4 w-4 text-emerald-600" />
                       </Button>
                       {facture.statut !== 'annulee' && (
