@@ -30,7 +30,7 @@ const statutConfig: Record<string, { className: string; label: string; bgClass: 
 export function DevisHeader({ devis, onConvert, isConverting, onWhatsApp, onEmail }: DevisHeaderProps) {
   const navigate = useNavigate();
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
-  const { downloadPdf } = usePdfDownload({ filename: `devis-${devis.numero}.pdf` });
+  
 
   // Avatar du client
   const clientInitials = devis.client?.nom
