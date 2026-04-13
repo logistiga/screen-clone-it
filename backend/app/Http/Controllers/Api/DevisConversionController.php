@@ -29,12 +29,20 @@ class DevisConversionController extends Controller
             $ordre = DB::transaction(function () use ($devis) {
                 $devis->load(['lignes', 'conteneurs.operations', 'lots']);
 
+                // Normaliser la catégorie
+                $categorieMap = [
+                    'Conteneur' => 'conteneurs',
+                    'Lot' => 'conventionnel',
+                    'Independant' => 'operations_independantes',
+                ];
+                $categorieNormalisee = $categorieMap[$devis->categorie] ?? $devis->categorie;
+
                 $ordre = OrdreTravail::create([
                     'numero' => OrdreTravail::genererNumero(),
                     'devis_id' => $devis->id,
                     'client_id' => $devis->client_id,
                     'date_creation' => now()->toDateString(),
-                    'categorie' => $devis->categorie,
+                    'categorie' => $categorieNormalisee,
                     'type_operation' => $devis->type_operation,
                     'type_operation_indep' => $devis->type_operation_indep,
                     'armateur_id' => $devis->armateur_id,
