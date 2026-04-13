@@ -37,6 +37,16 @@ final class DocumentCategory
         };
     }
 
+    public static function equivalentValues(?string $categorie): array
+    {
+        return match (self::normalize($categorie)) {
+            self::CONTENEURS => ['conteneurs', 'Conteneur', 'conteneur'],
+            self::CONVENTIONNEL => ['conventionnel', 'Conventionnel', 'Lot', 'lot', 'lots'],
+            self::INDEPENDANT => ['operations_independantes', 'Independant', 'independant', 'divers', 'DIVERS'],
+            default => [trim((string) $categorie)],
+        };
+    }
+
     public static function isConteneurs(?string $categorie): bool
     {
         return self::normalize($categorie) === self::CONTENEURS;
