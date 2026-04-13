@@ -1,3 +1,4 @@
+import * as React from "react";
 import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -5,24 +6,27 @@ interface CategorieSelectorProps {
   onSelect: (categorie: CategorieDocument) => void;
 }
 
-export default function CategorieSelector({ onSelect }: CategorieSelectorProps) {
+const CategorieSelector = React.forwardRef<HTMLDivElement, CategorieSelectorProps>(function CategorieSelector(
+  { onSelect },
+  ref,
+) {
   const categoriesLabels = getCategoriesLabels();
 
   return (
-    <Card>
+    <Card ref={ref}>
       <CardHeader>
         <CardTitle className="text-lg">Catégorie de devis</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => onSelect(key)}
-              className="p-4 rounded-lg border-2 text-left transition-all border-border hover:border-primary/50 hover:bg-muted/50"
+              className="rounded-lg border-2 border-border p-4 text-left transition-all hover:border-primary/50 hover:bg-muted/50"
             >
-              <div className="flex items-center gap-3 mb-2">
+              <div className="mb-2 flex items-center gap-3">
                 <div className="text-muted-foreground">{categoriesLabels[key].icon}</div>
                 <span className="font-semibold">{categoriesLabels[key].label}</span>
               </div>
@@ -33,4 +37,8 @@ export default function CategorieSelector({ onSelect }: CategorieSelectorProps) 
       </CardContent>
     </Card>
   );
-}
+});
+
+CategorieSelector.displayName = "CategorieSelector";
+
+export default CategorieSelector;
