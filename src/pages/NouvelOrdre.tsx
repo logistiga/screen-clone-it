@@ -688,13 +688,15 @@ export default function NouvelOrdrePage() {
         />
       )}
 
-      {/* Stepper */}
-      <OrdreStepper 
-        currentStep={currentStep} 
-        categorie={categorie || undefined}
-        onStepClick={handleStepClick}
-        stepsValidation={stepsValidation}
-      />
+      {/* Stepper - mobile only */}
+      {isMobile && (
+        <OrdreStepper 
+          currentStep={currentStep} 
+          categorie={categorie || undefined}
+          onStepClick={handleStepClick}
+          stepsValidation={stepsValidation}
+        />
+      )}
 
       <div 
         onKeyDown={(e) => {
