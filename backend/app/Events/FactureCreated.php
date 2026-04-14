@@ -5,11 +5,11 @@ namespace App\Events;
 use App\Models\Facture;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class FactureCreated implements ShouldBroadcast
+// Désactivé ShouldBroadcast temporairement pour éviter erreur UTF-8 Pusher
+class FactureCreated
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
