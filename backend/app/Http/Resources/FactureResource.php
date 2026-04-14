@@ -89,17 +89,17 @@ class FactureResource extends JsonResource
             'updated_at' => $this->updated_at?->toISOString(),
             
             // Créateur
-            'created_by' => $this->whenLoaded('createdBy', fn() => [
+            'created_by' => $this->whenLoaded('createdBy', fn() => $this->createdBy ? [
                 'id' => $this->createdBy->id,
                 'name' => $this->createdBy->name,
-            ]),
+            ] : null),
             
             // Relations
-            'client' => new ClientResource($this->whenLoaded('client')),
-            'armateur' => new ArmateurResource($this->whenLoaded('armateur')),
-            'transitaire' => new TransitaireResource($this->whenLoaded('transitaire')),
-            'representant' => new RepresentantResource($this->whenLoaded('representant')),
-            'ordre_travail' => new OrdreTravailResource($this->whenLoaded('ordreTravail')),
+            'client' => $this->whenLoaded('client', fn() => $this->client ? new ClientResource($this->client) : null),
+            'armateur' => $this->whenLoaded('armateur', fn() => $this->armateur ? new ArmateurResource($this->armateur) : null),
+            'transitaire' => $this->whenLoaded('transitaire', fn() => $this->transitaire ? new TransitaireResource($this->transitaire) : null),
+            'representant' => $this->whenLoaded('representant', fn() => $this->representant ? new RepresentantResource($this->representant) : null),
+            'ordre_travail' => $this->whenLoaded('ordreTravail', fn() => $this->ordreTravail ? new OrdreTravailResource($this->ordreTravail) : null),
             'lignes' => LigneFactureResource::collection($this->whenLoaded('lignes')),
             'conteneurs' => ConteneurFactureResource::collection($this->whenLoaded('conteneurs')),
             'lots' => LotFactureResource::collection($this->whenLoaded('lots')),
