@@ -111,13 +111,6 @@ class FactureController extends Controller
             // Recharger avec relations pour la réponse
             $facture->load(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements']);
 
-            // Broadcaster l'event facture (non-bloquant)
-            try {
-                event(new \App\Events\FactureCreated($facture));
-            } catch (\Throwable $e) {
-                \Log::warning('Event FactureCreated broadcast failed: ' . $e->getMessage());
-            }
-
             // Construire la réponse manuellement pour gérer l'encodage
             $resourceArray = (new FactureResource($facture))->toArray(request());
             $json = json_encode(['data' => $resourceArray], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
