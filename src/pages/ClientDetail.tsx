@@ -379,7 +379,7 @@ export default function ClientDetailPage() {
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate(`/factures/${facture.id}/pdf`)}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}>
                                     <Download className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -446,7 +446,7 @@ export default function ClientDetailPage() {
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')}>
                                     <Download className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -507,7 +507,7 @@ export default function ClientDetailPage() {
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate(`/devis/${d.id}/pdf`)}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}>
                                     <Download className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>

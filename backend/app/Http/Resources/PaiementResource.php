@@ -41,10 +41,10 @@ class PaiementResource extends JsonResource
             'banque_id' => $this->banque_id,
             
             // Relations
-            'facture' => new FactureResource($this->whenLoaded('facture')),
-            'ordre' => new OrdreTravailResource($this->whenLoaded('ordre')),
-            'client' => new ClientResource($this->whenLoaded('client')),
-            'banque' => new BanqueResource($this->whenLoaded('banque')),
+            'facture' => $this->whenLoaded('facture', fn() => $this->facture ? new FactureResource($this->facture) : null),
+            'ordre' => $this->whenLoaded('ordre', fn() => $this->ordre ? new OrdreTravailResource($this->ordre) : null),
+            'client' => $this->whenLoaded('client', fn() => $this->client ? new ClientResource($this->client) : null),
+            'banque' => $this->whenLoaded('banque', fn() => $this->banque ? new BanqueResource($this->banque) : null),
         ];
     }
 }

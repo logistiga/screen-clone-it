@@ -31,10 +31,10 @@ class PrimeResource extends JsonResource
             'reste_a_payer' => round(max(0, $resteAPayer), 2),
             
             // Relations
-            'ordre' => new OrdreTravailResource($this->whenLoaded('ordre')),
-            'representant' => new RepresentantResource($this->whenLoaded('representant')),
-            'transitaire' => new TransitaireResource($this->whenLoaded('transitaire')),
-            'facture' => new FactureResource($this->whenLoaded('facture')),
+            'ordre' => $this->whenLoaded('ordre', fn() => $this->ordre ? new OrdreTravailResource($this->ordre) : null),
+            'representant' => $this->whenLoaded('representant', fn() => $this->representant ? new RepresentantResource($this->representant) : null),
+            'transitaire' => $this->whenLoaded('transitaire', fn() => $this->transitaire ? new TransitaireResource($this->transitaire) : null),
+            'facture' => $this->whenLoaded('facture', fn() => $this->facture ? new FactureResource($this->facture) : null),
             'paiements' => PaiementPrimeResource::collection($this->whenLoaded('paiements')),
         ];
     }

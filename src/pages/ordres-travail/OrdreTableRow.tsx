@@ -117,7 +117,7 @@ export function OrdreTableRow({
               <RotateCcw className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => navigate(`/ordres/${ordre.id}/pdf`)} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+          <Button variant="ghost" size="icon" title="Télécharger PDF" onClick={() => window.open(`/ordres/${ordre.id}/pdf`, '_blank')} className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10">
             <Download className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" title="Email" className="text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => onEmail(ordre)}>
