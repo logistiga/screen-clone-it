@@ -111,21 +111,14 @@ class FactureController extends Controller
             // Recharger avec relations pour la réponse
             $facture->load(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements']);
 
-            // Construire la réponse manuellement pour gérer l'encodage
-            $resourceArray = (new FactureResource($facture))->toArray(request());
-            $json = json_encode(['data' => $resourceArray], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
-            
-            if ($json === false) {
-                // Fallback: nettoyer récursivement les chaînes
-                $resourceArray = self::sanitizeUtf8($resourceArray);
-                $json = json_encode(['data' => $resourceArray], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-            }
-
-            return response($json, 201)
-                ->header('Content-Type', 'application/json; charset=UTF-8');
+            return $this->jsonUtf8Response([
+                'data' => self::sanitizeUtf8(
+                    (new FactureResource($facture))->toArray($request)
+                ),
+            ], 201);
 
         } catch (\Throwable $e) {
-            return response()->json([
+            return $this->jsonUtf8Response([
                 'message' => 'Erreur lors de la création',
                 'error' => mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8'),
             ], 500);
@@ -291,5 +284,18 @@ class FactureController extends Controller
             return array_map([self::class, 'sanitizeUtf8'], $data);
         }
         return $data;
+    }
+
+    /**
+     * Retourne une réponse JSON résiliente aux chaînes mal encodées.
+     */
+    protected function jsonUtf8Response(array $payload, int $status = 200): JsonResponse
+    {
+        return response()->json(
+            self::sanitizeUtf8($payload),
+            $status,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR
+        );
     }
 }

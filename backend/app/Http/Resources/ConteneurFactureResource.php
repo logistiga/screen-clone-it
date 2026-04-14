@@ -19,7 +19,7 @@ class ConteneurFactureResource extends JsonResource
             'taille' => $this->taille,
             'description' => $this->description,
             'prix_unitaire' => round($prixUnitaire, 2),
-            'armateur' => new ArmateurResource($this->whenLoaded('armateur')),
+            'armateur' => $this->whenLoaded('armateur', fn() => $this->armateur ? new ArmateurResource($this->armateur) : null),
             'operations' => OperationConteneurFactureResource::collection($this->whenLoaded('operations')),
 
             // Total HT du conteneur = prix conteneur + total opérations

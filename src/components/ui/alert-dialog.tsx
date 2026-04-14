@@ -4,12 +4,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-// Wrapper forwardRef pour éviter le warning "Function components cannot be given refs"
-const AlertDialog = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Root>
->((props, _ref) => <AlertDialogPrimitive.Root {...props} />);
-AlertDialog.displayName = "AlertDialog";
+const AlertDialog = AlertDialogPrimitive.Root;
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 

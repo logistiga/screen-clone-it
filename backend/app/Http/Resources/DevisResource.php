@@ -78,10 +78,10 @@ class DevisResource extends JsonResource
             'updated_at' => $this->updated_at?->toISOString(),
 
             // Relations
-            'client' => new ClientResource($this->whenLoaded('client')),
-            'armateur' => new ArmateurResource($this->whenLoaded('armateur')),
-            'transitaire' => new TransitaireResource($this->whenLoaded('transitaire')),
-            'representant' => new RepresentantResource($this->whenLoaded('representant')),
+            'client' => $this->whenLoaded('client', fn() => $this->client ? new ClientResource($this->client) : null),
+            'armateur' => $this->whenLoaded('armateur', fn() => $this->armateur ? new ArmateurResource($this->armateur) : null),
+            'transitaire' => $this->whenLoaded('transitaire', fn() => $this->transitaire ? new TransitaireResource($this->transitaire) : null),
+            'representant' => $this->whenLoaded('representant', fn() => $this->representant ? new RepresentantResource($this->representant) : null),
             'lignes' => LigneDevisResource::collection($this->whenLoaded('lignes')),
             'conteneurs' => ConteneurDevisResource::collection($this->whenLoaded('conteneurs')),
             'lots' => LotDevisResource::collection($this->whenLoaded('lots')),
