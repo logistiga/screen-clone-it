@@ -285,4 +285,18 @@ class FactureController extends Controller
             ]);
         }
     }
+
+    /**
+     * Nettoie récursivement les chaînes UTF-8 malformées
+     */
+    protected static function sanitizeUtf8($data)
+    {
+        if (is_string($data)) {
+            return mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+        }
+        if (is_array($data)) {
+            return array_map([self::class, 'sanitizeUtf8'], $data);
+        }
+        return $data;
+    }
 }
