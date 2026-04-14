@@ -93,7 +93,12 @@ class FactureController extends Controller
         $factures = $query->orderBy($sort['column'], $sort['direction'])
             ->paginate($pagination['per_page']);
 
-        return response()->json(FactureResource::collection($factures)->response()->getData(true));
+        return response()->json(
+            FactureResource::collection($factures)->response()->getData(true),
+            200,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
     }
 
     public function store(StoreFactureRequest $request): JsonResponse
@@ -106,10 +111,18 @@ class FactureController extends Controller
             // Broadcaster l'event facture
             event(new \App\Events\FactureCreated($facture));
 
-            return response()->json(new FactureResource($facture), 201);
+            return response()->json(
+                new FactureResource($facture),
+                201,
+                ['Content-Type' => 'application/json; charset=UTF-8'],
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+            );
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la création', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la création',
+                'error' => mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8'),
+            ], 500);
         }
     }
 
@@ -120,7 +133,12 @@ class FactureController extends Controller
             'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
-        return response()->json(new FactureResource($facture));
+        return response()->json(
+            new FactureResource($facture),
+            200,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
     }
 
     public function update(UpdateFactureRequest $request, Facture $facture): JsonResponse
@@ -134,10 +152,18 @@ class FactureController extends Controller
 
             Audit::log('update', 'facture', "Facture modifiée: {$facture->numero}", $facture->id);
 
-            return response()->json(new FactureResource($facture));
+            return response()->json(
+                new FactureResource($facture),
+                200,
+                ['Content-Type' => 'application/json; charset=UTF-8'],
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+            );
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la mise à jour', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour',
+                'error' => mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8'),
+            ], 500);
         }
     }
 
