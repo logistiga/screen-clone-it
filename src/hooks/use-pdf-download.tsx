@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 interface UsePdfDownloadOptions {
   filename: string;
   margin?: number;
+  cleanupDelayMs?: number;
 }
 
 /**
@@ -13,8 +14,15 @@ interface UsePdfDownloadOptions {
  * - PNG au lieu de JPEG pour éviter les artefacts
  * - Logging détaillé à chaque étape
  */
-export function usePdfDownload({ filename, margin = 10 }: UsePdfDownloadOptions) {
+export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const getSafeFilename = useCallback(() => {
+    const trimmed = filename.trim();
+    if (!trimmed) return "document.pdf";
+
+    return trimmed.toLowerCase().endsWith(".pdf") ? trimmed : `${trimmed}.pdf`;
+  }, [filename]);
 
   const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
     const el = contentRef.current;
@@ -140,12 +148,15 @@ export function usePdfDownload({ filename, margin = 10 }: UsePdfDownloadOptions)
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${filename}.pdf`;
+    link.download = getSafeFilename();
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [generatePdfBlob, filename]);
+
+    window.setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, cleanupDelayMs);
+  }, [cleanupDelayMs, generatePdfBlob, getSafeFilename]);
 
   return {
     contentRef,
