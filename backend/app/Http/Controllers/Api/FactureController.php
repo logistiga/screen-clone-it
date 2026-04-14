@@ -108,15 +108,28 @@ class FactureController extends Controller
 
             Audit::log('create', 'facture', "Facture créée: {$facture->numero}", $facture->id);
 
-            // Broadcaster l'event facture
-            event(new \App\Events\FactureCreated($facture));
+            // Recharger avec relations pour la réponse
+            $facture->load(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements']);
 
-            return response()->json(
-                new FactureResource($facture),
-                201,
-                ['Content-Type' => 'application/json; charset=UTF-8'],
-                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
-            );
+            // Broadcaster l'event facture (non-bloquant)
+            try {
+                event(new \App\Events\FactureCreated($facture));
+            } catch (\Throwable $e) {
+                \Log::warning('Event FactureCreated broadcast failed: ' . $e->getMessage());
+            }
+
+            // Construire la réponse manuellement pour gérer l'encodage
+            $resourceArray = (new FactureResource($facture))->toArray(request());
+            $json = json_encode(['data' => $resourceArray], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+            
+            if ($json === false) {
+                // Fallback: nettoyer récursivement les chaînes
+                $resourceArray = self::sanitizeUtf8($resourceArray);
+                $json = json_encode(['data' => $resourceArray], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            }
+
+            return response($json, 201)
+                ->header('Content-Type', 'application/json; charset=UTF-8');
 
         } catch (\Throwable $e) {
             return response()->json([
