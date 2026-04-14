@@ -341,13 +341,17 @@ export default function NouveauDevisPage() {
       }));
     }
 
+    console.log('[DEBUG] Payload création devis:', JSON.stringify(data, null, 2));
+
     try {
       await createDevisMutation.mutateAsync(data);
       // Clear draft on successful creation
       autoSave.clear();
       navigate("/devis");
-    } catch (error) {
-      // Error handled by mutation
+    } catch (error: any) {
+      console.error('[DEBUG] Erreur complète création devis:', error);
+      console.error('[DEBUG] Response data:', error?.response?.data);
+      console.error('[DEBUG] Response status:', error?.response?.status);
     }
   };
 
