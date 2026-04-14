@@ -106,10 +106,18 @@ class FactureController extends Controller
             // Broadcaster l'event facture
             event(new \App\Events\FactureCreated($facture));
 
-            return response()->json(new FactureResource($facture), 201);
+            return response()->json(
+                new FactureResource($facture),
+                201,
+                ['Content-Type' => 'application/json; charset=UTF-8'],
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+            );
 
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la création', 'error' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la création',
+                'error' => mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8'),
+            ], 500);
         }
     }
 
@@ -120,7 +128,12 @@ class FactureController extends Controller
             'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
-        return response()->json(new FactureResource($facture));
+        return response()->json(
+            new FactureResource($facture),
+            200,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
     }
 
     public function update(UpdateFactureRequest $request, Facture $facture): JsonResponse
