@@ -48,52 +48,61 @@ export default function LignesFactureForm({
           {lignes.map((ligne) => (
             <div
               key={ligne.id}
-              className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end p-4 border rounded-lg bg-muted/30"
+              className="p-4 border rounded-lg bg-muted/30 space-y-4"
             >
-              <div className="md:col-span-5 space-y-2">
-                <Label>Description *</Label>
-                <Input
-                  placeholder="Description de la prestation"
-                  value={ligne.description}
-                  onChange={(e) => onChange(ligne.id, "description", e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label>Quantité</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={ligne.quantite}
-                  onChange={(e) => onChange(ligne.id, "quantite", parseInt(e.target.value) || 1)}
-                />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label>Prix unitaire</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={ligne.prixUnitaire}
-                  onChange={(e) => onChange(ligne.id, "prixUnitaire", parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label>Montant HT</Label>
-                <div className="h-10 flex items-center font-medium">
-                  {formatMontant(ligne.montantHT)}
+              {/* Description - pleine largeur */}
+              <div className="flex items-start gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label>Description *</Label>
+                  <Input
+                    placeholder="Description de la prestation"
+                    value={ligne.description}
+                    onChange={(e) => onChange(ligne.id, "description", e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+                <div className="pt-7">
+                  {lignes.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onRemove(ligne.id)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="md:col-span-1 flex justify-end">
-                {lignes.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onRemove(ligne.id)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+              {/* Quantité, Prix, Montant */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantité</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={ligne.quantite}
+                    onChange={(e) => onChange(ligne.id, "quantite", parseInt(e.target.value) || 1)}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Prix unitaire</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={ligne.prixUnitaire}
+                    onChange={(e) => onChange(ligne.id, "prixUnitaire", parseFloat(e.target.value) || 0)}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Montant HT</Label>
+                  <div className="h-11 flex items-center font-medium">
+                    {formatMontant(ligne.montantHT)}
+                  </div>
+                </div>
               </div>
             </div>
           ))}

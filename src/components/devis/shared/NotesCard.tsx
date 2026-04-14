@@ -16,8 +16,9 @@ export default function NotesCard({ notes, setNotes }: NotesCardProps) {
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Conditions particulières, notes..."
-          rows={4}
+          placeholder="Ajouter des notes ou observations..."
+          rows={5}
+          className="min-h-[120px]"
         />
       </CardContent>
     </Card>

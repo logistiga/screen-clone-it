@@ -133,18 +133,21 @@ export default function OperationsIndependantesForm({
               {renderSpecificFields(prestation)}
 
               {/* Champs communs */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Description *</Label>
-                  <Input 
-                    placeholder="Description..." 
-                    value={prestation.description} 
-                    onChange={(e) => onPrestationChange(prestation.id, 'description', e.target.value)}
-                    onBlur={() => handleBlur(`prestations.${index}.description`)}
-                    className={cn(getFieldError(`prestations.${index}.description`) && "border-destructive")}
-                  />
-                  <FormError message={getFieldError(`prestations.${index}.description`)} />
-                </div>
+              {/* Description - pleine largeur */}
+              <div className="space-y-2">
+                <Label>Description *</Label>
+                <Input 
+                  placeholder="Description de la prestation..." 
+                  value={prestation.description} 
+                  onChange={(e) => onPrestationChange(prestation.id, 'description', e.target.value)}
+                  onBlur={() => handleBlur(`prestations.${index}.description`)}
+                  className={cn("h-11", getFieldError(`prestations.${index}.description`) && "border-destructive")}
+                />
+                <FormError message={getFieldError(`prestations.${index}.description`)} />
+              </div>
+
+              {/* Quantité, Prix, Montant */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{isDateBased ? 'Nombre de jours' : 'Quantité'}</Label>
                   <Input 
@@ -153,7 +156,7 @@ export default function OperationsIndependantesForm({
                     value={prestation.quantite} 
                     onChange={(e) => onPrestationChange(prestation.id, 'quantite', parseInt(e.target.value) || 0)}
                     disabled={isDateBased}
-                    className={isDateBased ? "bg-muted" : ""}
+                    className={cn("h-11", isDateBased && "bg-muted")}
                   />
                 </div>
                 <div className="space-y-2">
@@ -162,7 +165,8 @@ export default function OperationsIndependantesForm({
                     type="number" 
                     min="0" 
                     value={prestation.prixUnitaire || ''} 
-                    onChange={(e) => onPrestationChange(prestation.id, 'prixUnitaire', parseInt(e.target.value) || 0)} 
+                    onChange={(e) => onPrestationChange(prestation.id, 'prixUnitaire', parseInt(e.target.value) || 0)}
+                    className="h-11"
                   />
                 </div>
                 <div className="space-y-2">
@@ -170,7 +174,7 @@ export default function OperationsIndependantesForm({
                   <Input 
                     value={formatMontant(prestation.montantHT)} 
                     disabled 
-                    className="bg-muted font-medium" 
+                    className="bg-muted font-medium h-11" 
                   />
                 </div>
               </div>
