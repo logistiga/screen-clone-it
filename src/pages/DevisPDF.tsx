@@ -162,7 +162,7 @@ export default function DevisPDFPage() {
       </div>
 
       {/* PDF Content - A4 Format */}
-      <div className="container py-8 print:py-0 flex justify-center">
+      <div className="container py-8 print:py-0 flex justify-center animate-fade-in">
         <Card 
           ref={contentRef} 
           className="bg-white print:shadow-none print:border-none relative flex flex-col"
@@ -177,62 +177,27 @@ export default function DevisPDFPage() {
             </div>
           )}
 
-          {/* Header avec logo et QR code */}
-          <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
-            <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
-            <div className="text-center">
-              <h1 className="text-xl font-bold text-primary">DEVIS</h1>
-              <p className="text-sm font-semibold">{devisData.numero}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <QRCodeSVG value={qrData} size={60} level="M" />
-              <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
-            </div>
-          </div>
-
-          {/* Infos document + catégorie */}
-          <div className="flex justify-between text-xs mb-4">
-            <div>
-              <p><span className="font-semibold">Date:</span> {formatDate(devisData.date_creation || devisData.date)}</p>
-              <p><span className="font-semibold">Validité:</span> {formatDate(devisData.date_validite)}</p>
-            </div>
-            <div className="text-right">
-              <p>
-                <span className="font-semibold">Catégorie:</span>{" "}
-                {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
-              </p>
-              {devisData.type_operation && (
-                <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Client (gauche) + Informations Opération (droite) */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* Client */}
-            <div className="border p-3 rounded">
-              <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
-              <p className="font-semibold text-sm">{client?.nom}</p>
-              <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-              <p className="text-xs text-muted-foreground">
-                Tél: {client?.telephone}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Email: {client?.email}
-              </p>
-              {(client?.nif || client?.rccm) && (
-                <p className="text-xs text-muted-foreground">
-                  {client?.nif && `NIF: ${client.nif}`}
-                  {client?.nif && client?.rccm && ' | '}
-                  {client?.rccm && `RCCM: ${client.rccm}`}
-                </p>
-              )}
+          <div className="flex-1">
+            {/* Header avec logo et QR code */}
+            <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
+              <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
+              <div className="text-center">
+                <h1 className="text-xl font-bold text-primary">DEVIS</h1>
+                <p className="text-sm font-semibold">{devisData.numero}</p>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <QRCodeSVG value={qrData} size={60} level="M" />
+                <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
+              </div>
             </div>
 
-            {/* Informations Opération */}
-            <div className="border p-3 rounded">
-              <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
-              <div className="text-xs space-y-0.5">
+            {/* Infos document + catégorie */}
+            <div className="flex justify-between text-xs mb-4">
+              <div>
+                <p><span className="font-semibold">Date:</span> {formatDate(devisData.date_creation || devisData.date)}</p>
+                <p><span className="font-semibold">Validité:</span> {formatDate(devisData.date_validite)}</p>
+              </div>
+              <div className="text-right">
                 <p>
                   <span className="font-semibold">Catégorie:</span>{" "}
                   {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
@@ -240,117 +205,138 @@ export default function DevisPDFPage() {
                 {devisData.type_operation && (
                   <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
                 )}
-                {devisData.numero_bl && (
-                  <p><span className="font-semibold">N° BL:</span> {devisData.numero_bl}</p>
-                )}
-                {devisData.armateur?.nom && (
-                  <p><span className="font-semibold">Armateur:</span> {devisData.armateur.nom}</p>
-                )}
-                {devisData.transitaire?.nom && (
-                  <p><span className="font-semibold">Transitaire:</span> {devisData.transitaire.nom}</p>
-                )}
-                {devisData.navire && (
-                  <p><span className="font-semibold">Navire:</span> {devisData.navire}</p>
-                )}
-                {devisData.representant?.nom && (
-                  <p><span className="font-semibold">Représentant:</span> {devisData.representant.nom}</p>
-                )}
-                {/* Trajets pour opérations indépendantes */}
-                {devisData.type_document === 'Independant' && devisData.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
-                  <>
-                    {devisData.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
-                      <p key={i}>
-                        <span className="font-semibold">Trajet:</span>{" "}
-                        {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
-                      </p>
-                    ))}
-                  </>
-                )}
               </div>
             </div>
-          </div>
 
-          {/* Tableau des lignes */}
-          <table className="w-full mb-4 text-xs border-collapse border">
-            <thead>
-              <tr className="bg-primary text-primary-foreground">
-                <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
-                <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
-                <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
-                <th className="text-right py-2 px-2 font-semibold w-28">Montant HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lignesAffichage.map((ligne, index) => (
-                <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                  <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
-                  <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
-                  <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
-                  <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
-                  <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
-                    {formatMontant(ligne.montantHT)}
-                  </td>
+            {/* Client (gauche) + Informations Opération (droite) */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="border p-3 rounded">
+                <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
+                <p className="font-semibold text-sm">{client?.nom}</p>
+                <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+                <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
+                <p className="text-xs text-muted-foreground">Email: {client?.email}</p>
+                {(client?.nif || client?.rccm) && (
+                  <p className="text-xs text-muted-foreground">
+                    {client?.nif && `NIF: ${client.nif}`}
+                    {client?.nif && client?.rccm && ' | '}
+                    {client?.rccm && `RCCM: ${client.rccm}`}
+                  </p>
+                )}
+              </div>
+
+              <div className="border p-3 rounded">
+                <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
+                <div className="text-xs space-y-0.5">
+                  <p>
+                    <span className="font-semibold">Catégorie:</span>{" "}
+                    {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
+                  </p>
+                  {devisData.type_operation && (
+                    <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
+                  )}
+                  {devisData.numero_bl && (
+                    <p><span className="font-semibold">N° BL:</span> {devisData.numero_bl}</p>
+                  )}
+                  {devisData.armateur?.nom && (
+                    <p><span className="font-semibold">Armateur:</span> {devisData.armateur.nom}</p>
+                  )}
+                  {devisData.transitaire?.nom && (
+                    <p><span className="font-semibold">Transitaire:</span> {devisData.transitaire.nom}</p>
+                  )}
+                  {devisData.navire && (
+                    <p><span className="font-semibold">Navire:</span> {devisData.navire}</p>
+                  )}
+                  {devisData.representant?.nom && (
+                    <p><span className="font-semibold">Représentant:</span> {devisData.representant.nom}</p>
+                  )}
+                  {devisData.type_document === 'Independant' && devisData.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
+                    <>
+                      {devisData.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
+                        <p key={i}>
+                          <span className="font-semibold">Trajet:</span>{" "}
+                          {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
+                        </p>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <table className="w-full mb-4 text-xs border-collapse border">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
+                  <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
+                  <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
+                  <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
+                  <th className="text-right py-2 px-2 font-semibold w-28">Montant HT</th>
                 </tr>
-              ))}
-              {/* Lignes vides pour remplir (min 8 lignes) */}
-              {Array.from({ length: Math.max(0, 8 - lignesAffichage.length) }).map((_, i) => (
-                <tr key={`empty-${i}`} className="h-6">
-                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                  <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {lignesAffichage.map((ligne, index) => (
+                  <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
+                    <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
+                    <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
+                    <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montantHT)}</td>
+                  </tr>
+                ))}
+                {Array.from({ length: Math.max(0, 8 - lignesAffichage.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="h-6">
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
+                    <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {/* Totaux */}
-          <div className="flex justify-end mb-4">
-            <div className="w-56 border text-xs">
-              <div className="flex justify-between py-1 px-3 border-b">
-                <span>Total HT</span>
-                <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
+            <div className="flex justify-end mb-4">
+              <div className="w-56 border text-xs">
+                <div className="flex justify-between py-1 px-3 border-b">
+                  <span>Total HT</span>
+                  <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
+                </div>
+                <div className="flex justify-between py-1 px-3 border-b">
+                  <span>TVA (18%)</span>
+                  <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
+                </div>
+                <div className="flex justify-between py-1 px-3 border-b">
+                  <span>CSS (1%)</span>
+                  <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
+                </div>
+                <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
+                  <span>Total TTC</span>
+                  <span>{formatMontant(devisData.montant_ttc || 0)}</span>
+                </div>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
-                <span>TVA (18%)</span>
-                <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
+            </div>
+
+            {devisData.notes && (
+              <div className="mb-3 border p-2 rounded">
+                <h3 className="text-xs font-bold mb-1">NOTES</h3>
+                <p className="text-xs">{devisData.notes}</p>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
-                <span>CSS (1%)</span>
-                <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
-              </div>
-              <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
-                <span>Total TTC</span>
-                <span>{formatMontant(devisData.montant_ttc || 0)}</span>
-              </div>
+            )}
+
+            <div className="border-t pt-3 text-xs mb-4">
+              <h3 className="font-bold mb-1">Conditions</h3>
+              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                <li>Ce devis est valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
+                <li>Paiement: 50% à la commande, 50% à la livraison</li>
+                <li>Délai de réalisation: selon disponibilité</li>
+              </ul>
             </div>
           </div>
 
-          {/* Notes */}
-          {devisData.notes && (
-            <div className="mb-3 border p-2 rounded">
-              <h3 className="text-xs font-bold mb-1">NOTES</h3>
-              <p className="text-xs">{devisData.notes}</p>
-            </div>
-          )}
-
-          {/* Conditions */}
-          <div className="border-t pt-3 text-xs mb-4">
-            <h3 className="font-bold mb-1">Conditions</h3>
-            <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-              <li>Ce devis est valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
-              <li>Paiement: 50% à la commande, 50% à la livraison</li>
-              <li>Délai de réalisation: selon disponibilité</li>
-            </ul>
+          <div className="mt-auto">
+            <DocumentFooter />
           </div>
-
-          {/* Spacer to push footer to bottom */}
-          <div className="flex-grow" />
-
-          {/* Footer */}
-          <DocumentFooter />
         </Card>
       </div>
 

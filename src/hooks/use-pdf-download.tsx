@@ -33,8 +33,9 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
 
     try {
       // 1️⃣ Dimensions réelles en pixels
-      const elWidth = el.scrollWidth || el.offsetWidth;
-      const elHeight = el.scrollHeight || el.offsetHeight;
+      const rect = el.getBoundingClientRect();
+      const elWidth = Math.max(Math.ceil(rect.width), el.scrollWidth || 0, el.offsetWidth || 0);
+      const elHeight = Math.max(Math.ceil(rect.height), el.scrollHeight || 0, el.offsetHeight || 0);
       console.log("[PDF] Step 1 — Source element:", elWidth, "x", elHeight, "px");
 
       if (elWidth < 10 || elHeight < 10) {
@@ -73,14 +74,27 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
         logging: true,
         width: elWidth,
         height: elHeight,
+        windowWidth: elWidth,
+        windowHeight: elHeight,
+        scrollX: 0,
+        scrollY: 0,
         onclone: (clonedDoc, clonedEl) => {
           // Forcer des dimensions explicites en px sur le clone
+          clonedDoc.documentElement.style.width = elWidth + "px";
+          clonedDoc.body.style.width = elWidth + "px";
+          clonedDoc.body.style.margin = "0";
+          clonedDoc.body.style.background = "#ffffff";
+
           clonedEl.style.width = elWidth + "px";
-          clonedEl.style.height = elHeight + "px";
-          clonedEl.style.minHeight = "unset";
+          clonedEl.style.minWidth = elWidth + "px";
+          clonedEl.style.maxWidth = elWidth + "px";
+          clonedEl.style.height = "auto";
+          clonedEl.style.minHeight = elHeight + "px";
           clonedEl.style.overflow = "visible";
           clonedEl.style.position = "relative";
           clonedEl.style.transform = "none";
+          clonedEl.style.margin = "0";
+          clonedEl.style.boxSizing = "border-box";
           console.log("[PDF] onclone — clone dimensions forced to", elWidth, "x", elHeight, "px");
         },
       });
