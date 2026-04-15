@@ -438,7 +438,6 @@ class CaisseHorslbvController extends Controller
 
         // Fetch exact references AND partial payment references (e.g. HORSLBV-DEPENSE-123-T1)
         $allMouvements = DB::table('mouvements_caisse')
-            ->where('categorie', self::categorie())
             ->where(function ($q) use ($refs) {
                 $q->whereIn('reference', $refs);
                 foreach ($refs as $ref) {
