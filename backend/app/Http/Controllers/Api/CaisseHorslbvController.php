@@ -102,17 +102,28 @@ class CaisseHorslbvController extends Controller
             $allPrimes = $this->fetchStats();
 
             $refs = $allPrimes->pluck('ref')->toArray();
-            $decaisseesRefs = [];
+            $decaisseesData = [];
             if (!empty($refs)) {
-                $decaisseesRefs = DB::table('mouvements_caisse')
+                // Match both exact refs and partial payment refs (-T1, -T2, etc.)
+                $mouvements = DB::table('mouvements_caisse')
                     ->where('categorie', self::categorie())
-                    ->whereIn('reference', $refs)
-                    ->pluck('reference')
-                    ->toArray();
+                    ->where(function ($q) use ($refs) {
+                        $q->whereIn('reference', $refs);
+                        foreach ($refs as $ref) {
+                            $q->orWhere('reference', 'like', $ref . '-T%');
+                        }
+                    })
+                    ->get(['reference', 'montant']);
+
+                // Sum payments per base reference
+                foreach ($mouvements as $m) {
+                    $baseRef = preg_replace('/-T\d+$/', '', $m->reference);
+                    $decaisseesData[$baseRef] = ($decaisseesData[$baseRef] ?? 0) + $m->montant;
+                }
             }
 
-            $aDecaisser = $allPrimes->filter(fn($p) => !in_array($p->ref, $decaisseesRefs));
-            $dejaDecaissees = $allPrimes->filter(fn($p) => in_array($p->ref, $decaisseesRefs));
+            $aDecaisser = $allPrimes->filter(fn($p) => ($decaisseesData[$p->ref] ?? 0) < $p->montant);
+            $dejaDecaissees = $allPrimes->filter(fn($p) => ($decaisseesData[$p->ref] ?? 0) >= $p->montant);
 
             return response()->json([
                 'total_valide' => $allPrimes->sum('montant'),
