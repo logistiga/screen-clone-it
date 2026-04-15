@@ -102,17 +102,28 @@ class CaisseHorslbvController extends Controller
             $allPrimes = $this->fetchStats();
 
             $refs = $allPrimes->pluck('ref')->toArray();
-            $decaisseesRefs = [];
+            $decaisseesData = [];
             if (!empty($refs)) {
-                $decaisseesRefs = DB::table('mouvements_caisse')
+                // Match both exact refs and partial payment refs (-T1, -T2, etc.)
+                $mouvements = DB::table('mouvements_caisse')
                     ->where('categorie', self::categorie())
-                    ->whereIn('reference', $refs)
-                    ->pluck('reference')
-                    ->toArray();
+                    ->where(function ($q) use ($refs) {
+                        $q->whereIn('reference', $refs);
+                        foreach ($refs as $ref) {
+                            $q->orWhere('reference', 'like', $ref . '-T%');
+                        }
+                    })
+                    ->get(['reference', 'montant']);
+
+                // Sum payments per base reference
+                foreach ($mouvements as $m) {
+                    $baseRef = preg_replace('/-T\d+$/', '', $m->reference);
+                    $decaisseesData[$baseRef] = ($decaisseesData[$baseRef] ?? 0) + $m->montant;
+                }
             }
 
-            $aDecaisser = $allPrimes->filter(fn($p) => !in_array($p->ref, $decaisseesRefs));
-            $dejaDecaissees = $allPrimes->filter(fn($p) => in_array($p->ref, $decaisseesRefs));
+            $aDecaisser = $allPrimes->filter(fn($p) => ($decaisseesData[$p->ref] ?? 0) < $p->montant);
+            $dejaDecaissees = $allPrimes->filter(fn($p) => ($decaisseesData[$p->ref] ?? 0) >= $p->montant);
 
             return response()->json([
                 'total_valide' => $allPrimes->sum('montant'),
@@ -425,25 +436,70 @@ class CaisseHorslbvController extends Controller
 
         $refs = $primes->map(fn($p) => self::buildRef($p->id))->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
+        // Fetch exact references AND partial payment references (e.g. HORSLBV-DEPENSE-123-T1)
+        $allMouvements = DB::table('mouvements_caisse')
             ->where('categorie', self::categorie())
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])
-            ->keyBy('reference');
+            ->where(function ($q) use ($refs) {
+                $q->whereIn('reference', $refs);
+                foreach ($refs as $ref) {
+                    $q->orWhere('reference', 'like', $ref . '-T%');
+                }
+            })
+            ->get(['id', 'reference', 'date', 'mode_paiement', 'montant']);
+
+        // Group mouvements by base reference
+        $mouvementsByBase = [];
+        foreach ($allMouvements as $m) {
+            // Extract base ref (remove -T1, -T2 suffix)
+            $baseRef = preg_replace('/-T\d+$/', '', $m->reference);
+            if (!isset($mouvementsByBase[$baseRef])) {
+                $mouvementsByBase[$baseRef] = ['mouvements' => collect(), 'total_paye' => 0];
+            }
+            $mouvementsByBase[$baseRef]['mouvements']->push($m);
+            $mouvementsByBase[$baseRef]['total_paye'] += $m->montant;
+        }
+
+        // Check paiements_fournisseurs for partial payment tracking
+        $pfRecords = DB::table('paiements_fournisseurs')
+            ->where('source', 'HORSLBV')
+            ->whereIn('source_id', $primes->pluck('id')->toArray())
+            ->get(['id', 'source_id', 'montant_total'])
+            ->keyBy('source_id');
 
         $refusees = DB::table('primes_refusees')
             ->whereIn('reference', $refs)
             ->pluck('reference')
             ->toArray();
 
-        return $primes->map(function ($prime) use ($mouvements, $refusees) {
+        return $primes->map(function ($prime) use ($mouvementsByBase, $pfRecords, $refusees) {
             $ref = self::buildRef($prime->id);
-            $mouvement = $mouvements[$ref] ?? null;
-            $prime->decaisse = $mouvement !== null;
-            $prime->mouvement_id = $mouvement?->id;
-            $prime->date_decaissement = $mouvement?->date;
-            $prime->mode_paiement_decaissement = $mouvement?->mode_paiement;
+            $data = $mouvementsByBase[$ref] ?? null;
+            $pf = $pfRecords[$prime->id] ?? null;
+
+            if ($data) {
+                $lastMouvement = $data['mouvements']->sortByDesc('date')->first();
+                $totalPaye = $data['total_paye'];
+
+                // Fully paid: exact match OR total tranches >= montant
+                $prime->decaisse = ($totalPaye >= $prime->montant);
+                $prime->mouvement_id = $lastMouvement->id;
+                $prime->date_decaissement = $lastMouvement->date;
+                $prime->mode_paiement_decaissement = $lastMouvement->mode_paiement;
+                $prime->total_paye = $totalPaye;
+                $prime->reste_a_payer = max(0, $prime->montant - $totalPaye);
+                $prime->nb_tranches = $data['mouvements']->count();
+            } else {
+                $prime->decaisse = false;
+                $prime->mouvement_id = null;
+                $prime->date_decaissement = null;
+                $prime->mode_paiement_decaissement = null;
+                $prime->total_paye = 0;
+                $prime->reste_a_payer = $prime->montant;
+                $prime->nb_tranches = 0;
+            }
+
             $prime->refusee = in_array($ref, $refusees);
+            $prime->paiement_fournisseur_id = $pf->id ?? null;
             return $prime;
         });
     }
