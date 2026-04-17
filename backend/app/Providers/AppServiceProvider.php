@@ -117,6 +117,12 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Devis::observe(\App\Observers\DevisObserver::class);
         \App\Models\MouvementCaisse::observe(\App\Observers\MouvementCaisseObserver::class);
 
+        // Recalcul automatique des totaux OT à chaque modification d'enfant
+        \App\Models\ConteneurOrdre::observe(\App\Observers\ConteneurOrdreObserver::class);
+        \App\Models\OperationConteneurOrdre::observe(\App\Observers\OperationConteneurOrdreObserver::class);
+        \App\Models\LigneOrdre::observe(\App\Observers\LigneOrdreObserver::class);
+        \App\Models\LotOrdre::observe(\App\Observers\LotOrdreObserver::class);
+
         // =============================================
         // RATE LIMITERS - Configuration centralisée
         // =============================================

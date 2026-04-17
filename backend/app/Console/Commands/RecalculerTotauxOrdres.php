@@ -118,8 +118,9 @@ class RecalculerTotauxOrdres extends Command
             $montant += ($ligne->quantite ?? 1) * ($ligne->prix_unitaire ?? 0);
         }
 
-        // Opérations des conteneurs
+        // Conteneurs : prix de base + opérations
         foreach ($ordre->conteneurs as $conteneur) {
+            $montant += (float) ($conteneur->prix_unitaire ?? 0);
             foreach ($conteneur->operations as $op) {
                 $montant += ($op->quantite ?? 1) * ($op->prix_unitaire ?? 0);
             }
