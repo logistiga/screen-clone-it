@@ -533,9 +533,20 @@ export default function NouvelOrdrePage() {
         open={showConfirmModal}
         onOpenChange={setShowConfirmModal}
         onConfirm={handleConfirmSave}
-        title="Confirmer la création de l'ordre"
-        description="Vérifiez les informations avant de créer l'ordre de travail."
+        type="ordre"
+        montantHT={api.montantHT}
+        tva={api.tva}
+        css={api.css}
         montantTTC={api.montantTTC}
+        remise={api.remiseData.montantCalcule}
+        exonereTva={api.toApiPayload(api.taxesSelectionData).exonere_tva}
+        exonereCss={api.toApiPayload(api.taxesSelectionData).exonere_css}
+        motifExoneration={api.taxesSelectionData.motifExoneration}
+        clientName={clients.find((c: any) => String(c.id) === api.clientId)?.nom}
+        categorie={api.categorie || undefined}
+        selectedTaxCodes={api.taxesSelectionData.selectedTaxCodes}
+        tauxTva={api.taxRates.TVA}
+        tauxCss={api.taxRates.CSS}
         isLoading={createOrdreMutation.isPending}
       />
     </MainLayout>
