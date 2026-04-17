@@ -18,6 +18,12 @@ export { OrdreHistorique } from './OrdreHistorique';
 // Config exports
 export * from './ordreTypeConfigs';
 
+// Hook + helpers partagés (NouvelOrdre + ModifierOrdre)
+export { useOrdreForm } from './useOrdreForm';
+export type { OrdreFormApi, OrdreFormInitial } from './useOrdreForm';
+export { buildOrdreStepsValidation } from './ordreStepValidation';
+export type { StepValidation, StepsValidation } from './ordreStepValidation';
+
 // Re-export devis shared components that can be reused
 export { 
   CategorieSelector,
