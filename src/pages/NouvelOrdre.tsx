@@ -1,19 +1,14 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Ship, Save, Loader2, ArrowRight } from "lucide-react";
+import { ArrowLeft, Ship, Save, Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-// Select inutilisé après remplacement par ClientCombobox
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
-import {
-  CategorieDocument,
-  getCategoriesLabels,
-  typesOperationConteneur,
-} from "@/types/documents";
+import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
 import {
   OrdreConteneursForm,
   OrdreConventionnelForm,
@@ -23,15 +18,13 @@ import {
   OrdreIndependantData,
 } from "@/components/ordres/forms";
 import { RecapitulatifCard, AutoSaveIndicator } from "@/components/devis/shared";
-import { OrdreStepper } from "@/components/ordres/shared";
+import { OrdreStepper, useOrdreForm, buildOrdreStepsValidation } from "@/components/ordres/shared";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateOrdre } from "@/hooks/use-commercial";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 import { ClientCombobox } from "@/components/shared/ClientCombobox";
 import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
-import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import { Users } from "lucide-react";
-import { FormError } from "@/components/ui/form-error";
 import {
   validateOrdreConteneurs,
   validateOrdreConventionnel,
@@ -51,592 +44,260 @@ interface DraftData {
   taxesSelectionData: TaxesSelectionData;
 }
 
+const toArray = (v: any): any[] =>
+  Array.isArray(v?.data) ? v.data : Array.isArray(v) ? v : [];
+
 export default function NouvelOrdrePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  // Ref pour éviter le pré-remplissage multiple
+  const isMobile = useIsMobile();
   const prefillAppliedRef = useRef(false);
-  
+
   // API hooks
   const { data: clientsData, isLoading: clientsLoading } = useClients({ per_page: 1000 });
   const { data: armateursData } = useArmateurs();
   const { data: transitairesData } = useTransitaires();
   const { data: representantsData } = useRepresentants();
   const createOrdreMutation = useCreateOrdre();
-  
-  // Hook unifié pour les taxes - stabilisé
-  const { 
-    taxRates, 
-    availableTaxes, 
-    isLoading: taxesLoading,
-    getInitialTaxesSelection,
-    calculateTaxes,
-    toApiPayload 
-  } = useDocumentTaxes();
-  
-  const clients = Array.isArray(clientsData?.data) ? clientsData.data : (Array.isArray(clientsData) ? clientsData : []);
-  const armateurs = Array.isArray(armateursData) ? armateursData : [];
-  const transitaires = Array.isArray(transitairesData) ? transitairesData : [];
-  const representants = Array.isArray(representantsData) ? representantsData : [];
-  
+
+  const clients = toArray(clientsData);
+  const armateurs = toArray(armateursData);
+  const transitaires = toArray(transitairesData);
+  const representants = toArray(representantsData);
   const categoriesLabels = getCategoriesLabels();
 
-  // Stepper state
+  // Form state via hook partagé
+  const api = useOrdreForm();
+
+  // Stepper local
   const [currentStep, setCurrentStep] = useState(1);
   const [showRestorePrompt, setShowRestorePrompt] = useState(true);
   const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // État global
-  const [categorie, setCategorie] = useState<CategorieDocument | "">("");
-  const [clientId, setClientId] = useState("");
-  const [notes, setNotes] = useState("");
-  
-  // Données des formulaires par catégorie
-  const [conteneursData, setConteneursData] = useState<OrdreConteneursData | null>(null);
-  const [conventionnelData, setConventionnelData] = useState<OrdreConventionnelData | null>(null);
-  const [independantData, setIndependantData] = useState<OrdreIndependantData | null>(null);
-
-  // État de la remise
-  const [remiseData, setRemiseData] = useState<RemiseData>({
-    type: "none",
-    valeur: 0,
-    montantCalcule: 0,
-  });
-
-  // État de la sélection des taxes - nouvelle structure avec codes
-  // Initialisé vide, sera peuplé par l'effet ci-dessous (ou par draft)
-  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
-    selectedTaxCodes: [], // Vide initialement, peuplé par l'effet
-    hasExoneration: false,
-    exoneratedTaxCodes: [],
-    motifExoneration: "",
-  }));
-  
-  // Ref pour éviter les initialisations multiples
-  const taxesInitRef = useRef(false);
-  
-  // Synchroniser les taxes recommandées quand elles sont chargées depuis l'API (une seule fois)
-  // L'utilisateur peut ensuite les décocher librement pour créer un document "sans taxes"
+  // Init taxes recommandées au chargement (une seule fois, sauf restauration draft)
   useEffect(() => {
-    // Guard: ne s'exécute qu'une seule fois
-    if (taxesInitRef.current) return;
-    if (taxesLoading || availableTaxes.length === 0) return;
-    
-    taxesInitRef.current = true;
-    
-    // Sélectionner les taxes recommandées par défaut (obligatoire=true)
-    const recommendedCodes = availableTaxes
-      .filter(t => t.obligatoire)
-      .map(t => t.code.toUpperCase());
-    
-    setTaxesSelectionData(prev => {
-      // Ne pas écraser si déjà configuré (ex: restauration draft)
-      // IMPORTANT: on vérifie avec une ref si c'est une restauration de draft
-      if (prev.selectedTaxCodes.length > 0) return prev;
-      // Pré-sélectionner les taxes recommandées (l'utilisateur peut les décocher)
-      return { ...prev, selectedTaxCodes: recommendedCodes };
-    });
-  }, [taxesLoading, availableTaxes]);
-  
-  // Handler stable pour TaxesSelector avec comparaison profonde inline
-  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
-    setTaxesSelectionData(prev => {
-      // Comparaison stricte pour éviter les setState inutiles
-      const same =
-        prev.hasExoneration === next.hasExoneration &&
-        prev.motifExoneration === next.motifExoneration &&
-        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
-        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
-        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
-        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
-      return same ? prev : next;
-    });
-  }, []);
+    if (api.taxesInitRef.current) return;
+    if (api.taxesLoading || api.availableTaxes.length === 0) return;
+    api.taxesInitRef.current = true;
+    const recommendedCodes = api.availableTaxes.filter((t) => t.obligatoire).map((t) => t.code.toUpperCase());
+    api.setTaxesSelectionData((prev) =>
+      prev.selectedTaxCodes.length > 0 ? prev : { ...prev, selectedTaxCodes: recommendedCodes }
+    );
+  }, [api.taxesLoading, api.availableTaxes]);
+
   // Auto-save
   const { save, clear, restore, hasDraft, lastSaved, isSaving } = useAutoSave<DraftData>({
-    key: 'nouvel_ordre',
+    key: "nouvel_ordre",
     debounceMs: 1500,
   });
 
-  // Auto-save on data changes
   useEffect(() => {
-    if (categorie || clientId || notes) {
+    if (api.categorie || api.clientId || api.notes) {
       save({
-        categorie,
-        clientId,
-        notes,
+        categorie: api.categorie,
+        clientId: api.clientId,
+        notes: api.notes,
         currentStep,
-        conteneursData,
-        conventionnelData,
-        independantData,
-        remiseData,
-        taxesSelectionData,
+        conteneursData: api.conteneursData,
+        conventionnelData: api.conventionnelData,
+        independantData: api.independantData,
+        remiseData: api.remiseData,
+        taxesSelectionData: api.taxesSelectionData,
       });
     }
-  }, [categorie, clientId, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData, taxesSelectionData, save]);
+  }, [api.categorie, api.clientId, api.notes, currentStep, api.conteneursData, api.conventionnelData, api.independantData, api.remiseData, api.taxesSelectionData, save]);
 
   const handleRestoreDraft = () => {
     const draft = restore();
     if (draft) {
-      setCategorie(draft.categorie);
-      setClientId(draft.clientId);
-      setNotes(draft.notes);
-      setConteneursData(draft.conteneursData);
-      setConventionnelData(draft.conventionnelData);
-      setIndependantData(draft.independantData);
-      setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
-      
-      // Restaurer les taxes telles quelles.
-      // IMPORTANT: un tableau vide [] est un choix intentionnel = "sans taxes".
-      // On ne doit PAS réinjecter TVA/CSS automatiquement lors de la restauration.
-      const restoredTaxes = draft.taxesSelectionData ?? getInitialTaxesSelection();
-      setTaxesSelectionData({
-        selectedTaxCodes: Array.isArray(restoredTaxes.selectedTaxCodes)
-          ? restoredTaxes.selectedTaxCodes
-          : [],
+      api.setCategorie(draft.categorie);
+      api.setClientId(draft.clientId);
+      api.setNotes(draft.notes);
+      api.setConteneursData(draft.conteneursData);
+      api.setConventionnelData(draft.conventionnelData);
+      api.setIndependantData(draft.independantData);
+      api.setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
+
+      // [] = choix intentionnel "sans taxes" — ne pas réinjecter TVA/CSS
+      const restoredTaxes = draft.taxesSelectionData ?? api.getInitialTaxesSelection();
+      api.setTaxesSelectionData({
+        selectedTaxCodes: Array.isArray(restoredTaxes.selectedTaxCodes) ? restoredTaxes.selectedTaxCodes : [],
         hasExoneration: restoredTaxes.hasExoneration === true,
-        exoneratedTaxCodes: Array.isArray(restoredTaxes.exoneratedTaxCodes)
-          ? restoredTaxes.exoneratedTaxCodes
-          : [],
+        exoneratedTaxCodes: Array.isArray(restoredTaxes.exoneratedTaxCodes) ? restoredTaxes.exoneratedTaxCodes : [],
         motifExoneration: restoredTaxes.motifExoneration ?? "",
       });
-      
+
       setCurrentStep(draft.currentStep || 1);
       setIsRestoredFromDraft(true);
-      taxesInitRef.current = true; // Évite la réinitialisation
+      api.taxesInitRef.current = true;
       toast.success("Brouillon restauré avec succès");
     }
     setShowRestorePrompt(false);
   };
 
-  // Pré-remplissage depuis conteneur en attente (via sessionStorage)
+  // Pré-remplissage depuis un conteneur en attente
   useEffect(() => {
-    // Guard: ne s'exécute qu'une seule fois et si prefill=conteneur dans l'URL
     if (prefillAppliedRef.current) return;
-    if (searchParams.get('prefill') !== 'conteneur') return;
-    if (clientsLoading) return; // Attendre que les clients soient chargés
-    
-    const prefillDataStr = sessionStorage.getItem('prefill_ordre');
+    if (searchParams.get("prefill") !== "conteneur") return;
+    if (clientsLoading) return;
+
+    const prefillDataStr = sessionStorage.getItem("prefill_ordre");
     if (!prefillDataStr) return;
-    
+
     try {
       const prefillData = JSON.parse(prefillDataStr);
       prefillAppliedRef.current = true;
-      
-      // Nettoyer sessionStorage
-      sessionStorage.removeItem('prefill_ordre');
-      
-      // Appliquer les données
-      setCategorie('conteneurs');
-      setShowRestorePrompt(false); // Ne pas proposer de restaurer un brouillon
-      
-      // Chercher le client par nom
+      sessionStorage.removeItem("prefill_ordre");
+
+      api.setCategorie("conteneurs");
+      setShowRestorePrompt(false);
+
       if (prefillData.clientNom && clients.length > 0) {
         const clientMatch = clients.find(
-          (c: any) => c.nom?.toLowerCase().includes(prefillData.clientNom.toLowerCase()) ||
+          (c: any) =>
+            c.nom?.toLowerCase().includes(prefillData.clientNom.toLowerCase()) ||
             c.raison_sociale?.toLowerCase().includes(prefillData.clientNom.toLowerCase())
         );
-        if (clientMatch) {
-          setClientId(clientMatch.id);
-        }
+        if (clientMatch) api.setClientId(clientMatch.id);
       }
-      
-      // Chercher l'armateur par code
-      let armateurId = '';
+
+      let armateurId = "";
       if (prefillData.armateurCode && armateurs.length > 0) {
         const armateurMatch = armateurs.find(
           (a: any) => a.code?.toLowerCase() === prefillData.armateurCode.toLowerCase()
         );
-        if (armateurMatch) {
-          armateurId = armateurMatch.id;
-        }
+        if (armateurMatch) armateurId = armateurMatch.id;
       }
-      
-      // Pré-remplir les données conteneurs
-      // Note: la taille doit être "20'" ou "40'" selon le type LigneConteneur
-      const tailleFormatted = (prefillData.conteneur?.taille === '40' || prefillData.conteneur?.taille === "40'") 
-        ? "40'" as const 
-        : "20'" as const;
-      
-      setConteneursData({
-        typeOperation: 'import', // Valeur par défaut
-        numeroBL: prefillData.numeroBL || '',
-        armateurId: armateurId,
-        transitaireId: '',
-        representantId: '',
+
+      const tailleFormatted =
+        prefillData.conteneur?.taille === "40" || prefillData.conteneur?.taille === "40'" ? ("40'" as const) : ("20'" as const);
+
+      api.setConteneursData({
+        typeOperation: "import",
+        numeroBL: prefillData.numeroBL || "",
+        armateurId,
+        transitaireId: "",
+        representantId: "",
         primeTransitaire: 0,
         primeRepresentant: 0,
-        conteneurs: [{
-          id: crypto.randomUUID(),
-          numero: prefillData.conteneur?.numero || '',
-          taille: tailleFormatted,
-          description: '',
-          prixUnitaire: 0,
-          operations: [],
-        }],
+        conteneurs: [
+          {
+            id: crypto.randomUUID(),
+            numero: prefillData.conteneur?.numero || "",
+            taille: tailleFormatted,
+            description: "",
+            prixUnitaire: 0,
+            operations: [],
+          },
+        ],
         montantHT: 0,
       });
-      
-      // Passer directement à l'étape 2 (client) ou 3 si client trouvé
+
       setCurrentStep(2);
-      
       toast.success("Données du conteneur pré-remplies", {
-        description: `Conteneur ${prefillData.conteneur?.numero || ''} ajouté. Complétez les informations.`
+        description: `Conteneur ${prefillData.conteneur?.numero || ""} ajouté. Complétez les informations.`,
       });
-      
     } catch (error) {
-      console.error('Erreur lors du pré-remplissage:', error);
-      sessionStorage.removeItem('prefill_ordre');
+      console.error("Erreur lors du pré-remplissage:", error);
+      sessionStorage.removeItem("prefill_ordre");
     }
   }, [searchParams, clients, armateurs, clientsLoading]);
 
-  // Calcul du montant HT selon la catégorie
-  const getMontantHT = (): number => {
-    if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
-    if (categorie === "conventionnel" && conventionnelData) return conventionnelData.montantHT;
-    if (categorie === "operations_independantes" && independantData) return independantData.montantHT;
-    return 0;
-  };
+  const stepsValidation = buildOrdreStepsValidation({
+    api, clients, currentStep, categoriesLabels: categoriesLabels as any, isEditMode: false,
+  });
 
-  const montantHT = getMontantHT();
-  const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  
-  // Calculer les taxes à appliquer via le hook unifié
-  const { tva, css, totalTaxes } = calculateTaxes(montantHTApresRemise, taxesSelectionData);
-  const montantTTC = montantHTApresRemise + totalTaxes;
-
-  // Calculer l'état de validation pour chaque étape du stepper
-  const stepsValidation = useMemo(() => {
-    const isStep1Valid = !!categorie;
-    const step1Details = categorie 
-      ? [`Catégorie : ${categoriesLabels[categorie as CategorieDocument]}`]
-      : ["Catégorie non sélectionnée"];
-
-    const isStep2Valid = !!clientId;
-    const selectedClient = clients.find(c => c.id === clientId);
-    const step2Details = selectedClient
-      ? [`Client : ${selectedClient.nom}`]
-      : ["Client non sélectionné"];
-    
-    let isStep3Valid = false;
-    let step3Details: string[] = [];
-    
-    if (categorie === "conteneurs") {
-      const missing: string[] = [];
-      const completed: string[] = [];
-      
-      if (!conteneursData?.typeOperation) missing.push("Type d'opération");
-      else completed.push(`Type : ${conteneursData.typeOperation}`);
-      
-      if (!conteneursData?.numeroBL?.trim()) missing.push("Numéro BL");
-      else completed.push(`BL : ${conteneursData.numeroBL}`);
-      
-      const validConteneurs = conteneursData?.conteneurs?.filter(c => c.numero?.trim()).length || 0;
-      if (validConteneurs === 0) missing.push("Au moins un conteneur");
-      else completed.push(`${validConteneurs} conteneur(s)`);
-      
-      isStep3Valid = missing.length === 0;
-      step3Details = isStep3Valid ? completed : missing;
-    } else if (categorie === "conventionnel") {
-      const missing: string[] = [];
-      const completed: string[] = [];
-      
-      if (!conventionnelData?.numeroBL?.trim()) missing.push("Numéro BL");
-      else completed.push(`BL : ${conventionnelData.numeroBL}`);
-      
-      const validLots = conventionnelData?.lots?.filter(l => l.description?.trim()).length || 0;
-      if (validLots === 0) missing.push("Au moins un lot");
-      else completed.push(`${validLots} lot(s)`);
-      
-      isStep3Valid = missing.length === 0;
-      step3Details = isStep3Valid ? completed : missing;
-    } else if (categorie === "operations_independantes") {
-      const missing: string[] = [];
-      const completed: string[] = [];
-      
-      if (!independantData?.typeOperationIndep) missing.push("Type d'opération");
-      else completed.push(`Type : ${independantData.typeOperationIndep}`);
-      
-      const validPrestations = independantData?.prestations?.filter(p => p.description?.trim()).length || 0;
-      if (validPrestations === 0) missing.push("Au moins une prestation");
-      else completed.push(`${validPrestations} prestation(s)`);
-      
-      isStep3Valid = missing.length === 0;
-      step3Details = isStep3Valid ? completed : missing;
-    }
-
-    return {
-      1: { isValid: isStep1Valid, hasError: currentStep > 1 && !isStep1Valid, details: step1Details },
-      2: { isValid: isStep2Valid, hasError: currentStep > 2 && !isStep2Valid, details: step2Details },
-      3: { isValid: isStep3Valid, hasError: currentStep > 3 && !isStep3Valid, details: step3Details },
-      4: { isValid: true, hasError: false, details: ["Vérification finale"] },
-    };
-  }, [categorie, clientId, clients, conteneursData, conventionnelData, independantData, currentStep, categoriesLabels]);
-
-  // Reset catégorie
   const handleCategorieChange = (value: CategorieDocument) => {
-    setCategorie(value);
-    setConteneursData(null);
-    setConventionnelData(null);
-    setIndependantData(null);
-    setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
-    setTaxesSelectionData(getInitialTaxesSelection());
+    api.setCategorie(value);
+    api.setConteneursData(null);
+    api.setConventionnelData(null);
+    api.setIndependantData(null);
+    api.setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
+    api.setTaxesSelectionData(api.getInitialTaxesSelection());
     setCurrentStep(2);
   };
 
-  // Stepper navigation
   const handleStepClick = (step: number) => {
-    if (step <= currentStep + 1) {
-      setCurrentStep(step);
-    }
-  };
-
-  const canProceedToStep = (step: number): boolean => {
-    if (step === 2) return !!categorie;
-    if (step === 3) return !!categorie && !!clientId;
-    if (step === 4) {
-      if (categorie === "conteneurs") return !!conteneursData && conteneursData.conteneurs.length > 0;
-      if (categorie === "conventionnel") return !!conventionnelData && conventionnelData.lots.length > 0;
-      if (categorie === "operations_independantes") return !!independantData && independantData.prestations.length > 0;
-    }
-    return true;
+    if (step <= currentStep + 1) setCurrentStep(step);
   };
 
   const handleNextStep = () => {
-    // Validation stricte avant de passer à l'étape suivante
-    if (currentStep === 1) {
-      if (!categorie) {
-        toast.error("Veuillez sélectionner une catégorie", {
-          description: "Choisissez le type d'ordre de travail pour continuer"
-        });
-        return;
-      }
+    if (currentStep === 1 && !api.categorie) {
+      toast.error("Veuillez sélectionner une catégorie");
+      return;
     }
-    
-    if (currentStep === 2) {
-      if (!clientId) {
-        toast.error("Veuillez sélectionner un client", {
-          description: "Le client est obligatoire pour continuer"
-        });
-        return;
-      }
+    if (currentStep === 2 && !api.clientId) {
+      toast.error("Veuillez sélectionner un client");
+      return;
     }
-    
     if (currentStep === 3) {
-      // Validation détaillée selon la catégorie
-      if (categorie === "conteneurs") {
-        if (!conteneursData?.typeOperation) {
-          toast.error("Veuillez sélectionner un type d'opération", {
-            description: "Le type d'opération (import/export) est obligatoire"
-          });
-          return;
-        }
-        if (!conteneursData.numeroBL?.trim()) {
-          toast.error("Veuillez saisir le numéro BL", {
-            description: "Le numéro de connaissement est obligatoire"
-          });
-          return;
-        }
-        if (!conteneursData.conteneurs?.length || conteneursData.conteneurs.every(c => !c.numero?.trim())) {
-          toast.error("Veuillez ajouter au moins un conteneur", {
-            description: "Saisissez le numéro d'au moins un conteneur"
-          });
-          return;
-        }
-      } else if (categorie === "conventionnel") {
-        if (!conventionnelData?.numeroBL?.trim()) {
-          toast.error("Veuillez saisir le numéro BL", {
-            description: "Le numéro de connaissement est obligatoire"
-          });
-          return;
-        }
-        if (!conventionnelData.lots?.length || conventionnelData.lots.every(l => !l.description?.trim())) {
-          toast.error("Veuillez ajouter au moins un lot", {
-            description: "Saisissez la description d'au moins un lot"
-          });
-          return;
-        }
-      } else if (categorie === "operations_independantes") {
-        if (!independantData?.typeOperationIndep) {
-          toast.error("Veuillez sélectionner un type d'opération", {
-            description: "Le type d'opération indépendante est obligatoire"
-          });
-          return;
-        }
-        if (!independantData.prestations?.length || independantData.prestations.every(p => !p.description?.trim())) {
-          toast.error("Veuillez ajouter au moins une prestation", {
-            description: "Saisissez la description d'au moins une prestation"
-          });
-          return;
-        }
+      const v = api.validateStep3();
+      if (!v.ok) {
+        toast.error(v.error || "Veuillez compléter les détails");
+        return;
       }
     }
-
-    // Si la validation passe, avancer à l'étape suivante
-    if (canProceedToStep(currentStep + 1)) {
+    if (api.canProceedToStep(currentStep + 1)) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const handlePrevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  // Fonction de validation + ouverture du modal (appelée par bouton, PAS par form submit)
   const handleOpenConfirmModal = () => {
-    if (!clientId) {
-      toast.error("Veuillez sélectionner un client");
-      return;
-    }
-    if (!categorie) {
-      toast.error("Veuillez sélectionner une catégorie");
-      return;
-    }
+    if (!api.clientId) { toast.error("Veuillez sélectionner un client"); return; }
+    if (!api.categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
 
-    // Validation Zod selon la catégorie
-    if (categorie === "conteneurs" && conteneursData) {
-      const validation = validateOrdreConteneurs(conteneursData);
-      if (!validation.success) {
-        toast.error("Erreurs de validation", {
-          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
-        });
-        console.log("Validation errors:", validation.errors);
+    if (api.categorie === "conteneurs" && api.conteneursData) {
+      const v = validateOrdreConteneurs(api.conteneursData);
+      if (!v.success) {
+        toast.error("Erreurs de validation", { description: v.firstError });
         return;
       }
-    } else if (categorie === "conventionnel" && conventionnelData) {
-      const validation = validateOrdreConventionnel(conventionnelData);
-      if (!validation.success) {
-        toast.error("Erreurs de validation", {
-          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
-        });
-        console.log("Validation errors:", validation.errors);
+    } else if (api.categorie === "conventionnel" && api.conventionnelData) {
+      const v = validateOrdreConventionnel(api.conventionnelData);
+      if (!v.success) {
+        toast.error("Erreurs de validation", { description: v.firstError });
         return;
       }
-    } else if (categorie === "operations_independantes" && independantData) {
-      const validation = validateOrdreIndependant(independantData);
-      if (!validation.success) {
-        toast.error("Erreurs de validation", {
-          description: validation.firstError || "Veuillez corriger les erreurs dans le formulaire",
-        });
-        console.log("Validation errors:", validation.errors);
+    } else if (api.categorie === "operations_independantes" && api.independantData) {
+      const v = validateOrdreIndependant(api.independantData);
+      if (!v.success) {
+        toast.error("Erreurs de validation", { description: v.firstError });
         return;
       }
     }
 
-    // Validation exonération : si activée, le motif est obligatoire
-    if (taxesSelectionData.hasExoneration && !taxesSelectionData.motifExoneration?.trim()) {
+    if (api.taxesSelectionData.hasExoneration && !api.taxesSelectionData.motifExoneration?.trim()) {
       toast.error("Veuillez renseigner le motif d'exonération");
       return;
     }
 
-    // Ouvrir le modal de confirmation
     setShowConfirmModal(true);
   };
 
   const handleConfirmSave = async () => {
-    // Préparer les données selon la catégorie
-    let lignesData: any[] = [];
-    let conteneursDataApi: any[] = [];
-    let lotsData: any[] = [];
-    let numeroBL = "";
-    let transitaireId = "";
-
-    if (categorie === "conteneurs" && conteneursData) {
-      numeroBL = conteneursData.numeroBL;
-      transitaireId = conteneursData.transitaireId;
-      conteneursDataApi = conteneursData.conteneurs.map(c => ({
-        numero: c.numero,
-        type: 'dry',
-        taille: c.taille,
-        description: c.description,
-        armateur_id: conteneursData.armateurId || null,
-        prix_unitaire: c.prixUnitaire || 0,
-        operations: c.operations.map(op => ({
-          type_operation: op.type,
-          description: typesOperationConteneur[op.type]?.label || op.description,
-          quantite: op.quantite,
-          prix_unitaire: op.prixUnitaire,
-        }))
-      }));
-    } else if (categorie === "conventionnel" && conventionnelData) {
-      numeroBL = conventionnelData.numeroBL;
-      lotsData = conventionnelData.lots.map(l => ({
-        designation: l.description || l.numeroLot,
-        quantite: l.quantite,
-        poids: 0,
-        volume: 0,
-        prix_unitaire: l.prixUnitaire,
-      }));
-    } else if (categorie === "operations_independantes" && independantData) {
-      lignesData = independantData.prestations.map(p => ({
-        type_operation: independantData.typeOperationIndep,
-        description: p.description,
-        lieu_depart: p.lieuDepart,
-        lieu_arrivee: p.lieuArrivee,
-        date_debut: p.dateDebut,
-        date_fin: p.dateFin,
-        quantite: p.quantite,
-        prix_unitaire: p.prixUnitaire,
-      }));
-    }
-
-    const data = {
-      client_id: clientId,
-      type_document: categorie === "conteneurs" ? "Conteneur" : categorie === "conventionnel" ? "Lot" : "Independant",
-      type_operation: categorie === "conteneurs" && conteneursData ? conteneursData.typeOperation : null,
-      type_operation_indep: categorie === "operations_independantes" && independantData ? independantData.typeOperationIndep : null,
-      bl_numero: numeroBL || null,
-      navire: null,
-      date_arrivee: null,
-      armateur_id: conteneursData?.armateurId || null,
-      transitaire_id: transitaireId || null,
-      representant_id: conteneursData?.representantId || null,
-      prime_transitaire: conteneursData?.primeTransitaire || 0,
-      prime_representant: conteneursData?.primeRepresentant || 0,
-      // Backend attend null, "pourcentage" ou "montant" - pas "none"
-      remise_type: remiseData.type === "none" ? null : remiseData.type,
-      remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
-      remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
-      // Exonérations - basées sur la nouvelle structure
-     ...toApiPayload(taxesSelectionData),
-      notes: (categorie === "conventionnel" && conventionnelData?.description) ? conventionnelData.description : notes,
-      lignes: lignesData,
-      conteneurs: conteneursDataApi,
-      lots: lotsData,
-    };
-
+    const data = api.buildPayload({ navire: null, date_arrivee: null });
     try {
-     console.log('📤 Envoi ordre avec taxes_selection:', data.taxes_selection);
       await createOrdreMutation.mutateAsync(data);
-      clear(); // Clear draft on success
+      clear();
       setShowConfirmModal(false);
       toast.success("Ordre de travail créé avec succès");
-      // Retourner à la liste des ordres
       navigate("/ordres");
     } catch (error: any) {
       const response = error?.response?.data;
       const apiMessage = response?.message;
       const apiErrors = response?.errors;
-
-      // Afficher les erreurs de validation détaillées (422)
-      if (apiErrors && typeof apiErrors === 'object') {
+      if (apiErrors && typeof apiErrors === "object") {
         const errorMessages = Object.entries(apiErrors)
-          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-          .join('\n');
-        
-        console.error('Validation errors:', apiErrors);
-        toast.error(apiMessage || "Erreurs de validation", {
-          description: errorMessages,
-          duration: 8000,
-        });
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`)
+          .join("\n");
+        toast.error(apiMessage || "Erreurs de validation", { description: errorMessages, duration: 8000 });
       } else if (response?.error) {
-        toast.error(apiMessage || "Erreur lors de la création de l'ordre", {
-          description: String(response.error),
-        });
+        toast.error(apiMessage || "Erreur lors de la création de l'ordre", { description: String(response.error) });
       } else {
         toast.error(apiMessage || "Erreur lors de la création de l'ordre");
       }
@@ -644,9 +305,6 @@ export default function NouvelOrdrePage() {
     }
   };
 
-  // Get client for preview
-  const selectedClient = clients.find(c => String(c.id) === clientId);
-  const isMobile = useIsMobile();
   return (
     <MainLayout title="Nouvel ordre de travail">
       <div className="mb-6 animate-fade-in">
@@ -660,49 +318,37 @@ export default function NouvelOrdrePage() {
                 <Ship className="h-6 w-6 text-primary" />
                 Nouvel ordre de travail
               </h1>
-              <p className="text-muted-foreground text-sm">
-                Créez un ordre de travail pour l'exploitation
-              </p>
+              <p className="text-muted-foreground text-sm">Créez un ordre de travail pour l'exploitation</p>
             </div>
           </div>
           <AutoSaveIndicator
-            hasDraft={hasDraft}
-            lastSaved={lastSaved}
-            isSaving={isSaving}
-            onRestore={handleRestoreDraft}
-            onClear={clear}
+            hasDraft={hasDraft} lastSaved={lastSaved} isSaving={isSaving}
+            onRestore={handleRestoreDraft} onClear={clear}
           />
         </div>
       </div>
 
-      {/* Restore prompt */}
       {showRestorePrompt && hasDraft && !isRestoredFromDraft && (
         <AutoSaveIndicator
-          hasDraft={hasDraft}
-          lastSaved={lastSaved}
-          isSaving={isSaving}
-          onRestore={handleRestoreDraft}
-          onClear={clear}
+          hasDraft={hasDraft} lastSaved={lastSaved} isSaving={isSaving}
+          onRestore={handleRestoreDraft} onClear={clear}
           showRestorePrompt={true}
           onDismissPrompt={() => setShowRestorePrompt(false)}
         />
       )}
 
-      {/* Stepper - mobile only */}
       {isMobile && (
-        <OrdreStepper 
-          currentStep={currentStep} 
-          categorie={categorie || undefined}
+        <OrdreStepper
+          currentStep={currentStep}
+          categorie={api.categorie || undefined}
           onStepClick={handleStepClick}
           stepsValidation={stepsValidation}
         />
       )}
 
-      <div 
+      <div
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
-            e.preventDefault();
-          }
+          if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "BUTTON") e.preventDefault();
         }}
         className="animate-fade-in"
       >
@@ -718,22 +364,18 @@ export default function NouvelOrdrePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(Object.keys(categoriesLabels) as CategorieDocument[]).map((key) => {
                     const cat = categoriesLabels[key];
-                    const isSelected = categorie === key;
+                    const isSelected = api.categorie === key;
                     return (
                       <button
                         key={key}
                         type="button"
                         onClick={() => handleCategorieChange(key)}
                         className={`p-4 rounded-lg border-2 text-left transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
-                          isSelected 
-                            ? "border-primary bg-primary/10" 
-                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          isSelected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/50"
                         }`}
                       >
                         <div className="flex items-center gap-3 mb-2">
-                          <div className={`${isSelected ? "text-primary" : "text-muted-foreground"}`}>
-                            {cat.icon}
-                          </div>
+                          <div className={isSelected ? "text-primary" : "text-muted-foreground"}>{cat.icon}</div>
                           <span className="font-semibold">{cat.label}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">{cat.description}</p>
@@ -746,7 +388,7 @@ export default function NouvelOrdrePage() {
           )}
 
           {/* Step 2: Client */}
-          {(isMobile ? currentStep === 2 : !!categorie) && (
+          {(isMobile ? currentStep === 2 : !!api.categorie) && (
             <Card className="transition-all duration-300 hover:shadow-lg animate-fade-in">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -760,8 +402,8 @@ export default function NouvelOrdrePage() {
                   <Label htmlFor="client">Nom du client *</Label>
                   <ClientCombobox
                     clients={clients}
-                    value={clientId}
-                    onChange={setClientId}
+                    value={api.clientId}
+                    onChange={api.setClientId}
                     placeholder="Rechercher un client..."
                   />
                 </div>
@@ -770,162 +412,131 @@ export default function NouvelOrdrePage() {
           )}
 
           {/* Step 3: Détails */}
-          {(isMobile ? currentStep === 3 : !!categorie) && (
+          {(isMobile ? currentStep === 3 : !!api.categorie) && (
             <div className="space-y-6 animate-fade-in">
-              {categorie === "conteneurs" && (
+              {api.categorie === "conteneurs" && (
                 <OrdreConteneursForm
                   armateurs={armateurs}
                   transitaires={transitaires}
                   representants={representants}
-                  onDataChange={setConteneursData}
-                  initialData={conteneursData ? {
-                    typeOperation: conteneursData.typeOperation,
-                    numeroBL: conteneursData.numeroBL,
-                    armateurId: conteneursData.armateurId,
-                    transitaireId: conteneursData.transitaireId,
-                    representantId: conteneursData.representantId,
-                    conteneurs: conteneursData.conteneurs,
-                    primeTransitaire: conteneursData.primeTransitaire,
-                    primeRepresentant: conteneursData.primeRepresentant,
+                  onDataChange={api.setConteneursData}
+                  initialData={api.conteneursData ? {
+                    typeOperation: api.conteneursData.typeOperation,
+                    numeroBL: api.conteneursData.numeroBL,
+                    armateurId: api.conteneursData.armateurId,
+                    transitaireId: api.conteneursData.transitaireId,
+                    representantId: api.conteneursData.representantId,
+                    conteneurs: api.conteneursData.conteneurs,
+                    primeTransitaire: api.conteneursData.primeTransitaire,
+                    primeRepresentant: api.conteneursData.primeRepresentant,
                   } : undefined}
                 />
               )}
 
-              {categorie === "conventionnel" && (
-                <OrdreConventionnelForm 
-                  onDataChange={setConventionnelData}
-                  initialData={conventionnelData ? {
-                    numeroBL: conventionnelData.numeroBL,
-                    lieuChargement: conventionnelData.lieuChargement,
-                    lieuDechargement: conventionnelData.lieuDechargement,
-                    lots: conventionnelData.lots,
+              {api.categorie === "conventionnel" && (
+                <OrdreConventionnelForm
+                  onDataChange={api.setConventionnelData}
+                  initialData={api.conventionnelData ? {
+                    numeroBL: api.conventionnelData.numeroBL,
+                    lieuChargement: api.conventionnelData.lieuChargement,
+                    lieuDechargement: api.conventionnelData.lieuDechargement,
+                    lots: api.conventionnelData.lots,
                   } : undefined}
                 />
               )}
 
-              {categorie === "operations_independantes" && (
-                <OrdreIndependantForm 
-                  onDataChange={setIndependantData}
-                  initialData={independantData ? {
-                    typeOperationIndep: independantData.typeOperationIndep,
-                    prestations: independantData.prestations,
+              {api.categorie === "operations_independantes" && (
+                <OrdreIndependantForm
+                  onDataChange={api.setIndependantData}
+                  initialData={api.independantData ? {
+                    typeOperationIndep: api.independantData.typeOperationIndep,
+                    prestations: api.independantData.prestations,
                   } : undefined}
                 />
               )}
 
-              {/* Notes */}
               <Card className="transition-all duration-300 hover:shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg">Notes / Observations</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-lg">Notes / Observations</CardTitle></CardHeader>
                 <CardContent>
-                  <Textarea 
-                    placeholder="Ajouter des notes ou observations..." 
-                    value={notes} 
-                    onChange={(e) => setNotes(e.target.value)} 
+                  <Textarea
+                    placeholder="Ajouter des notes ou observations..."
+                    value={api.notes}
+                    onChange={(e) => api.setNotes(e.target.value)}
                     rows={3}
                   />
                 </CardContent>
               </Card>
 
-              {/* Remise */}
-              {montantHT > 0 && (
-                <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
+              {api.montantHT > 0 && (
+                <RemiseInput montantHT={api.montantHT} onChange={api.setRemiseData} />
               )}
             </div>
           )}
 
           {/* Step 4: Récapitulatif */}
-          {(isMobile ? currentStep === 4 : !!categorie) && (
+          {(isMobile ? currentStep === 4 : !!api.categorie) && (
             <div className="space-y-6 animate-fade-in">
-              {/* Sélection des taxes */}
-              {montantHTApresRemise > 0 && (
+              {api.montantHTApresRemise > 0 && (
                 <TaxesSelector
-                  taxes={availableTaxes}
-                  montantHT={montantHTApresRemise}
-                  onChange={handleTaxesChange}
-                  value={taxesSelectionData}
+                  taxes={api.availableTaxes}
+                  montantHT={api.montantHTApresRemise}
+                  onChange={api.handleTaxesChange}
+                  value={api.taxesSelectionData}
                 />
               )}
 
               <RecapitulatifCard
-                montantHT={montantHT}
-                tauxTva={taxRates.TVA}
-                tauxCss={taxRates.CSS}
-                tva={tva}
-                css={css}
-                montantTTC={montantTTC}
-                remiseMontant={remiseData.montantCalcule}
-                remiseType={remiseData.type}
-                remiseValeur={remiseData.valeur}
-                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-                {...toApiPayload(taxesSelectionData)}
+                montantHT={api.montantHT}
+                tauxTva={api.taxRates.TVA}
+                tauxCss={api.taxRates.CSS}
+                tva={api.tva}
+                css={api.css}
+                montantTTC={api.montantTTC}
+                remiseMontant={api.remiseData.montantCalcule}
+                remiseType={api.remiseData.type}
+                remiseValeur={api.remiseData.valeur}
+                selectedTaxCodes={api.taxesSelectionData.selectedTaxCodes}
+                {...api.toApiPayload(api.taxesSelectionData)}
               />
             </div>
           )}
 
-          {/* Navigation buttons */}
+          {/* Navigation */}
           <div className="flex justify-between pt-4">
-            {isMobile && (
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handlePrevStep}
-                disabled={currentStep === 1}
-              >
+            {isMobile ? (
+              <Button type="button" variant="outline" onClick={handlePrevStep} disabled={currentStep === 1}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Précédent
               </Button>
-            )}
-            {!isMobile && <div />}
+            ) : <div />}
 
             {isMobile && currentStep < 4 ? (
-              <Button 
-                type="button" 
-                onClick={handleNextStep}
-                disabled={!canProceedToStep(currentStep + 1)}
-              >
+              <Button type="button" onClick={handleNextStep} disabled={!api.canProceedToStep(currentStep + 1)}>
                 Suivant
-                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button 
+              <Button
                 type="button"
                 onClick={handleOpenConfirmModal}
-                size="lg" 
-                disabled={createOrdreMutation.isPending}
-                className="transition-all duration-200 hover:scale-105 hover:shadow-md"
+                disabled={createOrdreMutation.isPending || !api.categorie || !api.clientId}
+                className="gap-2"
               >
-                {createOrdreMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Créer l'ordre de travail
+                {createOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Créer l'ordre
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modal de confirmation */}
       <ConfirmationSaveModal
         open={showConfirmModal}
         onOpenChange={setShowConfirmModal}
         onConfirm={handleConfirmSave}
+        title="Confirmer la création de l'ordre"
+        description="Vérifiez les informations avant de créer l'ordre de travail."
+        montantTTC={api.montantTTC}
         isLoading={createOrdreMutation.isPending}
-        type="ordre"
-        montantHT={montantHTApresRemise}
-        tva={tva}
-        css={css}
-        montantTTC={montantTTC}
-        remise={remiseData.montantCalcule}
-        selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-        tauxTva={taxRates.TVA}
-        tauxCss={taxRates.CSS}
-        {...toApiPayload(taxesSelectionData)}
-        clientName={selectedClient?.nom}
-        categorie={categorie || undefined}
       />
     </MainLayout>
   );
