@@ -8,17 +8,29 @@ use App\Http\Requests\UpdateDevisRequest;
 use App\Http\Resources\DevisResource;
 use App\Models\Devis;
 use App\Models\Audit;
-use App\Support\DocumentCategory;
+use App\Services\Devis\DevisServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * CRUD Devis - Conversion et duplication déléguées à DevisConversionController
+ * CRUD Devis - délègue toute la logique métier à DevisServiceFactory.
+ * Conversion et duplication restent déléguées à DevisConversionController.
  */
 class DevisController extends Controller
 {
+    public function __construct(protected DevisServiceFactory $devisFactory) {}
+
+    private const RELATIONS = ['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots'];
+
+    private const TRACKED_FIELDS = [
+        'montant_ht', 'montant_ttc', 'montant_tva', 'montant_css',
+        'remise_type', 'remise_valeur', 'remise_montant',
+        'statut', 'date_validite', 'navire', 'voyage', 'port_origine', 'port_destination',
+        'notes', 'observations', 'type_operation', 'client_id', 'transitaire_id', 'armateur_id',
+    ];
+
     public function index(Request $request): JsonResponse
     {
         try {
@@ -34,105 +46,66 @@ class DevisController extends Controller
             return response()->json(DevisResource::collection($devis)->response()->getData(true));
         } catch (\Throwable $e) {
             Log::error('Erreur listing devis', ['exception' => $e->getMessage()]);
-            return response()->json(['message' => 'Erreur lors du chargement des devis', 'error' => config('app.debug') ? $e->getMessage() : null], 500);
+            return response()->json([
+                'message' => 'Erreur lors du chargement des devis',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
     }
 
     public function store(StoreDevisRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
-
-            $devis = DB::transaction(function () use ($data) {
-                $data = $this->normaliserDonnees($data);
-                $lignes = $data['lignes'] ?? [];
-                $conteneurs = $data['conteneurs'] ?? [];
-                $lots = $data['lots'] ?? [];
-                unset($data['lignes'], $data['conteneurs'], $data['lots']);
-
-                $devis = new Devis();
-                $devis->fill($data);
-                $devis->forceFill([
-                    'numero' => Devis::genererNumero(),
-                    'date_creation' => now()->toDateString(),
-                    'statut' => $data['statut'] ?? 'brouillon',
-                ]);
-                $devis->save();
-
-                $this->creerElements($devis, $lignes, $conteneurs, $lots);
-                $devis->calculerTotaux();
-
-                return $devis->fresh(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots']);
-            });
+            $devis = $this->devisFactory->creer($request->validated());
 
             Audit::log('create', 'devis', "Devis créé: {$devis->numero}", $devis->id);
+
             return response()->json(new DevisResource($devis), 201);
         } catch (\Throwable $e) {
             Log::error('Erreur création devis', ['message' => $e->getMessage()]);
-            return response()->json(['message' => 'Erreur lors de la création du devis', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Erreur lors de la création du devis',
+                'error' => $e->getMessage(),
+            ], 422);
         }
     }
 
     public function show(Devis $devis): JsonResponse
     {
         try {
-            $devis->loadMissing(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots', 'ordre', 'annulation']);
+            $devis->loadMissing([...self::RELATIONS, 'ordre', 'annulation']);
             return response()->json(new DevisResource($devis));
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Erreur lors du chargement du devis', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Erreur lors du chargement du devis',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
     public function update(UpdateDevisRequest $request, Devis $devis): JsonResponse
     {
         if (in_array(strtolower($devis->statut), ['converti', 'accepte'])) {
-            return response()->json(['message' => 'Impossible de modifier un devis converti ou accepté'], 422);
+            return response()->json([
+                'message' => 'Impossible de modifier un devis converti ou accepté',
+            ], 422);
         }
 
         try {
-            $data = $request->validated();
-            $oldValues = $devis->only(['montant_ht', 'montant_ttc', 'montant_tva', 'montant_css', 'remise_type', 'remise_valeur', 'remise_montant', 'statut', 'date_validite', 'navire', 'voyage', 'port_origine', 'port_destination', 'notes', 'observations', 'type_operation', 'client_id', 'transitaire_id', 'armateur_id']);
+            $oldValues = $devis->only(self::TRACKED_FIELDS);
 
-            DB::transaction(function () use ($devis, $data) {
-                $conteneurs = $data['conteneurs'] ?? null;
-                $lots = $data['lots'] ?? null;
-                $lignes = $data['lignes'] ?? null;
-                unset($data['conteneurs'], $data['lots'], $data['lignes']);
+            $devis = $this->devisFactory->modifier($devis, $request->validated());
 
-                if (isset($data['bl_numero'])) { $data['numero_bl'] = $data['bl_numero']; unset($data['bl_numero']); }
-                if (isset($data['categorie']) || isset($data['type_document'])) {
-                    $data['categorie'] = DocumentCategory::normalize(
-                        $data['categorie'] ?? $devis->categorie,
-                        $data['type_document'] ?? null,
-                    );
-                }
-                unset($data['numero'], $data['date_creation'], $data['type_document']);
-
-                $devis->update($data);
-
-                if ($conteneurs !== null && DocumentCategory::isConteneurs($devis->categorie)) {
-                    $devis->conteneurs()->each(fn($c) => $c->operations()->delete());
-                    $devis->conteneurs()->delete();
-                    $this->creerConteneurs($devis, $conteneurs);
-                }
-                if ($lots !== null && DocumentCategory::isConventionnel($devis->categorie)) {
-                    $devis->lots()->delete();
-                    $this->creerLots($devis, $lots);
-                }
-                if ($lignes !== null && DocumentCategory::isIndependant($devis->categorie)) {
-                    $devis->lignes()->delete();
-                    $this->creerLignes($devis, $lignes);
-                }
-                $devis->calculerTotaux();
-            });
-
-            $devis->refresh();
-            $newValues = $devis->only(['montant_ht', 'montant_ttc', 'montant_tva', 'montant_css', 'remise_type', 'remise_valeur', 'remise_montant', 'statut', 'date_validite', 'navire', 'voyage', 'port_origine', 'port_destination', 'notes', 'observations', 'type_operation', 'client_id', 'transitaire_id', 'armateur_id']);
+            $newValues = $devis->only(self::TRACKED_FIELDS);
             Audit::log('update', 'devis', "Devis modifié: {$devis->numero}", $devis, $oldValues, $newValues);
 
-            return response()->json(new DevisResource($devis->fresh(['client', 'armateur', 'transitaire', 'representant', 'lignes', 'conteneurs.operations', 'lots'])));
+            return response()->json(new DevisResource($devis));
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Erreur lors de la mise à jour', 'error' => $e->getMessage()], 500);
+            Log::error('Erreur mise à jour devis', ['message' => $e->getMessage()]);
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour',
+                'error' => $e->getMessage(),
+            ], 422);
         }
     }
 
@@ -151,82 +124,35 @@ class DevisController extends Controller
                 $devis->lots()->delete();
                 $devis->delete();
             });
-            try { Audit::log('delete', 'devis', "Devis supprimé: {$numero}", $devis); } catch (\Throwable $e) {}
+
+            try {
+                Audit::log('delete', 'devis', "Devis supprimé: {$numero}", $devis);
+            } catch (\Throwable $e) {
+                // best effort
+            }
+
             return response()->json(['message' => 'Devis supprimé avec succès']);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Erreur lors de la suppression', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Erreur lors de la suppression',
+                'error' => $e->getMessage(),
+            ], 422);
         }
     }
 
     // === Délégation conversion ===
-    public function convertToOrdre(Devis $devis): JsonResponse { return app(DevisConversionController::class)->convertToOrdre($devis); }
-    public function convertToFacture(Devis $devis): JsonResponse { return app(DevisConversionController::class)->convertToFacture($devis); }
-    public function duplicate(Devis $devis): JsonResponse { return app(DevisConversionController::class)->duplicate($devis); }
-
-    // === Méthodes privées ===
-    private function normaliserDonnees(array $data): array
+    public function convertToOrdre(Devis $devis): JsonResponse
     {
-        $data['categorie'] = DocumentCategory::normalize(
-            $data['categorie'] ?? null,
-            $data['type_document'] ?? null,
-        );
-        unset($data['type_document']);
-        if (isset($data['bl_numero']) && !isset($data['numero_bl'])) { $data['numero_bl'] = $data['bl_numero']; }
-        unset($data['bl_numero']);
-        $data['date_creation'] = $data['date_creation'] ?? now()->toDateString();
-        if (!isset($data['date_validite'])) {
-            $validite = max(1, min(365, (int) ($data['validite_jours'] ?? 30)));
-            $data['date_validite'] = now()->addDays($validite)->toDateString();
-        }
-        unset($data['validite_jours'], $data['date_arrivee']);
-        return $data;
+        return app(DevisConversionController::class)->convertToOrdre($devis);
     }
 
-    private function creerElements(Devis $devis, array $lignes, array $conteneurs, array $lots): void
+    public function convertToFacture(Devis $devis): JsonResponse
     {
-        switch (DocumentCategory::normalize($devis->categorie)) {
-            case DocumentCategory::CONTENEURS: $this->creerConteneurs($devis, $conteneurs); break;
-            case DocumentCategory::CONVENTIONNEL: $this->creerLots($devis, $lots); break;
-            case DocumentCategory::INDEPENDANT: $this->creerLignes($devis, $lignes); break;
-        }
+        return app(DevisConversionController::class)->convertToFacture($devis);
     }
 
-    private function creerConteneurs(Devis $devis, array $conteneurs): void
+    public function duplicate(Devis $devis): JsonResponse
     {
-        foreach ($conteneurs as $conteneurData) {
-            $operations = $conteneurData['operations'] ?? [];
-            unset($conteneurData['operations'], $conteneurData['type'], $conteneurData['armateur_id']);
-            $conteneurData['taille'] = str_replace("'", "", $conteneurData['taille'] ?? '20');
-            $conteneur = $devis->conteneurs()->create(['numero' => $conteneurData['numero'] ?? '', 'taille' => $conteneurData['taille'], 'description' => $conteneurData['description'] ?? '', 'prix_unitaire' => $conteneurData['prix_unitaire'] ?? 0]);
-            foreach ($operations as $opData) {
-                if (isset($opData['type_operation']) && !isset($opData['type'])) { $opData['type'] = $opData['type_operation']; unset($opData['type_operation']); }
-                $opData['prix_total'] = ($opData['quantite'] ?? 1) * ($opData['prix_unitaire'] ?? 0);
-                $conteneur->operations()->create($opData);
-            }
-        }
-    }
-
-    private function creerLots(Devis $devis, array $lots): void
-    {
-        foreach (array_values($lots) as $i => $lotData) {
-            if (isset($lotData['designation']) && !isset($lotData['description'])) { $lotData['description'] = $lotData['designation']; }
-            unset($lotData['designation']);
-            $lotData['numero_lot'] = $lotData['numero_lot'] ?? 'LOT-' . ($i + 1);
-            $lotData['quantite'] = $lotData['quantite'] ?? 1;
-            $lotData['prix_unitaire'] = $lotData['prix_unitaire'] ?? 0;
-            $lotData['prix_total'] = $lotData['quantite'] * $lotData['prix_unitaire'];
-            $devis->lots()->create($lotData);
-        }
-    }
-
-    private function creerLignes(Devis $devis, array $lignes): void
-    {
-        foreach ($lignes as $ligneData) {
-            if (isset($ligneData['type_operation']) && empty($ligneData['description'])) { $ligneData['description'] = $ligneData['type_operation']; }
-            $ligneData['quantite'] = $ligneData['quantite'] ?? 1;
-            $ligneData['prix_unitaire'] = $ligneData['prix_unitaire'] ?? 0;
-            $ligneData['montant_ht'] = $ligneData['quantite'] * $ligneData['prix_unitaire'];
-            $devis->lignes()->create($ligneData);
-        }
+        return app(DevisConversionController::class)->duplicate($devis);
     }
 }

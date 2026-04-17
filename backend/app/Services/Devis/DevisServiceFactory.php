@@ -122,45 +122,58 @@ class DevisServiceFactory
     public function modifier(Devis $devis, array $data): Devis
     {
         return DB::transaction(function () use ($devis, $data) {
-            $categorie = DocumentCategory::normalize($data['categorie'] ?? $devis->categorie);
+            $categorie = DocumentCategory::normalize(
+                $data['categorie'] ?? $devis->categorie,
+                $data['type_document'] ?? null,
+            );
             $data['categorie'] = $categorie;
             $service = $this->getService($categorie);
 
-            // Normaliser les champs API -> DB (sans écraser date_creation)
+            // Normaliser les champs API -> DB et purger les champs immutables
             if (isset($data['bl_numero']) && !isset($data['numero_bl'])) {
                 $data['numero_bl'] = $data['bl_numero'];
             }
-            unset($data['bl_numero'], $data['date_creation'], $data['numero']);
+            unset(
+                $data['bl_numero'],
+                $data['type_document'],
+                $data['date_creation'],
+                $data['numero'],
+            );
+
+            // Extraire les relations avant l'update
+            $conteneurs = $data['conteneurs'] ?? null;
+            $lots = $data['lots'] ?? null;
+            $lignes = $data['lignes'] ?? null;
+            unset($data['conteneurs'], $data['lots'], $data['lignes']);
 
             $devis->update($data);
 
-            // Remplacer les conteneurs si fournis
-            if (isset($data['conteneurs']) && $categorie === 'conteneurs') {
+            if ($conteneurs !== null && $categorie === 'conteneurs') {
                 foreach ($devis->conteneurs as $conteneur) {
                     $conteneur->operations()->delete();
                 }
                 $devis->conteneurs()->delete();
-                $this->conteneursService->creerConteneurs($devis, $data['conteneurs']);
+                $this->conteneursService->creerConteneurs($devis, $conteneurs);
             }
 
-            // Remplacer les lots si fournis
-            if (isset($data['lots']) && $categorie === 'conventionnel') {
+            if ($lots !== null && $categorie === 'conventionnel') {
                 $devis->lots()->delete();
-                $this->conventionnelService->creerLots($devis, $data['lots']);
+                $this->conventionnelService->creerLots($devis, $lots);
             }
 
-            // Remplacer les lignes si fournies
-            if (isset($data['lignes']) && $categorie === 'operations_independantes') {
+            if ($lignes !== null && $categorie === 'operations_independantes') {
                 $devis->lignes()->delete();
-                $this->independantService->creerLignes($devis, $data['lignes']);
+                $this->independantService->creerLignes($devis, $lignes);
             }
 
-            // Recalculer les totaux
             $service->calculerTotaux($devis);
 
-            Log::info('Devis modifié via Factory', ['devis_id' => $devis->id]);
+            Log::info('Devis modifié via Factory', [
+                'devis_id' => $devis->id,
+                'categorie' => $categorie,
+            ]);
 
-            return $devis->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur']);
+            return $devis->fresh(['lignes', 'conteneurs.operations', 'lots', 'client', 'transitaire', 'armateur', 'representant']);
         });
     }
 
