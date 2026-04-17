@@ -509,7 +509,7 @@ export default function ModifierOrdrePage() {
                 lots={api.conventionnelData?.lots?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
                 prestations={api.independantData?.prestations?.map((p: any) => ({ description: p.description, quantite: p.quantite }))}
                 descriptionConventionnel={(api.conventionnelData as any)?.description}
-                selectedTaxCodes={api.taxesSelectionData?.selected_tax_codes}
+                selectedTaxCodes={api.taxesSelectionData?.selectedTaxCodes}
               />
             </div>
           </div>
