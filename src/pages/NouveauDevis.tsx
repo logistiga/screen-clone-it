@@ -1,34 +1,17 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ApiErrorState } from "@/components/ApiErrorState";
 import { useClients, useArmateurs, useTransitaires, useRepresentants, useCreateDevis } from "@/hooks/use-commercial";
-import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
-import { useDocumentTaxes } from "@/hooks/useDocumentTaxes";
-import { CategorieDocument, getCategoriesLabels } from "@/types/documents";
-import {
-  CategorieSelector,
-  ClientInfoCard,
-  RecapitulatifCard,
-  DevisStepper,
-  AutoSaveIndicator,
-} from "@/components/devis/shared";
-import {
-  DevisConteneursForm,
-  DevisConventionnelForm,
-  DevisIndependantForm,
-} from "@/components/devis/forms";
+import { CategorieDocument } from "@/types/documents";
+import { AutoSaveIndicator, DevisForm, useDevisForm } from "@/components/devis/shared";
 import type { DevisConteneursData } from "@/components/devis/forms/DevisConteneursForm";
 import type { DevisConventionnelData } from "@/components/devis/forms/DevisConventionnelForm";
 import type { DevisIndependantData } from "@/components/devis/forms/DevisIndependantForm";
-import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+import { RemiseData } from "@/components/shared/RemiseInput";
 import { useAutoSave } from "@/hooks/use-auto-save";
 
 interface DevisDraftData {
@@ -43,320 +26,115 @@ interface DevisDraftData {
   remiseData: RemiseData;
 }
 
+const toArray = (v: any): any[] =>
+  Array.isArray(v) ? v : Array.isArray(v?.data) ? v.data : [];
+
 export default function NouveauDevisPage() {
   const navigate = useNavigate();
-  
-  // API hooks
+
   const { data: clientsData, isLoading: loadingClients, error: clientsError } = useClients({ per_page: 500 });
   const { data: armateursData, isLoading: loadingArmateurs, error: armateursError } = useArmateurs();
   const { data: transitairesData, isLoading: loadingTransitaires, error: transitairesError } = useTransitaires();
   const { data: representantsData, isLoading: loadingRepresentants, error: representantsError } = useRepresentants({ per_page: 500 });
   const createDevisMutation = useCreateDevis();
 
-  // Hook unifié pour les taxes
-  const { 
-    taxRates, 
-    availableTaxes, 
-    isLoading: taxesLoading,
-    calculateTaxes,
-    toApiPayload 
-  } = useDocumentTaxes();
-
   const clients = clientsData?.data || [];
-  const armateurs = Array.isArray(armateursData)
-    ? armateursData
-    : Array.isArray((armateursData as any)?.data)
-      ? (armateursData as any).data
-      : [];
-  const transitaires = Array.isArray(transitairesData)
-    ? transitairesData
-    : Array.isArray((transitairesData as any)?.data)
-      ? (transitairesData as any).data
-      : [];
-  const representants = Array.isArray(representantsData)
-    ? representantsData
-    : Array.isArray((representantsData as any)?.data)
-      ? (representantsData as any).data
-      : [];
-  
-  const categoriesLabels = getCategoriesLabels();
+  const armateurs = toArray(armateursData);
+  const transitaires = toArray(transitairesData);
+  const representants = toArray(representantsData);
 
-  // Stepper
+  const api = useDevisForm();
   const [currentStep, setCurrentStep] = useState(1);
   const [showRestorePrompt, setShowRestorePrompt] = useState(true);
   const [isRestoredFromDraft, setIsRestoredFromDraft] = useState(false);
 
-  const [categorie, setCategorie] = useState<CategorieDocument | "">("");
-  const [clientId, setClientId] = useState("");
-  const [dateValidite, setDateValidite] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    return date.toISOString().split('T')[0];
-  });
-  const [notes, setNotes] = useState("");
-  
-  // Form data from child components
-  const [conteneursData, setConteneursData] = useState<DevisConteneursData | null>(null);
-  const [conventionnelData, setConventionnelData] = useState<DevisConventionnelData | null>(null);
-  const [independantData, setIndependantData] = useState<DevisIndependantData | null>(null);
-
-  // État de la remise
-  const [remiseData, setRemiseData] = useState<RemiseData>({
-    type: "none",
-    valeur: 0,
-    montantCalcule: 0,
-  });
-
-  // État de la sélection des taxes
-  const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>(() => ({
-    selectedTaxCodes: [],
-    hasExoneration: false,
-    exoneratedTaxCodes: [],
-    motifExoneration: "",
-  }));
-
-  const taxesInitRef = useRef(false);
-
-  // Synchroniser les taxes recommandées quand elles sont chargées
+  // Init taxes recommandées
   useEffect(() => {
-    if (taxesInitRef.current) return;
-    if (taxesLoading || availableTaxes.length === 0) return;
-    taxesInitRef.current = true;
-    const recommendedCodes = availableTaxes
-      .filter(t => t.obligatoire)
-      .map(t => t.code.toUpperCase());
-    setTaxesSelectionData(prev => {
-      if (prev.selectedTaxCodes.length > 0) return prev;
-      return { ...prev, selectedTaxCodes: recommendedCodes };
-    });
-  }, [taxesLoading, availableTaxes]);
+    if (api.taxesInitRef.current) return;
+    if (api.taxesLoading || api.availableTaxes.length === 0) return;
+    api.taxesInitRef.current = true;
+    const recommendedCodes = api.availableTaxes.filter((t) => t.obligatoire).map((t) => t.code.toUpperCase());
+    api.setTaxesSelectionData((prev) =>
+      prev.selectedTaxCodes.length > 0 ? prev : { ...prev, selectedTaxCodes: recommendedCodes }
+    );
+  }, [api.taxesLoading, api.availableTaxes]);
 
-  // Handler stable pour TaxesSelector
-  const handleTaxesChange = useCallback((next: TaxesSelectionData) => {
-    setTaxesSelectionData(prev => {
-      const same =
-        prev.hasExoneration === next.hasExoneration &&
-        prev.motifExoneration === next.motifExoneration &&
-        prev.selectedTaxCodes.length === next.selectedTaxCodes.length &&
-        prev.selectedTaxCodes.every((v, i) => v === next.selectedTaxCodes[i]) &&
-        prev.exoneratedTaxCodes.length === next.exoneratedTaxCodes.length &&
-        prev.exoneratedTaxCodes.every((v, i) => v === next.exoneratedTaxCodes[i]);
-      return same ? prev : next;
-    });
-  }, []);
+  // Auto-save
+  const autoSave = useAutoSave<DevisDraftData>({ key: "nouveau_devis", debounceMs: 1500 });
 
-  // Auto-save hook
-  const autoSave = useAutoSave<DevisDraftData>({
-    key: 'nouveau_devis',
-    debounceMs: 1500,
-  });
-
-  // Restore draft function
   const handleRestoreDraft = useCallback(() => {
     const draft = autoSave.restore();
     if (draft) {
-      setCategorie(draft.categorie);
-      setClientId(draft.clientId);
-      setDateValidite(draft.dateValidite);
-      setNotes(draft.notes);
+      api.setCategorie(draft.categorie);
+      api.setClientId(draft.clientId);
+      api.setDateValidite(draft.dateValidite);
+      api.setNotes(draft.notes);
       setCurrentStep(draft.currentStep || 1);
-      setConteneursData(draft.conteneursData);
-      setConventionnelData(draft.conventionnelData);
-      setIndependantData(draft.independantData);
-      setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
+      api.setConteneursData(draft.conteneursData);
+      api.setConventionnelData(draft.conventionnelData);
+      api.setIndependantData(draft.independantData);
+      api.setRemiseData(draft.remiseData || { type: "none", valeur: 0, montantCalcule: 0 });
       setIsRestoredFromDraft(true);
       setShowRestorePrompt(false);
       toast.success("Brouillon restauré avec succès");
     }
-  }, [autoSave]);
+  }, [autoSave, api]);
 
-  // Auto-save when form data changes
   useEffect(() => {
-    // Ne pas sauvegarder si on n'a pas encore fait de choix
-    if (!categorie && !clientId) return;
-
-    const draftData: DevisDraftData = {
-      categorie,
-      clientId,
-      dateValidite,
-      notes,
+    if (!api.categorie && !api.clientId) return;
+    autoSave.save({
+      categorie: api.categorie,
+      clientId: api.clientId,
+      dateValidite: api.dateValidite,
+      notes: api.notes,
       currentStep,
-      conteneursData,
-      conventionnelData,
-      independantData,
-      remiseData,
-    };
+      conteneursData: api.conteneursData,
+      conventionnelData: api.conventionnelData,
+      independantData: api.independantData,
+      remiseData: api.remiseData,
+    });
+  }, [api.categorie, api.clientId, api.dateValidite, api.notes, currentStep, api.conteneursData, api.conventionnelData, api.independantData, api.remiseData]);
 
-    autoSave.save(draftData);
-  }, [categorie, clientId, dateValidite, notes, currentStep, conteneursData, conventionnelData, independantData, remiseData]);
-
-  const getMontantHT = (): number => {
-    if (categorie === "conteneurs" && conteneursData) return conteneursData.montantHT;
-    if (categorie === "conventionnel" && conventionnelData) return conventionnelData.montantHT;
-    if (categorie === "operations_independantes" && independantData) return independantData.montantHT;
-    return 0;
-  };
-
-  const montantHT = getMontantHT();
-  const montantHTApresRemise = montantHT - remiseData.montantCalcule;
-  const taxesResult = calculateTaxes(montantHTApresRemise, taxesSelectionData);
-  const tva = taxesResult.tva;
-  const css = taxesResult.css;
-  const montantTTC = montantHTApresRemise + taxesResult.totalTaxes;
-
-  // Client sélectionné pour la preview
-  const selectedClient = useMemo(() => {
-    return clients.find((c: any) => String(c.id) === clientId);
-  }, [clients, clientId]);
-
-  // Calcul de l'étape courante automatiquement
-  const calculateCurrentStep = () => {
-    if (!categorie) return 1;
-    if (!clientId) return 2;
-    const hasContent = 
-      (categorie === "conteneurs" && conteneursData && conteneursData.conteneurs.length > 0) ||
-      (categorie === "conventionnel" && conventionnelData && conventionnelData.lots.length > 0) ||
-      (categorie === "operations_independantes" && independantData && independantData.prestations.length > 0);
-    if (!hasContent) return 3;
-    return 4;
-  };
-
-  const handleCategorieChange = (value: CategorieDocument) => {
-    setCategorie(value);
-    setConteneursData(null);
-    setConventionnelData(null);
-    setIndependantData(null);
-    setRemiseData({ type: "none", valeur: 0, montantCalcule: 0 });
-    setCurrentStep(2);
-  };
-
-  const handleNextStep = () => {
-    if (currentStep < 5) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const canProceedToNext = () => {
-    switch (currentStep) {
-      case 1: return !!categorie;
-      case 2: return !!clientId;
-      case 3: 
-        if (categorie === "conteneurs") return conteneursData && conteneursData.numeroBL;
-        if (categorie === "conventionnel") return conventionnelData && conventionnelData.numeroBL;
-        if (categorie === "operations_independantes") return independantData && independantData.typeOperationIndep;
-        return false;
-      case 4: return true;
-      default: return true;
-    }
-  };
+  const selectedClient = useMemo(
+    () => clients.find((c: any) => String(c.id) === api.clientId),
+    [clients, api.clientId]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientId) { toast.error("Veuillez sélectionner un client"); return; }
-    if (!categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
-    
-    if (categorie === "conteneurs" && !conteneursData?.numeroBL) {
+    if (!api.clientId) { toast.error("Veuillez sélectionner un client"); return; }
+    if (!api.categorie) { toast.error("Veuillez sélectionner une catégorie"); return; }
+
+    if (api.categorie === "conteneurs" && !api.conteneursData?.numeroBL) {
       toast.error("Veuillez saisir le numéro de BL"); return;
     }
-    if (categorie === "conventionnel" && !conventionnelData?.numeroBL) {
+    if (api.categorie === "conventionnel" && !api.conventionnelData?.numeroBL) {
       toast.error("Veuillez saisir le numéro de BL"); return;
     }
-    if (categorie === "operations_independantes" && !independantData?.typeOperationIndep) {
+    if (api.categorie === "operations_independantes" && !api.independantData?.typeOperationIndep) {
       toast.error("Veuillez sélectionner un type d'opération"); return;
     }
 
-    const typeDocumentMap: Record<CategorieDocument, string> = {
-      conteneurs: "Conteneur",
-      conventionnel: "Lot",
-      operations_independantes: "Independant"
-    };
-
-    const data: any = {
-      client_id: parseInt(clientId),
-      type_document: typeDocumentMap[categorie as CategorieDocument],
-      date_arrivee: new Date().toISOString().split('T')[0],
-      validite_jours: Math.ceil((new Date(dateValidite).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
-      notes: notes || null,
-      remise_type: remiseData.type === "none" ? null : remiseData.type,
-      remise_valeur: remiseData.type === "none" ? 0 : (remiseData.valeur || 0),
-      remise_montant: remiseData.type === "none" ? 0 : (remiseData.montantCalcule || 0),
-      ...toApiPayload(taxesSelectionData),
+    const data = api.buildPayload({
+      date_arrivee: new Date().toISOString().split("T")[0],
+      validite_jours: Math.ceil(
+        (new Date(api.dateValidite).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      ),
       lignes: [],
       conteneurs: [],
       lots: [],
-    };
-
-    if (categorie === "conteneurs" && conteneursData) {
-      data.transitaire_id = conteneursData.transitaireId ? parseInt(conteneursData.transitaireId) : null;
-      data.representant_id = conteneursData.representantId ? parseInt(conteneursData.representantId) : null;
-      data.armateur_id = conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null;
-      data.bl_numero = conteneursData.numeroBL || null;
-      data.type_operation = conteneursData.typeOperation || "import";
-      data.conteneurs = conteneursData.conteneurs.map(c => ({
-        numero: c.numero,
-        type: "DRY",
-        taille: c.taille === "20'" ? "20" : "40",
-        description: c.description || null,
-        prix_unitaire: c.prixUnitaire || 0,
-        armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
-        operations: c.operations.map(op => ({
-          type_operation: op.type,
-          description: op.description || "",
-          quantite: op.quantite,
-          prix_unitaire: op.prixUnitaire
-        }))
-      }));
-    }
-
-    if (categorie === "conventionnel" && conventionnelData) {
-      data.bl_numero = conventionnelData.numeroBL || null;
-      data.lieu_chargement = conventionnelData.lieuChargement || null;
-      data.lieu_dechargement = conventionnelData.lieuDechargement || null;
-      data.lots = conventionnelData.lots.map(l => ({
-        numero_lot: l.numeroLot || null,
-        designation: l.description || `Lot ${l.numeroLot}`,
-        description: l.description || `Lot ${l.numeroLot}`,
-        quantite: l.quantite,
-        prix_unitaire: l.prixUnitaire
-      }));
-    }
-
-    if (categorie === "operations_independantes" && independantData) {
-      data.type_operation_indep = independantData.typeOperationIndep || null;
-      data.lignes = independantData.prestations.map(p => ({
-        type_operation: independantData.typeOperationIndep || "manutention",
-        description: p.description || "",
-        lieu_depart: p.lieuDepart || independantData.lieuChargement || null,
-        lieu_arrivee: p.lieuArrivee || independantData.lieuDechargement || null,
-        date_debut: p.dateDebut || null,
-        date_fin: p.dateFin || null,
-        quantite: p.quantite || 1,
-        prix_unitaire: p.prixUnitaire || 0
-      }));
-    }
-
-    console.log('[DEBUG] Payload création devis:', JSON.stringify(data, null, 2));
+    });
 
     try {
       await createDevisMutation.mutateAsync(data);
-      // Clear draft on successful creation
       autoSave.clear();
       navigate("/devis");
     } catch (error: any) {
-      console.error('[DEBUG] Erreur complète création devis:', error);
-      console.error('[DEBUG] Response data:', error?.response?.data);
-      console.error('[DEBUG] Response status:', error?.response?.status);
+      console.error("[DEBUG] Erreur création devis:", error?.response?.data || error);
     }
   };
 
   const isLoading = loadingClients || loadingArmateurs || loadingTransitaires || loadingRepresentants;
-  const isMobile = useIsMobile();
   const loadError = clientsError || armateursError || transitairesError || representantsError;
 
   if (loadError) {
@@ -394,7 +172,6 @@ export default function NouveauDevisPage() {
             </h1>
             <p className="text-muted-foreground text-sm">Créer un nouveau devis client</p>
           </div>
-          {/* Auto-save indicator */}
           <AutoSaveIndicator
             hasDraft={autoSave.hasDraft}
             lastSaved={autoSave.lastSaved}
@@ -405,7 +182,6 @@ export default function NouveauDevisPage() {
         </div>
       </div>
 
-      {/* Prompt de restauration si brouillon existant */}
       {showRestorePrompt && autoSave.hasDraft && !isRestoredFromDraft && (
         <AutoSaveIndicator
           hasDraft={autoSave.hasDraft}
@@ -415,18 +191,6 @@ export default function NouveauDevisPage() {
           onClear={autoSave.clear}
           showRestorePrompt={true}
           onDismissPrompt={() => setShowRestorePrompt(false)}
-        />
-      )}
-
-      {/* Stepper - mobile only */}
-      {isMobile && (
-        <DevisStepper 
-          currentStep={currentStep} 
-          onStepClick={(step) => {
-            if (step <= calculateCurrentStep() + 1) {
-              setCurrentStep(step);
-            }
-          }} 
         />
       )}
 
@@ -441,206 +205,21 @@ export default function NouveauDevisPage() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Étape 1: Catégorie */}
-          {(isMobile ? currentStep === 1 : true) && (
-            <div className="animate-fade-in">
-              <CategorieSelector onSelect={handleCategorieChange} />
-            </div>
-          )}
-
-          {/* Étape 2: Client */}
-          {(isMobile ? currentStep === 2 && categorie : !!categorie) && (
-            <div className="animate-fade-in space-y-4">
-              {isMobile && (
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                    {categoriesLabels[categorie!].icon}
-                    <span>{categoriesLabels[categorie!].label}</span>
-                  </Badge>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => { setCategorie(""); setCurrentStep(1); }} className="text-muted-foreground transition-all duration-200 hover:text-primary">
-                    Changer
-                  </Button>
-                </div>
-              )}
-
-              <ClientInfoCard
-                clientId={clientId}
-                setClientId={setClientId}
-                dateValidite={dateValidite}
-                setDateValidite={setDateValidite}
-                clients={clients}
-              />
-            </div>
-          )}
-
-          {/* Étape 3: Détails */}
-          {(isMobile ? currentStep === 3 && categorie : !!categorie) && (
-            <div className="animate-fade-in">
-              {categorie === "conteneurs" && (
-                <DevisConteneursForm
-                  armateurs={armateurs}
-                  transitaires={transitaires}
-                  representants={representants}
-                  onDataChange={setConteneursData}
-                  initialData={isRestoredFromDraft && conteneursData ? {
-                    typeOperation: conteneursData.typeOperation,
-                    numeroBL: conteneursData.numeroBL,
-                    armateurId: conteneursData.armateurId,
-                    transitaireId: conteneursData.transitaireId,
-                    representantId: conteneursData.representantId,
-                    conteneurs: conteneursData.conteneurs,
-                  } : undefined}
-                />
-              )}
-
-              {categorie === "conventionnel" && (
-                <DevisConventionnelForm 
-                  onDataChange={setConventionnelData}
-                  initialData={isRestoredFromDraft && conventionnelData ? {
-                    numeroBL: conventionnelData.numeroBL,
-                    lieuChargement: conventionnelData.lieuChargement,
-                    lieuDechargement: conventionnelData.lieuDechargement,
-                    lots: conventionnelData.lots,
-                  } : undefined}
-                />
-              )}
-
-              {categorie === "operations_independantes" && (
-                <DevisIndependantForm 
-                  onDataChange={setIndependantData}
-                  initialData={isRestoredFromDraft && independantData ? {
-                    typeOperationIndep: independantData.typeOperationIndep,
-                    lieuChargement: independantData.lieuChargement,
-                    lieuDechargement: independantData.lieuDechargement,
-                    prestations: independantData.prestations,
-                  } : undefined}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Étape 4: Récapitulatif */}
-          {(isMobile ? currentStep === 4 && categorie : !!categorie) && (
-            <div className="animate-fade-in space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Conditions et notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Conditions particulières, notes..."
-                    rows={4}
-                  />
-                </CardContent>
-              </Card>
-
-              {montantHT > 0 && (
-                <RemiseInput montantHT={montantHT} onChange={setRemiseData} />
-              )}
-
-              {/* Sélection des taxes */}
-              {montantHTApresRemise > 0 && (
-                <TaxesSelector
-                  taxes={availableTaxes}
-                  montantHT={montantHTApresRemise}
-                  onChange={handleTaxesChange}
-                  value={taxesSelectionData}
-                />
-              )}
-
-              <RecapitulatifCard
-                montantHT={montantHT}
-                tva={tva}
-                css={css}
-                montantTTC={montantTTC}
-                tauxTva={taxRates.TVA}
-                tauxCss={taxRates.CSS}
-                remiseMontant={remiseData.montantCalcule}
-                remiseType={remiseData.type}
-                remiseValeur={remiseData.valeur}
-                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-                {...toApiPayload(taxesSelectionData)}
-              />
-            </div>
-          )}
-
-          {/* Étape 5: Aperçu final - mobile only */}
-          {isMobile && currentStep === 5 && categorie && (
-            <div className="animate-fade-in">
-              <Card className="border-primary/20">
-                <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Vérification finale
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground mb-4">
-                    Vérifiez les informations dans l'aperçu avant de créer le devis.
-                  </p>
-                  <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-green-700 dark:text-green-400">Prêt à créer</p>
-                      <p className="text-sm text-green-600 dark:text-green-500">
-                        Montant TTC: {montantTTC.toLocaleString("fr-FR")} XAF
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Navigation buttons */}
-          {categorie && (
-            <div className="flex justify-between gap-4 pb-6 animate-fade-in">
-              <div>
-                {isMobile && currentStep > 1 && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handlePrevStep}
-                    className="gap-2"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Précédent
-                  </Button>
-                )}
-              </div>
-              
-              <div className="flex gap-4">
-                <Button type="button" variant="outline" onClick={() => navigate("/devis")} disabled={createDevisMutation.isPending} className="transition-all duration-200 hover:scale-105">
-                  Annuler
-                </Button>
-                
-                {isMobile && currentStep < 5 ? (
-                  <Button 
-                    type="button" 
-                    onClick={handleNextStep}
-                    disabled={!canProceedToNext()}
-                    className="gap-2 transition-all duration-200 hover:scale-105"
-                  >
-                    Suivant
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button type="submit" className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md" disabled={createDevisMutation.isPending}>
-                    {createDevisMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Créer le devis
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </form>
-      </div>
+      <DevisForm
+        mode="create"
+        api={api}
+        currentStep={currentStep}
+        setCurrentStep={setCurrentStep}
+        clients={clients}
+        armateurs={armateurs}
+        transitaires={transitaires}
+        representants={representants}
+        isSubmitting={createDevisMutation.isPending}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate("/devis")}
+        isRestoredFromDraft={isRestoredFromDraft}
+        selectedClient={selectedClient}
+      />
     </MainLayout>
   );
 }
