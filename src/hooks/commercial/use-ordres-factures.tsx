@@ -77,11 +77,16 @@ export function useUpdateOrdre() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => ordresApi.update(id, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ordres'] });
+      queryClient.invalidateQueries({ queryKey: ['ordres', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['factures'] }); // sync auto OT->Facture
       queryClient.invalidateQueries({ queryKey: ['primes'] });
       queryClient.invalidateQueries({ queryKey: ['transitaires'] });
       queryClient.invalidateQueries({ queryKey: ['representants'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['reporting'] });
       toast.success('Ordre de travail modifié avec succès');
     },
     onError: (error: any) => {
@@ -193,8 +198,13 @@ export function useUpdateFacture() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => facturesApi.update(id, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['factures'] });
+      queryClient.invalidateQueries({ queryKey: ['factures', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['ordres'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['reporting'] });
       toast.success('Facture modifiée avec succès');
     },
     onError: (error: any) => {
