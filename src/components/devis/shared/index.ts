@@ -18,3 +18,8 @@ export { default as DevisPreview } from './DevisPreview';
 
 // Auto-save
 export { default as AutoSaveIndicator } from './AutoSaveIndicator';
+
+// Formulaire partagé (création + édition)
+export { default as DevisForm } from './DevisForm';
+export { useDevisForm } from './useDevisForm';
+export type { DevisFormApi, DevisFormState } from './useDevisForm';
