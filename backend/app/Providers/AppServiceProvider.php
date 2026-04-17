@@ -123,6 +123,18 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\LigneOrdre::observe(\App\Observers\LigneOrdreObserver::class);
         \App\Models\LotOrdre::observe(\App\Observers\LotOrdreObserver::class);
 
+        // Recalcul automatique des totaux Facture à chaque modification d'enfant
+        \App\Models\ConteneurFacture::observe(\App\Observers\ConteneurFactureObserver::class);
+        \App\Models\OperationConteneurFacture::observe(\App\Observers\OperationConteneurFactureObserver::class);
+        \App\Models\LigneFacture::observe(\App\Observers\LigneFactureObserver::class);
+        \App\Models\LotFacture::observe(\App\Observers\LotFactureObserver::class);
+
+        // Recalcul automatique des totaux Devis à chaque modification d'enfant
+        \App\Models\ConteneurDevis::observe(\App\Observers\ConteneurDevisObserver::class);
+        \App\Models\OperationConteneurDevis::observe(\App\Observers\OperationConteneurDevisObserver::class);
+        \App\Models\LigneDevis::observe(\App\Observers\LigneDevisObserver::class);
+        \App\Models\LotDevis::observe(\App\Observers\LotDevisObserver::class);
+
         // =============================================
         // RATE LIMITERS - Configuration centralisée
         // =============================================

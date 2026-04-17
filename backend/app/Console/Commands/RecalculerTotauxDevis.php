@@ -104,6 +104,7 @@ class RecalculerTotauxDevis extends Command
         switch ($devis->categorie) {
             case 'conteneurs':
                 foreach ($devis->conteneurs as $conteneur) {
+                    $montant += (float) ($conteneur->prix_unitaire ?? 0);
                     foreach ($conteneur->operations as $op) {
                         $montant += ($op->quantite ?? 1) * ($op->prix_unitaire ?? 0);
                     }
@@ -125,6 +126,7 @@ class RecalculerTotauxDevis extends Command
             default:
                 // Essayer toutes les sources
                 foreach ($devis->conteneurs as $conteneur) {
+                    $montant += (float) ($conteneur->prix_unitaire ?? 0);
                     foreach ($conteneur->operations as $op) {
                         $montant += ($op->quantite ?? 1) * ($op->prix_unitaire ?? 0);
                     }
