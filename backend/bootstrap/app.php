@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withCommands([
+        __DIR__.'/../app/Console/Commands',
+    ])
     ->withMiddleware(function (Middleware $middleware) {
         // IMPORTANT: Ne JAMAIS rediriger vers une route 'login' (API-only backend)
         // Renvoyer null force Laravel à lancer AuthenticationException → JSON 401
