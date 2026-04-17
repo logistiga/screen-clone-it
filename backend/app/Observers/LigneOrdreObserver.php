@@ -15,7 +15,7 @@ class LigneOrdreObserver
         try {
             $ordre = $ligne->ordre()->first();
             if (!$ordre) return;
-            $service = app(OrdreServiceFactory::class)->make($ordre);
+            $service = app(OrdreServiceFactory::class)->getService($ordre->categorie);
             $service->calculerTotaux($ordre->fresh(['conteneurs.operations', 'lots', 'lignes']));
         } catch (\Throwable $e) {
             \Log::warning('Recalcul auto OT échoué (LigneOrdre)', [
