@@ -492,16 +492,24 @@ export default function ModifierOrdrePage() {
                 categorie={api.categorie}
                 client={selectedClient}
                 notes={api.notes}
-                conteneursData={api.conteneursData}
-                conventionnelData={api.conventionnelData}
-                independantData={api.independantData}
                 montantHT={api.montantHT}
                 tva={api.tva}
                 css={api.css}
                 montantTTC={api.montantTTC}
-                armateurs={armateurs}
-                transitaires={transitaires}
-                representants={representants}
+                numeroBL={
+                  api.categorie === "conteneurs"
+                    ? api.conteneursData?.numeroBL
+                    : api.categorie === "conventionnel"
+                    ? api.conventionnelData?.numeroBL
+                    : undefined
+                }
+                typeOperation={api.conteneursData?.typeOperation}
+                typeOperationIndep={api.independantData?.typeOperationIndep}
+                conteneurs={api.conteneursData?.conteneurs?.map((c: any) => ({ numero: c.numero, taille: c.taille }))}
+                lots={api.conventionnelData?.lots?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
+                prestations={api.independantData?.prestations?.map((p: any) => ({ description: p.description, quantite: p.quantite }))}
+                descriptionConventionnel={(api.conventionnelData as any)?.description}
+                selectedTaxCodes={api.taxesSelectionData?.selected_tax_codes}
               />
             </div>
           </div>
