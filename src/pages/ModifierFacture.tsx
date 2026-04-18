@@ -647,13 +647,7 @@ export default function ModifierFacturePage() {
           )}
         </motion.div>
 
-        {/* Stepper */}
-        <FactureStepper 
-          currentStep={currentStep} 
-          categorie={categorie || undefined}
-          onStepClick={handleStepClick}
-          stepsValidation={stepsValidation}
-        />
+        {/* Stepper supprimé : affichage sur une seule page */}
 
         <form 
           onSubmit={handleSubmit}
