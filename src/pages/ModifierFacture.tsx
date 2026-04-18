@@ -774,48 +774,22 @@ export default function ModifierFacturePage() {
                 {...toApiPayload(taxesSelectionData)}
               />
 
-              {/* Navigation buttons */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex justify-between pt-4"
-              >
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handlePrevStep}
-                  disabled={currentStep === 2}
+              {/* Bouton Enregistrer */}
+              <div className="flex justify-end pt-4">
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={updateFactureMutation.isPending}
+                  className="gap-2 shadow-md transition-all duration-200 hover:scale-105"
                 >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Précédent
+                  {updateFactureMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer les modifications
                 </Button>
-
-                {currentStep < 4 ? (
-                  <Button 
-                    type="button" 
-                    onClick={handleNextStep}
-                    disabled={!canProceedToStep(currentStep + 1)}
-                  >
-                    Suivant
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    disabled={updateFactureMutation.isPending}
-                    className="gap-2 shadow-md transition-all duration-200 hover:scale-105"
-                  >
-                    {updateFactureMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                    Enregistrer les modifications
-                  </Button>
-                )}
-              </motion.div>
+              </div>
             </div>
 
             {/* Preview sidebar */}
