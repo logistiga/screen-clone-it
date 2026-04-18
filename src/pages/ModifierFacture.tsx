@@ -111,18 +111,30 @@ export default function ModifierFacturePage() {
   // Populate form when data loads
   useEffect(() => {
     if (factureData && !isInitialized) {
+      console.log('[ModifierFacture] Initialisation avec:', {
+        numero: (factureData as any).numero,
+        client_id: factureData.client_id,
+        type_document: (factureData as any).type_document,
+        categorie_db: (factureData as any).categorie,
+        conteneurs_count: factureData.conteneurs?.length,
+        lots_count: factureData.lots?.length,
+        lignes_count: factureData.lignes?.length,
+      });
       setClientId(String(factureData.client_id || ""));
       setDateEcheance(factureData.date_echeance || "");
       setNotes(factureData.notes || "");
       
       let cat: CategorieDocument = 'conteneurs';
-      if (factureData.type_document === 'Conteneur' || factureData.conteneurs?.length > 0) {
-        cat = 'conteneurs';
-      } else if (factureData.type_document === 'Lot' || factureData.lots?.length > 0) {
+      const cd: any = factureData;
+      // Priorité à la catégorie déjà persistée en BDD si présente
+      if (cd.categorie === 'conventionnel' || cd.type_document === 'Lot' || (cd.lots?.length ?? 0) > 0) {
         cat = 'conventionnel';
-      } else if (factureData.type_document === 'Independant' || factureData.lignes?.length > 0) {
+      } else if (cd.categorie === 'operations_independantes' || cd.type_document === 'Independant' || (cd.lignes?.length ?? 0) > 0) {
         cat = 'operations_independantes';
+      } else if (cd.categorie === 'conteneurs' || cd.type_document === 'Conteneur' || (cd.conteneurs?.length ?? 0) > 0) {
+        cat = 'conteneurs';
       }
+      console.log('[ModifierFacture] Catégorie détectée:', cat);
       setCategorie(cat);
       
       // Initialiser les données de taxes avec le helper du hook
