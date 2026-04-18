@@ -71,7 +71,8 @@ export default function ModifierFacturePage() {
   const categoriesLabels = getCategoriesLabels();
 
   // Mode page unique : toutes les sections affichées en même temps
-  const currentStep = 4;
+  const currentStep: number = 4;
+  const setCurrentStep = (_: number) => {};
 
   const [clientId, setClientId] = useState("");
   const [dateEcheance, setDateEcheance] = useState("");
