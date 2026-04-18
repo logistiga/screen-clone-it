@@ -70,8 +70,8 @@ export default function ModifierFacturePage() {
   
   const categoriesLabels = getCategoriesLabels();
 
-  // Stepper state - start at step 2 since category is not editable
-  const [currentStep, setCurrentStep] = useState(2);
+  // Mode page unique : toutes les sections affichées en même temps
+  const currentStep = 4;
 
   const [clientId, setClientId] = useState("");
   const [dateEcheance, setDateEcheance] = useState("");
