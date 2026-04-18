@@ -661,7 +661,7 @@ export default function ModifierFacturePage() {
             {/* Main form area */}
             <div className="lg:col-span-2 space-y-6">
               {/* Catégorie badge (read-only) */}
-              {categorie && currentStep === 2 && (
+              {categorie && (
                 <div className="flex items-center gap-3 animate-fade-in">
                   <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
                     {categoriesLabels[categorie]?.icon}
@@ -671,155 +671,108 @@ export default function ModifierFacturePage() {
                 </div>
               )}
 
-              {/* Step 2: Client */}
-              {currentStep === 2 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <Users className="h-5 w-5 text-primary" />
-                        Client & Échéance
-                      </CardTitle>
-                      <CardDescription>Modifiez le client et la date d'échéance</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nom du client *</Label>
-                          <Select value={clientId} onValueChange={setClientId}>
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Sélectionner un client" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {clients.map((c) => (
-                                <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            Date d'échéance
-                          </Label>
-                          <Input
-                            type="date"
-                            value={dateEcheance}
-                            onChange={(e) => setDateEcheance(e.target.value)}
-                            className="h-11"
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+              {/* Client & Échéance */}
+              <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                    Client & Échéance
+                  </CardTitle>
+                  <CardDescription>Modifiez le client et la date d'échéance</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nom du client *</Label>
+                      <Select value={clientId} onValueChange={setClientId}>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner un client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Date d'échéance
+                      </Label>
+                      <Input
+                        type="date"
+                        value={dateEcheance}
+                        onChange={(e) => setDateEcheance(e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Détails (formulaires selon catégorie) */}
+              {categorie === "conteneurs" && isInitialized && (
+                <FactureConteneursForm
+                  armateurs={armateurs}
+                  transitaires={transitaires}
+                  representants={representants}
+                  onDataChange={setConteneursData}
+                  initialData={conteneursData || conteneursInitialData || undefined}
+                />
               )}
 
-              {/* Step 3: Détails */}
-              {currentStep === 3 && (
-                <AnimatePresence mode="wait">
-                  {categorie === "conteneurs" && isInitialized && (
-                    <motion.div
-                      key="conteneurs"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                    >
-                      <FactureConteneursForm
-                        armateurs={armateurs}
-                        transitaires={transitaires}
-                        representants={representants}
-                        onDataChange={setConteneursData}
-                        initialData={conteneursData || conteneursInitialData || undefined}
-                      />
-                    </motion.div>
-                  )}
-
-                  {categorie === "conventionnel" && isInitialized && (
-                    <motion.div
-                      key="conventionnel"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                    >
-                      <FactureConventionnelForm 
-                        onDataChange={setConventionnelData} 
-                        initialData={conventionnelData || conventionnelInitialData || undefined}
-                      />
-                    </motion.div>
-                  )}
-
-                  {categorie === "operations_independantes" && isInitialized && (
-                    <motion.div
-                      key="independant"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                    >
-                      <FactureIndependantForm 
-                        onDataChange={setIndependantData} 
-                        initialData={independantData || independantInitialData || undefined}
-                      />
-                    </motion.div>
-                  )}
-
-                  {/* Notes */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="mt-6"
-                  >
-                    <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
-                      <CardHeader className="bg-gradient-to-r from-amber-500/5 to-transparent">
-                        <CardTitle className="text-lg">Notes / Observations</CardTitle>
-                        <CardDescription>Informations complémentaires</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-4">
-                        <Textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Conditions particulières, notes..."
-                          rows={4}
-                          className="resize-none"
-                        />
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                </AnimatePresence>
+              {categorie === "conventionnel" && isInitialized && (
+                <FactureConventionnelForm
+                  onDataChange={setConventionnelData}
+                  initialData={conventionnelData || conventionnelInitialData || undefined}
+                />
               )}
 
-              {/* Step 4: Récapitulatif */}
-              {currentStep === 4 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  {/* Sélection des taxes */}
-                  {montantHT > 0 && (
-                    <TaxesSelector
-                      taxes={availableTaxes}
-                      montantHT={montantHT}
-                      onChange={handleTaxesChange}
-                      value={taxesSelectionData}
-                    />
-                  )}
+              {categorie === "operations_independantes" && isInitialized && (
+                <FactureIndependantForm
+                  onDataChange={setIndependantData}
+                  initialData={independantData || independantInitialData || undefined}
+                />
+              )}
 
-                  <RecapitulatifCard
-                    montantHT={montantHT}
-                    tva={tva}
-                    css={css}
-                    montantTTC={montantTTC}
-                    tauxTva={taxRates.TVA}
-                    tauxCss={taxRates.CSS}
-                    {...toApiPayload(taxesSelectionData)}
+              {/* Notes */}
+              <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-500/5 to-transparent">
+                  <CardTitle className="text-lg">Notes / Observations</CardTitle>
+                  <CardDescription>Informations complémentaires</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Conditions particulières, notes..."
+                    rows={4}
+                    className="resize-none"
                   />
-                </motion.div>
+                </CardContent>
+              </Card>
+
+              {/* Sélection des taxes */}
+              {montantHT > 0 && (
+                <TaxesSelector
+                  taxes={availableTaxes}
+                  montantHT={montantHT}
+                  onChange={handleTaxesChange}
+                  value={taxesSelectionData}
+                />
               )}
+
+              {/* Récapitulatif */}
+              <RecapitulatifCard
+                montantHT={montantHT}
+                tva={tva}
+                css={css}
+                montantTTC={montantTTC}
+                tauxTva={taxRates.TVA}
+                tauxCss={taxRates.CSS}
+                {...toApiPayload(taxesSelectionData)}
+              />
 
               {/* Navigation buttons */}
               <motion.div 
