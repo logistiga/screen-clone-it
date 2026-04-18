@@ -712,27 +712,27 @@ export default function ModifierFacturePage() {
               </Card>
 
               {/* Détails (formulaires selon catégorie) */}
-              {categorie === "conteneurs" && isInitialized && (
+              {categorie === "conteneurs" && isInitialized && conteneursInitialData && (
                 <FactureConteneursForm
                   armateurs={armateurs}
                   transitaires={transitaires}
                   representants={representants}
                   onDataChange={setConteneursData}
-                  initialData={conteneursData || conteneursInitialData || undefined}
+                  initialData={conteneursInitialData}
                 />
               )}
 
-              {categorie === "conventionnel" && isInitialized && (
+              {categorie === "conventionnel" && isInitialized && conventionnelInitialData && (
                 <FactureConventionnelForm
                   onDataChange={setConventionnelData}
-                  initialData={conventionnelData || conventionnelInitialData || undefined}
+                  initialData={conventionnelInitialData}
                 />
               )}
 
-              {categorie === "operations_independantes" && isInitialized && (
+              {categorie === "operations_independantes" && isInitialized && independantInitialData && (
                 <FactureIndependantForm
                   onDataChange={setIndependantData}
-                  initialData={independantData || independantInitialData || undefined}
+                  initialData={independantInitialData}
                 />
               )}
 
