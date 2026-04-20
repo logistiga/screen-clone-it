@@ -154,7 +154,17 @@ export default function ModifierFacturePage() {
        const taxesSelectionJson = (factureData as any).taxes_selection;
        setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif, taxesSelectionJson));
       }
-      
+
+      // Initialiser la remise globale
+      const remiseTypeDb = (factureData as any).remise_type;
+      if (remiseTypeDb && remiseTypeDb !== "none") {
+        setRemiseData({
+          type: remiseTypeDb,
+          valeur: parseFloat((factureData as any).remise_valeur) || 0,
+          montantCalcule: parseFloat((factureData as any).remise_montant) || 0,
+        });
+      }
+
       setIsInitialized(true);
     }
   }, [factureData, isInitialized, availableTaxes, taxesLoading, getTaxesSelectionFromDocument]);
