@@ -271,10 +271,11 @@ export default function ModifierFacturePage() {
   };
 
   const montantHT = getMontantHT();
-  
-  // Calculer les taxes via le hook unifié
-  const { tva, css, totalTaxes } = calculateTaxes(montantHT, taxesSelectionData);
-  const montantTTC = montantHT + totalTaxes;
+  const montantHTApresRemise = Math.max(0, montantHT - remiseData.montantCalcule);
+
+  // Calculer les taxes via le hook unifié (sur HT après remise)
+  const { tva, css, totalTaxes } = calculateTaxes(montantHTApresRemise, taxesSelectionData);
+  const montantTTC = montantHTApresRemise + totalTaxes;
 
   // Calculer l'état de validation pour chaque étape du stepper (modification commence à l'étape 2)
   const stepsValidation = useMemo(() => {
