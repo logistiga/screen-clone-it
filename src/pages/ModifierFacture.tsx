@@ -87,10 +87,17 @@ export default function ModifierFacturePage() {
   
   // État pour la sélection des taxes - nouvelle structure avec codes
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
-    selectedTaxCodes: ['TVA', 'CSS'], // Taxes obligatoires par défaut
+    selectedTaxCodes: ['TVA', 'CSS'],
     hasExoneration: false,
     exoneratedTaxCodes: [],
     motifExoneration: "",
+  });
+
+  // Remise globale
+  const [remiseData, setRemiseData] = useState<RemiseData>({
+    type: "none",
+    valeur: 0,
+    montantCalcule: 0,
   });
   
   // Handler stable pour TaxesSelector avec comparaison profonde inline
