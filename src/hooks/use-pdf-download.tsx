@@ -68,7 +68,7 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       // 4️⃣ Capturer avec onclone pour fixer les dimensions
       console.log("[PDF] Step 4 — html2canvas starting...");
       const canvas = await html2canvas(el, {
-        scale: 1.5,
+        scale: 1.2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: true,
