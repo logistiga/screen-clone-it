@@ -70,9 +70,9 @@ export function EmailModalWithPdfGenerator({
         .set({
           margin: 10,
           filename: `${documentType}-${documentData.numero}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          image: { type: 'jpeg', quality: 0.75 },
+          html2canvas: { scale: 1.5, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
         })
         .from(contentRef.current)
         .outputPdf('blob');
