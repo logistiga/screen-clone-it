@@ -68,7 +68,7 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       // 4️⃣ Capturer avec onclone pour fixer les dimensions
       console.log("[PDF] Step 4 — html2canvas starting...");
       const canvas = await html2canvas(el, {
-        scale: 1.5,
+        scale: 1.2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: true,
@@ -109,7 +109,7 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       // 5️⃣ Extraire image JPEG (bien plus léger que PNG)
       let imgData: string;
       try {
-        imgData = canvas.toDataURL("image/jpeg", 0.75);
+        imgData = canvas.toDataURL("image/jpeg", 0.6);
       } catch (e) {
         console.error("[PDF] toDataURL failed:", e);
         return null;
@@ -122,24 +122,28 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
         return null;
       }
 
-      // 6️⃣ Créer le PDF A4 avec compression activée
+      // 6️⃣ Créer le PDF A4 — découpe par page (évite de dupliquer une énorme image sur chaque page)
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
-      const imgWidth = 190; // A4 width minus 10mm margins
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageHeight = 277; // A4 height minus 10mm margins
+      const imgWidth = 190;
+      const pageHeight = 277;
+      const pageHeightPx = (pageHeight * canvas.width) / imgWidth;
+      const totalPages = Math.max(1, Math.ceil(canvas.height / pageHeightPx));
 
-      let heightLeft = imgHeight;
-      let position = margin;
+      for (let i = 0; i < totalPages; i++) {
+        const sliceHeight = Math.min(pageHeightPx, canvas.height - i * pageHeightPx);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
+        const ctx = pageCanvas.getContext("2d");
+        if (!ctx) continue;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, -i * pageHeightPx);
 
-      pdf.addImage(imgData, "JPEG", margin, position, imgWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
-
-      // Multi-page si nécessaire
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight + margin;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", margin, position, imgWidth, imgHeight, undefined, "FAST");
-        heightLeft -= pageHeight;
+        const pageImg = pageCanvas.toDataURL("image/jpeg", 0.6);
+        const pageImgHeight = (sliceHeight * imgWidth) / canvas.width;
+        if (i > 0) pdf.addPage();
+        pdf.addImage(pageImg, "JPEG", margin, margin, imgWidth, pageImgHeight, undefined, "FAST");
       }
 
       const blob = pdf.output("blob");
