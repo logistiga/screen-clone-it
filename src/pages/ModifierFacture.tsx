@@ -524,6 +524,7 @@ export default function ModifierFacturePage() {
       client_id: parseInt(clientId),
       date_echeance: dateEcheance || null,
       notes: notes || null,
+      categorie: categorie || undefined,
       // Remise globale
       remise_type: remiseData.type !== "none" ? remiseData.type : null,
       remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
