@@ -524,6 +524,10 @@ export default function ModifierFacturePage() {
       client_id: parseInt(clientId),
       date_echeance: dateEcheance || null,
       notes: notes || null,
+      // Remise globale
+      remise_type: remiseData.type !== "none" ? remiseData.type : null,
+      remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
+      remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
       // Données d'exonération
       ...apiPayload,
     };
