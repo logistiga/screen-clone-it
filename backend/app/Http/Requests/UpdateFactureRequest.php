@@ -15,6 +15,7 @@ class UpdateFactureRequest extends FormRequest
     {
         return [
             'client_id' => 'sometimes|exists:clients,id',
+            'categorie' => 'sometimes|string|in:conteneurs,conventionnel,operations_independantes',
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
             'type_operation' => 'nullable|string|max:100',
