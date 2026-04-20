@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
 import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
+import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 
 export default function ModifierFacturePage() {
   const navigate = useNavigate();
