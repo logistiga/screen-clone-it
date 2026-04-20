@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSelector";
 import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
+import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
 
 export default function ModifierFacturePage() {
   const navigate = useNavigate();
@@ -86,10 +87,17 @@ export default function ModifierFacturePage() {
   
   // État pour la sélection des taxes - nouvelle structure avec codes
   const [taxesSelectionData, setTaxesSelectionData] = useState<TaxesSelectionData>({
-    selectedTaxCodes: ['TVA', 'CSS'], // Taxes obligatoires par défaut
+    selectedTaxCodes: ['TVA', 'CSS'],
     hasExoneration: false,
     exoneratedTaxCodes: [],
     motifExoneration: "",
+  });
+
+  // Remise globale
+  const [remiseData, setRemiseData] = useState<RemiseData>({
+    type: "none",
+    valeur: 0,
+    montantCalcule: 0,
   });
   
   // Handler stable pour TaxesSelector avec comparaison profonde inline
@@ -146,7 +154,17 @@ export default function ModifierFacturePage() {
        const taxesSelectionJson = (factureData as any).taxes_selection;
        setTaxesSelectionData(getTaxesSelectionFromDocument(exonereTva, exonereCss, motif, taxesSelectionJson));
       }
-      
+
+      // Initialiser la remise globale
+      const remiseTypeDb = (factureData as any).remise_type;
+      if (remiseTypeDb && remiseTypeDb !== "none") {
+        setRemiseData({
+          type: remiseTypeDb,
+          valeur: parseFloat((factureData as any).remise_valeur) || 0,
+          montantCalcule: parseFloat((factureData as any).remise_montant) || 0,
+        });
+      }
+
       setIsInitialized(true);
     }
   }, [factureData, isInitialized, availableTaxes, taxesLoading, getTaxesSelectionFromDocument]);
@@ -253,10 +271,11 @@ export default function ModifierFacturePage() {
   };
 
   const montantHT = getMontantHT();
-  
-  // Calculer les taxes via le hook unifié
-  const { tva, css, totalTaxes } = calculateTaxes(montantHT, taxesSelectionData);
-  const montantTTC = montantHT + totalTaxes;
+  const montantHTApresRemise = Math.max(0, montantHT - remiseData.montantCalcule);
+
+  // Calculer les taxes via le hook unifié (sur HT après remise)
+  const { tva, css, totalTaxes } = calculateTaxes(montantHTApresRemise, taxesSelectionData);
+  const montantTTC = montantHTApresRemise + totalTaxes;
 
   // Calculer l'état de validation pour chaque étape du stepper (modification commence à l'étape 2)
   const stepsValidation = useMemo(() => {
@@ -505,6 +524,10 @@ export default function ModifierFacturePage() {
       client_id: parseInt(clientId),
       date_echeance: dateEcheance || null,
       notes: notes || null,
+      // Remise globale
+      remise_type: remiseData.type !== "none" ? remiseData.type : null,
+      remise_valeur: remiseData.type !== "none" ? remiseData.valeur : 0,
+      remise_montant: remiseData.type !== "none" ? remiseData.montantCalcule : 0,
       // Données d'exonération
       ...apiPayload,
     };
@@ -753,11 +776,21 @@ export default function ModifierFacturePage() {
                 </CardContent>
               </Card>
 
-              {/* Sélection des taxes */}
+              {/* Remise globale */}
               {montantHT > 0 && (
+                <RemiseInput
+                  montantHT={montantHT}
+                  onChange={setRemiseData}
+                  initialType={remiseData.type}
+                  initialValeur={remiseData.valeur}
+                />
+              )}
+
+              {/* Sélection des taxes */}
+              {montantHTApresRemise > 0 && (
                 <TaxesSelector
                   taxes={availableTaxes}
-                  montantHT={montantHT}
+                  montantHT={montantHTApresRemise}
                   onChange={handleTaxesChange}
                   value={taxesSelectionData}
                 />
@@ -771,6 +804,9 @@ export default function ModifierFacturePage() {
                 montantTTC={montantTTC}
                 tauxTva={taxRates.TVA}
                 tauxCss={taxRates.CSS}
+                remiseMontant={remiseData.montantCalcule}
+                remiseType={remiseData.type}
+                remiseValeur={remiseData.valeur}
                 {...toApiPayload(taxesSelectionData)}
               />
 
