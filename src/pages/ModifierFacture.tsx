@@ -776,11 +776,21 @@ export default function ModifierFacturePage() {
                 </CardContent>
               </Card>
 
-              {/* Sélection des taxes */}
+              {/* Remise globale */}
               {montantHT > 0 && (
+                <RemiseInput
+                  montantHT={montantHT}
+                  onChange={setRemiseData}
+                  initialType={remiseData.type}
+                  initialValeur={remiseData.valeur}
+                />
+              )}
+
+              {/* Sélection des taxes */}
+              {montantHTApresRemise > 0 && (
                 <TaxesSelector
                   taxes={availableTaxes}
-                  montantHT={montantHT}
+                  montantHT={montantHTApresRemise}
                   onChange={handleTaxesChange}
                   value={taxesSelectionData}
                 />
@@ -794,6 +804,9 @@ export default function ModifierFacturePage() {
                 montantTTC={montantTTC}
                 tauxTva={taxRates.TVA}
                 tauxCss={taxRates.CSS}
+                remiseMontant={remiseData.montantCalcule}
+                remiseType={remiseData.type}
+                remiseValeur={remiseData.valeur}
                 {...toApiPayload(taxesSelectionData)}
               />
 
