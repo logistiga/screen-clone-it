@@ -68,7 +68,7 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       // 4️⃣ Capturer avec onclone pour fixer les dimensions
       console.log("[PDF] Step 4 — html2canvas starting...");
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: true,
@@ -106,24 +106,24 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
         return null;
       }
 
-      // 5️⃣ Extraire image PNG
+      // 5️⃣ Extraire image JPEG (bien plus léger que PNG)
       let imgData: string;
       try {
-        imgData = canvas.toDataURL("image/png");
+        imgData = canvas.toDataURL("image/jpeg", 0.75);
       } catch (e) {
         console.error("[PDF] toDataURL failed:", e);
         return null;
       }
 
-      console.log("[PDF] Step 6 — PNG data:", imgData.length, "chars");
+      console.log("[PDF] Step 6 — JPEG data:", imgData.length, "chars");
 
       if (imgData.length < 5000) {
-        console.error("[PDF] PNG data too small — blank canvas suspected");
+        console.error("[PDF] JPEG data too small — blank canvas suspected");
         return null;
       }
 
-      // 6️⃣ Créer le PDF A4
-      const pdf = new jsPDF("p", "mm", "a4");
+      // 6️⃣ Créer le PDF A4 avec compression activée
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
       const imgWidth = 190; // A4 width minus 10mm margins
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pageHeight = 277; // A4 height minus 10mm margins
@@ -131,14 +131,14 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       let heightLeft = imgHeight;
       let position = margin;
 
-      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "JPEG", margin, position, imgWidth, imgHeight, undefined, "FAST");
       heightLeft -= pageHeight;
 
       // Multi-page si nécessaire
       while (heightLeft > 0) {
         position = heightLeft - imgHeight + margin;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, "JPEG", margin, position, imgWidth, imgHeight, undefined, "FAST");
         heightLeft -= pageHeight;
       }
 
