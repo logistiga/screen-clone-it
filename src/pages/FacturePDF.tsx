@@ -126,6 +126,29 @@ export default function FacturePDFPage() {
   const lignesConteneur = buildLignesConteneur();
   const lignesConventionnel = buildLignesConventionnel();
   const lignesIndependant = buildLignesIndependant();
+  const lignesAffichees = isConteneur
+    ? lignesConteneur
+    : isConventionnel
+      ? lignesConventionnel
+      : lignesIndependant;
+  const montantHTNet = roundMoney(Number(facture.montant_ht ?? 0));
+  const montantHTLignes = roundMoney(lignesAffichees.reduce((sum, ligne) => sum + Number(ligne.montant || 0), 0));
+  const remiseType = facture.remise_type;
+  const remiseValeur = Number(facture.remise_valeur ?? 0);
+  const remiseDepuisApi = Number(facture.remise_montant ?? 0);
+  const remiseDepuisLignes = Math.max(0, montantHTLignes - montantHTNet);
+  const remiseDepuisPourcentage =
+    remiseType === "pourcentage" && remiseValeur > 0 && remiseValeur < 100
+      ? montantHTNet * (remiseValeur / (100 - remiseValeur))
+      : 0;
+  const remiseDepuisMontant = remiseType === "montant" && remiseValeur > 0 ? remiseValeur : 0;
+  const remiseMontant = roundMoney(Math.max(remiseDepuisApi, remiseDepuisLignes, remiseDepuisPourcentage, remiseDepuisMontant));
+  const hasRemise = remiseMontant > 0;
+  const montantHTBrut = hasRemise ? Math.max(montantHTLignes, montantHTNet + remiseMontant) : montantHTNet;
+  const remiseLabel =
+    remiseType === "pourcentage" && remiseValeur > 0
+      ? `Remise (${remiseValeur}%)`
+      : "Remise";
   
   // URL pour le QR code - toujours pointer vers la production
   const baseUrl = "https://facturation.logistiga.pro";
