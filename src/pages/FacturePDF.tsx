@@ -9,6 +9,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useFactureById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter, DocumentBankDetails } from "@/components/documents/DocumentLayout";
+import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
@@ -508,6 +509,9 @@ export default function FacturePDFPage() {
               <p className="text-xs">{facture.notes}</p>
             </div>
           )}
+
+          {/* Signature et cachet */}
+          <SignatureCachet />
 
           {/* Footer */}
           <DocumentFooter />

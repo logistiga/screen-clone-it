@@ -9,6 +9,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { useOrdreById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
+import { SignatureCachet } from "@/components/documents/SignatureCachet";
+import cachetImg from "@/assets/cachet-logistiga.png";
+import signatureImg from "@/assets/signature-direction.png";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
@@ -434,6 +437,19 @@ export default function OrdrePDFPage() {
                     to have accepted the conditions of transport
                   </p>
                   <p className="text-[7px] font-semibold mt-1">Signature et cachet :</p>
+                  <div className="relative h-16 mt-1" style={{ width: 130 }}>
+                    <img
+                      src={cachetImg}
+                      alt="Cachet Logistiga"
+                      className="absolute inset-0 m-auto h-16 object-contain opacity-90"
+                    />
+                    <img
+                      src={signatureImg}
+                      alt="Signature Direction"
+                      className="absolute h-14 object-contain"
+                      style={{ left: "30%", top: "5%" }}
+                    />
+                  </div>
                 </div>
                 
                 {/* Conditions de Transport */}
