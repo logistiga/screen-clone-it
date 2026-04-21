@@ -1,5 +1,4 @@
-import cachetImg from "@/assets/cachet-logistiga.png";
-import signatureImg from "@/assets/signature-direction.png";
+import cachetSignatureImg from "@/assets/cachet-signature.png";
 
 interface SignatureCachetProps {
   className?: string;
@@ -7,13 +6,13 @@ interface SignatureCachetProps {
 }
 
 /**
- * Affiche le cachet officiel et la signature de la direction
+ * Affiche le cachet officiel + signature combinés (image unique)
  * pour les documents officiels (Devis, Factures, Ordres de Travail).
- * Positionné à droite, sous la zone des totaux.
+ * Positionné à droite, en valeur, près des conditions de paiement.
  */
 export function SignatureCachet({ className = "", compact = false }: SignatureCachetProps) {
-  const boxW = compact ? 140 : 170;
-  const boxH = compact ? 110 : 135;
+  const boxW = compact ? 170 : 210;
+  const boxH = compact ? 170 : 210;
   return (
     <div
       className={className}
@@ -21,65 +20,34 @@ export function SignatureCachet({ className = "", compact = false }: SignatureCa
         width: "100%",
         display: "flex",
         justifyContent: "flex-end",
-        marginTop: 12,
-        marginBottom: 8,
+        marginTop: 16,
+        marginBottom: 12,
       }}
     >
       <div style={{ textAlign: "center" }}>
         <p
           style={{
-            fontSize: 9,
-            fontWeight: 600,
+            fontSize: 10,
+            fontWeight: 700,
             margin: 0,
-            marginBottom: 4,
+            marginBottom: 6,
             color: "#374151",
+            letterSpacing: 0.3,
           }}
         >
           Signature et cachet
         </p>
-        <div
+        <img
+          src={cachetSignatureImg}
+          alt="Cachet et signature Logistiga"
+          crossOrigin="anonymous"
           style={{
-            position: "relative",
-            display: "inline-block",
             width: boxW,
             height: boxH,
+            objectFit: "contain",
+            display: "block",
           }}
-        >
-          {/* Cachet officiel */}
-          <img
-            src={cachetImg}
-            alt="Cachet Logistiga"
-            crossOrigin="anonymous"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: "50%",
-              transform: "translateX(-50%)",
-              height: boxH,
-              width: "auto",
-              objectFit: "contain",
-              opacity: 0.92,
-              pointerEvents: "none",
-            }}
-          />
-          {/* Signature superposée au centre du cachet */}
-          <img
-            src={signatureImg}
-            alt="Signature Direction"
-            crossOrigin="anonymous"
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -55%)",
-              height: boxH * 0.85,
-              width: "auto",
-              objectFit: "contain",
-              pointerEvents: "none",
-              mixBlendMode: "multiply",
-            }}
-          />
-        </div>
+        />
       </div>
     </div>
   );
