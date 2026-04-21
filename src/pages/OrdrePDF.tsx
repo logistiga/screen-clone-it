@@ -379,8 +379,21 @@ export default function OrdrePDFPage() {
               </table>
             )}
 
-            {/* Totaux */}
-            <div className="flex justify-end mb-4">
+            {/* Totaux et Conditions de paiement */}
+            <div className="flex justify-between mb-4 gap-4">
+              {/* Conditions de paiement (avec cachet en haut à gauche) */}
+              <div className="flex-1 p-3 border rounded text-xs">
+                <div className="mb-2">
+                  <SignatureCachet leftBlock size={100} />
+                </div>
+                <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
+                <p className="text-muted-foreground">
+                  Paiement à réception. En cas de retard, des pénalités seront appliquées
+                  conformément à la réglementation en vigueur.
+                </p>
+              </div>
+
+              {/* Totaux */}
               <div className="w-56 border text-xs">
                 <div className="flex justify-between py-1 px-3 bg-primary text-primary-foreground font-bold border-b">
                   <span>Total</span>
@@ -395,10 +408,6 @@ export default function OrdrePDFPage() {
                   <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
                     {formatMontant(resteAPayer)}
                   </span>
-                </div>
-                {/* Signature et cachet directement sous les totaux */}
-                <div className="px-3 pt-2 pb-2 border-t">
-                  <SignatureCachet inline />
                 </div>
               </div>
             </div>
