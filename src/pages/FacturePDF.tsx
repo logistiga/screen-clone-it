@@ -426,8 +426,11 @@ export default function FacturePDFPage() {
 
           {/* Totaux et Paiement */}
           <div className="flex justify-between mb-4 gap-4">
-            {/* Conditions de paiement */}
+            {/* Conditions de paiement (avec cachet en haut à gauche) */}
             <div className="flex-1 p-3 border rounded text-xs">
+              <div className="mb-2">
+                <SignatureCachet leftBlock size={100} />
+              </div>
               <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
               <p className="text-muted-foreground">
                 Paiement à réception de facture. En cas de retard, des pénalités de retard
@@ -489,10 +492,6 @@ export default function FacturePDFPage() {
                 <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
                   {formatMontant(resteAPayer)}
                 </span>
-              </div>
-              {/* Signature et cachet directement sous les totaux */}
-              <div className="px-3 pt-2 pb-2 border-t">
-                <SignatureCachet inline />
               </div>
             </div>
           </div>
