@@ -68,10 +68,12 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       // 4️⃣ Capturer avec onclone pour fixer les dimensions
       console.log("[PDF] Step 4 — html2canvas starting...");
       const canvas = await html2canvas(el, {
-        scale: 1.6,
+        scale: 2.2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#ffffff",
         logging: true,
+        imageTimeout: 15000,
         width: elWidth,
         height: elHeight,
         windowWidth: elWidth,
@@ -79,7 +81,6 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
         scrollX: 0,
         scrollY: 0,
         onclone: (clonedDoc, clonedEl) => {
-          // Forcer des dimensions explicites en px sur le clone
           clonedDoc.documentElement.style.width = elWidth + "px";
           clonedDoc.body.style.width = elWidth + "px";
           clonedDoc.body.style.margin = "0";
@@ -109,7 +110,7 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
       // 5️⃣ Extraire image JPEG (bien plus léger que PNG)
       let imgData: string;
       try {
-        imgData = canvas.toDataURL("image/jpeg", 0.78);
+        imgData = canvas.toDataURL("image/jpeg", 0.92);
       } catch (e) {
         console.error("[PDF] toDataURL failed:", e);
         return null;
@@ -140,10 +141,10 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
         ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
         ctx.drawImage(canvas, 0, -i * pageHeightPx);
 
-        const pageImg = pageCanvas.toDataURL("image/jpeg", 0.78);
+        const pageImg = pageCanvas.toDataURL("image/jpeg", 0.92);
         const pageImgHeight = (sliceHeight * imgWidth) / canvas.width;
         if (i > 0) pdf.addPage();
-        pdf.addImage(pageImg, "JPEG", margin, margin, imgWidth, pageImgHeight, undefined, "FAST");
+        pdf.addImage(pageImg, "JPEG", margin, margin, imgWidth, pageImgHeight, undefined, "MEDIUM");
       }
 
       const blob = pdf.output("blob");
