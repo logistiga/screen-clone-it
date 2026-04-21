@@ -9,21 +9,43 @@ interface SignatureCachetProps {
 /**
  * Affiche le cachet officiel et la signature de la direction
  * pour les documents officiels (Devis, Factures, Ordres de Travail).
+ * Positionné à droite, sous la zone des totaux.
  */
 export function SignatureCachet({ className = "", compact = false }: SignatureCachetProps) {
-  const boxW = compact ? 220 : 280;
-  const boxH = compact ? 180 : 220;
+  const boxW = compact ? 140 : 170;
+  const boxH = compact ? 110 : 135;
   return (
-    <div className={`flex justify-end mt-6 mb-4 ${className}`}>
-      <div className="text-center">
-        <p className="text-[10px] font-semibold text-foreground mb-2">
+    <div
+      className={className}
+      style={{
+        width: "100%",
+        display: "flex",
+        justifyContent: "flex-end",
+        marginTop: 12,
+        marginBottom: 8,
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <p
+          style={{
+            fontSize: 9,
+            fontWeight: 600,
+            margin: 0,
+            marginBottom: 4,
+            color: "#374151",
+          }}
+        >
           Signature et cachet
         </p>
         <div
-          className="relative inline-block"
-          style={{ width: boxW, height: boxH }}
+          style={{
+            position: "relative",
+            display: "inline-block",
+            width: boxW,
+            height: boxH,
+          }}
         >
-          {/* Cachet officiel — grand, centré */}
+          {/* Cachet officiel */}
           <img
             src={cachetImg}
             alt="Cachet Logistiga"
@@ -36,11 +58,11 @@ export function SignatureCachet({ className = "", compact = false }: SignatureCa
               height: boxH,
               width: "auto",
               objectFit: "contain",
-              opacity: 0.95,
+              opacity: 0.92,
               pointerEvents: "none",
             }}
           />
-          {/* Signature — par-dessus, centrée sur le cachet */}
+          {/* Signature superposée au centre du cachet */}
           <img
             src={signatureImg}
             alt="Signature Direction"
@@ -50,7 +72,7 @@ export function SignatureCachet({ className = "", compact = false }: SignatureCa
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -55%)",
-              height: boxH * 0.95,
+              height: boxH * 0.85,
               width: "auto",
               objectFit: "contain",
               pointerEvents: "none",
