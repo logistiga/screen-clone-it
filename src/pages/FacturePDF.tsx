@@ -410,10 +410,42 @@ export default function FacturePDFPage() {
 
             {/* Totaux */}
             <div className="w-56 border text-xs">
-              <div className="flex justify-between py-1 px-3 border-b">
-                <span>Total HT</span>
-                <span className="font-medium">{formatMontant(facture.montant_ht)}</span>
-              </div>
+              {(() => {
+                const remiseMontant = Number(facture.remise_montant ?? 0);
+                const remiseType = facture.remise_type;
+                const remiseValeur = Number(facture.remise_valeur ?? 0);
+                const montantHT = Number(facture.montant_ht ?? 0);
+                const htBrut = montantHT + remiseMontant;
+                const remiseLabel =
+                  remiseType === "pourcentage" && remiseValeur > 0
+                    ? `Remise (${remiseValeur}%)`
+                    : "Remise";
+                return (
+                  <>
+                    {remiseMontant > 0 ? (
+                      <>
+                        <div className="flex justify-between py-1 px-3 border-b">
+                          <span>Total HT brut</span>
+                          <span className="font-medium">{formatMontant(htBrut)}</span>
+                        </div>
+                        <div className="flex justify-between py-1 px-3 border-b text-destructive">
+                          <span>{remiseLabel}</span>
+                          <span className="font-medium">- {formatMontant(remiseMontant)}</span>
+                        </div>
+                        <div className="flex justify-between py-1 px-3 border-b">
+                          <span>HT Net</span>
+                          <span className="font-medium">{formatMontant(montantHT)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between py-1 px-3 border-b">
+                        <span>Total HT</span>
+                        <span className="font-medium">{formatMontant(montantHT)}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>
                   TVA ({facture.taux_tva || 18}%)
