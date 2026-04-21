@@ -438,7 +438,7 @@ export default function OrdrePDFPage() {
                     respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
                     to have accepted the conditions of transport
                   </p>
-                  <SignatureCachet compact />
+                  
                 </div>
                 
                 {/* Conditions de Transport */}
