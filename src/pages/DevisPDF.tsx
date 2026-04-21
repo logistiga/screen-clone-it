@@ -297,8 +297,22 @@ export default function DevisPDFPage() {
               </tbody>
             </table>
 
-            <div className="flex justify-end mb-4">
-              <div className="w-56 border text-xs">
+            <div className="flex justify-between mb-4 gap-4">
+              {/* Conditions de paiement (avec cachet en haut à gauche) */}
+              <div className="flex-1 p-3 border rounded text-xs">
+                <div className="mb-2">
+                  <SignatureCachet leftBlock size={100} />
+                </div>
+                <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
+                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                  <li>Devis valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
+                  <li>Paiement: 50% à la commande, 50% à la livraison</li>
+                  <li>Délai de réalisation: selon disponibilité</li>
+                </ul>
+              </div>
+
+              {/* Totaux */}
+              <div className="w-56 border text-xs self-start">
                 <div className="flex justify-between py-1 px-3 border-b">
                   <span>Total HT</span>
                   <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
@@ -314,10 +328,6 @@ export default function DevisPDFPage() {
                 <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
                   <span>Total TTC</span>
                   <span>{formatMontant(devisData.montant_ttc || 0)}</span>
-                </div>
-                {/* Signature et cachet directement sous les totaux */}
-                <div className="px-3 pt-2 pb-2 border-t">
-                  <SignatureCachet inline />
                 </div>
               </div>
             </div>
