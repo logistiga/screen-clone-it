@@ -10,8 +10,6 @@ import { useOrdreById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
 import { SignatureCachet } from "@/components/documents/SignatureCachet";
-import cachetImg from "@/assets/cachet-logistiga.png";
-import signatureImg from "@/assets/signature-direction.png";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
@@ -186,7 +184,7 @@ export default function OrdrePDFPage() {
         <Card 
           ref={contentRef} 
           className="bg-white print:shadow-none print:border-none relative flex flex-col"
-          style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
+          style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
         >
           {/* Watermark si annulé */}
           {isAnnule && (
@@ -436,20 +434,7 @@ export default function OrdrePDFPage() {
                     respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
                     to have accepted the conditions of transport
                   </p>
-                  <p className="text-[7px] font-semibold mt-1">Signature et cachet :</p>
-                  <div className="relative h-16 mt-1" style={{ width: 130 }}>
-                    <img
-                      src={cachetImg}
-                      alt="Cachet Logistiga"
-                      className="absolute inset-0 m-auto h-16 object-contain opacity-90"
-                    />
-                    <img
-                      src={signatureImg}
-                      alt="Signature Direction"
-                      className="absolute h-14 object-contain"
-                      style={{ left: "30%", top: "5%" }}
-                    />
-                  </div>
+                  <SignatureCachet compact />
                 </div>
                 
                 {/* Conditions de Transport */}
@@ -469,7 +454,7 @@ export default function OrdrePDFPage() {
             </div>
 
             {/* Footer */}
-            <DocumentFooter />
+            <DocumentFooter fixed />
           </div>
         </Card>
       </div>

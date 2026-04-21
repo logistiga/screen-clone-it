@@ -46,9 +46,16 @@ export function DocumentHeader({
   );
 }
 
-export function DocumentFooter() {
+interface DocumentFooterProps {
+  fixed?: boolean;
+  className?: string;
+}
+
+export function DocumentFooter({ fixed = false, className = "" }: DocumentFooterProps) {
   return (
-    <div className="mt-4 pt-3 border-t text-[10px] text-muted-foreground">
+    <div
+      className={`${fixed ? "absolute bottom-[10mm] left-[10mm] right-[10mm]" : "mt-4"} ${className} pt-3 border-t text-[10px] text-muted-foreground`}
+    >
       <div className="text-center space-y-0.5">
         <p className="font-semibold text-foreground text-xs">
           LOGISTIGA SAS au Capital: 218 000 000 F CFA - Siège Social : Owendo SETRAG – (GABON)
