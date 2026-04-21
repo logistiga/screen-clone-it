@@ -434,20 +434,7 @@ export default function OrdrePDFPage() {
                     respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
                     to have accepted the conditions of transport
                   </p>
-                  <p className="text-[7px] font-semibold mt-1">Signature et cachet :</p>
-                  <div className="relative h-16 mt-1" style={{ width: 130 }}>
-                    <img
-                      src={cachetImg}
-                      alt="Cachet Logistiga"
-                      className="absolute inset-0 m-auto h-16 object-contain opacity-90"
-                    />
-                    <img
-                      src={signatureImg}
-                      alt="Signature Direction"
-                      className="absolute h-14 object-contain"
-                      style={{ left: "30%", top: "5%" }}
-                    />
-                  </div>
+                  <SignatureCachet compact />
                 </div>
                 
                 {/* Conditions de Transport */}
@@ -467,7 +454,7 @@ export default function OrdrePDFPage() {
             </div>
 
             {/* Footer */}
-            <DocumentFooter />
+            <DocumentFooter fixed />
           </div>
         </Card>
       </div>
