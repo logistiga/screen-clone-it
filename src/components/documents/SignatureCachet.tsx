@@ -4,6 +4,9 @@ interface SignatureCachetProps {
   className?: string;
   compact?: boolean;
   inline?: boolean;
+  /** Petit cachet (max ~100px) à placer en haut à gauche du bloc Conditions de paiement */
+  leftBlock?: boolean;
+  size?: number;
 }
 
 /**
@@ -12,9 +15,27 @@ interface SignatureCachetProps {
  * - Par défaut : bloc aligné à droite (legacy).
  * - inline=true : s'intègre directement sous le bloc totaux (largeur du parent).
  */
-export function SignatureCachet({ className = "", compact = false, inline = false }: SignatureCachetProps) {
+export function SignatureCachet({ className = "", compact = false, inline = false, leftBlock = false, size = 100 }: SignatureCachetProps) {
   const boxW = compact ? 190 : 230;
   const boxH = compact ? 150 : 180;
+
+  if (leftBlock) {
+    return (
+      <img
+        src={cachetSignatureImg}
+        alt="Cachet et signature Logistiga"
+        crossOrigin="anonymous"
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          display: "block",
+          filter: "contrast(1.08) saturate(1.08)",
+        }}
+      />
+    );
+  }
 
   if (inline) {
     return (
