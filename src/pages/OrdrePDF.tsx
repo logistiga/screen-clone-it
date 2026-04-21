@@ -9,6 +9,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { useOrdreById } from "@/hooks/use-commercial";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
+import { SignatureCachet } from "@/components/documents/SignatureCachet";
+import cachetImg from "@/assets/cachet-logistiga.png";
+import signatureImg from "@/assets/signature-direction.png";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 

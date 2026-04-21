@@ -7,6 +7,7 @@ import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { QRCodeSVG } from "qrcode.react";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
+import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { useDevisById } from "@/hooks/use-commercial";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
@@ -335,6 +336,7 @@ export default function DevisPDFPage() {
           </div>
 
           <div className="mt-auto">
+            <SignatureCachet />
             <DocumentFooter />
           </div>
         </Card>
