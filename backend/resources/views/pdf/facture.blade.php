@@ -383,10 +383,28 @@
                 <span class="totals-label">Total HT</span>
                 <span class="totals-value">{{ number_format($facture->montant_ht ?? 0, 0, ',', ' ') }} FCFA</span>
             </div>
-            @if(($facture->remise_montant ?? 0) > 0)
+            @php
+                $remiseMontant = (float) ($facture->remise_montant ?? 0);
+                $remiseType = $facture->remise_type ?? null;
+                $remiseValeur = (float) ($facture->remise_valeur ?? 0);
+                $remiseLabel = 'Remise';
+                if ($remiseMontant > 0) {
+                    if ($remiseType === 'pourcentage' && $remiseValeur > 0) {
+                        $remiseLabel = 'Remise (' . rtrim(rtrim(number_format($remiseValeur, 2, ',', ' '), '0'), ',') . '%)';
+                    } else {
+                        $remiseLabel = 'Remise';
+                    }
+                }
+                $htNet = (float) ($facture->montant_ht ?? 0) - $remiseMontant;
+            @endphp
+            @if($remiseMontant > 0)
             <div class="totals-row">
-                <span class="totals-label">Remise</span>
-                <span class="totals-value">-{{ number_format($facture->remise_montant, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-label">{{ $remiseLabel }}</span>
+                <span class="totals-value">-{{ number_format($remiseMontant, 0, ',', ' ') }} FCFA</span>
+            </div>
+            <div class="totals-row">
+                <span class="totals-label">HT Net</span>
+                <span class="totals-value">{{ number_format($htNet, 0, ',', ' ') }} FCFA</span>
             </div>
             @endif
             <div class="totals-row">
