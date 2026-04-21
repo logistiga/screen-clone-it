@@ -11,27 +11,49 @@ interface SignatureCachetProps {
  * pour les documents officiels (Devis, Factures, Ordres de Travail).
  */
 export function SignatureCachet({ className = "", compact = false }: SignatureCachetProps) {
-  const size = compact ? "h-16" : "h-20";
+  const boxW = compact ? 160 : 200;
+  const boxH = compact ? 110 : 140;
   return (
-    <div className={`flex justify-end mt-3 mb-2 ${className}`}>
+    <div className={`flex justify-end mt-4 mb-2 ${className}`}>
       <div className="text-center">
-        <p className="text-[8px] font-semibold text-muted-foreground mb-1">
+        <p className="text-[9px] font-semibold text-foreground mb-1">
           Signature et cachet
         </p>
-        <div className="relative inline-block" style={{ width: compact ? 110 : 130, height: compact ? 80 : 95 }}>
-          {/* Cachet en arrière-plan */}
+        <div
+          className="relative inline-block"
+          style={{ width: boxW, height: boxH }}
+        >
+          {/* Cachet officiel — fond, centré */}
           <img
             src={cachetImg}
             alt="Cachet Logistiga"
-            className={`absolute inset-0 m-auto ${size} object-contain opacity-90`}
-            style={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            crossOrigin="anonymous"
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              height: boxH,
+              width: "auto",
+              objectFit: "contain",
+              opacity: 0.95,
+              pointerEvents: "none",
+            }}
           />
-          {/* Signature par-dessus, légèrement décalée */}
+          {/* Signature — par-dessus, légèrement décalée */}
           <img
             src={signatureImg}
             alt="Signature Direction"
-            className={`absolute ${size} object-contain`}
-            style={{ left: "35%", top: "10%" }}
+            crossOrigin="anonymous"
+            style={{
+              position: "absolute",
+              top: "8%",
+              left: "30%",
+              height: boxH * 0.85,
+              width: "auto",
+              objectFit: "contain",
+              pointerEvents: "none",
+            }}
           />
         </div>
       </div>
