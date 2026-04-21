@@ -197,8 +197,8 @@ export default function FacturePDFPage() {
       <div className="container py-8 print:py-0 flex justify-center animate-fade-in">
         <Card 
           ref={contentRef} 
-          className="bg-white print:shadow-none print:border-none relative"
-          style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
+          className="bg-white print:shadow-none print:border-none relative flex flex-col"
+          style={{ width: '210mm', minHeight: '297mm', padding: '10mm', paddingBottom: '34mm' }}
         >
           {/* Watermark si annulée */}
           {isAnnulee && (
@@ -514,7 +514,7 @@ export default function FacturePDFPage() {
           <SignatureCachet />
 
           {/* Footer */}
-          <DocumentFooter />
+          <DocumentFooter fixed />
         </Card>
       </div>
 
