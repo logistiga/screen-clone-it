@@ -11,28 +11,28 @@ interface SignatureCachetProps {
  * pour les documents officiels (Devis, Factures, Ordres de Travail).
  */
 export function SignatureCachet({ className = "", compact = false }: SignatureCachetProps) {
-  const boxW = compact ? 160 : 200;
-  const boxH = compact ? 110 : 140;
+  const boxW = compact ? 220 : 280;
+  const boxH = compact ? 180 : 220;
   return (
-    <div className={`flex justify-end mt-4 mb-2 ${className}`}>
+    <div className={`flex justify-end mt-6 mb-4 ${className}`}>
       <div className="text-center">
-        <p className="text-[9px] font-semibold text-foreground mb-1">
+        <p className="text-[10px] font-semibold text-foreground mb-2">
           Signature et cachet
         </p>
         <div
           className="relative inline-block"
           style={{ width: boxW, height: boxH }}
         >
-          {/* Cachet officiel — fond, centré */}
+          {/* Cachet officiel — grand, centré */}
           <img
             src={cachetImg}
             alt="Cachet Logistiga"
             crossOrigin="anonymous"
             style={{
               position: "absolute",
-              top: "50%",
+              top: 0,
               left: "50%",
-              transform: "translate(-50%, -50%)",
+              transform: "translateX(-50%)",
               height: boxH,
               width: "auto",
               objectFit: "contain",
@@ -40,19 +40,21 @@ export function SignatureCachet({ className = "", compact = false }: SignatureCa
               pointerEvents: "none",
             }}
           />
-          {/* Signature — par-dessus, légèrement décalée */}
+          {/* Signature — par-dessus, centrée sur le cachet */}
           <img
             src={signatureImg}
             alt="Signature Direction"
             crossOrigin="anonymous"
             style={{
               position: "absolute",
-              top: "8%",
-              left: "30%",
-              height: boxH * 0.85,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -55%)",
+              height: boxH * 0.95,
               width: "auto",
               objectFit: "contain",
               pointerEvents: "none",
+              mixBlendMode: "multiply",
             }}
           />
         </div>
