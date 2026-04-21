@@ -427,10 +427,8 @@ export default function FacturePDFPage() {
           {/* Totaux et Paiement */}
           <div className="flex justify-between mb-4 gap-4">
             {/* Conditions de paiement (avec cachet en haut à gauche) */}
-            <div className="flex-1 p-3 border rounded text-xs">
-              <div className="mb-2">
-                <SignatureCachet leftBlock size={100} />
-              </div>
+            <div className="flex-1 p-3 border rounded text-xs relative">
+              <SignatureCachet leftBlock size={150} />
               <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
               <p className="text-muted-foreground">
                 Paiement à réception de facture. En cas de retard, des pénalités de retard
