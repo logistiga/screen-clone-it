@@ -103,7 +103,17 @@ export default function OrdresTravailPage() {
   if (ordresData) hasLoadedOnce.current = true;
 
   if (isLoading && !hasLoadedOnce.current) return <MainLayout title="Ordres de Travail"><DocumentLoadingState message="Chargement des ordres..." /></MainLayout>;
-  if (error) return <MainLayout title="Ordres de Travail"><DocumentErrorState message="Erreur lors du chargement des ordres" onRetry={() => refetch()} /></MainLayout>;
+  if (error) {
+    const err: any = error;
+    const status = err?.response?.status;
+    const apiMsg = err?.response?.data?.message;
+    let message = "Erreur lors du chargement des ordres";
+    if (status === 401) message = "Session expirée. Veuillez vous reconnecter.";
+    else if (status === 403) message = "Accès refusé à la liste des ordres.";
+    else if (apiMsg) message = apiMsg;
+    else if (err?.message === "Network Error") message = "Backend injoignable. Vérifiez votre connexion.";
+    return <MainLayout title="Ordres de Travail"><DocumentErrorState message={message} onRetry={() => refetch()} /></MainLayout>;
+  }
   if (ordresList.length === 0 && !searchTerm && statutFilter === "all" && categorieFilter === "all") {
     return <MainLayout title="Ordres de Travail"><DocumentEmptyState icon={ClipboardList} title="Aucun ordre de travail" description="Commencez par créer votre premier ordre de travail." actionLabel="Créer un ordre" onAction={() => navigate("/ordres/nouveau")} /></MainLayout>;
   }
