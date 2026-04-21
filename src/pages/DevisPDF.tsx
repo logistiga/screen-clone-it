@@ -167,7 +167,7 @@ export default function DevisPDFPage() {
         <Card 
           ref={contentRef} 
           className="bg-white print:shadow-none print:border-none relative flex flex-col"
-          style={{ width: '210mm', minHeight: '297mm', padding: '10mm' }}
+          style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
         >
           {/* Watermark si annulé */}
           {isAnnule && (
@@ -337,7 +337,7 @@ export default function DevisPDFPage() {
 
           <div className="mt-auto">
             <SignatureCachet />
-            <DocumentFooter />
+            <DocumentFooter fixed />
           </div>
         </Card>
       </div>
