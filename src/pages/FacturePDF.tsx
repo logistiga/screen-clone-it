@@ -198,7 +198,7 @@ export default function FacturePDFPage() {
         <Card 
           ref={contentRef} 
           className="bg-white print:shadow-none print:border-none relative flex flex-col"
-          style={{ width: '210mm', minHeight: '297mm', padding: '10mm', paddingBottom: '34mm' }}
+          style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
         >
           {/* Watermark si annulée */}
           {isAnnulee && (
