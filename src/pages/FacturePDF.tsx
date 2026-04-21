@@ -126,6 +126,29 @@ export default function FacturePDFPage() {
   const lignesConteneur = buildLignesConteneur();
   const lignesConventionnel = buildLignesConventionnel();
   const lignesIndependant = buildLignesIndependant();
+  const lignesAffichees = isConteneur
+    ? lignesConteneur
+    : isConventionnel
+      ? lignesConventionnel
+      : lignesIndependant;
+  const montantHTNet = roundMoney(Number(facture.montant_ht ?? 0));
+  const montantHTLignes = roundMoney(lignesAffichees.reduce((sum, ligne) => sum + Number(ligne.montant || 0), 0));
+  const remiseType = facture.remise_type;
+  const remiseValeur = Number(facture.remise_valeur ?? 0);
+  const remiseDepuisApi = Number(facture.remise_montant ?? 0);
+  const remiseDepuisLignes = Math.max(0, montantHTLignes - montantHTNet);
+  const remiseDepuisPourcentage =
+    remiseType === "pourcentage" && remiseValeur > 0 && remiseValeur < 100
+      ? montantHTNet * (remiseValeur / (100 - remiseValeur))
+      : 0;
+  const remiseDepuisMontant = remiseType === "montant" && remiseValeur > 0 ? remiseValeur : 0;
+  const remiseMontant = roundMoney(Math.max(remiseDepuisApi, remiseDepuisLignes, remiseDepuisPourcentage, remiseDepuisMontant));
+  const hasRemise = remiseMontant > 0;
+  const montantHTBrut = hasRemise ? Math.max(montantHTLignes, montantHTNet + remiseMontant) : montantHTNet;
+  const remiseLabel =
+    remiseType === "pourcentage" && remiseValeur > 0
+      ? `Remise (${remiseValeur}%)`
+      : "Remise";
   
   // URL pour le QR code - toujours pointer vers la production
   const baseUrl = "https://facturation.logistiga.pro";
@@ -410,42 +433,27 @@ export default function FacturePDFPage() {
 
             {/* Totaux */}
             <div className="w-56 border text-xs">
-              {(() => {
-                const remiseMontant = Number(facture.remise_montant ?? 0);
-                const remiseType = facture.remise_type;
-                const remiseValeur = Number(facture.remise_valeur ?? 0);
-                const montantHT = Number(facture.montant_ht ?? 0);
-                const htBrut = montantHT + remiseMontant;
-                const remiseLabel =
-                  remiseType === "pourcentage" && remiseValeur > 0
-                    ? `Remise (${remiseValeur}%)`
-                    : "Remise";
-                return (
-                  <>
-                    {remiseMontant > 0 ? (
-                      <>
-                        <div className="flex justify-between py-1 px-3 border-b">
-                          <span>Total HT brut</span>
-                          <span className="font-medium">{formatMontant(htBrut)}</span>
-                        </div>
-                        <div className="flex justify-between py-1 px-3 border-b text-destructive">
-                          <span>{remiseLabel}</span>
-                          <span className="font-medium">- {formatMontant(remiseMontant)}</span>
-                        </div>
-                        <div className="flex justify-between py-1 px-3 border-b">
-                          <span>HT Net</span>
-                          <span className="font-medium">{formatMontant(montantHT)}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between py-1 px-3 border-b">
-                        <span>Total HT</span>
-                        <span className="font-medium">{formatMontant(montantHT)}</span>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              {hasRemise ? (
+                <>
+                  <div className="flex justify-between py-1 px-3 border-b">
+                    <span>Total HT brut</span>
+                    <span className="font-medium">{formatMontant(montantHTBrut)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 px-3 border-b text-destructive">
+                    <span>{remiseLabel}</span>
+                    <span className="font-medium">- {formatMontant(remiseMontant)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 px-3 border-b">
+                    <span>Montant HT</span>
+                    <span className="font-medium">{formatMontant(montantHTNet)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between py-1 px-3 border-b">
+                  <span>Total HT</span>
+                  <span className="font-medium">{formatMontant(montantHTNet)}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1 px-3 border-b">
                 <span>
                   TVA ({facture.taux_tva || 18}%)
