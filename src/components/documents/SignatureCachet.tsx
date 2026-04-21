@@ -15,7 +15,7 @@ interface SignatureCachetProps {
  * - Par défaut : bloc aligné à droite (legacy).
  * - inline=true : s'intègre directement sous le bloc totaux (largeur du parent).
  */
-export function SignatureCachet({ className = "", compact = false, inline = false, leftBlock = false, size = 100 }: SignatureCachetProps) {
+export function SignatureCachet({ className = "", compact = false, inline = false, leftBlock = false, size = 150 }: SignatureCachetProps) {
   const boxW = compact ? 190 : 230;
   const boxH = compact ? 150 : 180;
 
@@ -30,7 +30,11 @@ export function SignatureCachet({ className = "", compact = false, inline = fals
           width: size,
           height: size,
           objectFit: "contain",
-          display: "block",
+          position: "absolute",
+          top: 4,
+          left: 4,
+          zIndex: 10,
+          pointerEvents: "none",
           filter: "contrast(1.08) saturate(1.08)",
         }}
       />
