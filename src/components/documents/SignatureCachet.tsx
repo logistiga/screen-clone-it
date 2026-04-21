@@ -11,8 +11,8 @@ interface SignatureCachetProps {
  * Positionné à droite, en valeur, près des conditions de paiement.
  */
 export function SignatureCachet({ className = "", compact = false }: SignatureCachetProps) {
-  const boxW = compact ? 170 : 210;
-  const boxH = compact ? 170 : 210;
+  const boxW = compact ? 190 : 255;
+  const boxH = compact ? 150 : 200;
   return (
     <div
       className={className}
@@ -20,32 +20,23 @@ export function SignatureCachet({ className = "", compact = false }: SignatureCa
         width: "100%",
         display: "flex",
         justifyContent: "flex-end",
-        marginTop: 16,
-        marginBottom: 12,
+        alignItems: "flex-start",
+        marginTop: 10,
+        marginBottom: 10,
       }}
     >
-      <div style={{ textAlign: "center" }}>
-        <p
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            margin: 0,
-            marginBottom: 6,
-            color: "#374151",
-            letterSpacing: 0.3,
-          }}
-        >
-          Signature et cachet
-        </p>
+      <div style={{ width: boxW, height: boxH, textAlign: "right" }}>
         <img
           src={cachetSignatureImg}
           alt="Cachet et signature Logistiga"
           crossOrigin="anonymous"
           style={{
-            width: boxW,
-            height: boxH,
+            width: "100%",
+            height: "100%",
             objectFit: "contain",
             display: "block",
+            objectPosition: "right center",
+            filter: "contrast(1.08) saturate(1.08)",
           }}
         />
       </div>
