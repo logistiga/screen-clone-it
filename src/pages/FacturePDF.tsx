@@ -136,15 +136,18 @@ export default function FacturePDFPage() {
   const remiseType = facture.remise_type;
   const remiseValeur = Number(facture.remise_valeur ?? 0);
   const remiseDepuisApi = Number(facture.remise_montant ?? 0);
-  const remiseDepuisLignes = Math.max(0, montantHTLignes - montantHTNet);
+  // Les lignes affichent le HT NET (après remise) : on déduit la remise du type/valeur
   const remiseDepuisPourcentage =
     remiseType === "pourcentage" && remiseValeur > 0 && remiseValeur < 100
-      ? montantHTNet * (remiseValeur / (100 - remiseValeur))
+      ? Math.round((montantHTNet * remiseValeur) / (100 - remiseValeur))
       : 0;
   const remiseDepuisMontant = remiseType === "montant" && remiseValeur > 0 ? remiseValeur : 0;
-  const remiseMontant = roundMoney(Math.max(remiseDepuisApi, remiseDepuisLignes, remiseDepuisPourcentage, remiseDepuisMontant));
-  const hasRemise = remiseMontant > 0;
-  const montantHTBrut = hasRemise ? Math.max(montantHTLignes, montantHTNet + remiseMontant) : montantHTNet;
+  const remiseDepuisLignes = Math.max(0, montantHTLignes - montantHTNet);
+  const remiseMontant = roundMoney(
+    Math.max(remiseDepuisApi, remiseDepuisLignes, remiseDepuisPourcentage, remiseDepuisMontant)
+  );
+  const hasRemise = remiseMontant > 0 || (!!remiseType && remiseType !== "none" && remiseValeur > 0);
+  const montantHTBrut = hasRemise ? montantHTNet + remiseMontant : montantHTNet;
   const remiseLabel =
     remiseType === "pourcentage" && remiseValeur > 0
       ? `Remise (${remiseValeur}%)`
