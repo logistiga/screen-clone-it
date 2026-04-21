@@ -382,10 +382,24 @@
                 <span class="totals-label">Total HT</span>
                 <span class="totals-value">{{ number_format($devis->montant_ht ?? 0, 0, ',', ' ') }} FCFA</span>
             </div>
-            @if(($devis->remise_montant ?? 0) > 0)
+            @php
+                $remiseMontantD = (float) ($devis->remise_montant ?? 0);
+                $remiseTypeD = $devis->remise_type ?? null;
+                $remiseValeurD = (float) ($devis->remise_valeur ?? 0);
+                $remiseLabelD = 'Remise';
+                if ($remiseMontantD > 0 && $remiseTypeD === 'pourcentage' && $remiseValeurD > 0) {
+                    $remiseLabelD = 'Remise (' . rtrim(rtrim(number_format($remiseValeurD, 2, ',', ' '), '0'), ',') . '%)';
+                }
+                $htNetD = (float) ($devis->montant_ht ?? 0) - $remiseMontantD;
+            @endphp
+            @if($remiseMontantD > 0)
             <div class="totals-row">
-                <span class="totals-label">Remise</span>
-                <span class="totals-value">-{{ number_format($devis->remise_montant, 0, ',', ' ') }} FCFA</span>
+                <span class="totals-label">{{ $remiseLabelD }}</span>
+                <span class="totals-value">-{{ number_format($remiseMontantD, 0, ',', ' ') }} FCFA</span>
+            </div>
+            <div class="totals-row">
+                <span class="totals-label">HT Net</span>
+                <span class="totals-value">{{ number_format($htNetD, 0, ',', ' ') }} FCFA</span>
             </div>
             @endif
             <div class="totals-row">
