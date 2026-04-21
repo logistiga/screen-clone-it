@@ -396,6 +396,10 @@ export default function OrdrePDFPage() {
                     {formatMontant(resteAPayer)}
                   </span>
                 </div>
+                {/* Signature et cachet directement sous les totaux */}
+                <div className="px-3 pt-2 pb-2 border-t">
+                  <SignatureCachet inline />
+                </div>
               </div>
             </div>
 
@@ -434,7 +438,7 @@ export default function OrdrePDFPage() {
                     respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
                     to have accepted the conditions of transport
                   </p>
-                  <SignatureCachet compact />
+                  
                 </div>
                 
                 {/* Conditions de Transport */}

@@ -3,16 +3,56 @@ import cachetSignatureImg from "@/assets/cachet-signature.png";
 interface SignatureCachetProps {
   className?: string;
   compact?: boolean;
+  inline?: boolean;
 }
 
 /**
  * Affiche le cachet officiel + signature combinés (image unique)
  * pour les documents officiels (Devis, Factures, Ordres de Travail).
- * Positionné à droite, en valeur, près des conditions de paiement.
+ * - Par défaut : bloc aligné à droite (legacy).
+ * - inline=true : s'intègre directement sous le bloc totaux (largeur du parent).
  */
-export function SignatureCachet({ className = "", compact = false }: SignatureCachetProps) {
-  const boxW = compact ? 190 : 255;
-  const boxH = compact ? 150 : 200;
+export function SignatureCachet({ className = "", compact = false, inline = false }: SignatureCachetProps) {
+  const boxW = compact ? 190 : 230;
+  const boxH = compact ? 150 : 180;
+
+  if (inline) {
+    return (
+      <div
+        className={className}
+        style={{
+          width: "100%",
+          marginTop: 8,
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: "#374151",
+            marginBottom: 4,
+          }}
+        >
+          Signature et cachet
+        </p>
+        <img
+          src={cachetSignatureImg}
+          alt="Cachet et signature Logistiga"
+          crossOrigin="anonymous"
+          style={{
+            width: "100%",
+            maxWidth: 220,
+            height: "auto",
+            objectFit: "contain",
+            display: "inline-block",
+            filter: "contrast(1.08) saturate(1.08)",
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={className}

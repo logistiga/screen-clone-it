@@ -490,6 +490,10 @@ export default function FacturePDFPage() {
                   {formatMontant(resteAPayer)}
                 </span>
               </div>
+              {/* Signature et cachet directement sous les totaux */}
+              <div className="px-3 pt-2 pb-2 border-t">
+                <SignatureCachet inline />
+              </div>
             </div>
           </div>
 
@@ -509,9 +513,6 @@ export default function FacturePDFPage() {
               <p className="text-xs">{facture.notes}</p>
             </div>
           )}
-
-          {/* Signature et cachet */}
-          <SignatureCachet />
 
           {/* Footer */}
           <DocumentFooter fixed />

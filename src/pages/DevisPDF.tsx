@@ -315,6 +315,10 @@ export default function DevisPDFPage() {
                   <span>Total TTC</span>
                   <span>{formatMontant(devisData.montant_ttc || 0)}</span>
                 </div>
+                {/* Signature et cachet directement sous les totaux */}
+                <div className="px-3 pt-2 pb-2 border-t">
+                  <SignatureCachet inline />
+                </div>
               </div>
             </div>
 
@@ -336,7 +340,6 @@ export default function DevisPDFPage() {
           </div>
 
           <div className="mt-auto">
-            <SignatureCachet />
             <DocumentFooter fixed />
           </div>
         </Card>
