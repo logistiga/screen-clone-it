@@ -46,7 +46,6 @@ export function DocumentHeader({
   );
 }
 
-export function DocumentFooter() {
 interface DocumentFooterProps {
   fixed?: boolean;
   className?: string;
