@@ -53,33 +53,39 @@ class SyncConteneursController extends Controller
             ->select([
                 'sc.id as sortie_id_externe', 'sc.numero_conteneur', 'sc.numero_bl', 'sc.type_conteneur',
                 'c.nom as nom_client', 'a.code as code_armateur', 'a.nom as armateur_nom', 't.nom as nom_transitaire',
-                'sc.camion_id', 'sc.remorque_id', 'sc.type_transport', 'sc.type_detention', 'sc.jours_gratuits',
+                'sc.camion_id', 'sc.remorque_id', 'sc.date_sortie', 'sc.date_retour', 'sc.prime_chauffeur',
+                'sc.adresse_livraison', 'sc.destination', 'sc.type_transport', 'sc.type_detention', 'sc.jours_gratuits',
+                'sc.statut as statut_ops',
             ])
             ->get();
 
         foreach ($opsConteneurs as $opsConteneur) {
-            if (\App\Models\ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->exists()) {
-                $skipped++;
-                continue;
-            }
-
             try {
-                \App\Models\ConteneurTraite::create([
+                $existing = \App\Models\ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->first();
+
+                \App\Models\ConteneurTraite::updateOrCreate([
                     'sortie_id_externe' => $opsConteneur->sortie_id_externe,
+                ], [
                     'numero_conteneur' => $opsConteneur->numero_conteneur,
                     'numero_bl' => $opsConteneur->numero_bl,
                     'type_conteneur' => $opsConteneur->type_conteneur,
                     'armateur_code' => $opsConteneur->code_armateur,
                     'armateur_nom' => $opsConteneur->armateur_nom,
                     'client_nom' => $opsConteneur->nom_client,
-                    'client_adresse' => null, 'transitaire_nom' => $opsConteneur->nom_transitaire,
-                    'date_sortie' => null, 'date_retour' => null,
+                    'client_adresse' => $opsConteneur->adresse_livraison,
+                    'transitaire_nom' => $opsConteneur->nom_transitaire,
+                    'date_sortie' => $opsConteneur->date_sortie,
+                    'date_retour' => $opsConteneur->date_retour,
                     'camion_id_externe' => $opsConteneur->camion_id,
                     'remorque_id_externe' => $opsConteneur->remorque_id,
-                    'prime_chauffeur' => null,
+                    'prime_chauffeur' => $opsConteneur->prime_chauffeur,
                     'destination_type' => $opsConteneur->type_detention,
-                    'destination_adresse' => null, 'statut_ops' => null,
-                    'statut' => 'en_attente', 'source_system' => 'logistiga_ops', 'synced_at' => now(),
+                    'destination_adresse' => $opsConteneur->destination,
+                    'statut_ops' => $opsConteneur->statut_ops,
+                    'statut' => $existing?->statut ?? 'en_attente',
+                    'ordre_travail_id' => $existing?->ordre_travail_id,
+                    'source_system' => 'logistiga_ops',
+                    'synced_at' => now(),
                 ]);
 
                 if (!empty($opsConteneur->type_conteneur) && !empty($opsConteneur->code_armateur)) {
@@ -87,7 +93,7 @@ class SyncConteneursController extends Controller
                     if ($armateur) { $armateur->update(['type_conteneur' => $opsConteneur->type_conteneur]); }
                 }
 
-                $imported++;
+                $existing ? $skipped++ : $imported++;
             } catch (\Exception $e) {
                 $errors[] = "Conteneur {$opsConteneur->numero_conteneur}: {$e->getMessage()}";
             }
