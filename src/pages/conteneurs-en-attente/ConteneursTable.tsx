@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Package, Clock, CheckCircle2, FileText, Ship, PlusCircle, Link as LinkIcon, XCircle, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ConteneurTraite } from "@/lib/api/conteneurs-traites";
+import { ConteneurTraite, getAdresseLivraisonLabel } from "@/lib/api/conteneurs-traites";
 
 interface Props {
   conteneurs: ConteneurTraite[];
@@ -48,7 +48,7 @@ export function ConteneursTable({ conteneurs, navigate, handleCreerOrdre, handle
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Conteneur</TableHead><TableHead>Type</TableHead><TableHead>N° BL</TableHead>
-                  <TableHead>Client</TableHead><TableHead>Armateur</TableHead><TableHead>Transitaire</TableHead>
+                  <TableHead>Client</TableHead><TableHead>Adresse</TableHead><TableHead>Transitaire</TableHead>
                   <TableHead>Statut</TableHead><TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -59,9 +59,7 @@ export function ConteneursTable({ conteneurs, navigate, handleCreerOrdre, handle
                     <TableCell>{conteneur.type_conteneur ? <Badge variant="outline" className="text-xs font-normal">{conteneur.type_conteneur}</Badge> : "-"}</TableCell>
                     <TableCell>{conteneur.numero_bl || "-"}</TableCell>
                     <TableCell className="max-w-[150px] truncate">{conteneur.client_nom || "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5"><Ship className="h-3.5 w-3.5 text-muted-foreground" /><span className="truncate max-w-[100px]">{conteneur.armateur_nom || conteneur.armateur_code || "-"}</span></div>
-                    </TableCell>
+                    <TableCell className="max-w-[220px] truncate">{getAdresseLivraisonLabel(conteneur)}</TableCell>
                     <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
                     <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
                     <TableCell>

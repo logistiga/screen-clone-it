@@ -186,7 +186,7 @@ export default function NouvelOrdrePage() {
             id: crypto.randomUUID(),
             numero: prefillData.conteneur?.numero || "",
             taille: tailleFormatted,
-            description: "",
+            description: prefillData.conteneur?.description || "",
             prixUnitaire: 0,
             operations: [],
           },

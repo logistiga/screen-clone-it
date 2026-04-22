@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { conteneursTraitesApi, ConteneurTraite, ConteneursTraitesStats, anomaliesApi } from "@/lib/api/conteneurs-traites";
+import { conteneursTraitesApi, ConteneurTraite, ConteneursTraitesStats, anomaliesApi, getAdresseLivraisonLabel } from "@/lib/api/conteneurs-traites";
 import { ordresApi } from "@/lib/api/commercial";
 
 export const statutOptions = [
@@ -97,11 +97,12 @@ export function useConteneursEnAttenteData() {
   };
 
   const handleCreerOrdre = (conteneur: ConteneurTraite) => {
+    const adresseLivraison = getAdresseLivraisonLabel(conteneur);
     const prefillData = {
       categorie: 'conteneurs', numeroBL: conteneur.numero_bl || '',
       clientNom: conteneur.client_nom || '', armateurCode: conteneur.armateur_code || '',
       armateurNom: conteneur.armateur_nom || '',
-      conteneur: { numero: conteneur.numero_conteneur, taille: '20', type: 'DRY' },
+      conteneur: { numero: conteneur.numero_conteneur, taille: '20', type: 'DRY', description: adresseLivraison !== '-' ? adresseLivraison : '' },
       sourceConteneurId: conteneur.id,
     };
     sessionStorage.setItem('prefill_ordre', JSON.stringify(prefillData));
