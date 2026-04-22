@@ -251,6 +251,7 @@ class SyncFromOps extends Command
                 'sc.date_sortie',
                 'sc.date_retour',
                 'sc.prime_chauffeur',
+                'sc.adresse_livraison',
                 'sc.destination',
                 'sc.type_transport',
                 'sc.type_detention',
@@ -265,31 +266,24 @@ class SyncFromOps extends Command
         $bar->start();
 
         foreach ($opsConteneurs as $opsConteneur) {
-            // Vérifier si déjà synchronisé
-            $existeDejaSync = ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->exists();
-
-            if ($existeDejaSync) {
-                $this->conteneursSkipped++;
-                $bar->advance();
-                continue;
-            }
-
             if ($this->option('dry-run')) {
                 $this->line("   [DRY-RUN] Conteneur: {$opsConteneur->numero_conteneur} - BL: {$opsConteneur->numero_bl}");
                 $bar->advance();
                 continue;
             }
 
-            // Insérer dans conteneurs_traites
-            ConteneurTraite::create([
+            $existing = ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->first();
+
+            ConteneurTraite::updateOrCreate([
                 'sortie_id_externe' => $opsConteneur->sortie_id_externe,
+            ], [
                 'numero_conteneur' => $opsConteneur->numero_conteneur,
                 'numero_bl' => $opsConteneur->numero_bl,
                 'type_conteneur' => $opsConteneur->type_conteneur,
                 'armateur_code' => $opsConteneur->code_armateur,
                 'armateur_nom' => $opsConteneur->armateur_nom,
                 'client_nom' => $opsConteneur->nom_client,
-                'client_adresse' => null,
+                'client_adresse' => $opsConteneur->adresse_livraison,
                 'transitaire_nom' => $opsConteneur->nom_transitaire,
                 'date_sortie' => $opsConteneur->date_sortie,
                 'date_retour' => $opsConteneur->date_retour,
@@ -299,7 +293,8 @@ class SyncFromOps extends Command
                 'destination_type' => $opsConteneur->type_detention,
                 'destination_adresse' => $opsConteneur->destination,
                 'statut_ops' => $opsConteneur->statut_ops,
-                'statut' => 'en_attente',
+                'statut' => $existing?->statut ?? 'en_attente',
+                'ordre_travail_id' => $existing?->ordre_travail_id,
                 'source_system' => 'logistiga_ops',
                 'synced_at' => now(),
             ]);
@@ -312,7 +307,7 @@ class SyncFromOps extends Command
                 }
             }
 
-            $this->conteneursImported++;
+            $existing ? $this->conteneursSkipped++ : $this->conteneursImported++;
             $bar->advance();
         }
 
