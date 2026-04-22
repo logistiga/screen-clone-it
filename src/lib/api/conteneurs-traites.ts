@@ -32,6 +32,15 @@ export interface ConteneurTraite {
   updated_at: string;
 }
 
+export function getAdresseLivraisonLabel(conteneur: Pick<ConteneurTraite, 'destination_type' | 'destination_adresse' | 'client_adresse'>) {
+  const destinationType = conteneur.destination_type?.trim().toLowerCase() || '';
+  const isBaseDestination = destinationType.includes('base');
+
+  if (isBaseDestination) return 'Base';
+
+  return conteneur.destination_adresse?.trim() || conteneur.client_adresse?.trim() || '-';
+}
+
 export interface ConteneursTraitesStats {
   total: number;
   en_attente: number;
