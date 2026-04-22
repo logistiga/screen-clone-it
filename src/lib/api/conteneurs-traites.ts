@@ -34,11 +34,14 @@ export interface ConteneurTraite {
 
 export function getAdresseLivraisonLabel(conteneur: Pick<ConteneurTraite, 'destination_type' | 'destination_adresse' | 'client_adresse'>) {
   const destinationType = conteneur.destination_type?.trim().toLowerCase() || '';
-  const isBaseDestination = destinationType.includes('base');
+  const deliveryAddress = conteneur.client_adresse?.trim() || '';
+  const destinationAddress = conteneur.destination_adresse?.trim() || '';
+  const destinationContext = `${destinationType} ${destinationAddress.toLowerCase()}`;
+  const isBaseDestination = ['base', 'depot', 'dépôt'].some((keyword) => destinationContext.includes(keyword));
 
   if (isBaseDestination) return 'Base';
 
-  return conteneur.client_adresse?.trim() || conteneur.destination_adresse?.trim() || '-';
+  return deliveryAddress || destinationAddress || '-';
 }
 
 export interface ConteneursTraitesStats {
