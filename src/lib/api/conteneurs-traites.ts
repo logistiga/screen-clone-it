@@ -38,7 +38,7 @@ export function getAdresseLivraisonLabel(conteneur: Pick<ConteneurTraite, 'desti
 
   if (isBaseDestination) return 'Base';
 
-  return conteneur.destination_adresse?.trim() || conteneur.client_adresse?.trim() || '-';
+  return conteneur.client_adresse?.trim() || conteneur.destination_adresse?.trim() || '-';
 }
 
 export interface ConteneursTraitesStats {
