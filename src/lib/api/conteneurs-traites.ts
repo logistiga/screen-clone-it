@@ -33,15 +33,13 @@ export interface ConteneurTraite {
 }
 
 export function getAdresseLivraisonLabel(conteneur: Pick<ConteneurTraite, 'destination_type' | 'destination_adresse' | 'client_adresse'>) {
-  const destinationType = conteneur.destination_type?.trim().toLowerCase() || '';
-  const deliveryAddress = conteneur.client_adresse?.trim() || '';
-  const destinationAddress = conteneur.destination_adresse?.trim() || '';
-  const destinationContext = `${destinationType} ${destinationAddress.toLowerCase()}`;
-  const isBaseDestination = ['base', 'depot', 'dépôt'].some((keyword) => destinationContext.includes(keyword));
+  const type = conteneur.destination_type?.trim().toLowerCase() || '';
 
-  if (isBaseDestination) return 'Base';
+  if (type === 'base') return 'Base';
 
-  return deliveryAddress || destinationAddress || '-';
+  return conteneur.destination_adresse?.trim()
+      || conteneur.client_adresse?.trim()
+      || '-';
 }
 
 export interface ConteneursTraitesStats {
