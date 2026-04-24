@@ -1,64 +1,116 @@
+# Plan : Documentation MD pour Agent IA avec accès BDD complet
 
+## Objectif
 
-# Ajouter les primes CNV (conventionnel) sur la page Caisse en attente
+Créer un fichier de référence Markdown qui sert de **manuel complet** pour que l'agent IA puisse répondre avec des **données réelles issues de la base** à toutes les questions possibles (KPIs, clients, OT, factures, statistiques, classements, anomalies, etc.) via une approche **SQL dynamique sécurisé**.
 
-## Contexte
+Pas de filtrage RBAC : l'agent a accès complet à toutes les données (réservé admin/directeur).
 
-La base `logiwkuh_cnv` contient une table `primes` avec des primes conventionnelles. Les primes avec `statut = 'payee'` doivent apparaitre sur la meme page "Caisse en attente" que les primes OPS, avec la meme logique de decaissement.
+## Livrable
 
-### Structure table CNV `primes`
-| Colonne | Type |
-|---------|------|
-| id | UUID |
-| type | ENUM (camion, responsable) |
-| beneficiaire | STRING |
-| montant | DECIMAL(12,2) |
-| operation_id | UUID |
-| conventionne_numero | STRING |
-| statut | ENUM (en_attente, payee) |
-| numero_paiement | STRING nullable |
-| date_paiement | TIMESTAMP nullable |
+**Fichier unique** : `/mnt/documents/agent_ia_bdd_complet.md`
 
-## Modifications
+## Structure du fichier MD
 
-### 1. Backend - Ajouter connexion `cnv` dans `config/database.php`
+### 1. Introduction & règles d'or
+- Rôle de l'agent (assistant financier/opérationnel LogistiGA)
+- Règle absolue : **toujours interroger la BDD**, jamais inventer
+- Format des réponses (chiffres FCFA, dates JJ/MM/AAAA, sources mentionnées)
+- Si une donnée est absente → dire "aucun résultat" et non zéro inventé
 
-Ajouter un bloc `cnv` (meme pattern que `ops`) utilisant les variables `CNV_DB_HOST`, `CNV_DB_DATABASE`, `CNV_DB_USERNAME`, `CNV_DB_PASSWORD`, `CNV_DB_PORT`, `CNV_DB_SOCKET`.
+### 2. Architecture d'accès aux données (SQL dynamique sécurisé)
+- L'agent reçoit la question utilisateur
+- Génère une requête SQL en **lecture seule** (`SELECT` uniquement)
+- Whitelist des tables autorisées
+- Interdictions strictes : `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`
+- Toujours filtrer `deleted_at IS NULL` (soft deletes Laravel)
+- Limite par défaut `LIMIT 100` sauf agrégats
 
-### 2. Backend - Modifier `CaisseEnAttenteController.php`
+### 3. Cartographie complète des tables (avec colonnes clés)
+Pour chaque table : nom, rôle, colonnes principales, relations.
 
-**Methode `index`** :
-- Ajouter `checkCnvConnection()` (meme pattern que `checkOpsConnection`)
-- Lire les primes CNV avec `statut = 'payee'` depuis la connexion `cnv`
-- Colonnes selectionnees : id, type, beneficiaire, montant, conventionne_numero, statut, numero_paiement, date_paiement, created_at
-- Mapper les colonnes CNV vers le meme format que OPS (ex: `numero_parc` = `conventionne_numero`)
-- Ajouter un champ `source` = `'OPS'` ou `'CNV'` sur chaque prime
-- Verifier le decaissement via reference `CNV-PRIME-{id}` (au lieu de `OPS-PRIME-{id}`)
-- Categorie mouvement : `Prime conventionnel` pour CNV
-- Merger les deux collections, filtrer, trier par date_paiement desc, puis paginer
-- Supporter un filtre `source` optionnel (query param)
+Tables couvertes :
+- **Financières** : `factures`, `ordres_travail`, `devis`, `notes_debit`, `paiements`, `paiements_fournisseurs`
+- **Caisse / Banque** : `caisse_mouvements`, `credits_bancaires`, `caisse_en_attente`
+- **Clients & partenaires** : `clients`, `armateurs`, `transitaires`, `representants`, `fournisseurs`
+- **Opérationnelles** : `conteneurs_traites`, `sorties_conteneurs`, `notes_relache`, `primes_locales`
+- **Sécurité** : `users`, `roles`, `permissions`, `audit_logs`, `suspicious_logins`
+- **Système** : `notifications`, `email_logs`, `previsions`
 
-**Methode `stats`** :
-- Ajouter les totaux CNV aux stats existantes (cumul des deux sources)
+### 4. Catalogue exhaustif Questions → Requêtes SQL
 
-**Methode `decaisser`** :
-- Accepter un parametre `source` dans la requete (defaut: `OPS`)
-- Si `source = CNV` : lire depuis connexion `cnv`, reference = `CNV-PRIME-{id}`, categorie = `Prime conventionnel`
-- Si `source = OPS` : comportement actuel inchange
+Organisé par **thème** avec ~80-120 paires Q/R type :
 
-### 3. Frontend - Modifier `CaisseEnAttente.tsx`
+**A. KPIs financiers globaux**
+- Total OT non payés (montant restant)
+- Total OT payés ce mois
+- Factures du mois (nombre + total)
+- Solde caisse / banque
+- Encaissements jour/semaine/mois/année
+- Top 10 clients débiteurs
 
-- Ajouter `source: string` a l'interface `PrimeEnAttente`
-- Ajouter `conventionne_numero: string | null`
-- Afficher une colonne "Source" avec badge colore (bleu "OPS", vert "CNV")
-- Afficher le `conventionne_numero` pour les primes CNV dans la colonne "N Parc"
-- Ajouter un filtre source dans les options de filtre (Toutes / OPS / CNV)
-- Envoyer `source` dans le POST de decaissement
-- Mettre a jour le sous-titre : "Primes payees depuis TC et CNV en attente de decaissement"
+**B. Recherche par entité**
+- Statut d'un OT précis (`WHERE numero = ?`)
+- Solde d'un client
+- Dernières factures d'un client
+- Conteneurs en cours pour client X
 
-## Fichiers modifies
+**C. Statistiques & classements**
+- Top clients par CA
+- Top armateurs par volume conteneurs
+- Performance commerciale par utilisateur
+- Évolution mensuelle CA
 
-- `backend/config/database.php` (ajout connexion cnv)
-- `backend/app/Http/Controllers/Api/CaisseEnAttenteController.php` (lecture 2 bases + merge)
-- `src/pages/CaisseEnAttente.tsx` (colonne source + filtre + envoi source)
+**D. Opérationnel**
+- Conteneurs en attente / anomalies
+- OT en retard de paiement (>30j, >60j, >90j)
+- Détentions impayées
+- Primes en attente
 
+**E. Audit & sécurité**
+- Dernières connexions suspectes
+- Actions critiques (annulations, suppressions)
+- Activité utilisateur
+
+Pour chaque entrée :
+```
+Q : "Quel est le total des OT non payés ?"
+SQL : SELECT SUM(montant_ttc - COALESCE(montant_paye,0)) AS restant
+      FROM ordres_travail
+      WHERE statut_paiement IN ('non_paye','partiel')
+        AND statut != 'annule'
+        AND deleted_at IS NULL;
+Format réponse : "Total OT non payés : {restant} FCFA ({count} dossiers)"
+Tables : ordres_travail
+```
+
+### 5. Formules métier critiques
+- Montant restant facture = `montant_ttc - COALESCE(montant_paye, 0)`
+- OT considéré "payé" = `statut_paiement = 'paye'`
+- OT actif = `statut != 'annule' AND deleted_at IS NULL`
+- Période "ce mois" = `MONTH(date_xxx) = MONTH(CURDATE()) AND YEAR(...) = YEAR(CURDATE())`
+- Conversions XAF/FCFA : entiers arrondis (pas de décimales)
+
+### 6. Gestion des cas particuliers
+- Plusieurs clients avec nom similaire → demander précision
+- Période non spécifiée → défaut "ce mois"
+- Donnée à 0 → dire "aucun" et non "zéro FCFA"
+- Question hors périmètre → orienter vers la bonne page de l'app
+
+### 7. Annexes
+- Glossaire (OT, BL, TC, CSS, TVA, détention, prime…)
+- Mapping entre vocabulaire utilisateur et colonnes BDD ("impayé" = `statut_paiement IN ('non_paye','partiel')`)
+- Liste des statuts possibles par table
+- Exemples complets de conversations
+
+## Sources utilisées pour générer le contenu
+
+- `/mnt/documents/structure_bdd.md` (1060 lignes — schéma complet)
+- `/mnt/documents/agent_ia_logistiga.md` (existant — page par page)
+- `/mnt/documents/LogistiGA_System_Prompt_Complet.md` (prompt système)
+- `backend/app/Http/Controllers/Api/AiAssistantController.php` (logique actuelle)
+
+## Note importante
+
+Ce plan crée **uniquement le fichier MD de référence** (livrable demandé).
+Il n'implémente pas encore l'exécution SQL côté backend. Si tu veux ensuite que l'agent **exécute réellement** ces requêtes (endpoint Laravel sécurisé en lecture seule + injection des résultats dans le prompt), ce sera une étape suivante à demander séparément.
