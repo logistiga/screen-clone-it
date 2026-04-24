@@ -12,6 +12,7 @@ use App\Models\CreditBancaire;
 use App\Models\Facture;
 use App\Models\MouvementCaisse;
 use App\Models\Notification;
+use App\Models\OrdreTravail;
 use App\Models\Paiement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -107,8 +108,50 @@ class AiAssistantController extends Controller
     {
         $context = [];
         try { $context['clients'] = ['total' => Client::count(), 'nouveaux_ce_mois' => Client::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count()]; } catch (\Exception $e) { $context['clients'] = ['error' => 'Non disponible']; }
-        try { $context['factures'] = ['total' => Facture::count(), 'impayees' => Facture::whereIn('statut', ['envoyee', 'en_retard'])->count(), 'montant_impaye' => round((float) Facture::whereIn('statut', ['envoyee', 'en_retard'])->sum('montant_ttc'), 2), 'ce_mois' => Facture::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count()]; } catch (\Exception $e) { $context['factures'] = ['error' => 'Non disponible']; }
-        try { $context['paiements'] = ['total_mois' => round((float) Paiement::whereMonth('date_paiement', now()->month)->whereYear('date_paiement', now()->year)->sum('montant'), 2)]; } catch (\Exception $e) { $context['paiements'] = ['error' => 'Non disponible']; }
+        try {
+            $facturesImpayeesQuery = Facture::query()
+                ->whereNotIn('statut', ['payee', 'annulee', 'Payée', 'Annulée']);
+
+            $context['factures'] = [
+                'total' => Facture::count(),
+                'impayees' => (clone $facturesImpayeesQuery)->count(),
+                'montant_impaye' => round((float) ((clone $facturesImpayeesQuery)
+                    ->selectRaw('SUM(montant_ttc - COALESCE(montant_paye, 0)) as total')
+                    ->value('total') ?? 0), 2),
+                'ce_mois' => Facture::whereMonth('date_creation', now()->month)->whereYear('date_creation', now()->year)->count(),
+                'montant_ce_mois' => round((float) Facture::whereMonth('date_creation', now()->month)->whereYear('date_creation', now()->year)->sum('montant_ttc'), 2),
+            ];
+        } catch (\Exception $e) { $context['factures'] = ['error' => 'Non disponible']; }
+        try {
+            $ordresNonPayesQuery = OrdreTravail::query()
+                ->where('statut', '!=', 'annule')
+                ->whereRaw('COALESCE(montant_ttc, 0) > COALESCE(montant_paye, 0)');
+
+            $context['ordres_travail'] = [
+                'total' => OrdreTravail::count(),
+                'ce_mois' => OrdreTravail::whereMonth('date_creation', now()->month)->whereYear('date_creation', now()->year)->count(),
+                'montant_ce_mois' => round((float) OrdreTravail::whereMonth('date_creation', now()->month)->whereYear('date_creation', now()->year)->sum('montant_ttc'), 2),
+                'non_payes' => [
+                    'nombre' => (clone $ordresNonPayesQuery)->count(),
+                    'montant_restant' => round((float) ((clone $ordresNonPayesQuery)
+                        ->selectRaw('SUM(montant_ttc - COALESCE(montant_paye, 0)) as total')
+                        ->value('total') ?? 0), 2),
+                ],
+                'payes_ce_mois' => [
+                    'nombre' => OrdreTravail::where('statut', '!=', 'annule')
+                        ->whereRaw('COALESCE(montant_paye, 0) >= COALESCE(montant_ttc, 0)')
+                        ->whereMonth('updated_at', now()->month)
+                        ->whereYear('updated_at', now()->year)
+                        ->count(),
+                    'montant' => round((float) OrdreTravail::where('statut', '!=', 'annule')
+                        ->whereRaw('COALESCE(montant_paye, 0) >= COALESCE(montant_ttc, 0)')
+                        ->whereMonth('updated_at', now()->month)
+                        ->whereYear('updated_at', now()->year)
+                        ->sum('montant_ttc'), 2),
+                ],
+            ];
+        } catch (\Exception $e) { $context['ordres_travail'] = ['error' => 'Non disponible']; }
+        try { $context['paiements'] = ['total_mois' => round((float) Paiement::whereMonth('date', now()->month)->whereYear('date', now()->year)->sum('montant'), 2)]; } catch (\Exception $e) { $context['paiements'] = ['error' => 'Non disponible']; }
         try { $entrees = MouvementCaisse::where('type', 'entree')->sum('montant'); $sorties = MouvementCaisse::where('type', 'sortie')->sum('montant'); $context['caisse'] = ['solde' => round((float) ($entrees - $sorties), 2)]; } catch (\Exception $e) { $context['caisse'] = ['error' => 'Non disponible']; }
         try { $context['top_clients'] = Facture::select('client_id', DB::raw('SUM(montant_ttc) as total_ca'))->groupBy('client_id')->orderByDesc('total_ca')->limit(5)->with('client:id,nom')->get()->map(fn($f) => ['nom' => $f->client->nom ?? 'Inconnu', 'ca' => round((float) $f->total_ca, 2)])->toArray(); } catch (\Exception $e) { $context['top_clients'] = []; }
         try { $context['notifications_recentes'] = Notification::orderByDesc('created_at')->limit(10)->get(['type', 'title', 'message', 'created_at'])->toArray(); } catch (\Exception $e) { $context['notifications_recentes'] = []; }
@@ -123,6 +166,6 @@ class AiAssistantController extends Controller
     {
         $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         $basePrompt = $setting->system_prompt ?: "Tu es l'assistant de Omar, directeur de Logistiga au Gabon. Flotte de 40 camions. Port d'Owendo. Équipe: Mustapha, Georgia, Mohamed, Evans. Réponds en français, de manière professionnelle et concise.";
-        return "{$basePrompt}\n\n## Contexte métier actuel (données en temps réel)\n```json\n{$contextJson}\n```\n\n## Règles\n- Utilise les données ci-dessus pour contextualiser tes réponses\n- Les montants sont en FCFA\n- Sois précis avec les chiffres, ne les invente pas\n- Si une donnée n'est pas disponible, dis-le clairement\n- Propose des actions concrètes quand c'est pertinent\n- Utilise du markdown pour structurer tes réponses";
+        return "{$basePrompt}\n\n## Contexte métier actuel (données en temps réel)\n```json\n{$contextJson}\n```\n\n## Règles\n- Utilise STRICTEMENT les données ci-dessus pour répondre\n- Pour les OT non payés, utilise `ordres_travail.non_payes.nombre` et `ordres_travail.non_payes.montant_restant`\n- Pour les OT payés ce mois, utilise `ordres_travail.payes_ce_mois`\n- Pour les factures de ce mois, utilise `factures.ce_mois` et `factures.montant_ce_mois`\n- Les montants sont en FCFA\n- Sois précis avec les chiffres, ne les invente pas\n- Si une donnée n'est pas disponible, dis-le clairement\n- N'affirme jamais 0 si le contexte contient une autre valeur\n- Propose des actions concrètes quand c'est pertinent\n- Utilise du markdown pour structurer tes réponses";
     }
 }
