@@ -49,6 +49,7 @@ export function ConteneursTable({ conteneurs, navigate, handleCreerOrdre, handle
                 <TableRow className="bg-muted/50">
                   <TableHead>Conteneur</TableHead><TableHead>Type</TableHead><TableHead>N° BL</TableHead>
                   <TableHead>Client</TableHead><TableHead>Adresse</TableHead><TableHead>Transitaire</TableHead>
+                  <TableHead>Camion</TableHead>
                   <TableHead>Statut</TableHead><TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
