@@ -45,19 +45,36 @@ class SyncConteneursController extends Controller
         $skipped = 0;
         $errors = [];
 
-        $opsConteneurs = DB::connection('ops')
+        // Vérifier si table camions existe et a colonne parc/numero_parc
+        $camionsSchema = \Illuminate\Support\Facades\Schema::connection('ops');
+        $hasCamionsTable = $camionsSchema->hasTable('camions');
+        $camionParcCol = null;
+        if ($hasCamionsTable) {
+            foreach (['parc', 'numero_parc', 'numero', 'plaque', 'immatriculation'] as $col) {
+                if ($camionsSchema->hasColumn('camions', $col)) { $camionParcCol = $col; break; }
+            }
+        }
+
+        $query = DB::connection('ops')
             ->table('sortie_conteneurs as sc')
             ->leftJoin('clients as c', 'sc.client_id', '=', 'c.id')
             ->leftJoin('armateurs as a', 'sc.armateur_id', '=', 'a.id')
-            ->leftJoin('transitaires as t', 'sc.transitaire_id', '=', 't.id')
-            ->select([
-                'sc.id as sortie_id_externe', 'sc.numero_conteneur', 'sc.numero_bl', 'sc.type_conteneur',
-                'c.nom as nom_client', 'a.code as code_armateur', 'a.nom as armateur_nom', 't.nom as nom_transitaire',
-                'sc.camion_id', 'sc.remorque_id', 'sc.date_sortie', 'sc.date_retour', 'sc.prime_chauffeur',
-                'sc.adresse_livraison', 'sc.destination', 'sc.type_transport', 'sc.type_detention', 'sc.jours_gratuits',
-                'sc.statut as statut_ops',
-            ])
-            ->get();
+            ->leftJoin('transitaires as t', 'sc.transitaire_id', '=', 't.id');
+
+        $select = [
+            'sc.id as sortie_id_externe', 'sc.numero_conteneur', 'sc.numero_bl', 'sc.type_conteneur',
+            'c.nom as nom_client', 'a.code as code_armateur', 'a.nom as armateur_nom', 't.nom as nom_transitaire',
+            'sc.camion_id', 'sc.remorque_id', 'sc.date_sortie', 'sc.date_retour', 'sc.prime_chauffeur',
+            'sc.adresse_livraison', 'sc.destination', 'sc.type_transport', 'sc.type_detention', 'sc.jours_gratuits',
+            'sc.statut as statut_ops',
+        ];
+
+        if ($hasCamionsTable && $camionParcCol) {
+            $query->leftJoin('camions as cam', 'sc.camion_id', '=', 'cam.id');
+            $select[] = "cam.{$camionParcCol} as camion_parc";
+        }
+
+        $opsConteneurs = $query->select($select)->get();
 
         foreach ($opsConteneurs as $opsConteneur) {
             try {
@@ -77,6 +94,7 @@ class SyncConteneursController extends Controller
                     'date_sortie' => $opsConteneur->date_sortie,
                     'date_retour' => $opsConteneur->date_retour,
                     'camion_id_externe' => $opsConteneur->camion_id,
+                    'camion_plaque' => $opsConteneur->camion_parc ?? null,
                     'remorque_id_externe' => $opsConteneur->remorque_id,
                     'prime_chauffeur' => $opsConteneur->prime_chauffeur,
                     'destination_type' => $opsConteneur->destination,
