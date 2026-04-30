@@ -94,6 +94,7 @@ class SyncConteneursController extends Controller
                     'date_sortie' => $opsConteneur->date_sortie,
                     'date_retour' => $opsConteneur->date_retour,
                     'camion_id_externe' => $opsConteneur->camion_id,
+                    'camion_plaque' => $opsConteneur->camion_parc ?? null,
                     'remorque_id_externe' => $opsConteneur->remorque_id,
                     'prime_chauffeur' => $opsConteneur->prime_chauffeur,
                     'destination_type' => $opsConteneur->destination,
