@@ -62,6 +62,7 @@ export function ConteneursTable({ conteneurs, navigate, handleCreerOrdre, handle
                     <TableCell className="max-w-[150px] truncate">{conteneur.client_nom || "-"}</TableCell>
                     <TableCell className="max-w-[220px] truncate">{getAdresseLivraisonLabel(conteneur)}</TableCell>
                     <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
+                    <TableCell className="font-mono text-sm">{conteneur.camion_plaque || "-"}</TableCell>
                     <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
                     <TableCell>
                       {conteneur.statut !== 'facture' ? (
