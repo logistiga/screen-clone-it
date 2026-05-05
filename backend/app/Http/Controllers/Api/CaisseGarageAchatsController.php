@@ -390,36 +390,22 @@ class CaisseGarageAchatsController extends Controller
 
         $refs = $items->map(fn($i) => CaisseGarageController::buildRef($i->id))->toArray();
 
-        // On ne filtre PAS sur la catégorie car elle peut être personnalisée lors du décaissement.
-        // La référence GARAGE-ACHAT-{id} est unique et suffisante pour détecter le décaissement.
-        // On inclut aussi les paiements partiels (références suffixées -T1, -T2, ...).
-        $likePatterns = collect($refs)->map(fn($r) => $r . '%')->toArray();
-
-        $mouvementsQuery = DB::table('mouvements_caisse')
-            ->where(function ($q) use ($refs, $likePatterns) {
+        // On ne filtre PAS sur la catégorie : elle peut être personnalisée lors du décaissement.
+        // La référence GARAGE-ACHAT-{id} (ou suffixée -T1/-T2 pour partiels) est unique.
+        $mouvementsBruts = DB::table('mouvements_caisse')
+            ->where(function ($q) use ($refs) {
                 $q->whereIn('reference', $refs);
-                foreach ($likePatterns as $pattern) {
-                    $q->orWhere('reference', 'like', $pattern);
+                foreach ($refs as $ref) {
+                    $q->orWhere('reference', 'like', $ref . '-T%');
                 }
             })
             ->get(['id', 'reference', 'date', 'mode_paiement']);
 
-        // Indexer par référence de base (sans suffixe -T*)
-        $mouvements = $mouvementsQuery->keyBy(function ($m) {
+        // Indexer par référence de base (en retirant le suffixe -T{n} éventuel).
+        // On garde le 1er mouvement trouvé par achat (suffit pour marquer "décaissé").
+        $mouvements = $mouvementsBruts->keyBy(function ($m) {
             return preg_replace('/-T\d+$/', '', $m->reference);
         });
-
-        // Calculer le total décaissé par référence de base (pour paiements partiels)
-        $totauxDecaisses = DB::table('mouvements_caisse')
-            ->where(function ($q) use ($refs, $likePatterns) {
-                $q->whereIn('reference', $refs);
-                foreach ($likePatterns as $pattern) {
-                    $q->orWhere('reference', 'like', $pattern);
-                }
-            })
-            ->get(['reference', 'montant'])
-            ->groupBy(fn($m) => preg_replace('/-T\d+$/', '', $m->reference))
-            ->map(fn($group) => $group->sum('montant'));
 
         $refusees = DB::table('primes_refusees')->whereIn('reference', $refs)->pluck('reference')->toArray();
 
