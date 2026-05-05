@@ -114,9 +114,13 @@ class CaisseEnAttenteController extends Controller
             $refs = $allPrimes->pluck('ref')->toArray();
             $decaisseesRefs = [];
             if (!empty($refs)) {
-                $decaisseesRefs = DB::table('mouvements_caisse')
-                    ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
-                    ->whereIn('reference', $refs)->pluck('reference')->toArray();
+                $q = DB::table('mouvements_caisse')->where(function ($q) use ($refs) {
+                    foreach ($refs as $r) {
+                        $q->orWhere('reference', $r)->orWhere('reference', 'like', $r . '-T%');
+                    }
+                });
+                $found = $q->pluck('reference')->toArray();
+                $decaisseesRefs = array_unique(array_map(fn($r) => preg_replace('/-T\d+$/', '', $r), $found));
             }
 
             $aDecaisser = $allPrimes->filter(fn($p) => !in_array($p->ref, $decaisseesRefs));
@@ -175,10 +179,22 @@ class CaisseEnAttenteController extends Controller
             default => CaisseOpsController::buildRef($p->id),
         })->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])->keyBy('reference');
+        $mouvementsRaw = DB::table('mouvements_caisse')
+            ->where(function ($q) use ($refs) {
+                foreach ($refs as $r) {
+                    $q->orWhere('reference', $r)->orWhere('reference', 'like', $r . '-T%');
+                }
+            })
+            ->get(['id', 'reference', 'date', 'mode_paiement']);
+
+        // Index by base reference (strip -T\d+ suffix), keep most recent
+        $mouvements = collect();
+        foreach ($mouvementsRaw as $m) {
+            $base = preg_replace('/-T\d+$/', '', $m->reference);
+            if (!$mouvements->has($base)) {
+                $mouvements[$base] = $m;
+            }
+        }
 
         $refusees = DB::table('primes_refusees')->whereIn('reference', $refs)->pluck('reference')->toArray();
 

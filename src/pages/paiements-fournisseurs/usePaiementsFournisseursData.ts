@@ -31,7 +31,7 @@ export interface Tranche {
 
 export function usePaiementsFournisseursData() {
   const [search, setSearch] = useState("");
-  const [statut, setStatut] = useState("all");
+  const [statut, setStatut] = useState("en_cours");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
