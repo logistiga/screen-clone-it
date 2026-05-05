@@ -390,11 +390,36 @@ class CaisseGarageAchatsController extends Controller
 
         $refs = $items->map(fn($i) => CaisseGarageController::buildRef($i->id))->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
-            ->where('categorie', CaisseGarageController::categorie())
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])
-            ->keyBy('reference');
+        // On ne filtre PAS sur la catégorie car elle peut être personnalisée lors du décaissement.
+        // La référence GARAGE-ACHAT-{id} est unique et suffisante pour détecter le décaissement.
+        // On inclut aussi les paiements partiels (références suffixées -T1, -T2, ...).
+        $likePatterns = collect($refs)->map(fn($r) => $r . '%')->toArray();
+
+        $mouvementsQuery = DB::table('mouvements_caisse')
+            ->where(function ($q) use ($refs, $likePatterns) {
+                $q->whereIn('reference', $refs);
+                foreach ($likePatterns as $pattern) {
+                    $q->orWhere('reference', 'like', $pattern);
+                }
+            })
+            ->get(['id', 'reference', 'date', 'mode_paiement']);
+
+        // Indexer par référence de base (sans suffixe -T*)
+        $mouvements = $mouvementsQuery->keyBy(function ($m) {
+            return preg_replace('/-T\d+$/', '', $m->reference);
+        });
+
+        // Calculer le total décaissé par référence de base (pour paiements partiels)
+        $totauxDecaisses = DB::table('mouvements_caisse')
+            ->where(function ($q) use ($refs, $likePatterns) {
+                $q->whereIn('reference', $refs);
+                foreach ($likePatterns as $pattern) {
+                    $q->orWhere('reference', 'like', $pattern);
+                }
+            })
+            ->get(['reference', 'montant'])
+            ->groupBy(fn($m) => preg_replace('/-T\d+$/', '', $m->reference))
+            ->map(fn($group) => $group->sum('montant'));
 
         $refusees = DB::table('primes_refusees')->whereIn('reference', $refs)->pluck('reference')->toArray();
 
