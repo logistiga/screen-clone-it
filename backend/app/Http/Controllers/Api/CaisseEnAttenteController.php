@@ -179,10 +179,22 @@ class CaisseEnAttenteController extends Controller
             default => CaisseOpsController::buildRef($p->id),
         })->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
-            ->whereIn('categorie', [CaisseOpsController::categorie(), CaisseCnvController::categorie(), CaisseHorslbvController::categorie()])
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])->keyBy('reference');
+        $mouvementsRaw = DB::table('mouvements_caisse')
+            ->where(function ($q) use ($refs) {
+                foreach ($refs as $r) {
+                    $q->orWhere('reference', $r)->orWhere('reference', 'like', $r . '-T%');
+                }
+            })
+            ->get(['id', 'reference', 'date', 'mode_paiement']);
+
+        // Index by base reference (strip -T\d+ suffix), keep most recent
+        $mouvements = collect();
+        foreach ($mouvementsRaw as $m) {
+            $base = preg_replace('/-T\d+$/', '', $m->reference);
+            if (!$mouvements->has($base)) {
+                $mouvements[$base] = $m;
+            }
+        }
 
         $refusees = DB::table('primes_refusees')->whereIn('reference', $refs)->pluck('reference')->toArray();
 
