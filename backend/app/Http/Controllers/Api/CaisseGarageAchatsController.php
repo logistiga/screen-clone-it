@@ -390,11 +390,22 @@ class CaisseGarageAchatsController extends Controller
 
         $refs = $items->map(fn($i) => CaisseGarageController::buildRef($i->id))->toArray();
 
-        $mouvements = DB::table('mouvements_caisse')
-            ->where('categorie', CaisseGarageController::categorie())
-            ->whereIn('reference', $refs)
-            ->get(['id', 'reference', 'date', 'mode_paiement'])
-            ->keyBy('reference');
+        // On ne filtre PAS sur la catégorie : elle peut être personnalisée lors du décaissement.
+        // La référence GARAGE-ACHAT-{id} (ou suffixée -T1/-T2 pour partiels) est unique.
+        $mouvementsBruts = DB::table('mouvements_caisse')
+            ->where(function ($q) use ($refs) {
+                $q->whereIn('reference', $refs);
+                foreach ($refs as $ref) {
+                    $q->orWhere('reference', 'like', $ref . '-T%');
+                }
+            })
+            ->get(['id', 'reference', 'date', 'mode_paiement']);
+
+        // Indexer par référence de base (en retirant le suffixe -T{n} éventuel).
+        // On garde le 1er mouvement trouvé par achat (suffit pour marquer "décaissé").
+        $mouvements = $mouvementsBruts->keyBy(function ($m) {
+            return preg_replace('/-T\d+$/', '', $m->reference);
+        });
 
         $refusees = DB::table('primes_refusees')->whereIn('reference', $refs)->pluck('reference')->toArray();
 
