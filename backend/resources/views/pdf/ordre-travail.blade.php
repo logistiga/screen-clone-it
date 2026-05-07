@@ -422,8 +422,12 @@
                                 ];
                             }
                         } else {
+                            $label = 'Conteneur ' . ($c->numero ?? '') . ' ' . ($c->taille ?? '') . "'";
+                            if (!empty($c->description)) {
+                                $label .= ' | ' . $c->description;
+                            }
                             $lignes[] = [
-                                'description' => 'Conteneur ' . ($c->numero ?? '') . ' ' . ($c->taille ?? '') . "'",
+                                'description' => $label,
                                 'quantite' => 1,
                                 'prix_unitaire' => $c->prix_unitaire ?? 0,
                                 'montant_ht' => $c->prix_unitaire ?? 0,
