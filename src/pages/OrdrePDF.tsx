@@ -400,7 +400,7 @@ export default function OrdrePDFPage() {
               {/* Totaux */}
               <div className="w-56 border text-xs">
                 <div className="flex justify-between py-1 px-3 bg-primary text-primary-foreground font-bold border-b">
-                  <span>Total</span>
+                  <span>Total TTC</span>
                   <span>{formatMontant(ordre.montant_ttc)}</span>
                 </div>
                 <div className="flex justify-between py-1 px-3 border-b">
