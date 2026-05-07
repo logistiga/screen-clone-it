@@ -17,6 +17,7 @@ class ConteneurOrdreResource extends JsonResource
             'numero' => $this->numero,
             'type' => $this->type,
             'taille' => $this->taille,
+            'description' => $this->description,
             'prix_unitaire' => round((float) ($this->prix_unitaire ?? 0), 2),
             'armateur' => $this->whenLoaded('armateur', fn() => $this->armateur ? new ArmateurResource($this->armateur) : null),
             'operations' => OperationConteneurOrdreResource::collection($this->whenLoaded('operations')),
