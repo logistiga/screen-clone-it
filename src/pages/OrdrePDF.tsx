@@ -87,12 +87,13 @@ export default function OrdrePDFPage() {
 
   // Construire les lignes pour le PDF selon le type
   const buildLignesConteneur = () => {
-    const lignes: Array<{ numero: string; taille: string; montant: number }> = [];
+    const lignes: Array<{ numero: string; description: string; taille: string; montant: number }> = [];
     
     if (ordre.conteneurs && ordre.conteneurs.length > 0) {
       ordre.conteneurs.forEach((conteneur: any) => {
         lignes.push({
           numero: conteneur.numero || '',
+          description: conteneur.description || '',
           taille: conteneur.taille || '20',
           montant: conteneur.montant_ht || 0
         });
