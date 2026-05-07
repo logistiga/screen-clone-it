@@ -287,7 +287,12 @@ export default function OrdrePDFPage() {
                   {lignesConteneur.map((ligne, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
                       <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
-                      <td className="py-1.5 px-2 border-r border-b font-mono align-middle">{ligne.numero}</td>
+                      <td className="py-1.5 px-2 border-r border-b font-mono align-middle">
+                        <span>{ligne.numero}</span>
+                        {ligne.description && (
+                          <> <span className="text-muted-foreground">|</span> <span className="font-sans">{ligne.description}</span></>
+                        )}
+                      </td>
                       <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.taille}'</td>
                       <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
                         {formatMontant(ligne.montant)}
