@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { PWAInstallPrompt, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
+import { PWAInstallPrompt, OfflineIndicator } from "@/components/pwa";
 import { Loader2 } from "lucide-react";
 
 // Permissions par module
@@ -174,7 +174,6 @@ const App = () => (
             <Toaster />
             <Sonner />
             <PWAInstallPrompt />
-            <PWAUpdatePrompt />
             <OfflineIndicator />
             <Suspense fallback={<PageLoader />}>
               <Routes>
