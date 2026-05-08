@@ -154,20 +154,29 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
         data.bl_numero = conteneursData.numeroBL || null;
         data.prime_transitaire = conteneursData.primeTransitaire || 0;
         data.prime_representant = conteneursData.primeRepresentant || 0;
-        data.conteneurs = conteneursData.conteneurs.map((c) => ({
-          numero: c.numero,
-          type: "DRY",
-          taille: c.taille === "20'" ? "20" : "40",
-          description: c.description || null,
-          armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
-          prix_unitaire: c.prixUnitaire || 0,
-          operations: c.operations.map((op) => ({
-            type_operation: op.type,
-            description: typesOperationConteneur[op.type]?.label || op.description || "",
-            quantite: op.quantite,
-            prix_unitaire: op.prixUnitaire,
-          })),
-        }));
+        data.conteneurs = conteneursData.conteneurs.map((c) => {
+          const operationDescriptions = c.operations
+            .map((op) => op.description?.trim())
+            .filter(Boolean)
+            .join(" / ");
+
+          return {
+            id: c.id,
+            numero: c.numero,
+            type: "DRY",
+            taille: c.taille === "20'" ? "20" : "40",
+            description: c.description?.trim() || operationDescriptions || null,
+            armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
+            prix_unitaire: c.prixUnitaire || 0,
+            operations: c.operations.map((op) => ({
+              id: op.id,
+              type_operation: op.type,
+              description: op.description || typesOperationConteneur[op.type]?.label || "",
+              quantite: op.quantite,
+              prix_unitaire: op.prixUnitaire,
+            })),
+          };
+        });
       }
 
       if (categorie === "conventionnel" && conventionnelData) {

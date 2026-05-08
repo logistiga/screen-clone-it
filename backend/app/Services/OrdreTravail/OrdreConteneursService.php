@@ -43,7 +43,7 @@ class OrdreConteneursService
     {
         foreach ($conteneurs as $conteneurData) {
             $operations = $conteneurData['operations'] ?? [];
-            unset($conteneurData['operations']);
+            unset($conteneurData['operations'], $conteneurData['id']);
 
             // Normalisation des données
             $conteneurData = $this->normaliserConteneur($conteneurData);
@@ -124,6 +124,14 @@ class OrdreConteneursService
      */
     protected function normaliserConteneur(array $data): array
     {
+        $data = array_intersect_key($data, array_flip([
+            'numero',
+            'type',
+            'taille',
+            'description',
+            'prix_unitaire',
+        ]));
+
         // Normaliser la taille (20 -> 20, 20' -> 20)
         if (isset($data['taille'])) {
             $data['taille'] = str_replace("'", "", $data['taille']);
@@ -145,11 +153,21 @@ class OrdreConteneursService
      */
     protected function normaliserOperation(array $data): array
     {
+        unset($data['id']);
+
         // API envoie type_operation, DB attend type
         if (isset($data['type_operation']) && !isset($data['type'])) {
             $data['type'] = $data['type_operation'];
             unset($data['type_operation']);
         }
+
+        $data = array_intersect_key($data, array_flip([
+            'type',
+            'description',
+            'quantite',
+            'prix_unitaire',
+            'prix_total',
+        ]));
         
         // Valeurs par défaut
         $data['quantite'] = $data['quantite'] ?? 1;
