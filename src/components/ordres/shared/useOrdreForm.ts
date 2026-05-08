@@ -155,6 +155,7 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
         data.prime_transitaire = conteneursData.primeTransitaire || 0;
         data.prime_representant = conteneursData.primeRepresentant || 0;
         data.conteneurs = conteneursData.conteneurs.map((c) => ({
+          id: c.id,
           numero: c.numero,
           type: "DRY",
           taille: c.taille === "20'" ? "20" : "40",
@@ -162,8 +163,9 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
           armateur_id: conteneursData.armateurId ? parseInt(conteneursData.armateurId) : null,
           prix_unitaire: c.prixUnitaire || 0,
           operations: c.operations.map((op) => ({
+            id: op.id,
             type_operation: op.type,
-            description: typesOperationConteneur[op.type]?.label || op.description || "",
+            description: op.description || typesOperationConteneur[op.type]?.label || "",
             quantite: op.quantite,
             prix_unitaire: op.prixUnitaire,
           })),
