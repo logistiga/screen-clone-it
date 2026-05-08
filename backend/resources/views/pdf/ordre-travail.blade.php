@@ -412,27 +412,18 @@
                 // Conteneurs
                 elseif (!empty($ordre->conteneurs) && count($ordre->conteneurs) > 0) {
                     foreach ($ordre->conteneurs as $c) {
-                        if (!empty($c->operations) && count($c->operations) > 0) {
-                            foreach ($c->operations as $op) {
-                                $lignes[] = [
-                                    'description' => ($c->numero ?? 'Conteneur') . ' ' . ($c->taille ?? '') . "' - " . ($op->description ?? $op->type ?? 'Opération'),
-                                    'quantite' => $op->quantite ?? 1,
-                                    'prix_unitaire' => $op->prix_unitaire ?? 0,
-                                    'montant_ht' => $op->prix_total ?? (($op->quantite ?? 1) * ($op->prix_unitaire ?? 0)),
-                                ];
-                            }
-                        } else {
-                            $label = 'Conteneur ' . ($c->numero ?? '') . ' ' . ($c->taille ?? '') . "'";
-                            if (!empty($c->description)) {
-                                $label .= ' | ' . $c->description;
-                            }
-                            $lignes[] = [
-                                'description' => $label,
-                                'quantite' => 1,
-                                'prix_unitaire' => $c->prix_unitaire ?? 0,
-                                'montant_ht' => $c->prix_unitaire ?? 0,
-                            ];
-                        }
+                        $operationDescriptions = collect($c->operations ?? [])
+                            ->map(fn($op) => $op->description ?? $op->type ?? null)
+                            ->filter()
+                            ->implode(' / ');
+                        $description = $c->description ?? $operationDescriptions;
+                        $label = trim(($c->numero ?? 'Conteneur') . (!empty($description) ? ' | ' . $description : ''));
+                        $lignes[] = [
+                            'description' => $label,
+                            'quantite' => 1,
+                            'prix_unitaire' => $c->prix_unitaire ?? 0,
+                            'montant_ht' => ($c->prix_unitaire ?? 0) + collect($c->operations ?? [])->sum(fn($op) => $op->prix_total ?? (($op->quantite ?? 1) * ($op->prix_unitaire ?? 0))),
+                        ];
                     }
                 }
                 // Lots
