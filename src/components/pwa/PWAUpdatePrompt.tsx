@@ -53,6 +53,15 @@ export const PWAUpdatePrompt = forwardRef<HTMLDivElement, React.ComponentPropsWi
     if (swRegistration?.waiting) {
       swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
     }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        Promise.all(registrations.map((registration) => registration.unregister())).finally(() => {
+          window.location.reload();
+        });
+      });
+      return;
+    }
+
     window.location.reload();
   };
 
