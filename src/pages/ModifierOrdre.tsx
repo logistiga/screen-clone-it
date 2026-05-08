@@ -103,6 +103,13 @@ export default function ModifierOrdrePage() {
 
   const conteneursInitialData = useMemo(() => {
     if (!ordreData || !Array.isArray(ordreData.conteneurs) || ordreData.conteneurs.length === 0) return undefined;
+    const devisConteneurs = Array.isArray((ordreData as any).devis?.conteneurs) ? (ordreData as any).devis.conteneurs : [];
+    const findDevisDescription = (conteneur: any, index: number) => {
+      const fromNumero = devisConteneurs.find((d: any) =>
+        String(d.numero || "").trim().toUpperCase() === String(conteneur.numero || "").trim().toUpperCase()
+      );
+      return fromNumero?.description || devisConteneurs[index]?.description || "";
+    };
     return {
       typeOperation: (ordreData.type_operation as any) || "",
       numeroBL: ordreData.numero_bl || "",
@@ -115,7 +122,7 @@ export default function ModifierOrdrePage() {
         id: String(c.id),
         numero: c.numero || "",
         taille: c.taille === "20" ? "20'" : c.taille === "40" ? "40'" : c.taille || "20'",
-        description: c.description || "",
+        description: c.description || findDevisDescription(c, ordreData.conteneurs.indexOf(c)),
         prixUnitaire: parseFloat(String(c.prix_unitaire)) || 0,
         operations: Array.isArray(c.operations) ? c.operations.map((op: any) => ({
           id: String(op.id),
