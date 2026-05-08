@@ -118,11 +118,11 @@ export default function ModifierOrdrePage() {
       representantId: String(ordreData.representant_id || ""),
       primeTransitaire: getPrimeMontant("transitaire_id"),
       primeRepresentant: getPrimeMontant("representant_id"),
-      conteneurs: ordreData.conteneurs.map((c: any) => ({
+      conteneurs: ordreData.conteneurs.map((c: any, index: number) => ({
         id: String(c.id),
         numero: c.numero || "",
         taille: c.taille === "20" ? "20'" : c.taille === "40" ? "40'" : c.taille || "20'",
-        description: c.description || findDevisDescription(c, ordreData.conteneurs.indexOf(c)),
+        description: c.description || findDevisDescription(c, index),
         prixUnitaire: parseFloat(String(c.prix_unitaire)) || 0,
         operations: Array.isArray(c.operations) ? c.operations.map((op: any) => ({
           id: String(op.id),
