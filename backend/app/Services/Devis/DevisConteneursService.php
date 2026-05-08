@@ -104,6 +104,7 @@ class DevisConteneursService
                     'numero' => $conteneur->numero,
                     'type' => $conteneur->type,
                     'taille' => $conteneur->taille,
+                    'description' => $conteneur->description,
                     'armateur_id' => $conteneur->armateur_id,
                     'operations' => $conteneur->operations->map(function ($op) {
                         return [
