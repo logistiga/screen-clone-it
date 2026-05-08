@@ -54,7 +54,8 @@ export function useOrdreById(id: string) {
     queryKey: ['ordres', id],
     queryFn: () => ordresApi.getById(id),
     enabled: !!id,
-    staleTime: STALE_TIME,
+    staleTime: 0,
+    refetchOnMount: 'always',
     gcTime: CACHE_TIME,
   });
 }
