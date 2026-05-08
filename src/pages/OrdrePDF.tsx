@@ -91,9 +91,14 @@ export default function OrdrePDFPage() {
     
     if (ordre.conteneurs && ordre.conteneurs.length > 0) {
       ordre.conteneurs.forEach((conteneur: any) => {
+        const operationDescriptions = (conteneur.operations || [])
+          .map((operation: any) => operation.description || operation.type_operation || operation.type)
+          .filter(Boolean)
+          .join(" / ");
+
         lignes.push({
           numero: conteneur.numero || '',
-          description: conteneur.description || '',
+          description: conteneur.description || operationDescriptions || '',
           taille: conteneur.taille || '20',
           montant: conteneur.montant_ht || 0
         });
