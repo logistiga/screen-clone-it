@@ -88,12 +88,17 @@ export function useCreditsData() {
   };
 }
 
-export const formatMontant = (montant: number) =>
-  new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(montant)) + ' FCFA';
+export const formatMontant = (montant: number | null | undefined) => {
+  const n = Number(montant ?? 0);
+  const safe = Number.isFinite(n) ? n : 0;
+  return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(safe)) + ' FCFA';
+};
 
-export const formatMontantCompact = (montant: number) => {
-  if (montant >= 1000000000) return (montant / 1000000000).toFixed(1) + ' Mrd';
-  if (montant >= 1000000) return (montant / 1000000).toFixed(1) + ' M';
-  if (montant >= 1000) return (montant / 1000).toFixed(0) + ' K';
-  return montant.toLocaleString('fr-FR');
+export const formatMontantCompact = (montant: number | null | undefined) => {
+  const n = Number(montant ?? 0);
+  const safe = Number.isFinite(n) ? n : 0;
+  if (safe >= 1000000000) return (safe / 1000000000).toFixed(1) + ' Mrd';
+  if (safe >= 1000000) return (safe / 1000000).toFixed(1) + ' M';
+  if (safe >= 1000) return (safe / 1000).toFixed(0) + ' K';
+  return safe.toLocaleString('fr-FR');
 };
