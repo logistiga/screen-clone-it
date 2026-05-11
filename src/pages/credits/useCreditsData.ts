@@ -28,7 +28,7 @@ export function useCreditsData() {
   const isLoading = loadingCredits || loadingStats;
 
   const creditsFiltres = credits.filter((credit: any) =>
-    filterStatut === "all" || credit.statut.toLowerCase() === filterStatut.toLowerCase()
+    filterStatut === "all" || (credit?.statut ?? '').toString().toLowerCase() === filterStatut.toLowerCase()
   );
 
   const toggleBanque = (banqueId: number) => {
