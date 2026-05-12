@@ -301,30 +301,44 @@ export default function OrdrePDFPage() {
               <table className="w-full mb-4 text-xs border-collapse border">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                    <th className="text-left py-2 px-2 font-semibold border-r">Conteneur</th>
-                    <th className="text-center py-2 px-2 font-semibold w-20 border-r">Taille</th>
+                    <th className="text-left py-2 px-2 font-semibold w-8 border-r">N°</th>
+                    <th className="text-left py-2 px-2 font-semibold border-r">Désignation</th>
+                    <th className="text-center py-2 px-2 font-semibold w-12 border-r">Qté</th>
+                    <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
                     <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lignesConteneur.map((ligne, index) => (
-                    <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
-                      <td className="py-1.5 px-2 border-r border-b font-mono align-middle">
-                        <span>{ligne.numero}</span>
-                        {ligne.description && (
-                          <> <span className="text-muted-foreground">|</span> <span className="font-sans">{ligne.description}</span></>
-                        )}
-                      </td>
-                      <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.taille}'</td>
-                      <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
-                        {formatMontant(ligne.montant)}
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    let counter = 0;
+                    return lignesConteneur.map((ligne, index) => {
+                      if (!ligne.isOperation) counter++;
+                      return (
+                        <tr key={index} className={ligne.isOperation ? "bg-muted/10" : (counter % 2 === 0 ? "bg-muted/20" : "")}>
+                          <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.isOperation ? '' : counter}</td>
+                          <td className={`py-1.5 px-2 border-r border-b align-middle ${ligne.isOperation ? 'pl-6 text-muted-foreground' : 'font-mono'}`}>
+                            {ligne.isOperation ? (
+                              <span className="font-sans">{ligne.description}</span>
+                            ) : (
+                              <>
+                                <span>{ligne.numero}</span>
+                                {ligne.taille && <span className="ml-1 text-muted-foreground">({ligne.taille}')</span>}
+                                {ligne.description && (
+                                  <> <span className="text-muted-foreground">|</span> <span className="font-sans">{ligne.description}</span></>
+                                )}
+                              </>
+                            )}
+                          </td>
+                          <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
+                          <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
+                          <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
+                        </tr>
+                      );
+                    });
+                  })()}
                   {Array.from({ length: Math.max(0, 6 - lignesConteneur.length) }).map((_, i) => (
                     <tr key={`empty-${i}`} className="h-6">
+                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
