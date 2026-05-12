@@ -48,7 +48,7 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <RechartsPie>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} (${toSafeNumber(percent) * 100}%)`}>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} (${(toSafeNumber(percent) * 100).toFixed(0)}%)`}>
                   {pieData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatMontant(value)} />
@@ -76,13 +76,13 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
             </Table>
           </CardContent>
         </Card>
-        <Card className={`shadow-sm ${(stats?.echeances_retard?.length || 0) > 0 ? 'border-destructive/50' : ''}`}>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className={`h-4 w-4 ${(stats?.echeances_retard?.length || 0) > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />Échéances en retard</CardTitle></CardHeader>
+        <Card className={`shadow-sm ${echeancesRetard.length > 0 ? 'border-destructive/50' : ''}`}>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className={`h-4 w-4 ${echeancesRetard.length > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />Échéances en retard</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit</TableHead><TableHead>Retard</TableHead><TableHead className="text-right">Montant</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.echeances_retard || []).slice(0, 5).map((e: any) => (
+                {echeancesRetard.slice(0, 5).map((e: any) => (
                   <TableRow key={e.id} className="hover:bg-destructive/5">
                     <TableCell className="font-medium text-destructive">{e.date_echeance ? format(new Date(e.date_echeance), 'dd/MM', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
@@ -90,20 +90,20 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
                     <TableCell className="text-right font-semibold text-destructive">{formatMontantCompact(e.montant)}</TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.echeances_retard || stats.echeances_retard.length === 0) && <TableRow><TableCell colSpan={4} className="text-center text-emerald-600 py-8"><CheckCircle className="h-5 w-5 mx-auto mb-2" />Aucune échéance en retard</TableCell></TableRow>}
+                {echeancesRetard.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-emerald-600 py-8"><CheckCircle className="h-5 w-5 mx-auto mb-2" />Aucune échéance en retard</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
-      {dashboard?.top_credits && dashboard.top_credits.length > 0 && (
+      {topCredits.length > 0 && (
         <Card className="shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" />Top crédits actifs</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Crédit</TableHead><TableHead>Banque</TableHead><TableHead className="text-right">Montant total</TableHead><TableHead className="text-right">Remboursé</TableHead><TableHead>Progression</TableHead><TableHead>Fin</TableHead></TableRow></TableHeader>
               <TableBody>
-                {dashboard.top_credits.map((c: any) => (
+                {topCredits.map((c: any) => (
                   <TableRow key={c.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => navigate(`/credits/${c.id}`)}>
                     <TableCell><div className="font-medium">{c.numero}</div><div className="text-xs text-muted-foreground truncate max-w-[150px]">{c.objet}</div></TableCell>
                     <TableCell>{c.banque}</TableCell>
