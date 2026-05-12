@@ -257,19 +257,23 @@ interface CreditsEcheancierTabProps {
 }
 
 export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: CreditsEcheancierTabProps) {
+  const calendrierEcheances = Array.isArray(dashboard?.calendrier_echeances) ? dashboard.calendrier_echeances : [];
+  const prochainesEcheances = Array.isArray(stats?.prochaines_echeances) ? stats.prochaines_echeances : [];
+  const echeancesRetard = Array.isArray(stats?.echeances_retard) ? stats.echeances_retard : [];
+
   return (
     <div className="space-y-6">
-      {dashboard?.calendrier_echeances && dashboard.calendrier_echeances.length > 0 && (
+      {calendrierEcheances.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {dashboard.calendrier_echeances.slice(0, 8).map((mois: any) => (
-            <Card key={mois.mois} className={`shadow-sm ${mois.en_retard > 0 ? 'border-destructive/50' : ''}`}>
+          {calendrierEcheances.slice(0, 8).map((mois: any) => (
+            <Card key={mois.mois} className={`shadow-sm ${toSafeNumber(mois.en_retard) > 0 ? 'border-destructive/50' : ''}`}>
               <CardContent className="pt-4">
                 <p className="text-sm font-medium">{mois.mois_nom}</p>
                 <p className="text-xl font-bold mt-1">{formatMontantCompact(mois.montant_total)}</p>
                 <div className="flex gap-2 mt-2 text-xs">
                   <span className="text-emerald-600">{mois.payees} payée(s)</span>
                   <span className="text-amber-600">{mois.a_payer} à payer</span>
-                  {mois.en_retard > 0 && <span className="text-destructive">{mois.en_retard} retard</span>}
+                  {toSafeNumber(mois.en_retard) > 0 && <span className="text-destructive">{mois.en_retard} retard</span>}
                 </div>
               </CardContent>
             </Card>
@@ -283,7 +287,7 @@ export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: 
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit / Banque</TableHead><TableHead className="text-right">Montant</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.prochaines_echeances || []).map((e: any) => (
+                {prochainesEcheances.map((e: any) => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.date_echeance ? format(new Date(e.date_echeance), 'dd/MM/yyyy', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm font-medium">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
@@ -292,18 +296,18 @@ export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: 
                     <TableCell className="text-right"><Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handlePayerEcheance(e)}><Wallet className="h-3 w-3 mr-1" />Payer</Button></TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.prochaines_echeances || stats.prochaines_echeances.length === 0) && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
+                {prochainesEcheances.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
-        <Card className={`shadow-sm ${(stats?.echeances_retard?.length || 0) > 0 ? 'border-destructive/50 bg-destructive/5' : ''}`}>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />En retard ({stats?.echeances_retard?.length || 0})</CardTitle></CardHeader>
+        <Card className={`shadow-sm ${echeancesRetard.length > 0 ? 'border-destructive/50 bg-destructive/5' : ''}`}>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />En retard ({echeancesRetard.length})</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit / Banque</TableHead><TableHead className="text-right">Montant</TableHead><TableHead>Retard</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.echeances_retard || []).map((e: any) => (
+                {echeancesRetard.map((e: any) => (
                   <TableRow key={e.id} className="bg-destructive/5">
                     <TableCell className="font-medium text-destructive">{e.date_echeance ? format(new Date(e.date_echeance), 'dd/MM/yyyy', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm font-medium">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
@@ -312,7 +316,7 @@ export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: 
                     <TableCell className="text-right"><Button variant="destructive" size="sm" onClick={() => handlePayerEcheance(e)}><Wallet className="h-3 w-3 mr-1" />Régulariser</Button></TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.echeances_retard || stats.echeances_retard.length === 0) && <TableRow><TableCell colSpan={5} className="text-center py-8"><CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" /><p className="text-emerald-600 font-medium">Aucune échéance en retard</p></TableCell></TableRow>}
+                {echeancesRetard.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8"><CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" /><p className="text-emerald-600 font-medium">Aucune échéance en retard</p></TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
