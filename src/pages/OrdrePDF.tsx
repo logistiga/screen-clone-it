@@ -436,18 +436,18 @@ export default function OrdrePDFPage() {
               </div>
 
               {/* Totaux */}
-              <div className="w-56 border text-xs">
-                <div className="flex justify-between py-1 px-3 bg-primary text-primary-foreground font-bold border-b">
-                  <span>Total TTC</span>
-                  <span>{formatMontant(ordre.montant_ttc)}</span>
+              <div className="w-72 border text-xs shrink-0">
+                <div className="flex justify-between items-center gap-2 py-1.5 px-3 bg-primary text-primary-foreground font-bold border-b">
+                  <span className="whitespace-nowrap">Total TTC</span>
+                  <span className="whitespace-nowrap tabular-nums">{formatMontant(ordre.montant_ttc)}</span>
                 </div>
-                <div className="flex justify-between py-1 px-3 border-b">
-                  <span>Payé</span>
-                  <span className="text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
+                <div className="flex justify-between items-center gap-2 py-1.5 px-3 border-b">
+                  <span className="whitespace-nowrap">Payé</span>
+                  <span className="whitespace-nowrap tabular-nums text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
                 </div>
-                <div className="flex justify-between py-1 px-3 font-bold">
-                  <span>Reste à payer</span>
-                  <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
+                <div className="flex justify-between items-center gap-2 py-1.5 px-3 font-bold">
+                  <span className="whitespace-nowrap">Reste à payer</span>
+                  <span className={`whitespace-nowrap tabular-nums ${resteAPayer > 0 ? "text-destructive" : "text-green-600"}`}>
                     {formatMontant(resteAPayer)}
                   </span>
                 </div>
