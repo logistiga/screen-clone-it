@@ -141,13 +141,23 @@ class TaxesMensuellesController extends Controller
             $totalTaxesMois += (float) $angle->montant_taxe_total;
         }
 
-        return response()->json([
-            'annee' => $annee,
-            'mois' => $mois,
-            'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
-            'angles' => $angles,
-            'total_taxes_mois' => $totalTaxesMois,
-        ]);
+            return response()->json([
+                'annee' => $annee,
+                'mois' => $mois,
+                'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
+                'angles' => empty($angles) ? (object) [] : $angles,
+                'total_taxes_mois' => $totalTaxesMois,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('TaxesMensuelles getMoisCourant fallback: '.$e->getMessage());
+            return response()->json([
+                'annee' => $annee,
+                'mois' => $mois,
+                'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
+                'angles' => (object) [],
+                'total_taxes_mois' => 0,
+            ]);
+        }
     }
 
     /**
