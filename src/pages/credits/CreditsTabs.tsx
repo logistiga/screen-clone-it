@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatMontant, formatMontantCompact } from "./useCreditsData";
+import { formatMontant, formatMontantCompact, toSafeNumber } from "./useCreditsData";
 import { getStatutBadge, getEcheanceStatutBadge } from "./constants";
 
 interface CreditsDashboardTabProps {
@@ -20,6 +20,10 @@ interface CreditsDashboardTabProps {
 }
 
 export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieData, selectedAnnee, navigate }: CreditsDashboardTabProps) {
+  const prochainesEcheances = Array.isArray(stats?.prochaines_echeances) ? stats.prochaines_echeances : [];
+  const echeancesRetard = Array.isArray(stats?.echeances_retard) ? stats.echeances_retard : [];
+  const topCredits = Array.isArray(dashboard?.top_credits) ? dashboard.top_credits : [];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -44,7 +48,7 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <RechartsPie>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} (${(toSafeNumber(percent) * 100).toFixed(0)}%)`}>
                   {pieData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatMontant(value)} />
@@ -60,25 +64,25 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit</TableHead><TableHead className="text-right">Montant</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.prochaines_echeances || []).slice(0, 5).map((e: any) => (
+                {prochainesEcheances.slice(0, 5).map((e: any) => (
                   <TableRow key={e.id} className="hover:bg-muted/20">
                     <TableCell className="font-medium">{e.date_echeance ? format(new Date(e.date_echeance), 'dd MMM', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
                     <TableCell className="text-right font-semibold">{formatMontantCompact(e.montant)}</TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.prochaines_echeances || stats.prochaines_echeances.length === 0) && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
+                {prochainesEcheances.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
-        <Card className={`shadow-sm ${(stats?.echeances_retard?.length || 0) > 0 ? 'border-destructive/50' : ''}`}>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className={`h-4 w-4 ${(stats?.echeances_retard?.length || 0) > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />Échéances en retard</CardTitle></CardHeader>
+        <Card className={`shadow-sm ${echeancesRetard.length > 0 ? 'border-destructive/50' : ''}`}>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className={`h-4 w-4 ${echeancesRetard.length > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />Échéances en retard</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit</TableHead><TableHead>Retard</TableHead><TableHead className="text-right">Montant</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.echeances_retard || []).slice(0, 5).map((e: any) => (
+                {echeancesRetard.slice(0, 5).map((e: any) => (
                   <TableRow key={e.id} className="hover:bg-destructive/5">
                     <TableCell className="font-medium text-destructive">{e.date_echeance ? format(new Date(e.date_echeance), 'dd/MM', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
@@ -86,20 +90,20 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
                     <TableCell className="text-right font-semibold text-destructive">{formatMontantCompact(e.montant)}</TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.echeances_retard || stats.echeances_retard.length === 0) && <TableRow><TableCell colSpan={4} className="text-center text-emerald-600 py-8"><CheckCircle className="h-5 w-5 mx-auto mb-2" />Aucune échéance en retard</TableCell></TableRow>}
+                {echeancesRetard.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-emerald-600 py-8"><CheckCircle className="h-5 w-5 mx-auto mb-2" />Aucune échéance en retard</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
-      {dashboard?.top_credits && dashboard.top_credits.length > 0 && (
+      {topCredits.length > 0 && (
         <Card className="shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" />Top crédits actifs</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Crédit</TableHead><TableHead>Banque</TableHead><TableHead className="text-right">Montant total</TableHead><TableHead className="text-right">Remboursé</TableHead><TableHead>Progression</TableHead><TableHead>Fin</TableHead></TableRow></TableHeader>
               <TableBody>
-                {dashboard.top_credits.map((c: any) => (
+                {topCredits.map((c: any) => (
                   <TableRow key={c.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => navigate(`/credits/${c.id}`)}>
                     <TableCell><div className="font-medium">{c.numero}</div><div className="text-xs text-muted-foreground truncate max-w-[150px]">{c.objet}</div></TableCell>
                     <TableCell>{c.banque}</TableCell>
@@ -182,12 +186,16 @@ interface CreditsBanqueTabProps {
 }
 
 export function CreditsBanqueTab({ stats, credits, expandedBanques, toggleBanque, handleRemboursement, navigate }: CreditsBanqueTabProps) {
+  const banques = Array.isArray(stats?.par_banque) ? stats.par_banque : [];
+
   return (
     <div className="space-y-4">
-      {stats?.par_banque?.map((banque: any) => {
+      {banques.map((banque: any) => {
         const isExpanded = expandedBanques.includes(banque.banque_id);
         const creditsOfBanque = credits.filter((c: any) => c.banque?.id === banque.banque_id);
-        const tauxRemboursement = banque.total > 0 ? (banque.rembourse / banque.total) * 100 : 0;
+        const total = toSafeNumber(banque.total);
+        const rembourse = toSafeNumber(banque.rembourse);
+        const tauxRemboursement = total > 0 ? (rembourse / total) * 100 : 0;
         return (
           <Collapsible key={banque.banque_id} open={isExpanded} onOpenChange={() => toggleBanque(banque.banque_id)}>
             <Card className="shadow-sm">
@@ -199,8 +207,8 @@ export function CreditsBanqueTab({ stats, credits, expandedBanques, toggleBanque
                       <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-primary/10"><Building2 className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-base">{banque.banque_nom}</CardTitle><CardDescription>{banque.nombre} crédit(s) actif(s)</CardDescription></div></div>
                     </div>
                     <div className="flex items-center gap-8">
-                      <div className="text-right"><p className="text-sm text-muted-foreground">Total emprunté</p><p className="font-bold text-lg">{formatMontantCompact(banque.total)}</p></div>
-                      <div className="text-right"><p className="text-sm text-muted-foreground">Remboursé</p><p className="font-bold text-lg text-emerald-600">{formatMontantCompact(banque.rembourse)}</p></div>
+                      <div className="text-right"><p className="text-sm text-muted-foreground">Total emprunté</p><p className="font-bold text-lg">{formatMontantCompact(total)}</p></div>
+                      <div className="text-right"><p className="text-sm text-muted-foreground">Remboursé</p><p className="font-bold text-lg text-emerald-600">{formatMontantCompact(rembourse)}</p></div>
                       <div className="w-32"><div className="flex justify-between text-xs mb-1"><span className="text-muted-foreground">Progression</span><span className="font-medium">{tauxRemboursement.toFixed(0)}%</span></div><Progress value={tauxRemboursement} className="h-2" /></div>
                     </div>
                   </div>
@@ -212,8 +220,9 @@ export function CreditsBanqueTab({ stats, credits, expandedBanques, toggleBanque
                     <TableHeader><TableRow className="bg-muted/30"><TableHead>Numéro</TableHead><TableHead>Objet</TableHead><TableHead className="text-right">Montant</TableHead><TableHead className="text-right">Remboursé</TableHead><TableHead>Progression</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {creditsOfBanque.map((credit: any) => {
-                        const rembourse = credit.montant_rembourse || 0;
-                        const progression = credit.montant_total > 0 ? (rembourse / credit.montant_total) * 100 : 0;
+                        const rembourse = toSafeNumber(credit.montant_rembourse);
+                        const montantTotal = toSafeNumber(credit.montant_total);
+                        const progression = montantTotal > 0 ? (rembourse / montantTotal) * 100 : 0;
                         return (
                           <TableRow key={credit.id} className="hover:bg-muted/20">
                             <TableCell className="font-medium">{credit.numero}</TableCell>
@@ -248,19 +257,23 @@ interface CreditsEcheancierTabProps {
 }
 
 export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: CreditsEcheancierTabProps) {
+  const calendrierEcheances = Array.isArray(dashboard?.calendrier_echeances) ? dashboard.calendrier_echeances : [];
+  const prochainesEcheances = Array.isArray(stats?.prochaines_echeances) ? stats.prochaines_echeances : [];
+  const echeancesRetard = Array.isArray(stats?.echeances_retard) ? stats.echeances_retard : [];
+
   return (
     <div className="space-y-6">
-      {dashboard?.calendrier_echeances && dashboard.calendrier_echeances.length > 0 && (
+      {calendrierEcheances.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {dashboard.calendrier_echeances.slice(0, 8).map((mois: any) => (
-            <Card key={mois.mois} className={`shadow-sm ${mois.en_retard > 0 ? 'border-destructive/50' : ''}`}>
+          {calendrierEcheances.slice(0, 8).map((mois: any) => (
+            <Card key={mois.mois} className={`shadow-sm ${toSafeNumber(mois.en_retard) > 0 ? 'border-destructive/50' : ''}`}>
               <CardContent className="pt-4">
                 <p className="text-sm font-medium">{mois.mois_nom}</p>
                 <p className="text-xl font-bold mt-1">{formatMontantCompact(mois.montant_total)}</p>
                 <div className="flex gap-2 mt-2 text-xs">
                   <span className="text-emerald-600">{mois.payees} payée(s)</span>
                   <span className="text-amber-600">{mois.a_payer} à payer</span>
-                  {mois.en_retard > 0 && <span className="text-destructive">{mois.en_retard} retard</span>}
+                  {toSafeNumber(mois.en_retard) > 0 && <span className="text-destructive">{mois.en_retard} retard</span>}
                 </div>
               </CardContent>
             </Card>
@@ -274,7 +287,7 @@ export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: 
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit / Banque</TableHead><TableHead className="text-right">Montant</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.prochaines_echeances || []).map((e: any) => (
+                {prochainesEcheances.map((e: any) => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.date_echeance ? format(new Date(e.date_echeance), 'dd/MM/yyyy', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm font-medium">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
@@ -283,18 +296,18 @@ export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: 
                     <TableCell className="text-right"><Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handlePayerEcheance(e)}><Wallet className="h-3 w-3 mr-1" />Payer</Button></TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.prochaines_echeances || stats.prochaines_echeances.length === 0) && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
+                {prochainesEcheances.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
-        <Card className={`shadow-sm ${(stats?.echeances_retard?.length || 0) > 0 ? 'border-destructive/50 bg-destructive/5' : ''}`}>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />En retard ({stats?.echeances_retard?.length || 0})</CardTitle></CardHeader>
+        <Card className={`shadow-sm ${echeancesRetard.length > 0 ? 'border-destructive/50 bg-destructive/5' : ''}`}>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />En retard ({echeancesRetard.length})</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit / Banque</TableHead><TableHead className="text-right">Montant</TableHead><TableHead>Retard</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.echeances_retard || []).map((e: any) => (
+                {echeancesRetard.map((e: any) => (
                   <TableRow key={e.id} className="bg-destructive/5">
                     <TableCell className="font-medium text-destructive">{e.date_echeance ? format(new Date(e.date_echeance), 'dd/MM/yyyy', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm font-medium">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
@@ -303,7 +316,7 @@ export function CreditsEcheancierTab({ stats, dashboard, handlePayerEcheance }: 
                     <TableCell className="text-right"><Button variant="destructive" size="sm" onClick={() => handlePayerEcheance(e)}><Wallet className="h-3 w-3 mr-1" />Régulariser</Button></TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.echeances_retard || stats.echeances_retard.length === 0) && <TableRow><TableCell colSpan={5} className="text-center py-8"><CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" /><p className="text-emerald-600 font-medium">Aucune échéance en retard</p></TableCell></TableRow>}
+                {echeancesRetard.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8"><CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" /><p className="text-emerald-600 font-medium">Aucune échéance en retard</p></TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>

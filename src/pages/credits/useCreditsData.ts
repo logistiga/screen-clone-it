@@ -24,7 +24,8 @@ export function useCreditsData() {
   const { data: dashboard } = useCreditDashboard(selectedAnnee);
   const { data: comparaison } = useCreditComparaison(selectedAnnee);
 
-  const credits = creditsData?.data || [];
+  const creditsPayload = creditsData?.data;
+  const credits = Array.isArray(creditsPayload) ? creditsPayload : [];
   const isLoading = loadingCredits || loadingStats;
 
   const creditsFiltres = credits.filter((credit: any) =>
@@ -64,14 +65,25 @@ export function useCreditsData() {
     });
   }, [creditToSupprimer, supprimerMutation]);
 
-  const evolutionChartData = stats?.evolution_mensuelle || [];
-  const comparaisonChartData = comparaison?.par_mois || [];
+  const evolutionChartData = (Array.isArray(stats?.evolution_mensuelle) ? stats.evolution_mensuelle : []).map((mois: any) => ({
+    ...mois,
+    emprunte: toSafeNumber(mois?.emprunte),
+    rembourse: toSafeNumber(mois?.rembourse),
+    solde: toSafeNumber(mois?.solde),
+  }));
+  const comparaisonChartData = (Array.isArray(comparaison?.par_mois) ? comparaison.par_mois : []).map((mois: any) => ({
+    ...mois,
+    emprunte: toSafeNumber(mois?.emprunte),
+    rembourse: toSafeNumber(mois?.rembourse),
+    solde_restant: toSafeNumber(mois?.solde_restant),
+    interets: toSafeNumber(mois?.interets),
+  }));
 
-  const pieData = useMemo(() => stats?.par_banque?.map((b: any, index: number) => ({
-    name: b.banque_nom,
-    value: b.total,
+  const pieData = useMemo(() => (Array.isArray(stats?.par_banque) ? stats.par_banque : []).map((b: any, index: number) => ({
+    name: b?.banque_nom || 'Banque',
+    value: toSafeNumber(b?.total),
     color: ['hsl(var(--primary))', 'hsl(142 71% 45%)', 'hsl(38 92% 50%)', 'hsl(0 84% 60%)', 'hsl(262 83% 58%)', 'hsl(189 94% 43%)'][index % 6]
-  })) || [], [stats]);
+  })), [stats]);
 
   return {
     navigate, currentYear, selectedAnnee, setSelectedAnnee,
@@ -88,17 +100,21 @@ export function useCreditsData() {
   };
 }
 
+export const toSafeNumber = (value: unknown) => {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
 export const formatMontant = (montant: number | null | undefined) => {
-  const n = Number(montant ?? 0);
-  const safe = Number.isFinite(n) ? n : 0;
+  const safe = toSafeNumber(montant);
   return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(safe)) + ' FCFA';
 };
 
 export const formatMontantCompact = (montant: number | null | undefined) => {
-  const n = Number(montant ?? 0);
-  const safe = Number.isFinite(n) ? n : 0;
-  if (safe >= 1000000000) return (safe / 1000000000).toFixed(1) + ' Mrd';
-  if (safe >= 1000000) return (safe / 1000000).toFixed(1) + ' M';
-  if (safe >= 1000) return (safe / 1000).toFixed(0) + ' K';
-  return safe.toLocaleString('fr-FR');
+  const safe = toSafeNumber(montant);
+  const abs = Math.abs(safe);
+  if (abs >= 1000000000) return (safe / 1000000000).toFixed(1) + ' Mrd';
+  if (abs >= 1000000) return (safe / 1000000).toFixed(1) + ' M';
+  if (abs >= 1000) return (safe / 1000).toFixed(0) + ' K';
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(safe));
 };

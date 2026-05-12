@@ -45,6 +45,14 @@ interface RemboursementCreditModalProps {
   } | null;
 }
 
+const toSafeNumber = (value: unknown) => {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const formatCreditAmount = (value: unknown) =>
+  new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(toSafeNumber(value)));
+
 export function RemboursementCreditModal({ 
   open, 
   onOpenChange, 
@@ -54,7 +62,7 @@ export function RemboursementCreditModal({
   const { data: banques = [], isLoading: isLoadingBanques } = useBanques({ actif: true });
   const rembourserCredit = useRembourserCredit();
   
-  const montantEcheance = echeance?.montant_total || echeance?.montant || 0;
+  const montantEcheance = toSafeNumber(echeance?.montant_total ?? echeance?.montant);
   
   const [formData, setFormData] = useState({
     montant: montantEcheance > 0 ? montantEcheance.toString() : "",
@@ -94,7 +102,7 @@ export function RemboursementCreditModal({
       });
 
       toast.success(
-        `Remboursement de ${montant.toLocaleString('fr-FR')} FCFA enregistré pour le crédit ${credit.numero}`
+        `Remboursement de ${formatCreditAmount(montant)} FCFA enregistré pour le crédit ${credit.numero}`
       );
       
       setFormData({
@@ -160,9 +168,9 @@ export function RemboursementCreditModal({
             />
             {echeance && montantEcheance > 0 && (
               <p className="text-xs text-muted-foreground">
-                Montant attendu: {montantEcheance.toLocaleString('fr-FR')} FCFA
-                {echeance.montant_capital && echeance.montant_interet && (
-                  <> (Capital: {echeance.montant_capital.toLocaleString('fr-FR')} + Intérêts: {echeance.montant_interet.toLocaleString('fr-FR')})</>
+                Montant attendu: {formatCreditAmount(montantEcheance)} FCFA
+                {echeance.montant_capital != null && echeance.montant_interet != null && (
+                  <> (Capital: {formatCreditAmount(echeance.montant_capital)} + Intérêts: {formatCreditAmount(echeance.montant_interet)})</>
                 )}
               </p>
             )}
