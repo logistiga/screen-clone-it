@@ -481,57 +481,57 @@ export default function FacturePDFPage() {
             </div>
 
             {/* Totaux */}
-            <div className="w-56 border text-xs">
+            <div className="w-72 border text-xs shrink-0 [&_span]:whitespace-nowrap [&_.amount]:tabular-nums">
               {hasRemise ? (
                 <>
-                  <div className="flex justify-between py-1 px-3 border-b">
+                  <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
                     <span>Total HT brut</span>
-                    <span className="font-medium">{formatMontant(montantHTBrut)}</span>
+                    <span className="amount font-medium">{formatMontant(montantHTBrut)}</span>
                   </div>
-                  <div className="flex justify-between py-1 px-3 border-b text-destructive">
+                  <div className="flex justify-between items-center gap-2 py-1 px-3 border-b text-destructive">
                     <span>{remiseLabel}</span>
-                    <span className="font-medium">- {formatMontant(remiseMontant)}</span>
+                    <span className="amount font-medium">- {formatMontant(remiseMontant)}</span>
                   </div>
-                  <div className="flex justify-between py-1 px-3 border-b">
+                  <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
                     <span>Montant HT</span>
-                    <span className="font-medium">{formatMontant(montantHTNet)}</span>
+                    <span className="amount font-medium">{formatMontant(montantHTNet)}</span>
                   </div>
                 </>
               ) : (
-                <div className="flex justify-between py-1 px-3 border-b">
+                <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
                   <span>Total HT</span>
-                  <span className="font-medium">{formatMontant(montantHTNet)}</span>
+                  <span className="amount font-medium">{formatMontant(montantHTNet)}</span>
                 </div>
               )}
-              <div className="flex justify-between py-1 px-3 border-b">
+              <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
                 <span>
                   TVA ({facture.taux_tva || 18}%)
                   {facture.exonere_tva && <span className="text-amber-600 ml-1 text-[9px]">(Exonéré)</span>}
                 </span>
-                <span className={facture.exonere_tva ? "line-through text-muted-foreground" : ""}>
+                <span className={`amount ${facture.exonere_tva ? "line-through text-muted-foreground" : ""}`}>
                   {formatMontant(facture.exonere_tva ? 0 : facture.montant_tva)}
                 </span>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
+              <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
                 <span>
                   CSS ({facture.taux_css || 1}%)
                   {facture.exonere_css && <span className="text-amber-600 ml-1 text-[9px]">(Exonéré)</span>}
                 </span>
-                <span className={facture.exonere_css ? "line-through text-muted-foreground" : ""}>
+                <span className={`amount ${facture.exonere_css ? "line-through text-muted-foreground" : ""}`}>
                   {formatMontant(facture.exonere_css ? 0 : facture.montant_css)}
                 </span>
               </div>
-              <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold border-b">
+              <div className="flex justify-between items-center gap-2 py-2 px-3 bg-primary text-primary-foreground font-bold border-b">
                 <span>Total TTC</span>
-                <span>{formatMontant(facture.montant_ttc)}</span>
+                <span className="amount">{formatMontant(facture.montant_ttc)}</span>
               </div>
-              <div className="flex justify-between py-1 px-3 border-b">
+              <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
                 <span>Payé</span>
-                <span className="text-green-600 font-medium">{formatMontant(facture.montant_paye || 0)}</span>
+                <span className="amount text-green-600 font-medium">{formatMontant(facture.montant_paye || 0)}</span>
               </div>
-              <div className="flex justify-between py-1.5 px-3 font-bold">
+              <div className="flex justify-between items-center gap-2 py-1.5 px-3 font-bold">
                 <span>Reste à payer</span>
-                <span className={resteAPayer > 0 ? "text-destructive" : "text-green-600"}>
+                <span className={`amount ${resteAPayer > 0 ? "text-destructive" : "text-green-600"}`}>
                   {formatMontant(resteAPayer)}
                 </span>
               </div>
