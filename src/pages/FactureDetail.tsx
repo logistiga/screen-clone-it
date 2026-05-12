@@ -266,21 +266,47 @@ export default function FactureDetailPage() {
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/50">
-                              <TableHead>Numéro</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Taille</TableHead>
+                              <TableHead>Désignation</TableHead>
+                              <TableHead>Description</TableHead>
+                              <TableHead className="text-center">Qté</TableHead>
+                              <TableHead className="text-right">Prix unit.</TableHead>
                               <TableHead className="text-right">Montant</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.conteneurs.map((conteneur: any) => (
-                              <TableRow key={conteneur.id} className="hover:bg-muted/50">
-                                <TableCell className="font-mono">{conteneur.numero}</TableCell>
-                                <TableCell>{conteneur.type}</TableCell>
-                                <TableCell>{conteneur.taille}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMontant(conteneur.montant_ht || 0)}</TableCell>
-                              </TableRow>
-                            ))}
+                            {facture.conteneurs.map((conteneur: any) => {
+                              const ops = conteneur.operations || [];
+                              const baseHT = Number(conteneur.prix_unitaire ?? 0);
+                              return (
+                                <Fragment key={conteneur.id}>
+                                  <TableRow className="bg-muted/20">
+                                    <TableCell className="font-mono font-medium">
+                                      {conteneur.numero}
+                                      {conteneur.taille && <span className="ml-2 text-xs text-muted-foreground">{conteneur.taille}'</span>}
+                                      {conteneur.type && <span className="ml-2 text-xs text-muted-foreground">{conteneur.type}</span>}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">{conteneur.description || '—'}</TableCell>
+                                    <TableCell className="text-center">1</TableCell>
+                                    <TableCell className="text-right">{formatMontant(baseHT)}</TableCell>
+                                    <TableCell className="text-right font-medium">{formatMontant(baseHT)}</TableCell>
+                                  </TableRow>
+                                  {ops.map((op: any, i: number) => {
+                                    const qte = Number(op.quantite ?? 1);
+                                    const pu = Number(op.prix_unitaire ?? 0);
+                                    const total = Number(op.prix_total ?? op.montant_ht ?? qte * pu);
+                                    return (
+                                      <TableRow key={op.id ?? `${conteneur.id}-op-${i}`} className="hover:bg-muted/30">
+                                        <TableCell className="pl-8 text-sm text-muted-foreground">↳ {op.type_operation || op.type || 'Opération'}</TableCell>
+                                        <TableCell className="text-sm">{op.description || '—'}</TableCell>
+                                        <TableCell className="text-center text-sm">{qte}</TableCell>
+                                        <TableCell className="text-right text-sm">{formatMontant(pu)}</TableCell>
+                                        <TableCell className="text-right text-sm font-medium">{formatMontant(total)}</TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </Fragment>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </CardContent>
