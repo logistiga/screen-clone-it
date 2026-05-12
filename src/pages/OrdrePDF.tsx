@@ -85,26 +85,45 @@ export default function OrdrePDFPage() {
   const isConventionnel = ordre.type_document === 'conventionnel' || ordre.type_document === 'Lot' || (ordre.lots && ordre.lots.length > 0);
   const isIndependant = ordre.type_document === 'operations_independantes' || ordre.type_document === 'Independant' || (!isConteneur && !isConventionnel && ordre.lignes && ordre.lignes.length > 0);
 
-  // Construire les lignes pour le PDF selon le type
+  // Construire les lignes pour le PDF selon le type (avec sous-lignes opérations)
   const buildLignesConteneur = () => {
-    const lignes: Array<{ numero: string; description: string; taille: string; montant: number }> = [];
-    
+    const lignes: Array<{
+      isOperation: boolean;
+      numero?: string;
+      taille?: string;
+      description: string;
+      quantite: number;
+      prixUnitaire: number;
+      montant: number;
+    }> = [];
+
     if (ordre.conteneurs && ordre.conteneurs.length > 0) {
       ordre.conteneurs.forEach((conteneur: any) => {
-        const operationDescriptions = (conteneur.operations || [])
-          .map((operation: any) => operation.description || operation.type_operation || operation.type)
-          .filter(Boolean)
-          .join(" / ");
-
+        const baseHT = Number(conteneur.prix_unitaire ?? 0);
         lignes.push({
+          isOperation: false,
           numero: conteneur.numero || '',
-          description: conteneur.description || operationDescriptions || '',
           taille: conteneur.taille || '20',
-          montant: conteneur.montant_ht || 0
+          description: conteneur.description || '',
+          quantite: 1,
+          prixUnitaire: baseHT,
+          montant: baseHT,
+        });
+        (conteneur.operations || []).forEach((op: any) => {
+          const qte = Number(op.quantite ?? 1);
+          const pu = Number(op.prix_unitaire ?? 0);
+          const total = Number(op.prix_total ?? qte * pu);
+          lignes.push({
+            isOperation: true,
+            description: `• ${op.type_operation || op.type || 'Opération'}${op.description ? ' — ' + op.description : ''}`,
+            quantite: qte,
+            prixUnitaire: pu,
+            montant: total,
+          });
         });
       });
     }
-    
+
     return lignes;
   };
 
@@ -282,30 +301,44 @@ export default function OrdrePDFPage() {
               <table className="w-full mb-4 text-xs border-collapse border">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                    <th className="text-left py-2 px-2 font-semibold border-r">Conteneur</th>
-                    <th className="text-center py-2 px-2 font-semibold w-20 border-r">Taille</th>
+                    <th className="text-left py-2 px-2 font-semibold w-8 border-r">N°</th>
+                    <th className="text-left py-2 px-2 font-semibold border-r">Désignation</th>
+                    <th className="text-center py-2 px-2 font-semibold w-12 border-r">Qté</th>
+                    <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
                     <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lignesConteneur.map((ligne, index) => (
-                    <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
-                      <td className="py-1.5 px-2 border-r border-b font-mono align-middle">
-                        <span>{ligne.numero}</span>
-                        {ligne.description && (
-                          <> <span className="text-muted-foreground">|</span> <span className="font-sans">{ligne.description}</span></>
-                        )}
-                      </td>
-                      <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.taille}'</td>
-                      <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
-                        {formatMontant(ligne.montant)}
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    let counter = 0;
+                    return lignesConteneur.map((ligne, index) => {
+                      if (!ligne.isOperation) counter++;
+                      return (
+                        <tr key={index} className={ligne.isOperation ? "bg-muted/10" : (counter % 2 === 0 ? "bg-muted/20" : "")}>
+                          <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.isOperation ? '' : counter}</td>
+                          <td className={`py-1.5 px-2 border-r border-b align-middle ${ligne.isOperation ? 'pl-6 text-muted-foreground' : 'font-mono'}`}>
+                            {ligne.isOperation ? (
+                              <span className="font-sans">{ligne.description}</span>
+                            ) : (
+                              <>
+                                <span>{ligne.numero}</span>
+                                {ligne.taille && <span className="ml-1 text-muted-foreground">({ligne.taille}')</span>}
+                                {ligne.description && (
+                                  <> <span className="text-muted-foreground">|</span> <span className="font-sans">{ligne.description}</span></>
+                                )}
+                              </>
+                            )}
+                          </td>
+                          <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
+                          <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
+                          <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
+                        </tr>
+                      );
+                    });
+                  })()}
                   {Array.from({ length: Math.max(0, 6 - lignesConteneur.length) }).map((_, i) => (
                     <tr key={`empty-${i}`} className="h-6">
+                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
