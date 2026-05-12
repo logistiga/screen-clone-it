@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatMontant, formatMontantCompact } from "./useCreditsData";
+import { formatMontant, formatMontantCompact, toSafeNumber } from "./useCreditsData";
 import { getStatutBadge, getEcheanceStatutBadge } from "./constants";
 
 interface CreditsDashboardTabProps {
@@ -20,6 +20,10 @@ interface CreditsDashboardTabProps {
 }
 
 export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieData, selectedAnnee, navigate }: CreditsDashboardTabProps) {
+  const prochainesEcheances = Array.isArray(stats?.prochaines_echeances) ? stats.prochaines_echeances : [];
+  const echeancesRetard = Array.isArray(stats?.echeances_retard) ? stats.echeances_retard : [];
+  const topCredits = Array.isArray(dashboard?.top_credits) ? dashboard.top_credits : [];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -44,7 +48,7 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <RechartsPie>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} (${toSafeNumber(percent) * 100}%)`}>
                   {pieData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatMontant(value)} />
@@ -60,14 +64,14 @@ export function CreditsDashboardTab({ stats, dashboard, evolutionChartData, pieD
             <Table>
               <TableHeader><TableRow className="bg-muted/30"><TableHead>Date</TableHead><TableHead>Crédit</TableHead><TableHead className="text-right">Montant</TableHead></TableRow></TableHeader>
               <TableBody>
-                {(stats?.prochaines_echeances || []).slice(0, 5).map((e: any) => (
+                {prochainesEcheances.slice(0, 5).map((e: any) => (
                   <TableRow key={e.id} className="hover:bg-muted/20">
                     <TableCell className="font-medium">{e.date_echeance ? format(new Date(e.date_echeance), 'dd MMM', { locale: fr }) : '-'}</TableCell>
                     <TableCell><div className="text-sm">{e.credit_numero}</div><div className="text-xs text-muted-foreground">{e.banque}</div></TableCell>
                     <TableCell className="text-right font-semibold">{formatMontantCompact(e.montant)}</TableCell>
                   </TableRow>
                 ))}
-                {(!stats?.prochaines_echeances || stats.prochaines_echeances.length === 0) && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
+                {prochainesEcheances.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Aucune échéance à venir</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
