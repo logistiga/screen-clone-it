@@ -92,8 +92,21 @@ class TaxesMensuellesController extends Controller
         $moisPrec = $mois === 1 ? 12 : $mois - 1;
         $anneePrec = $mois === 1 ? $annee - 1 : $annee;
 
-        // Récupérer les taxes actives depuis la table taxes
-        $taxesActives = Taxe::active()->ordonne()->get();
+        try {
+            // Vérifier que les tables existent pour éviter un 500
+            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes')
+                || !\Illuminate\Support\Facades\Schema::hasTable('taxes_mensuelles')) {
+                return response()->json([
+                    'annee' => $annee,
+                    'mois' => $mois,
+                    'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
+                    'angles' => (object) [],
+                    'total_taxes_mois' => 0,
+                ]);
+            }
+
+            // Récupérer les taxes actives depuis la table taxes
+            $taxesActives = Taxe::active()->ordonne()->get();
         
         $angles = [];
         $totalTaxesMois = 0;
@@ -128,13 +141,23 @@ class TaxesMensuellesController extends Controller
             $totalTaxesMois += (float) $angle->montant_taxe_total;
         }
 
-        return response()->json([
-            'annee' => $annee,
-            'mois' => $mois,
-            'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
-            'angles' => $angles,
-            'total_taxes_mois' => $totalTaxesMois,
-        ]);
+            return response()->json([
+                'annee' => $annee,
+                'mois' => $mois,
+                'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
+                'angles' => empty($angles) ? (object) [] : $angles,
+                'total_taxes_mois' => $totalTaxesMois,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('TaxesMensuelles getMoisCourant fallback: '.$e->getMessage());
+            return response()->json([
+                'annee' => $annee,
+                'mois' => $mois,
+                'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
+                'angles' => (object) [],
+                'total_taxes_mois' => 0,
+            ]);
+        }
     }
 
     /**
@@ -142,55 +165,86 @@ class TaxesMensuellesController extends Controller
      */
     public function getHistorique(Request $request): JsonResponse
     {
-        $annee = $request->get('annee', date('Y'));
-        
-        $historique = [];
-        for ($mois = 1; $mois <= 12; $mois++) {
-            $tva = TaxeMensuelle::where('annee', $annee)
-                ->where('mois', $mois)
-                ->where('type_taxe', 'TVA')
-                ->first();
-                
-            $css = TaxeMensuelle::where('annee', $annee)
-                ->where('mois', $mois)
-                ->where('type_taxe', 'CSS')
-                ->first();
-                
-            $historique[] = [
-                'mois' => $mois,
-                'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F'),
-                'tva' => $tva ? [
-                    'montant_ht' => (float) $tva->montant_ht_total,
-                    'montant_taxe' => (float) $tva->montant_taxe_total,
-                    'montant_exonere' => (float) $tva->montant_exonere,
-                    'docs' => $tva->nombre_documents,
-                    'cloture' => $tva->cloture,
-                ] : null,
-                'css' => $css ? [
-                    'montant_ht' => (float) $css->montant_ht_total,
-                    'montant_taxe' => (float) $css->montant_taxe_total,
-                    'montant_exonere' => (float) $css->montant_exonere,
-                    'docs' => $css->nombre_documents,
-                    'cloture' => $css->cloture,
-                ] : null,
-                'total_taxes' => ($tva ? (float) $tva->montant_taxe_total : 0) + 
-                                ($css ? (float) $css->montant_taxe_total : 0),
-            ];
+        $annee = (int) $request->get('annee', date('Y'));
+
+        $emptyResponse = function () use ($annee) {
+            $historique = [];
+            for ($mois = 1; $mois <= 12; $mois++) {
+                $historique[] = [
+                    'mois' => $mois,
+                    'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F'),
+                    'tva' => null,
+                    'css' => null,
+                    'total_taxes' => 0,
+                ];
+            }
+            return response()->json([
+                'annee' => $annee,
+                'historique' => $historique,
+                'cumul' => [
+                    'tva' => null,
+                    'css' => null,
+                    'total_taxes' => 0,
+                ],
+            ]);
+        };
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes_mensuelles')) {
+                return $emptyResponse();
+            }
+
+            $historique = [];
+            for ($mois = 1; $mois <= 12; $mois++) {
+                $tva = TaxeMensuelle::where('annee', $annee)
+                    ->where('mois', $mois)
+                    ->where('type_taxe', 'TVA')
+                    ->first();
+
+                $css = TaxeMensuelle::where('annee', $annee)
+                    ->where('mois', $mois)
+                    ->where('type_taxe', 'CSS')
+                    ->first();
+
+                $historique[] = [
+                    'mois' => $mois,
+                    'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F'),
+                    'tva' => $tva ? [
+                        'montant_ht' => (float) $tva->montant_ht_total,
+                        'montant_taxe' => (float) $tva->montant_taxe_total,
+                        'montant_exonere' => (float) $tva->montant_exonere,
+                        'docs' => $tva->nombre_documents,
+                        'cloture' => $tva->cloture,
+                    ] : null,
+                    'css' => $css ? [
+                        'montant_ht' => (float) $css->montant_ht_total,
+                        'montant_taxe' => (float) $css->montant_taxe_total,
+                        'montant_exonere' => (float) $css->montant_exonere,
+                        'docs' => $css->nombre_documents,
+                        'cloture' => $css->cloture,
+                    ] : null,
+                    'total_taxes' => ($tva ? (float) $tva->montant_taxe_total : 0) +
+                                    ($css ? (float) $css->montant_taxe_total : 0),
+                ];
+            }
+
+            $cumul = TaxeMensuelle::getCumulAnnuel($annee);
+
+            return response()->json([
+                'annee' => $annee,
+                'historique' => $historique,
+                'cumul' => [
+                    'tva' => $cumul['TVA'] ?? null,
+                    'css' => $cumul['CSS'] ?? null,
+                    'total_taxes' =>
+                        (float) ($cumul['TVA']['total_taxe'] ?? 0) +
+                        (float) ($cumul['CSS']['total_taxe'] ?? 0),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('TaxesMensuelles getHistorique fallback: '.$e->getMessage());
+            return $emptyResponse();
         }
-
-        $cumul = TaxeMensuelle::getCumulAnnuel((int) $annee);
-
-        return response()->json([
-            'annee' => (int) $annee,
-            'historique' => $historique,
-            'cumul' => [
-                'tva' => $cumul['TVA'] ?? null,
-                'css' => $cumul['CSS'] ?? null,
-                'total_taxes' => 
-                    (float) ($cumul['TVA']['total_taxe'] ?? 0) + 
-                    (float) ($cumul['CSS']['total_taxe'] ?? 0),
-            ],
-        ]);
     }
 
     /**
