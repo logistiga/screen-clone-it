@@ -71,13 +71,8 @@ export function OrdreConteneursTable({ conteneurs }: OrdreConteneursTableProps) 
                 const ops = conteneur.operations || [];
                 const baseHT = Number(conteneur.prix_unitaire ?? 0);
                 return (
-                  <motion.tbody
-                    key={conteneur.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <TableRow className="border-b bg-muted/20">
+                  <>
+                    <TableRow key={`c-${conteneur.id}`} className="border-b bg-muted/20">
                       <TableCell className="font-mono font-medium">
                         {conteneur.numero}
                         {conteneur.taille && (
@@ -108,7 +103,7 @@ export function OrdreConteneursTable({ conteneurs }: OrdreConteneursTableProps) 
                         </TableRow>
                       );
                     })}
-                  </motion.tbody>
+                  </>
                 );
               })}
             </TableBody>
