@@ -92,8 +92,21 @@ class TaxesMensuellesController extends Controller
         $moisPrec = $mois === 1 ? 12 : $mois - 1;
         $anneePrec = $mois === 1 ? $annee - 1 : $annee;
 
-        // Récupérer les taxes actives depuis la table taxes
-        $taxesActives = Taxe::active()->ordonne()->get();
+        try {
+            // Vérifier que les tables existent pour éviter un 500
+            if (!\Illuminate\Support\Facades\Schema::hasTable('taxes')
+                || !\Illuminate\Support\Facades\Schema::hasTable('taxes_mensuelles')) {
+                return response()->json([
+                    'annee' => $annee,
+                    'mois' => $mois,
+                    'nom_mois' => Carbon::create($annee, $mois, 1)->locale('fr')->translatedFormat('F Y'),
+                    'angles' => (object) [],
+                    'total_taxes_mois' => 0,
+                ]);
+            }
+
+            // Récupérer les taxes actives depuis la table taxes
+            $taxesActives = Taxe::active()->ordonne()->get();
         
         $angles = [];
         $totalTaxesMois = 0;
