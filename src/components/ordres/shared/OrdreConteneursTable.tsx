@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +72,7 @@ export function OrdreConteneursTable({ conteneurs }: OrdreConteneursTableProps) 
                 const ops = conteneur.operations || [];
                 const baseHT = Number(conteneur.prix_unitaire ?? 0);
                 return (
-                  <>
+                  <Fragment key={conteneur.id}>
                     <TableRow key={`c-${conteneur.id}`} className="border-b bg-muted/20">
                       <TableCell className="font-mono font-medium">
                         {conteneur.numero}
@@ -103,7 +104,7 @@ export function OrdreConteneursTable({ conteneurs }: OrdreConteneursTableProps) 
                         </TableRow>
                       );
                     })}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>
