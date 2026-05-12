@@ -77,15 +77,38 @@ export default function FacturePDFPage() {
 
   // Construire les lignes pour CONTENEURS
   const buildLignesConteneur = () => {
-    const lignes: Array<{ numero: string; taille: string; montant: number }> = [];
+    const lignes: Array<{
+      isOperation: boolean;
+      numero?: string;
+      taille?: string;
+      description: string;
+      quantite: number;
+      prixUnitaire: number;
+      montant: number;
+    }> = [];
     if (facture.conteneurs && facture.conteneurs.length > 0) {
       facture.conteneurs.forEach((conteneur: any) => {
-        const totalConteneur = (conteneur.montant_ht || conteneur.prix_unitaire || 0) + 
-          (conteneur.operations?.reduce((sum: number, op: any) => sum + (op.montant_ht || op.prix_total || 0), 0) || 0);
+        const baseHT = Number(conteneur.prix_unitaire ?? 0);
         lignes.push({
+          isOperation: false,
           numero: conteneur.numero || '',
           taille: conteneur.taille || '',
-          montant: totalConteneur
+          description: conteneur.description || '',
+          quantite: 1,
+          prixUnitaire: baseHT,
+          montant: baseHT,
+        });
+        (conteneur.operations || []).forEach((op: any) => {
+          const qte = Number(op.quantite ?? 1);
+          const pu = Number(op.prix_unitaire ?? 0);
+          const total = Number(op.prix_total ?? op.montant_ht ?? qte * pu);
+          lignes.push({
+            isOperation: true,
+            description: `• ${op.type_operation || op.type || 'Opération'}${op.description ? ' — ' + op.description : ''}`,
+            quantite: qte,
+            prixUnitaire: pu,
+            montant: total,
+          });
         });
       });
     }
