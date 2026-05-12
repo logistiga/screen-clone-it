@@ -186,12 +186,16 @@ interface CreditsBanqueTabProps {
 }
 
 export function CreditsBanqueTab({ stats, credits, expandedBanques, toggleBanque, handleRemboursement, navigate }: CreditsBanqueTabProps) {
+  const banques = Array.isArray(stats?.par_banque) ? stats.par_banque : [];
+
   return (
     <div className="space-y-4">
-      {stats?.par_banque?.map((banque: any) => {
+      {banques.map((banque: any) => {
         const isExpanded = expandedBanques.includes(banque.banque_id);
         const creditsOfBanque = credits.filter((c: any) => c.banque?.id === banque.banque_id);
-        const tauxRemboursement = banque.total > 0 ? (banque.rembourse / banque.total) * 100 : 0;
+        const total = toSafeNumber(banque.total);
+        const rembourse = toSafeNumber(banque.rembourse);
+        const tauxRemboursement = total > 0 ? (rembourse / total) * 100 : 0;
         return (
           <Collapsible key={banque.banque_id} open={isExpanded} onOpenChange={() => toggleBanque(banque.banque_id)}>
             <Card className="shadow-sm">
@@ -203,8 +207,8 @@ export function CreditsBanqueTab({ stats, credits, expandedBanques, toggleBanque
                       <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-primary/10"><Building2 className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-base">{banque.banque_nom}</CardTitle><CardDescription>{banque.nombre} crédit(s) actif(s)</CardDescription></div></div>
                     </div>
                     <div className="flex items-center gap-8">
-                      <div className="text-right"><p className="text-sm text-muted-foreground">Total emprunté</p><p className="font-bold text-lg">{formatMontantCompact(banque.total)}</p></div>
-                      <div className="text-right"><p className="text-sm text-muted-foreground">Remboursé</p><p className="font-bold text-lg text-emerald-600">{formatMontantCompact(banque.rembourse)}</p></div>
+                      <div className="text-right"><p className="text-sm text-muted-foreground">Total emprunté</p><p className="font-bold text-lg">{formatMontantCompact(total)}</p></div>
+                      <div className="text-right"><p className="text-sm text-muted-foreground">Remboursé</p><p className="font-bold text-lg text-emerald-600">{formatMontantCompact(rembourse)}</p></div>
                       <div className="w-32"><div className="flex justify-between text-xs mb-1"><span className="text-muted-foreground">Progression</span><span className="font-medium">{tauxRemboursement.toFixed(0)}%</span></div><Progress value={tauxRemboursement} className="h-2" /></div>
                     </div>
                   </div>
@@ -216,8 +220,9 @@ export function CreditsBanqueTab({ stats, credits, expandedBanques, toggleBanque
                     <TableHeader><TableRow className="bg-muted/30"><TableHead>Numéro</TableHead><TableHead>Objet</TableHead><TableHead className="text-right">Montant</TableHead><TableHead className="text-right">Remboursé</TableHead><TableHead>Progression</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {creditsOfBanque.map((credit: any) => {
-                        const rembourse = credit.montant_rembourse || 0;
-                        const progression = credit.montant_total > 0 ? (rembourse / credit.montant_total) * 100 : 0;
+                        const rembourse = toSafeNumber(credit.montant_rembourse);
+                        const montantTotal = toSafeNumber(credit.montant_total);
+                        const progression = montantTotal > 0 ? (rembourse / montantTotal) * 100 : 0;
                         return (
                           <TableRow key={credit.id} className="hover:bg-muted/20">
                             <TableCell className="font-medium">{credit.numero}</TableCell>
