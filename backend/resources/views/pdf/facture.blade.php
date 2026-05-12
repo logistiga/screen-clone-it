@@ -351,6 +351,38 @@
                         ];
                     }
                 }
+                elseif (!empty($facture->conteneurs) && count($facture->conteneurs) > 0) {
+                    foreach ($facture->conteneurs as $c) {
+                        $tailleLabel = $c->taille ? ($c->taille . "'") : '';
+                        $headerParts = array_filter([$c->numero ?? 'Conteneur', $tailleLabel, $c->description ?? null]);
+                        $lignes[] = [
+                            'description' => implode(' | ', $headerParts),
+                            'quantite' => 1,
+                            'prix_unitaire' => $c->prix_unitaire ?? 0,
+                            'montant_ht' => $c->prix_unitaire ?? 0,
+                        ];
+                        foreach ($c->operations ?? [] as $op) {
+                            $qte = $op->quantite ?? 1;
+                            $pu = $op->prix_unitaire ?? 0;
+                            $lignes[] = [
+                                'description' => '   • ' . trim(($op->description ?? '') ?: ($op->type ?? 'Opération')),
+                                'quantite' => $qte,
+                                'prix_unitaire' => $pu,
+                                'montant_ht' => $op->prix_total ?? ($qte * $pu),
+                            ];
+                        }
+                    }
+                }
+                elseif (!empty($facture->lots) && count($facture->lots) > 0) {
+                    foreach ($facture->lots as $l) {
+                        $lignes[] = [
+                            'description' => $l->description ?? $l->numero_lot ?? 'Lot',
+                            'quantite' => $l->quantite ?? 1,
+                            'prix_unitaire' => $l->prix_unitaire ?? 0,
+                            'montant_ht' => $l->prix_total ?? (($l->quantite ?? 1) * ($l->prix_unitaire ?? 0)),
+                        ];
+                    }
+                }
             @endphp
 
             @foreach($lignes as $index => $ligne)

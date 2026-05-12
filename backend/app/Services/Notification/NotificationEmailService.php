@@ -22,7 +22,7 @@ class NotificationEmailService
     public function envoyerFacture(Facture $facture, ?string $emailDestinataire = null, ?string $message = null, ?string $pdfBase64 = null): bool
     {
         $mailConfig = $this->configureMailer();
-        $facture->loadMissing(['client', 'lignes']);
+        $facture->loadMissing(['client', 'lignes', 'conteneurs.operations', 'lots']);
         $client = $facture->client;
         $email = $emailDestinataire ?: ($client?->email);
 

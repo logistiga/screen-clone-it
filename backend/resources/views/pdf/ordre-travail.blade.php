@@ -412,18 +412,24 @@
                 // Conteneurs
                 elseif (!empty($ordre->conteneurs) && count($ordre->conteneurs) > 0) {
                     foreach ($ordre->conteneurs as $c) {
-                        $operationDescriptions = collect($c->operations ?? [])
-                            ->map(fn($op) => $op->description ?? $op->type ?? null)
-                            ->filter()
-                            ->implode(' / ');
-                        $description = $c->description ?? $operationDescriptions;
-                        $label = trim(($c->numero ?? 'Conteneur') . (!empty($description) ? ' | ' . $description : ''));
+                        $tailleLabel = $c->taille ? ($c->taille . "'") : '';
+                        $headerParts = array_filter([$c->numero ?? 'Conteneur', $tailleLabel, $c->description ?? null]);
                         $lignes[] = [
-                            'description' => $label,
+                            'description' => implode(' | ', $headerParts),
                             'quantite' => 1,
                             'prix_unitaire' => $c->prix_unitaire ?? 0,
-                            'montant_ht' => ($c->prix_unitaire ?? 0) + collect($c->operations ?? [])->sum(fn($op) => $op->prix_total ?? (($op->quantite ?? 1) * ($op->prix_unitaire ?? 0))),
+                            'montant_ht' => $c->prix_unitaire ?? 0,
                         ];
+                        foreach ($c->operations ?? [] as $op) {
+                            $qte = $op->quantite ?? 1;
+                            $pu = $op->prix_unitaire ?? 0;
+                            $lignes[] = [
+                                'description' => '   • ' . trim(($op->description ?? '') ?: ($op->type ?? 'Opération')),
+                                'quantite' => $qte,
+                                'prix_unitaire' => $pu,
+                                'montant_ht' => $op->prix_total ?? ($qte * $pu),
+                            ];
+                        }
                     }
                 }
                 // Lots
