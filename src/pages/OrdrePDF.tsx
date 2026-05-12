@@ -85,26 +85,45 @@ export default function OrdrePDFPage() {
   const isConventionnel = ordre.type_document === 'conventionnel' || ordre.type_document === 'Lot' || (ordre.lots && ordre.lots.length > 0);
   const isIndependant = ordre.type_document === 'operations_independantes' || ordre.type_document === 'Independant' || (!isConteneur && !isConventionnel && ordre.lignes && ordre.lignes.length > 0);
 
-  // Construire les lignes pour le PDF selon le type
+  // Construire les lignes pour le PDF selon le type (avec sous-lignes opérations)
   const buildLignesConteneur = () => {
-    const lignes: Array<{ numero: string; description: string; taille: string; montant: number }> = [];
-    
+    const lignes: Array<{
+      isOperation: boolean;
+      numero?: string;
+      taille?: string;
+      description: string;
+      quantite: number;
+      prixUnitaire: number;
+      montant: number;
+    }> = [];
+
     if (ordre.conteneurs && ordre.conteneurs.length > 0) {
       ordre.conteneurs.forEach((conteneur: any) => {
-        const operationDescriptions = (conteneur.operations || [])
-          .map((operation: any) => operation.description || operation.type_operation || operation.type)
-          .filter(Boolean)
-          .join(" / ");
-
+        const baseHT = Number(conteneur.prix_unitaire ?? 0);
         lignes.push({
+          isOperation: false,
           numero: conteneur.numero || '',
-          description: conteneur.description || operationDescriptions || '',
           taille: conteneur.taille || '20',
-          montant: conteneur.montant_ht || 0
+          description: conteneur.description || '',
+          quantite: 1,
+          prixUnitaire: baseHT,
+          montant: baseHT,
+        });
+        (conteneur.operations || []).forEach((op: any) => {
+          const qte = Number(op.quantite ?? 1);
+          const pu = Number(op.prix_unitaire ?? 0);
+          const total = Number(op.prix_total ?? qte * pu);
+          lignes.push({
+            isOperation: true,
+            description: `• ${op.type_operation || op.type || 'Opération'}${op.description ? ' — ' + op.description : ''}`,
+            quantite: qte,
+            prixUnitaire: pu,
+            montant: total,
+          });
         });
       });
     }
-    
+
     return lignes;
   };
 
