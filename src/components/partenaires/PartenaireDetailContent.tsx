@@ -737,7 +737,10 @@ export function PartenaireDetailContent({
           partenaireType={type}
           primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : isPrimeAValider(p))}
           total={selectedTotal > 0 ? selectedTotal : primesDues}
-          onSuccess={() => refetch()}
+          onSuccess={() => {
+            setSelectedPrimes([]);
+            refetch();
+          }}
         />
       )}
     </MainLayout>
