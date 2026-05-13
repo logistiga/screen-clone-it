@@ -131,7 +131,7 @@ class PrimeController extends Controller
                 'representant_id' => $prime->representant_id,
                 'montant' => $request->montant,
                 'date' => now()->toDateString(),
-                'mode_paiement' => $request->mode_paiement,
+                'mode_paiement' => $request->mode_paiement ?? 'À définir',
                 'reference' => $request->reference,
                 'notes' => $request->notes,
             ]);
