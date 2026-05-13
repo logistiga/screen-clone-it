@@ -15,7 +15,7 @@ class PayerPrimeRequest extends FormRequest
     {
         return [
             'montant' => 'required|numeric|min:0.01|max:999999999.99',
-            'mode_paiement' => 'required|in:Espèces,Chèque,Virement,Mobile Money',
+            'mode_paiement' => 'nullable|in:Espèces,Chèque,Virement,Mobile Money',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
         ];
