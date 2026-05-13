@@ -264,7 +264,7 @@ export function PartenaireDetailContent({
                 disabled={selectedPrimes.length === 0}
               >
                 <DollarSign className="h-4 w-4" />
-                Payer primes ({formatMontant(selectedTotal || primesDues)})
+                Valider primes ({formatMontant(selectedTotal || primesDues)})
               </Button>
             )}
           </div>
@@ -384,8 +384,8 @@ export function PartenaireDetailContent({
                     <TableHeader>
                       <TableRow className="bg-muted/50">
                         <TableHead className="w-12">
-                          <Checkbox 
-                            checked={selectedPrimes.length === primesDuesList.length && primesDuesList.length > 0}
+                            <Checkbox 
+                              checked={selectedPrimes.length === primesDuesList.filter(isPrimeAValider).length && primesDuesList.filter(isPrimeAValider).length > 0}
                             onCheckedChange={handleSelectAll}
                           />
                         </TableHead>
@@ -402,6 +402,7 @@ export function PartenaireDetailContent({
                           <TableCell>
                             <Checkbox 
                               checked={selectedPrimes.includes(String(prime.id))}
+                              disabled={!isPrimeAValider(prime)}
                               onCheckedChange={(checked) => handleSelectPrime(String(prime.id), !!checked)}
                             />
                           </TableCell>
@@ -734,7 +735,7 @@ export function PartenaireDetailContent({
           onOpenChange={setShowPaiementModal}
           partenaireNom={displayName}
           partenaireType={type}
-          primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
+          primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : isPrimeAValider(p))}
           total={selectedTotal > 0 ? selectedTotal : primesDues}
           onSuccess={() => refetch()}
         />
