@@ -49,7 +49,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     // Pré-compression gzip + brotli des assets en production
     mode === "production" && compression({ threshold: 1024, algorithms: ["gzip", "brotliCompress"] }),
-    VitePWA({
+    mode === "production" && VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "apple-touch-icon.png", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
