@@ -54,7 +54,7 @@ class CaissePrimesLocalesController extends Controller
             }
 
             if (Schema::hasColumn('primes', 'statut')) {
-                $query->whereIn('primes.statut', ['Payée', 'Payee', 'payee']);
+                $query->whereIn('primes.statut', Prime::statutsValidesPourCaisse());
             }
 
             $query->whereNotNull("primes.{$foreignKey}");
@@ -130,7 +130,7 @@ class CaissePrimesLocalesController extends Controller
                     'reference_paiement' => null,
                     'numero_paiement' => $factureNumbers[(int) $prime->id] ?? null,
                     'paiement_valide' => true,
-                    'statut' => 'payee',
+                    'statut' => $prime->statut ?? Prime::STATUT_VALIDEE,
                     'camion_plaque' => null,
                     'parc' => null,
                     'responsable_nom' => null,
@@ -207,7 +207,7 @@ class CaissePrimesLocalesController extends Controller
             }
 
             if (Schema::hasColumn('primes', 'statut')) {
-                $query->whereIn('statut', ['Payée', 'Payee', 'payee']);
+                $query->whereIn('statut', Prime::statutsValidesPourCaisse());
             }
 
             $query->whereNotNull($foreignKey);
@@ -282,8 +282,8 @@ class CaissePrimesLocalesController extends Controller
 
         try {
             $prime = Prime::with(['representant', 'transitaire'])->find($primeId);
-            if (!$prime || $prime->statut !== 'Payée') {
-                return response()->json(['message' => 'Prime non trouvée ou non payée'], 404);
+            if (!$prime || !in_array($prime->statut, Prime::statutsValidesPourCaisse(), true)) {
+                return response()->json(['message' => 'Prime non trouvée ou non validée'], 404);
             }
 
             $refUnique = self::buildRef($primeId, $type);
@@ -380,6 +380,10 @@ class CaissePrimesLocalesController extends Controller
             }
 
             Audit::log('create', 'decaissement_prime_locale', "Décaissement prime {$type}: {$montantDecaisse} - {$beneficiaire}", $mouvement->id);
+
+            if (!$isPaiementPartiel || $montantDecaisse >= (float) $prime->montant) {
+                $prime->update(['statut' => Prime::STATUT_PAYEE]);
+            }
 
             DB::commit();
 
