@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\PaiementFournisseurController;
 use App\Http\Controllers\Api\CaissePrimesLocalesController;
 use App\Http\Controllers\Api\TaxesMensuellesController;
 use App\Http\Controllers\Api\TaxeController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
