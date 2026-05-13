@@ -118,6 +118,9 @@ export function PartenaireDetailContent({
   const hasPrimes = type === 'transitaire' || type === 'representant';
   const primes: Prime[] = hasPrimes ? ((partenaire as any)?.primes || []) : [];
   const paiementsPrimes: PaiementPrime[] = hasPrimes ? ((partenaire as any)?.paiements_primes || []) : [];
+  const isPrimePayee = (statut?: string) => ['Payée', 'Payee', 'payee'].includes(statut || '');
+  const isPrimeValidee = (statut?: string) => ['Validée', 'Validee', 'validee', 'Partiellement validée', 'Partiellement validee'].includes(statut || '');
+  const isPrimeAValider = (prime: Prime) => !isPrimePayee(prime.statut) && !isPrimeValidee(prime.statut);
   
   // Calculs
   const totalOrdres = ordres.length;
@@ -127,14 +130,14 @@ export function PartenaireDetailContent({
 
   // Primes calculs
   const primesDues = primes
-    .filter(p => p.statut !== 'Payée')
+    .filter(isPrimeAValider)
     .reduce((sum, p) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
   
   const primesPayees = primes
-    .filter(p => p.statut === 'Payée')
+    .filter(p => isPrimePayee(p.statut))
     .reduce((sum, p) => sum + (p.montant || 0), 0);
 
-  const primesDuesList = primes.filter(p => p.statut !== 'Payée');
+  const primesDuesList = primes.filter(p => !isPrimePayee(p.statut));
 
   const allPaiements = paiementsPrimes.length > 0 
     ? paiementsPrimes 
@@ -151,7 +154,7 @@ export function PartenaireDetailContent({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedPrimes(primesDuesList.map(p => String(p.id)));
+      setSelectedPrimes(primesDuesList.filter(isPrimeAValider).map(p => String(p.id)));
     } else {
       setSelectedPrimes([]);
     }
