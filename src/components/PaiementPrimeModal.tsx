@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -12,16 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { primesApi } from "@/lib/api/commercial";
-import { useBanques } from "@/hooks/use-commercial";
 import { toast } from "sonner";
 import { formatMontant } from "@/data/mockData";
 import { Loader2, Printer, FileText } from "lucide-react";
@@ -49,139 +40,99 @@ interface PaiementPrimeModalProps {
   onSuccess?: () => void;
 }
 
-export function PaiementPrimeModal({ 
-  open, 
-  onOpenChange, 
+export function PaiementPrimeModal({
+  open,
+  onOpenChange,
   partenaireNom,
   partenaireType,
   primes,
   total,
   onSuccess,
 }: PaiementPrimeModalProps) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: banques = [] } = useBanques();
-  
+
   const [formData, setFormData] = useState({
-    modePaiement: "Espèces",
-    banqueId: "",
-    reference: "",
     notes: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
   });
   const [isPaying, setIsPaying] = useState(false);
   const [paiementSuccess, setPaiementSuccess] = useState<{
     montant: number;
     primes: PrimeGeneric[];
     date: string;
-    reference?: string;
     numeroRecu?: string;
   } | null>(null);
 
-  // Reset on open
   useEffect(() => {
     if (open) {
       setFormData({
-        modePaiement: "Espèces",
-        banqueId: "",
-        reference: "",
         notes: "",
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
       });
       setPaiementSuccess(null);
     }
   }, [open]);
 
-  const activeBanques = banques.filter(b => b.actif);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.modePaiement) {
-      toast.error("Veuillez sélectionner un mode de paiement");
-      return;
-    }
-
-    if ((formData.modePaiement === "Chèque" || formData.modePaiement === "Virement") && !formData.banqueId) {
-      toast.error("Veuillez sélectionner une banque");
-      return;
-    }
-
     setIsPaying(true);
     let lastNumeroRecu: string | undefined;
 
     try {
-      // Valider chaque prime pour affichage en caisse en attente
       for (const prime of primes) {
-        const resteAPayer = prime.reste_a_payer ?? (prime.montant - (prime.montant_paye || 0));
+        const resteAPayer = prime.reste_a_payer ?? prime.montant - (prime.montant_paye || 0);
         if (resteAPayer > 0) {
           const response = await primesApi.payer(String(prime.id), {
             montant: resteAPayer,
-            mode_paiement: formData.modePaiement,
-            reference: formData.reference || undefined,
             notes: formData.notes || undefined,
-          });
-          // Récupérer le numéro de reçu du dernier paiement
-          if (response?.numero_recu) {
-            lastNumeroRecu = response.numero_recu;
-          }
+          } as any);
+          if (response?.numero_recu) lastNumeroRecu = response.numero_recu;
         }
       }
 
-      // Invalider les queries pour rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ['transitaires'] });
-      queryClient.invalidateQueries({ queryKey: ['representants'] });
-      queryClient.invalidateQueries({ queryKey: ['primes'] });
-      queryClient.invalidateQueries({ queryKey: ['caisse'] });
-      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep'] });
-      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans'] });
-      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans-stats'] });
+      queryClient.invalidateQueries({ queryKey: ["transitaires"] });
+      queryClient.invalidateQueries({ queryKey: ["representants"] });
+      queryClient.invalidateQueries({ queryKey: ["primes"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-primes-rep"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-primes-rep-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-primes-trans"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-primes-trans-stats"] });
 
-      // Afficher le récap pour impression
       setPaiementSuccess({
         montant: total,
-        primes: primes,
+        primes,
         date: formData.date,
-        reference: formData.reference,
         numeroRecu: lastNumeroRecu,
       });
 
       toast.success(`Prime validée (${formatMontant(total)}) — en attente de décaissement par la caisse`);
       onSuccess?.();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Erreur lors du paiement");
+      toast.error(error.response?.data?.message || "Erreur lors de la validation");
     } finally {
       setIsPaying(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const handleOpenPDF = () => {
     if (!paiementSuccess) return;
-    
-    // Construire les données pour la page PDF
-    const primesData = paiementSuccess.primes.map(p => ({
+    const primesData = paiementSuccess.primes.map((p) => ({
       numero: p.ordre?.numero || p.facture?.numero || p.description || `Prime #${p.id}`,
-      montant: p.reste_a_payer ?? p.montant
+      montant: p.reste_a_payer ?? p.montant,
     }));
-    
     const params = new URLSearchParams({
       montant: String(paiementSuccess.montant),
-      mode: formData.modePaiement,
-      reference: paiementSuccess.reference || '',
+      mode: "À définir",
       date: paiementSuccess.date,
       beneficiaire: partenaireNom,
       type: partenaireType,
-      numero_recu: paiementSuccess.numeroRecu || '',
-      primes: encodeURIComponent(JSON.stringify(primesData))
+      numero_recu: paiementSuccess.numeroRecu || "",
+      primes: encodeURIComponent(JSON.stringify(primesData)),
     });
-    
-    // Ouvrir la page PDF dans un nouvel onglet
-    window.open(`/partenaires/recu-prime/new?${params.toString()}`, '_blank');
+    window.open(`/partenaires/recu-prime/new?${params.toString()}`, "_blank");
   };
 
   const handleClose = () => {
@@ -189,7 +140,6 @@ export function PaiementPrimeModal({
     setPaiementSuccess(null);
   };
 
-  // Affichage du récap après paiement
   if (paiementSuccess) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
@@ -200,13 +150,12 @@ export function PaiementPrimeModal({
               {paiementSuccess.numeroRecu ? (
                 <span className="text-primary font-semibold">{paiementSuccess.numeroRecu}</span>
               ) : (
-                 'Récapitulatif de validation'
+                "Récapitulatif de validation — en attente de décaissement par la caisse"
               )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4 print:py-8">
-            {/* En-tête récap */}
             <div className="border-b pb-4">
               <h3 className="font-semibold text-lg">{partenaireNom}</h3>
               <p className="text-sm text-muted-foreground">
@@ -214,25 +163,15 @@ export function PaiementPrimeModal({
               </p>
             </div>
 
-            {/* Détails */}
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Date:</span>
-                <span className="ml-2 font-medium">{new Date(paiementSuccess.date).toLocaleDateString('fr-FR')}</span>
+                <span className="ml-2 font-medium">
+                  {new Date(paiementSuccess.date).toLocaleDateString("fr-FR")}
+                </span>
               </div>
-              <div>
-                <span className="text-muted-foreground">Mode:</span>
-                <span className="ml-2 font-medium">{formData.modePaiement}</span>
-              </div>
-              {paiementSuccess.reference && (
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Référence:</span>
-                  <span className="ml-2 font-medium">{paiementSuccess.reference}</span>
-                </div>
-              )}
             </div>
 
-            {/* Liste des primes payées */}
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
@@ -287,26 +226,26 @@ export function PaiementPrimeModal({
         <DialogHeader>
           <DialogTitle>Validation de primes</DialogTitle>
           <DialogDescription>
-            Validation pour {partenaireNom} ({partenaireType === "transitaire" ? "Transitaire" : "Représentant"})
+            Validation pour {partenaireNom} ({partenaireType === "transitaire" ? "Transitaire" : "Représentant"}).
+            Le mode de paiement sera renseigné lors du décaissement par la caisse.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* Récapitulatif */}
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">
                   {primes.length} prime(s) sélectionnée(s)
                 </span>
-                <span className="text-xl font-bold text-primary">
-                  {formatMontant(total)}
-                </span>
+                <span className="text-xl font-bold text-primary">{formatMontant(total)}</span>
               </div>
               {primes.length > 0 && primes.length <= 5 && (
                 <div className="mt-2 space-y-1">
                   {primes.map((prime) => (
                     <div key={prime.id} className="text-xs text-muted-foreground flex justify-between">
-                      <span>{prime.ordre?.numero || prime.facture?.numero || prime.description || `#${prime.id}`}</span>
+                      <span>
+                        {prime.ordre?.numero || prime.facture?.numero || prime.description || `#${prime.id}`}
+                      </span>
                       <span>{formatMontant(prime.reste_a_payer ?? prime.montant)}</span>
                     </div>
                   ))}
@@ -321,58 +260,6 @@ export function PaiementPrimeModal({
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="modePaiement">Mode de paiement *</Label>
-              <Select
-                value={formData.modePaiement}
-                onValueChange={(value) => setFormData({ ...formData, modePaiement: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Espèces">Espèces</SelectItem>
-                  <SelectItem value="Virement">Virement bancaire</SelectItem>
-                  <SelectItem value="Chèque">Chèque</SelectItem>
-                  <SelectItem value="Mobile Money">Mobile Money</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Banque pour chèque/virement */}
-            {(formData.modePaiement === "Chèque" || formData.modePaiement === "Virement") && (
-              <div className="grid gap-2">
-                <Label>Banque *</Label>
-                <Select
-                  value={formData.banqueId}
-                  onValueChange={(value) => setFormData({ ...formData, banqueId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une banque" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeBanques.map((banque) => (
-                      <SelectItem key={banque.id} value={banque.id}>
-                        {banque.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="grid gap-2">
-              <Label htmlFor="reference">
-                {formData.modePaiement === "Chèque" ? "Numéro de chèque" : "Référence"}
-              </Label>
-              <Input
-                id="reference"
-                value={formData.reference}
-                onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                placeholder={formData.modePaiement === "Chèque" ? "CHQ-XXXXXX" : "Référence optionnelle"}
               />
             </div>
 
