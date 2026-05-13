@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Prime;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -11,11 +12,11 @@ class RepresentantResource extends JsonResource
     {
         // Priorité: colonnes SQL (index rapide) sinon calcul en mémoire (show détaillé)
         $primesDues = $this->relationLoaded('primes')
-            ? $this->primes->whereIn('statut', ['En attente', 'Partiellement payée'])->sum('montant')
+            ? $this->primes->whereIn('statut', Prime::statutsEnAttentePaiement())->sum('montant')
             : (float) ($this->primes_dues ?? 0);
         
         $primesPayees = $this->relationLoaded('primes')
-            ? $this->primes->where('statut', 'Payée')->sum('montant')
+            ? $this->primes->whereIn('statut', Prime::statutsPayes())->sum('montant')
             : (float) ($this->primes_payees ?? 0);
 
         // Nom complet sans espace inutile si prenom est null
