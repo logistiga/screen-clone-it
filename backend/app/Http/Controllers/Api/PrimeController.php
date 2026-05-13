@@ -153,7 +153,7 @@ class PrimeController extends Controller
             if ($nouveauMontantPaye >= $prime->montant) {
                 $prime->update(['statut' => Prime::STATUT_VALIDEE, 'date_paiement' => now()]);
             } else {
-                $prime->update(['statut' => Prime::STATUT_PARTIELLEMENT_VALIDEE]);
+                $prime->update(['statut' => Prime::STATUT_PARTIELLEMENT_VALIDEE, 'date_paiement' => now()]);
             }
 
             Audit::log('create', 'paiement_prime', "Paiement prime: {$request->montant}", $paiement->id);
