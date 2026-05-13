@@ -77,7 +77,7 @@ class PrimeController extends Controller
         $validator = Validator::make($request->all(), [
             'montant' => 'sometimes|required|numeric|min:0.01',
             'description' => 'nullable|string|max:500',
-            'statut' => 'sometimes|in:En attente,Partiellement payée,Payée,Annulée',
+            'statut' => 'sometimes|in:En attente,Validée,Partiellement validée,Partiellement payée,Payée,Annulée',
         ]);
 
         if ($validator->fails()) {
@@ -147,12 +147,13 @@ class PrimeController extends Controller
             // Note: Le mouvement de caisse n'est plus créé ici.
             // La prime payée apparaîtra dans "Caisse en attente" pour validation/décaissement.
 
-            // Mettre à jour le statut de la prime
+            // Valider la prime pour qu'elle apparaisse en caisse en attente.
+            // Le vrai statut "Payée" est posé après décaissement par la caisse.
             $nouveauMontantPaye = $montantPaye + $request->montant;
             if ($nouveauMontantPaye >= $prime->montant) {
-                $prime->update(['statut' => 'Payée', 'date_paiement' => now()]);
+                $prime->update(['statut' => Prime::STATUT_VALIDEE, 'date_paiement' => now()]);
             } else {
-                $prime->update(['statut' => 'Partiellement payée']);
+                $prime->update(['statut' => Prime::STATUT_PARTIELLEMENT_VALIDEE]);
             }
 
             Audit::log('create', 'paiement_prime', "Paiement prime: {$request->montant}", $paiement->id);
