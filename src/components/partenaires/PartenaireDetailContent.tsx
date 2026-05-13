@@ -118,6 +118,9 @@ export function PartenaireDetailContent({
   const hasPrimes = type === 'transitaire' || type === 'representant';
   const primes: Prime[] = hasPrimes ? ((partenaire as any)?.primes || []) : [];
   const paiementsPrimes: PaiementPrime[] = hasPrimes ? ((partenaire as any)?.paiements_primes || []) : [];
+  const isPrimePayee = (statut?: string) => ['Payée', 'Payee', 'payee'].includes(statut || '');
+  const isPrimeValidee = (statut?: string) => ['Validée', 'Validee', 'validee', 'Partiellement validée', 'Partiellement validee'].includes(statut || '');
+  const isPrimeAValider = (prime: Prime) => !isPrimePayee(prime.statut) && !isPrimeValidee(prime.statut);
   
   // Calculs
   const totalOrdres = ordres.length;
@@ -127,14 +130,14 @@ export function PartenaireDetailContent({
 
   // Primes calculs
   const primesDues = primes
-    .filter(p => p.statut !== 'Payée')
+    .filter(isPrimeAValider)
     .reduce((sum, p) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
   
   const primesPayees = primes
-    .filter(p => p.statut === 'Payée')
+    .filter(p => isPrimePayee(p.statut))
     .reduce((sum, p) => sum + (p.montant || 0), 0);
 
-  const primesDuesList = primes.filter(p => p.statut !== 'Payée');
+  const primesDuesList = primes.filter(p => !isPrimePayee(p.statut));
 
   const allPaiements = paiementsPrimes.length > 0 
     ? paiementsPrimes 
@@ -151,7 +154,7 @@ export function PartenaireDetailContent({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedPrimes(primesDuesList.map(p => String(p.id)));
+      setSelectedPrimes(primesDuesList.filter(isPrimeAValider).map(p => String(p.id)));
     } else {
       setSelectedPrimes([]);
     }
@@ -183,17 +186,19 @@ export function PartenaireDetailContent({
   };
 
   const getPrimeStatutBadge = (statut: string) => {
-    const isPaid = statut === 'Payée' || statut === 'payee';
+    const isPaid = isPrimePayee(statut);
+    const isValidated = isPrimeValidee(statut);
     const isPartial = statut === 'Partiellement payée';
     return (
       <Badge 
         className={cn(
           isPaid && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+          isValidated && "bg-primary/10 text-primary border-primary/30",
           isPartial && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
-          !isPaid && !isPartial && "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+          !isPaid && !isValidated && !isPartial && "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
         )}
       >
-        {isPaid ? 'Payée' : isPartial ? 'Partielle' : 'Due'}
+        {isPaid ? 'Payée' : isValidated ? 'Validée' : isPartial ? 'Partielle' : 'Due'}
       </Badge>
     );
   };
@@ -259,7 +264,7 @@ export function PartenaireDetailContent({
                 disabled={selectedPrimes.length === 0}
               >
                 <DollarSign className="h-4 w-4" />
-                Payer primes ({formatMontant(selectedTotal || primesDues)})
+                Valider primes ({formatMontant(selectedTotal || primesDues)})
               </Button>
             )}
           </div>
@@ -379,8 +384,8 @@ export function PartenaireDetailContent({
                     <TableHeader>
                       <TableRow className="bg-muted/50">
                         <TableHead className="w-12">
-                          <Checkbox 
-                            checked={selectedPrimes.length === primesDuesList.length && primesDuesList.length > 0}
+                            <Checkbox 
+                              checked={selectedPrimes.length === primesDuesList.filter(isPrimeAValider).length && primesDuesList.filter(isPrimeAValider).length > 0}
                             onCheckedChange={handleSelectAll}
                           />
                         </TableHead>
@@ -397,6 +402,7 @@ export function PartenaireDetailContent({
                           <TableCell>
                             <Checkbox 
                               checked={selectedPrimes.includes(String(prime.id))}
+                              disabled={!isPrimeAValider(prime)}
                               onCheckedChange={(checked) => handleSelectPrime(String(prime.id), !!checked)}
                             />
                           </TableCell>
@@ -729,9 +735,12 @@ export function PartenaireDetailContent({
           onOpenChange={setShowPaiementModal}
           partenaireNom={displayName}
           partenaireType={type}
-          primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : p.statut !== 'Payée')}
+          primes={primes.filter(p => selectedPrimes.length > 0 ? selectedPrimes.includes(String(p.id)) : isPrimeAValider(p))}
           total={selectedTotal > 0 ? selectedTotal : primesDues}
-          onSuccess={() => refetch()}
+          onSuccess={() => {
+            setSelectedPrimes([]);
+            refetch();
+          }}
         />
       )}
     </MainLayout>

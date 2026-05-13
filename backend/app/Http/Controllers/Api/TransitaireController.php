@@ -7,6 +7,7 @@ use App\Http\Requests\StoreTransitaireRequest;
 use App\Http\Requests\UpdateTransitaireRequest;
 use App\Http\Resources\TransitaireResource;
 use App\Http\Traits\SecureQueryParameters;
+use App\Models\Prime;
 use App\Models\Transitaire;
 use App\Models\Audit;
 use Illuminate\Http\Request;
@@ -26,12 +27,15 @@ class TransitaireController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
+            $statutsDus = "'" . implode("','", Prime::statutsEnAttentePaiement()) . "'";
+            $statutsPayes = "'" . implode("','", Prime::statutsPayes()) . "'";
+
             // Optimisation: calcul SQL des primes avec selectRaw explicite (évite erreurs selectSub+whereIn)
             $query = Transitaire::query()
                 ->withCount(['devis', 'ordresTravail', 'factures'])
                 ->select('transitaires.*')
-                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ('En attente', 'Partiellement payée')) as primes_dues")
-                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut = 'Payée') as primes_payees");
+                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ({$statutsDus})) as primes_dues")
+                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ({$statutsPayes})) as primes_payees");
 
             // Recherche sécurisée
             $search = $this->validateSearchParameter($request);

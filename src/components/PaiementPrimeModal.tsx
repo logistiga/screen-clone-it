@@ -111,7 +111,7 @@ export function PaiementPrimeModal({
     let lastNumeroRecu: string | undefined;
 
     try {
-      // Payer chaque prime séquentiellement
+      // Valider chaque prime pour affichage en caisse en attente
       for (const prime of primes) {
         const resteAPayer = prime.reste_a_payer ?? (prime.montant - (prime.montant_paye || 0));
         if (resteAPayer > 0) {
@@ -133,6 +133,10 @@ export function PaiementPrimeModal({
       queryClient.invalidateQueries({ queryKey: ['representants'] });
       queryClient.invalidateQueries({ queryKey: ['primes'] });
       queryClient.invalidateQueries({ queryKey: ['caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-rep-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans-stats'] });
 
       // Afficher le récap pour impression
       setPaiementSuccess({
@@ -143,7 +147,7 @@ export function PaiementPrimeModal({
         numeroRecu: lastNumeroRecu,
       });
 
-      toast.success(`Paiement de ${formatMontant(total)} effectué avec succès`);
+      toast.success(`Prime validée (${formatMontant(total)}) — en attente de décaissement par la caisse`);
       onSuccess?.();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Erreur lors du paiement");
@@ -191,12 +195,12 @@ export function PaiementPrimeModal({
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-[600px] print:shadow-none print:border-none">
           <DialogHeader>
-            <DialogTitle className="text-green-600">✓ Paiement effectué</DialogTitle>
+            <DialogTitle className="text-green-600">✓ Prime validée</DialogTitle>
             <DialogDescription>
               {paiementSuccess.numeroRecu ? (
                 <span className="text-primary font-semibold">{paiementSuccess.numeroRecu}</span>
               ) : (
-                'Récapitulatif du paiement'
+                 'Récapitulatif de validation'
               )}
             </DialogDescription>
           </DialogHeader>
@@ -251,7 +255,7 @@ export function PaiementPrimeModal({
                 </tbody>
                 <tfoot className="bg-muted/50 font-semibold">
                   <tr className="border-t">
-                    <td className="p-2">Total payé</td>
+                    <td className="p-2">Total validé</td>
                     <td className="p-2 text-right text-primary font-mono">
                       {formatMontant(paiementSuccess.montant)}
                     </td>
@@ -281,9 +285,9 @@ export function PaiementPrimeModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Paiement de primes</DialogTitle>
+          <DialogTitle>Validation de primes</DialogTitle>
           <DialogDescription>
-            Paiement pour {partenaireNom} ({partenaireType === "transitaire" ? "Transitaire" : "Représentant"})
+            Validation pour {partenaireNom} ({partenaireType === "transitaire" ? "Transitaire" : "Représentant"})
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -311,7 +315,7 @@ export function PaiementPrimeModal({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="date">Date du paiement</Label>
+              <Label htmlFor="date">Date de validation</Label>
               <Input
                 id="date"
                 type="date"
@@ -391,10 +395,10 @@ export function PaiementPrimeModal({
               {isPaying ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Paiement en cours...
+                  Validation en cours...
                 </>
               ) : (
-                "Confirmer le paiement"
+                "Confirmer la validation"
               )}
             </Button>
           </DialogFooter>

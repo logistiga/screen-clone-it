@@ -7,6 +7,7 @@ use App\Http\Requests\StoreRepresentantRequest;
 use App\Http\Requests\UpdateRepresentantRequest;
 use App\Http\Resources\RepresentantResource;
 use App\Http\Resources\PrimeResource;
+use App\Models\Prime;
 use App\Models\Representant;
 use App\Models\Audit;
 use Illuminate\Http\Request;
@@ -17,6 +18,9 @@ class RepresentantController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
+            $statutsDus = "'" . implode("','", Prime::statutsEnAttentePaiement()) . "'";
+            $statutsPayes = "'" . implode("','", Prime::statutsPayes()) . "'";
+
             // Optimisation: calcul SQL des primes au lieu de charger toutes les primes en mémoire
             // Utilise selectRaw pour éviter les problèmes de syntaxe avec whereIn dans les sous-requêtes
             $query = Representant::query()
@@ -25,13 +29,13 @@ class RepresentantController extends Controller
                 ->selectRaw("
                     (SELECT COALESCE(SUM(montant), 0) FROM primes 
                      WHERE primes.representant_id = representants.id 
-                     AND primes.statut IN ('En attente', 'Partiellement payée')
+                     AND primes.statut IN ({$statutsDus})
                      AND primes.deleted_at IS NULL) as primes_dues
                 ")
                 ->selectRaw("
                     (SELECT COALESCE(SUM(montant), 0) FROM primes 
                      WHERE primes.representant_id = representants.id 
-                     AND primes.statut = 'Payée'
+                     AND primes.statut IN ({$statutsPayes})
                      AND primes.deleted_at IS NULL) as primes_payees
                 ")
                 ->selectRaw("

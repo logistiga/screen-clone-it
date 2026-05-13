@@ -10,6 +10,37 @@ class Prime extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const STATUT_EN_ATTENTE = 'En attente';
+    public const STATUT_VALIDEE = 'Validée';
+    public const STATUT_PARTIELLEMENT_VALIDEE = 'Partiellement validée';
+    public const STATUT_PAYEE = 'Payée';
+
+    public static function statutsEnAttentePaiement(): array
+    {
+        return [self::STATUT_EN_ATTENTE, 'Partiellement payée', self::STATUT_PARTIELLEMENT_VALIDEE];
+    }
+
+    public static function statutsValidesPourCaisse(): array
+    {
+        return [
+            self::STATUT_VALIDEE,
+            'Validee',
+            'validee',
+            self::STATUT_PARTIELLEMENT_VALIDEE,
+            'Partiellement validee',
+            self::STATUT_PAYEE,
+            'Payee',
+            'payee',
+            'Partiellement payée',
+            'Partiellement payee',
+        ];
+    }
+
+    public static function statutsPayes(): array
+    {
+        return [self::STATUT_PAYEE, 'Payee', 'payee'];
+    }
+
     protected $fillable = [
         'ordre_id',
         'facture_id',
@@ -56,12 +87,12 @@ class Prime extends Model
     // Scopes
     public function scopeDues($query)
     {
-        return $query->whereIn('statut', ['En attente', 'Partiellement payée']);
+        return $query->whereIn('statut', self::statutsEnAttentePaiement());
     }
 
     public function scopePayees($query)
     {
-        return $query->where('statut', 'Payée');
+        return $query->whereIn('statut', self::statutsPayes());
     }
 
     public function scopeEnAttente($query)
@@ -77,7 +108,7 @@ class Prime extends Model
     // Méthodes
     public function marquerPayee()
     {
-        $this->statut = 'payee';
+        $this->statut = self::STATUT_PAYEE;
         $this->date_paiement = now();
         $this->save();
     }
