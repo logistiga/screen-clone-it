@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Devis;
-use App\Models\Configuration;
+use App\Services\Devis\DevisServiceFactory;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RecalculerTotauxDevis extends Command
@@ -16,13 +15,7 @@ class RecalculerTotauxDevis extends Command
     public function handle(): int
     {
         $this->info('=== Recalcul des totaux des devis ===');
-
-        // Récupérer les taux de taxes
-        $taxesConfig = Configuration::getOrCreate('taxes');
-        $tauxTVA = $taxesConfig->data['tva_taux'] ?? 18;
-        $tauxCSS = $taxesConfig->data['css_taux'] ?? 1;
-
-        $this->info("Taux TVA: {$tauxTVA}% | Taux CSS: {$tauxCSS}%");
+        $factory = app(DevisServiceFactory::class);
 
         // Sélectionner les devis à recalculer
         $query = Devis::with(['conteneurs.operations', 'lots', 'lignes']);
@@ -52,28 +45,16 @@ class RecalculerTotauxDevis extends Command
 
         foreach ($devis as $d) {
             try {
-                DB::transaction(function () use ($d, $tauxTVA, $tauxCSS, &$updated) {
-                    $montantHT = $this->calculerMontantHT($d);
+                $service = $factory->getService($d->categorie);
+                $service->calculerTotaux($d);
+                $d->refresh();
+                $updated++;
 
-                    $montantTVA = $montantHT * ($tauxTVA / 100);
-                    $montantCSS = $montantHT * ($tauxCSS / 100);
-                    $montantTTC = $montantHT + $montantTVA + $montantCSS;
-
-                    $d->update([
-                        'montant_ht' => $montantHT,
-                        'tva' => $montantTVA,
-                        'css' => $montantCSS,
-                        'montant_ttc' => $montantTTC,
-                    ]);
-
-                    $updated++;
-
-                    Log::info('Devis recalculé', [
-                        'devis_id' => $d->id,
-                        'numero' => $d->numero,
-                        'montant_ht' => $montantHT,
-                        'montant_ttc' => $montantTTC,
-                    ]);
+                Log::info('Devis recalculé', [
+                    'devis_id' => $d->id,
+                    'numero' => $d->numero,
+                    'montant_ht' => $d->montant_ht,
+                    'montant_ttc' => $d->montant_ttc,
                 });
             } catch (\Throwable $e) {
                 $errors++;
