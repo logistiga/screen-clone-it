@@ -264,12 +264,26 @@ trait CalculeTotauxTrait
         ];
         
         // Synchroniser exonere_tva/exonere_css depuis taxes_selection pour rétrocompatibilité
+        // Uniquement si les colonnes existent sur la table (devis ne les a pas)
         if (!empty($taxesSelection)) {
-            $hasExo = $taxesSelection['has_exoneration'] ?? false;
-            $exoCodes = $taxesSelection['exonerated_tax_codes'] ?? [];
-            $updateData['exonere_tva'] = $hasExo && in_array('TVA', $exoCodes);
-            $updateData['exonere_css'] = $hasExo && in_array('CSS', $exoCodes);
-            $updateData['motif_exoneration'] = $taxesSelection['motif_exoneration'] ?? null;
+            try {
+                $table = $document->getTable();
+                $connection = $document->getConnectionName();
+                $schema = \Illuminate\Support\Facades\Schema::connection($connection);
+                $hasExo = $taxesSelection['has_exoneration'] ?? false;
+                $exoCodes = $taxesSelection['exonerated_tax_codes'] ?? [];
+                if ($schema->hasColumn($table, 'exonere_tva')) {
+                    $updateData['exonere_tva'] = $hasExo && in_array('TVA', $exoCodes);
+                }
+                if ($schema->hasColumn($table, 'exonere_css')) {
+                    $updateData['exonere_css'] = $hasExo && in_array('CSS', $exoCodes);
+                }
+                if ($schema->hasColumn($table, 'motif_exoneration')) {
+                    $updateData['motif_exoneration'] = $taxesSelection['motif_exoneration'] ?? null;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Skip legacy exoneration columns sync', ['error' => $e->getMessage()]);
+            }
         }
         
         // Les colonnes calculées (montant_ht, tva, css, montant_ttc, remise_montant)
