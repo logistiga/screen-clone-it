@@ -74,6 +74,8 @@ class DevisController extends Controller
     {
         try {
             $devis->loadMissing([...self::RELATIONS, 'ordre', 'annulation']);
+            $this->recalculerSiMontantsIncoherents($devis);
+
             return response()->json(new DevisResource($devis));
         } catch (\Throwable $e) {
             return response()->json([
@@ -154,5 +156,21 @@ class DevisController extends Controller
     public function duplicate(Devis $devis): JsonResponse
     {
         return app(DevisConversionController::class)->duplicate($devis);
+    }
+
+    private function recalculerSiMontantsIncoherents(Devis $devis): void
+    {
+        $sourceTotal = $devis->lignes->sum(fn($ligne) => (float) $ligne->quantite * (float) $ligne->prix_unitaire)
+            + $devis->lots->sum(fn($lot) => (float) $lot->quantite * (float) $lot->prix_unitaire)
+            + $devis->conteneurs->sum(function ($conteneur) {
+                return (float) ($conteneur->prix_unitaire ?? 0)
+                    + $conteneur->operations->sum(fn($op) => (float) $op->quantite * (float) $op->prix_unitaire);
+            });
+
+        if ($sourceTotal > 0 && (float) ($devis->montant_ttc ?? 0) <= 0) {
+            $service = $this->devisFactory->getService($devis->categorie);
+            $service->calculerTotaux($devis);
+            $devis->refresh()->loadMissing([...self::RELATIONS, 'ordre', 'annulation']);
+        }
     }
 }
