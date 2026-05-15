@@ -272,7 +272,9 @@ trait CalculeTotauxTrait
             $updateData['motif_exoneration'] = $taxesSelection['motif_exoneration'] ?? null;
         }
         
-        $document->update($updateData);
+        // Les colonnes calculées (montant_ht, tva, css, montant_ttc, remise_montant)
+        // sont volontairement exclues de $fillable. forceFill contourne mass-assignment.
+        $document->forceFill($updateData)->save();
 
         Log::info("Totaux {$context} calculés (dynamique)", [
             'document_id' => $document->id,
