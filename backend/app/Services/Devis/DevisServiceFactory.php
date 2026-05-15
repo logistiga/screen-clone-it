@@ -79,9 +79,11 @@ class DevisServiceFactory
             $categorie = DocumentCategory::normalize($data['categorie'] ?? null);
             $data['categorie'] = $categorie;
 
-            // Générer le numéro
-            $data['numero'] = $this->genererNumero();
+            // Générer le numéro et la date de création (champs non fillable)
+            $numero = $this->genererNumero();
+            $dateCreation = $data['date_creation'] ?? now()->toDateString();
             $data['statut'] = $data['statut'] ?? 'brouillon';
+            unset($data['numero'], $data['date_creation']);
 
             // Extraire les relations avant l'insert
             $lignes = $data['lignes'] ?? [];
@@ -89,8 +91,12 @@ class DevisServiceFactory
             $lots = $data['lots'] ?? [];
             unset($data['lignes'], $data['conteneurs'], $data['lots']);
 
-            // Créer le devis
-            $devis = Devis::create($data);
+            // Créer le devis (forceFill pour les champs générés non fillable)
+            $devis = new Devis();
+            $devis->forceFill([
+                'numero' => $numero,
+                'date_creation' => $dateCreation,
+            ])->fill($data)->save();
 
             // Créer les éléments selon le type
             $service = $this->getService($categorie);
