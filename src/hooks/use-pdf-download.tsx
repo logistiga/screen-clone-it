@@ -9,18 +9,16 @@ interface UsePdfDownloadOptions {
 }
 
 /**
- * Hook PDF robuste
- * - Utilise onclone pour forcer des dimensions pixel explicites
- * - PNG au lieu de JPEG pour éviter les artefacts
- * - Logging détaillé à chaque étape
+ * Hook PDF — capture chaque [data-pdf-page] individuellement et le place sur
+ * une page A4 dédiée. Évite tout chevauchement / page blanche dû à un
+ * découpage pixel aveugle.
  */
-export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }: UsePdfDownloadOptions) {
+export function usePdfDownload({ filename, cleanupDelayMs = 15000 }: UsePdfDownloadOptions) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const getSafeFilename = useCallback(() => {
     const trimmed = filename.trim();
     if (!trimmed) return "document.pdf";
-
     return trimmed.toLowerCase().endsWith(".pdf") ? trimmed : `${trimmed}.pdf`;
   }, [filename]);
 
@@ -32,21 +30,12 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
     }
 
     try {
-      // 1️⃣ Dimensions réelles en pixels
-      const rect = el.getBoundingClientRect();
-      const elWidth = Math.max(Math.ceil(rect.width), el.scrollWidth || 0, el.offsetWidth || 0);
-      const elHeight = Math.max(Math.ceil(rect.height), el.scrollHeight || 0, el.offsetHeight || 0);
-      console.log("[PDF] Step 1 — Source element:", elWidth, "x", elHeight, "px");
+      const pageNodes = Array.from(el.querySelectorAll<HTMLElement>("[data-pdf-page]"));
+      const targets: HTMLElement[] = pageNodes.length > 0 ? pageNodes : [el];
+      console.log("[PDF] Step 1 — Detected", targets.length, "logical page(s)");
 
-      if (elWidth < 10 || elHeight < 10) {
-        console.error("[PDF] Element too small, aborting");
-        return null;
-      }
-
-      // 2️⃣ Attendre que les images soient chargées
+      // Attendre images
       const imgs = Array.from(el.querySelectorAll("img"));
-      console.log("[PDF] Step 2 — Waiting for", imgs.length, "images...");
-      
       await Promise.all(
         imgs.map((img) => {
           if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -58,128 +47,99 @@ export function usePdfDownload({ filename, margin = 10, cleanupDelayMs = 15000 }
           });
         })
       );
-
-      // 3️⃣ Attendre fonts + repaint
       if ("fonts" in document) {
         await (document as any).fonts.ready.catch(() => {});
       }
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 400));
 
-      // 4️⃣ Capturer avec onclone pour fixer les dimensions
-      console.log("[PDF] Step 4 — html2canvas starting...");
-      const canvas = await html2canvas(el, {
-        scale: 2.2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: true,
-        imageTimeout: 15000,
-        width: elWidth,
-        height: elHeight,
-        windowWidth: elWidth,
-        windowHeight: elHeight,
-        scrollX: 0,
-        scrollY: 0,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedDoc.documentElement.style.width = elWidth + "px";
-          clonedDoc.body.style.width = elWidth + "px";
-          clonedDoc.body.style.margin = "0";
-          clonedDoc.body.style.background = "#ffffff";
-
-          clonedEl.style.width = elWidth + "px";
-          clonedEl.style.minWidth = elWidth + "px";
-          clonedEl.style.maxWidth = elWidth + "px";
-          clonedEl.style.height = "auto";
-          clonedEl.style.minHeight = elHeight + "px";
-          clonedEl.style.overflow = "visible";
-          clonedEl.style.position = "relative";
-          clonedEl.style.transform = "none";
-          clonedEl.style.margin = "0";
-          clonedEl.style.boxSizing = "border-box";
-          console.log("[PDF] onclone — clone dimensions forced to", elWidth, "x", elHeight, "px");
-        },
-      });
-
-      console.log("[PDF] Step 5 — Canvas:", canvas.width, "x", canvas.height);
-
-      if (canvas.width < 20 || canvas.height < 20) {
-        console.error("[PDF] Canvas too small:", canvas.width, "x", canvas.height);
-        return null;
-      }
-
-      // 5️⃣ Extraire image JPEG (bien plus léger que PNG)
-      let imgData: string;
-      try {
-        imgData = canvas.toDataURL("image/jpeg", 0.92);
-      } catch (e) {
-        console.error("[PDF] toDataURL failed:", e);
-        return null;
-      }
-
-      console.log("[PDF] Step 6 — JPEG data:", imgData.length, "chars");
-
-      if (imgData.length < 5000) {
-        console.error("[PDF] JPEG data too small — blank canvas suspected");
-        return null;
-      }
-
-      // 6️⃣ Créer le PDF A4 — découpe par page (évite de dupliquer une énorme image sur chaque page)
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
-      const imgWidth = 190;
-      const pageHeight = 277;
-      const pageHeightPx = (pageHeight * canvas.width) / imgWidth;
-      const totalPages = Math.max(1, Math.ceil(canvas.height / pageHeightPx));
+      const pageWidthMm = 210;
+      const pageHeightMm = 297;
+      let rendered = 0;
 
-      for (let i = 0; i < totalPages; i++) {
-        const sliceHeight = Math.min(pageHeightPx, canvas.height - i * pageHeightPx);
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeight;
-        const ctx = pageCanvas.getContext("2d");
-        if (!ctx) continue;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvas, 0, -i * pageHeightPx);
+      for (let i = 0; i < targets.length; i++) {
+        const node = targets[i];
+        const rect = node.getBoundingClientRect();
+        const w = Math.max(Math.ceil(rect.width), node.scrollWidth || 0, node.offsetWidth || 0);
+        const h = Math.max(Math.ceil(rect.height), node.scrollHeight || 0, node.offsetHeight || 0);
+        if (w < 10 || h < 10) {
+          console.warn("[PDF] Skipping empty page", i);
+          continue;
+        }
 
-        const pageImg = pageCanvas.toDataURL("image/jpeg", 0.92);
-        const pageImgHeight = (sliceHeight * imgWidth) / canvas.width;
-        if (i > 0) pdf.addPage();
-        pdf.addImage(pageImg, "JPEG", margin, margin, imgWidth, pageImgHeight, undefined, "MEDIUM");
+        const canvas = await html2canvas(node, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          imageTimeout: 15000,
+          width: w,
+          height: h,
+          windowWidth: w,
+          windowHeight: h,
+          scrollX: 0,
+          scrollY: 0,
+          onclone: (_doc, clonedEl) => {
+            clonedEl.style.width = w + "px";
+            clonedEl.style.minWidth = w + "px";
+            clonedEl.style.maxWidth = w + "px";
+            clonedEl.style.height = h + "px";
+            clonedEl.style.overflow = "hidden";
+            clonedEl.style.transform = "none";
+            clonedEl.style.margin = "0";
+            clonedEl.style.boxSizing = "border-box";
+          },
+        });
+
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        if (imgData.length < 5000) {
+          console.warn("[PDF] Page", i, "looks blank, skipping");
+          continue;
+        }
+
+        if (rendered > 0) pdf.addPage();
+        const ratio = canvas.height / canvas.width;
+        let drawW = pageWidthMm;
+        let drawH = drawW * ratio;
+        if (drawH > pageHeightMm) {
+          drawH = pageHeightMm;
+          drawW = drawH / ratio;
+        }
+        const offsetX = (pageWidthMm - drawW) / 2;
+        const offsetY = (pageHeightMm - drawH) / 2;
+        pdf.addImage(imgData, "JPEG", offsetX, offsetY, drawW, drawH, undefined, "MEDIUM");
+        rendered++;
+      }
+
+      if (rendered === 0) {
+        console.error("[PDF] No page rendered");
+        return null;
       }
 
       const blob = pdf.output("blob");
-      console.log("[PDF] ✅ Final PDF:", blob.size, "bytes (" + Math.round(blob.size / 1024) + " KB)");
-
+      console.log("[PDF] ✅ Final PDF:", blob.size, "bytes");
       return blob;
     } catch (error) {
       console.error("[PDF] ❌ Fatal error:", error);
       return null;
     }
-  }, [margin]);
+  }, []);
 
   const downloadPdf = useCallback(async () => {
     const blob = await generatePdfBlob();
-    if (!blob) {
-      console.error("[PDF] No blob generated — download aborted");
-      return;
-    }
-
+    if (!blob) return;
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = getSafeFilename();
     document.body.appendChild(link);
     link.click();
-
     window.setTimeout(() => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }, cleanupDelayMs);
   }, [cleanupDelayMs, generatePdfBlob, getSafeFilename]);
 
-  return {
-    contentRef,
-    downloadPdf,
-    generatePdfBlob,
-  };
+  return { contentRef, downloadPdf, generatePdfBlob };
 }
