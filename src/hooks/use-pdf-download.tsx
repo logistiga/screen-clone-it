@@ -68,7 +68,7 @@ export function usePdfDownload({ filename, cleanupDelayMs = 15000 }: UsePdfDownl
         }
 
         const canvas = await html2canvas(node, {
-          scale: 2,
+          scale: 3,
           useCORS: true,
           allowTaint: true,
           backgroundColor: "#ffffff",
@@ -92,7 +92,8 @@ export function usePdfDownload({ filename, cleanupDelayMs = 15000 }: UsePdfDownl
           },
         });
 
-        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        // PNG sans perte pour préserver la netteté du texte
+        const imgData = canvas.toDataURL("image/png");
         if (imgData.length < 5000) {
           console.warn("[PDF] Page", i, "looks blank, skipping");
           continue;
@@ -108,7 +109,8 @@ export function usePdfDownload({ filename, cleanupDelayMs = 15000 }: UsePdfDownl
         }
         const offsetX = (pageWidthMm - drawW) / 2;
         const offsetY = (pageHeightMm - drawH) / 2;
-        pdf.addImage(imgData, "JPEG", offsetX, offsetY, drawW, drawH, undefined, "MEDIUM");
+        pdf.addImage(imgData, "PNG", offsetX, offsetY, drawW, drawH, undefined, "FAST");
+
         rendered++;
       }
 
