@@ -10,6 +10,7 @@ import { DocumentFooter } from "@/components/documents/DocumentLayout";
 import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { useDevisById } from "@/hooks/use-commercial";
+import { getPdfRowLimits, measurePdfFooterHeightMm, paginatePdfRows } from "@/lib/pdf-pagination";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 export default function DevisPDFPage() {
@@ -25,6 +26,18 @@ export default function DevisPDFPage() {
   });
 
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [footerHeightMm, setFooterHeightMm] = useState(18);
+
+  useEffect(() => {
+    if (!devisData || isLoading) return;
+    const updateFooterHeight = () => setFooterHeightMm(measurePdfFooterHeightMm());
+    const frame = window.requestAnimationFrame(updateFooterHeight);
+    window.addEventListener("resize", updateFooterHeight);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateFooterHeight);
+    };
+  }, [devisData, isLoading]);
 
   // Téléchargement automatique au chargement (après le chargement des données)
   useEffect(() => {
@@ -165,28 +178,16 @@ export default function DevisPDFPage() {
       {/* PDF Content - A4 Format (paginé) */}
       <div className="container py-8 print:py-0 flex flex-col items-center gap-6 print:gap-0 animate-fade-in" ref={contentRef}>
         {(() => {
-          const ROWS_PAGE_1 = 22;
-          const ROWS_MIDDLE = 38;
-          const ROWS_LAST_WITH_TOTALS = 18;
-
           type Row = (typeof lignesAffichage)[number];
           const allRows: Row[] = lignesAffichage as any;
-          const totalRows = allRows.length;
-
-          const pages: Row[][] = [];
-          if (totalRows === 0) {
-            pages.push([]);
-          } else if (totalRows <= ROWS_PAGE_1) {
-            pages.push(allRows);
-          } else {
-            pages.push(allRows.slice(0, ROWS_PAGE_1));
-            let cursor = ROWS_PAGE_1;
-            while (totalRows - cursor > ROWS_LAST_WITH_TOTALS) {
-              pages.push(allRows.slice(cursor, cursor + ROWS_MIDDLE));
-              cursor += ROWS_MIDDLE;
-            }
-            pages.push(allRows.slice(cursor));
-          }
+          const pagination = getPdfRowLimits({
+            footerHeightMm,
+            firstHeaderMm: 60,
+            compactHeaderMm: 16,
+            lastContentMm: devisData.notes ? 50 : 40,
+            singleLastContentMm: devisData.notes ? 54 : 44,
+          });
+          const pages = paginatePdfRows<Row>(allRows, pagination);
 
           const renderTable = (rows: Row[], startIndex: number) => (
             <table className="w-full mb-4 text-xs border-collapse border">
@@ -365,8 +366,9 @@ export default function DevisPDFPage() {
             return (
               <Card
                 key={pageIndex}
+                data-pdf-page
                 className="bg-white print:shadow-none print:border-none relative flex flex-col"
-                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
+                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: `${pagination.footerReserveMm}mm`, overflow: 'hidden' }}
               >
                 {isAnnule && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">

@@ -11,6 +11,7 @@ import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter, DocumentBankDetails } from "@/components/documents/DocumentLayout";
 import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
+import { getPdfRowLimits, measurePdfFooterHeightMm, paginatePdfRows } from "@/lib/pdf-pagination";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 export default function FacturePDFPage() {
@@ -24,6 +25,18 @@ export default function FacturePDFPage() {
   });
 
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [footerHeightMm, setFooterHeightMm] = useState(18);
+
+  useEffect(() => {
+    if (!facture) return;
+    const updateFooterHeight = () => setFooterHeightMm(measurePdfFooterHeightMm());
+    const frame = window.requestAnimationFrame(updateFooterHeight);
+    window.addEventListener("resize", updateFooterHeight);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateFooterHeight);
+    };
+  }, [facture]);
 
   // Téléchargement automatique au chargement
   useEffect(() => {
@@ -220,28 +233,16 @@ export default function FacturePDFPage() {
       <div className="container py-8 print:py-0 flex flex-col items-center gap-6 print:gap-0 animate-fade-in" ref={contentRef}>
         {(() => {
           // ============ Pagination ============
-          const ROWS_PAGE_1 = 22;
-          const ROWS_MIDDLE = 38;
-          const ROWS_LAST_WITH_TOTALS = 20;
-
           type Row = (typeof lignesAffichees)[number];
           const allRows: Row[] = lignesAffichees as any;
-          const totalRows = allRows.length;
-
-          const pages: Row[][] = [];
-          if (totalRows === 0) {
-            pages.push([]);
-          } else if (totalRows <= ROWS_PAGE_1) {
-            pages.push(allRows);
-          } else {
-            pages.push(allRows.slice(0, ROWS_PAGE_1));
-            let cursor = ROWS_PAGE_1;
-            while (totalRows - cursor > ROWS_LAST_WITH_TOTALS) {
-              pages.push(allRows.slice(cursor, cursor + ROWS_MIDDLE));
-              cursor += ROWS_MIDDLE;
-            }
-            pages.push(allRows.slice(cursor));
-          }
+          const pagination = getPdfRowLimits({
+            footerHeightMm,
+            firstHeaderMm: 60,
+            compactHeaderMm: 16,
+            lastContentMm: facture.motif_exoneration || facture.notes ? 52 : 42,
+            singleLastContentMm: facture.motif_exoneration || facture.notes ? 56 : 46,
+          });
+          const pages = paginatePdfRows<Row>(allRows, pagination);
 
           const renderTable = (rows: Row[], startIndex: number) => {
             if (isConteneur) {
@@ -504,8 +505,9 @@ export default function FacturePDFPage() {
             return (
               <Card
                 key={pageIndex}
+                data-pdf-page
                 className="bg-white print:shadow-none print:border-none relative flex flex-col"
-                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
+                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: `${pagination.footerReserveMm}mm`, overflow: 'hidden' }}
               >
                 {isAnnulee && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
