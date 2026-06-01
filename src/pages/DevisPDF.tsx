@@ -227,26 +227,26 @@ export default function DevisPDFPage() {
                   </ul>
                 </div>
 
-                <div className="w-64 border-2 border-primary rounded-md shadow-sm overflow-hidden text-xs shrink-0 self-start">
+                <div className="w-72 border-2 border-primary rounded-md shadow-sm overflow-hidden text-xs shrink-0 self-start [&_.label]:text-left [&_.amount]:text-right [&_.amount]:tabular-nums [&_.amount]:whitespace-nowrap">
                   <div className="bg-primary/10 px-3 py-1.5 border-b border-primary/30">
                     <h3 className="text-[11px] font-bold text-primary uppercase tracking-wide">Récapitulatif</h3>
                   </div>
 
-                  <div className="flex justify-between py-1 px-3 border-b">
-                    <span>Total HT</span>
-                    <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
+                  <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
+                    <span className="label">Total HT</span>
+                    <span className="amount font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
                   </div>
-                  <div className="flex justify-between py-1 px-3 border-b">
-                    <span>TVA (18%)</span>
-                    <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
+                  <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
+                    <span className="label">TVA (18%)</span>
+                    <span className="amount">{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
                   </div>
-                  <div className="flex justify-between py-1 px-3 border-b">
-                    <span>CSS (1%)</span>
-                    <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
+                  <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
+                    <span className="label">CSS (1%)</span>
+                    <span className="amount">{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
                   </div>
-                  <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
-                    <span>Total TTC</span>
-                    <span>{formatMontant(devisData.montant_ttc || 0)}</span>
+                  <div className="flex justify-between items-center gap-2 py-2 px-3 bg-primary text-primary-foreground font-bold">
+                    <span className="label">Total TTC</span>
+                    <span className="amount">{formatMontant(devisData.montant_ttc || 0)}</span>
                   </div>
                 </div>
               </div>
