@@ -217,7 +217,7 @@ export default function DevisPDFPage() {
 
           const renderTotaux = () => (
             <>
-              <div className="flex justify-between mb-4 gap-4">
+              <div className="flex justify-between mb-4 gap-8 items-start">
                 <div className="flex-1 p-3 border rounded text-xs relative">
                   <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
                   <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
@@ -227,7 +227,11 @@ export default function DevisPDFPage() {
                   </ul>
                 </div>
 
-                <div className="w-56 border text-xs self-start">
+                <div className="w-64 border-2 border-primary rounded-md shadow-sm overflow-hidden text-xs shrink-0 self-start">
+                  <div className="bg-primary/10 px-3 py-1.5 border-b border-primary/30">
+                    <h3 className="text-[11px] font-bold text-primary uppercase tracking-wide">Récapitulatif</h3>
+                  </div>
+
                   <div className="flex justify-between py-1 px-3 border-b">
                     <span>Total HT</span>
                     <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
