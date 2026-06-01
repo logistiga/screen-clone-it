@@ -204,114 +204,54 @@ export default function OrdrePDFPage() {
         </div>
       </div>
 
-      {/* PDF Content - A4 Format */}
-      <div className="container py-8 print:py-0 flex justify-center animate-fade-in">
-        <Card 
-          ref={contentRef} 
-          className="bg-white print:shadow-none print:border-none relative flex flex-col"
-          style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
-        >
-          {/* Watermark si annulé */}
-          {isAnnule && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="text-destructive/20 text-6xl font-bold rotate-[-30deg] border-4 border-destructive/20 px-6 py-3">
-                ANNULÉ
-              </div>
-            </div>
-          )}
+      {/* PDF Content - A4 Format (paginé) */}
+      <div className="container py-8 print:py-0 flex flex-col items-center gap-6 print:gap-0 animate-fade-in" ref={contentRef}>
+        {(() => {
+          const ROWS_PAGE_1 = 18;
+          const ROWS_MIDDLE = 34;
+          const ROWS_LAST_WITH_TOTALS = 14;
 
-          {/* Contenu principal - grandit pour pousser le footer en bas */}
-          <div className="flex-1">
-            {/* Header avec logo et QR code */}
-            <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
-              <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
-              <div className="text-center">
-                <h1 className="text-xl font-bold text-primary">CONNAISSEMENT</h1>
-                <p className="text-sm font-semibold">{ordre.numero}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <QRCodeSVG value={qrData} size={60} level="M" />
-                <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
-              </div>
-            </div>
+          const allRows: any[] = isConteneur
+            ? lignesConteneur
+            : isConventionnel
+              ? lignesConventionnel
+              : lignesIndependant;
+          const totalRows = allRows.length;
 
-            {/* Infos document */}
-            <div className="flex justify-between text-xs mb-4">
-              <div>
-                <p><span className="font-semibold">Date:</span> {formatDate(ordre.date || ordre.created_at)}</p>
-              </div>
-              <div className="text-right">
-                <p><span className="font-semibold">Type:</span> {getTypeOperationLabel(ordre.type_document)}</p>
-                {isConteneur && ordre.type_operation && (
-                  <p><span className="font-semibold">Opération:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
-                )}
-              </div>
-            </div>
+          const pages: any[][] = [];
+          if (totalRows === 0) {
+            pages.push([]);
+          } else if (totalRows <= ROWS_PAGE_1) {
+            pages.push(allRows);
+          } else {
+            pages.push(allRows.slice(0, ROWS_PAGE_1));
+            let cursor = ROWS_PAGE_1;
+            while (totalRows - cursor > ROWS_LAST_WITH_TOTALS) {
+              pages.push(allRows.slice(cursor, cursor + ROWS_MIDDLE));
+              cursor += ROWS_MIDDLE;
+            }
+            pages.push(allRows.slice(cursor));
+          }
 
-            {/* Client (gauche) + Informations Opération (droite) */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              {/* Client */}
-              <div className="border p-3 rounded">
-                <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
-                <p className="font-semibold text-sm">{client?.nom}</p>
-                <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-                <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
-                <p className="text-xs text-muted-foreground">Email: {client?.email}</p>
-              </div>
-
-              {/* Informations Opération */}
-              <div className="border p-3 rounded">
-                <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
-                <div className="text-xs space-y-0.5">
-                  <p><span className="font-semibold">Catégorie:</span> {getTypeOperationLabel(ordre.type_document)}</p>
-                  {isConteneur && ordre.type_operation && (
-                    <p><span className="font-semibold">Type:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
-                  )}
-                  {ordre.bl_numero && (
-                    <p><span className="font-semibold">N° BL:</span> {ordre.bl_numero}</p>
-                  )}
-                  {(ordre as any).armateur?.nom && (
-                    <p><span className="font-semibold">Armateur:</span> {(ordre as any).armateur.nom}</p>
-                  )}
-                  {(ordre as any).transitaire?.nom && (
-                    <p><span className="font-semibold">Transitaire:</span> {(ordre as any).transitaire.nom}</p>
-                  )}
-                  {(ordre as any).navire && (
-                    <p><span className="font-semibold">Navire:</span> {(ordre as any).navire}</p>
-                  )}
-                  {(ordre as any).representant?.nom && (
-                    <p><span className="font-semibold">Représentant:</span> {(ordre as any).representant.nom}</p>
-                  )}
-                  {isIndependant && ordre.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
-                    <>
-                      {ordre.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
-                        <p key={i}>
-                          <span className="font-semibold">Trajet:</span>{" "}
-                          {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
-                        </p>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* TABLEAU CONTENEURS */}
-            {isConteneur && (
-              <table className="w-full mb-4 text-xs border-collapse border">
-                <thead>
-                  <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-2 px-2 font-semibold w-8 border-r">N°</th>
-                    <th className="text-left py-2 px-2 font-semibold border-r">Désignation</th>
-                    <th className="text-center py-2 px-2 font-semibold w-12 border-r">Qté</th>
-                    <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
-                    <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    let counter = 0;
-                    return lignesConteneur.map((ligne, index) => {
+          const renderTable = (rows: any[], startIndex: number) => {
+            if (isConteneur) {
+              const offsetCounter = (lignesConteneur as any[])
+                .slice(0, startIndex)
+                .filter((l) => !l.isOperation).length;
+              let counter = offsetCounter;
+              return (
+                <table className="w-full mb-4 text-xs border-collapse border">
+                  <thead>
+                    <tr className="bg-primary text-primary-foreground">
+                      <th className="text-left py-2 px-2 font-semibold w-8 border-r">N°</th>
+                      <th className="text-left py-2 px-2 font-semibold border-r">Désignation</th>
+                      <th className="text-center py-2 px-2 font-semibold w-12 border-r">Qté</th>
+                      <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
+                      <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((ligne: any, index: number) => {
                       if (!ligne.isOperation) counter++;
                       return (
                         <tr key={index} className={ligne.isOperation ? "bg-muted/10" : (counter % 2 === 0 ? "bg-muted/20" : "")}>
@@ -334,149 +274,90 @@ export default function OrdrePDFPage() {
                           <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
                         </tr>
                       );
-                    });
-                  })()}
-                  {Array.from({ length: Math.max(0, 6 - lignesConteneur.length) }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-6">
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                    })}
+                  </tbody>
+                </table>
+              );
+            }
 
-            {/* TABLEAU CONVENTIONNEL */}
-            {isConventionnel && (
+            const label = isConventionnel ? "Description" : "Prestation";
+            return (
               <table className="w-full mb-4 text-xs border-collapse border">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
                     <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                    <th className="text-left py-2 px-2 font-semibold border-r">Description</th>
+                    <th className="text-left py-2 px-2 font-semibold border-r">{label}</th>
                     <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
                     <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
                     <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lignesConventionnel.map((ligne, index) => (
+                  {rows.length === 0 ? (
+                    <tr><td colSpan={5} className="py-3 px-2 border-b text-center text-muted-foreground">Aucune ligne</td></tr>
+                  ) : rows.map((ligne: any, index: number) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                      <td className="py-1.5 px-2 border-r border-b align-middle">{startIndex + index + 1}</td>
                       <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
                       <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
                       <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
-                      <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
-                        {formatMontant(ligne.montant)}
-                      </td>
-                    </tr>
-                  ))}
-                  {Array.from({ length: Math.max(0, 6 - lignesConventionnel.length) }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-6">
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
+                      <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
+            );
+          };
 
-            {/* TABLEAU OPERATIONS INDEPENDANTES */}
-            {isIndependant && (
-              <table className="w-full mb-4 text-xs border-collapse border">
-                <thead>
-                  <tr className="bg-primary text-primary-foreground">
-                    <th className="text-left py-2 px-2 font-semibold w-10 border-r">N°</th>
-                    <th className="text-left py-2 px-2 font-semibold border-r">Prestation</th>
-                    <th className="text-center py-2 px-2 font-semibold w-14 border-r">Qté</th>
-                    <th className="text-right py-2 px-2 font-semibold w-24 border-r">Prix unit.</th>
-                    <th className="text-right py-2 px-2 font-semibold w-28">Montant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lignesIndependant.map((ligne, index) => (
-                    <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
-                      <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
-                      <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
-                      <td className="text-right py-1.5 px-2 font-medium border-b align-middle">
-                        {formatMontant(ligne.montant)}
-                      </td>
-                    </tr>
-                  ))}
-                  {Array.from({ length: Math.max(0, 6 - lignesIndependant.length) }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-6">
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                      <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {/* Totaux et Conditions de paiement */}
-            <div className="flex justify-between mb-4 gap-4">
-              {/* Conditions de paiement (avec cachet en haut à gauche) */}
-              <div className="flex-1 p-3 border rounded text-xs relative">
-                <SignatureCachet leftBlock size={150} />
-                <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
-                <p className="text-muted-foreground">
-                  Paiement à réception. En cas de retard, des pénalités seront appliquées
-                  conformément à la réglementation en vigueur.
-                </p>
-              </div>
-
-              {/* Totaux */}
-              <div className="w-72 border text-xs shrink-0">
-                <div className="flex justify-between items-center gap-2 py-1.5 px-3 bg-primary text-primary-foreground font-bold border-b">
-                  <span className="whitespace-nowrap">Total TTC</span>
-                  <span className="whitespace-nowrap tabular-nums">{formatMontant(ordre.montant_ttc)}</span>
+          const renderTotaux = () => (
+            <>
+              <div className="flex justify-between mb-4 gap-4">
+                <div className="flex-1 p-3 border rounded text-xs relative">
+                  <SignatureCachet leftBlock size={150} />
+                  <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
+                  <p className="text-muted-foreground">
+                    Paiement à réception. En cas de retard, des pénalités seront appliquées
+                    conformément à la réglementation en vigueur.
+                  </p>
                 </div>
-                <div className="flex justify-between items-center gap-2 py-1.5 px-3 border-b">
-                  <span className="whitespace-nowrap">Payé</span>
-                  <span className="whitespace-nowrap tabular-nums text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center gap-2 py-1.5 px-3 font-bold">
-                  <span className="whitespace-nowrap">Reste à payer</span>
-                  <span className={`whitespace-nowrap tabular-nums ${resteAPayer > 0 ? "text-destructive" : "text-green-600"}`}>
-                    {formatMontant(resteAPayer)}
-                  </span>
+
+                <div className="w-72 border text-xs shrink-0">
+                  <div className="flex justify-between items-center gap-2 py-1.5 px-3 bg-primary text-primary-foreground font-bold border-b">
+                    <span className="whitespace-nowrap">Total TTC</span>
+                    <span className="whitespace-nowrap tabular-nums">{formatMontant(ordre.montant_ttc)}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-2 py-1.5 px-3 border-b">
+                    <span className="whitespace-nowrap">Payé</span>
+                    <span className="whitespace-nowrap tabular-nums text-green-600 font-medium">{formatMontant(ordre.montant_paye || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-2 py-1.5 px-3 font-bold">
+                    <span className="whitespace-nowrap">Reste à payer</span>
+                    <span className={`whitespace-nowrap tabular-nums ${resteAPayer > 0 ? "text-destructive" : "text-green-600"}`}>
+                      {formatMontant(resteAPayer)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Motif d'exonération */}
-            {ordre.motif_exoneration && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs">
-                <strong className="text-amber-700">Exonération:</strong>{" "}
-                <span className="text-amber-600">{ordre.motif_exoneration}</span>
-              </div>
-            )}
+              {ordre.motif_exoneration && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs">
+                  <strong className="text-amber-700">Exonération:</strong>{" "}
+                  <span className="text-amber-600">{ordre.motif_exoneration}</span>
+                </div>
+              )}
 
-            {/* Notes */}
-            {ordre.notes && (
-              <div className="mb-4 border p-3 rounded">
-                <h3 className="text-xs font-bold mb-1">NOTES</h3>
-                <p className="text-xs">{ordre.notes}</p>
-              </div>
-            )}
-          </div>
+              {ordre.notes && (
+                <div className="mb-4 border p-3 rounded">
+                  <h3 className="text-xs font-bold mb-1">NOTES</h3>
+                  <p className="text-xs">{ordre.notes}</p>
+                </div>
+              )}
+            </>
+          );
 
-          {/* Section fixée en bas de page */}
-          <div className="mt-auto">
-            {/* DECLARATION CLIENT & CONDITIONS DE TRANSPORT */}
+          const renderLegalBlock = () => (
             <div className="border mb-2">
               <div className="grid grid-cols-2">
-                {/* Déclaration Client */}
                 <div className="border-r p-1.5">
                   <h4 className="font-bold text-[8px] border-b pb-0.5 mb-1">DECLARATION CLIENT</h4>
                   <p className="text-[6px] leading-tight text-justify">
@@ -489,10 +370,7 @@ export default function OrdrePDFPage() {
                     respects in proper condition for transport according to the Transportation of Dangerous Goods Regulations. I declare 
                     to have accepted the conditions of transport
                   </p>
-                  
                 </div>
-                
-                {/* Conditions de Transport */}
                 <div className="p-1.5">
                   <h4 className="font-bold text-[8px] border-b pb-0.5 mb-1">CONDITIONS DE TRANSPORT</h4>
                   <p className="text-[6px] leading-tight text-justify">
@@ -507,11 +385,134 @@ export default function OrdrePDFPage() {
                 </div>
               </div>
             </div>
+          );
 
-            {/* Footer */}
-            <DocumentFooter fixed />
-          </div>
-        </Card>
+          const renderFullHeader = () => (
+            <>
+              <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
+                <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
+                <div className="text-center">
+                  <h1 className="text-xl font-bold text-primary">CONNAISSEMENT</h1>
+                  <p className="text-sm font-semibold">{ordre.numero}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <QRCodeSVG value={qrData} size={60} level="M" />
+                  <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
+                </div>
+              </div>
+
+              <div className="flex justify-between text-xs mb-4">
+                <div>
+                  <p><span className="font-semibold">Date:</span> {formatDate(ordre.date || ordre.created_at)}</p>
+                </div>
+                <div className="text-right">
+                  <p><span className="font-semibold">Type:</span> {getTypeOperationLabel(ordre.type_document)}</p>
+                  {isConteneur && ordre.type_operation && (
+                    <p><span className="font-semibold">Opération:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="border p-3 rounded">
+                  <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
+                  <p className="font-semibold text-sm">{client?.nom}</p>
+                  <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+                  <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
+                  <p className="text-xs text-muted-foreground">Email: {client?.email}</p>
+                </div>
+
+                <div className="border p-3 rounded">
+                  <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
+                  <div className="text-xs space-y-0.5">
+                    <p><span className="font-semibold">Catégorie:</span> {getTypeOperationLabel(ordre.type_document)}</p>
+                    {isConteneur && ordre.type_operation && (
+                      <p><span className="font-semibold">Type:</span> {ordre.type_operation === 'import' ? 'Import' : ordre.type_operation === 'export' ? 'Export' : ordre.type_operation}</p>
+                    )}
+                    {ordre.bl_numero && (
+                      <p><span className="font-semibold">N° BL:</span> {ordre.bl_numero}</p>
+                    )}
+                    {(ordre as any).armateur?.nom && (
+                      <p><span className="font-semibold">Armateur:</span> {(ordre as any).armateur.nom}</p>
+                    )}
+                    {(ordre as any).transitaire?.nom && (
+                      <p><span className="font-semibold">Transitaire:</span> {(ordre as any).transitaire.nom}</p>
+                    )}
+                    {(ordre as any).navire && (
+                      <p><span className="font-semibold">Navire:</span> {(ordre as any).navire}</p>
+                    )}
+                    {(ordre as any).representant?.nom && (
+                      <p><span className="font-semibold">Représentant:</span> {(ordre as any).representant.nom}</p>
+                    )}
+                    {isIndependant && ordre.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
+                      <>
+                        {ordre.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
+                          <p key={i}>
+                            <span className="font-semibold">Trajet:</span>{" "}
+                            {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
+                          </p>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+
+          const renderCompactHeader = (pageIndex: number, totalPages: number) => (
+            <div className="flex justify-between items-center mb-3 border-b border-primary/40 pb-2">
+              <div className="flex items-center gap-3">
+                <img src={logoLogistiga} alt="LOGISTIGA" className="h-10 w-auto" />
+                <div>
+                  <p className="text-sm font-bold text-primary leading-tight">CONNAISSEMENT {ordre.numero}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {client?.nom} • {formatDate(ordre.date || ordre.created_at)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Page {pageIndex + 1} / {totalPages}</p>
+            </div>
+          );
+
+          const startIndexes: number[] = [];
+          let acc = 0;
+          for (const p of pages) {
+            startIndexes.push(acc);
+            acc += p.length;
+          }
+
+          return pages.map((pageRows, pageIndex) => {
+            const isFirst = pageIndex === 0;
+            const isLast = pageIndex === pages.length - 1;
+            return (
+              <Card
+                key={pageIndex}
+                className="bg-white print:shadow-none print:border-none relative flex flex-col"
+                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
+              >
+                {isAnnule && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <div className="text-destructive/20 text-6xl font-bold rotate-[-30deg] border-4 border-destructive/20 px-6 py-3">
+                      ANNULÉ
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex-1">
+                  {isFirst ? renderFullHeader() : renderCompactHeader(pageIndex, pages.length)}
+                  {renderTable(pageRows, startIndexes[pageIndex])}
+                  {isLast && renderTotaux()}
+                </div>
+
+                <div className="mt-auto">
+                  {isLast && renderLegalBlock()}
+                  <DocumentFooter fixed />
+                </div>
+              </Card>
+            );
+          });
+        })()}
       </div>
 
       {/* Email Modal */}
