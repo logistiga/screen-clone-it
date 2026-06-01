@@ -82,7 +82,6 @@ export const paginatePdfRows = <T>(rows: T[], limits: PdfRowLimits): T[][] => {
     if (index === pageCount - 1) return lastCapacity;
     return middleCapacity;
   });
-  const preferredTrailingRows = Math.max(3, Math.min(12, Math.ceil(Math.min(middleCapacity, lastCapacity) * 0.35)));
   const pages: T[][] = [];
   let cursor = 0;
 
@@ -95,14 +94,12 @@ export const paginatePdfRows = <T>(rows: T[], limits: PdfRowLimits): T[][] => {
     }
 
     const capacityAfter = capacities.slice(index + 1).reduce((sum, value) => sum + value, 0);
-    const minTake = Math.max(1, remainingRows - capacityAfter);
-    const reservePerPage = Math.min(preferredTrailingRows, Math.max(1, Math.ceil(remainingRows * 0.25)));
-    const maxTake = Math.max(minTake, remainingRows - reservePerPage * (remainingPages - 1));
-    const take = Math.min(capacity, maxTake);
+    const take = Math.min(capacity, remainingRows - capacityAfter);
 
     pages.push(rows.slice(cursor, cursor + take));
     cursor += take;
   });
+
 
   return pages;
 };
