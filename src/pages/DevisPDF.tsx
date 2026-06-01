@@ -162,109 +162,33 @@ export default function DevisPDFPage() {
         </div>
       </div>
 
-      {/* PDF Content - A4 Format */}
-      <div className="container py-8 print:py-0 flex justify-center animate-fade-in">
-        <Card 
-          ref={contentRef} 
-          className="bg-white print:shadow-none print:border-none relative flex flex-col"
-          style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
-        >
-          {/* Watermark si annulé */}
-          {isAnnule && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="text-destructive/20 text-6xl font-bold rotate-[-30deg] border-4 border-destructive/20 px-6 py-3">
-                ANNULÉ
-              </div>
-            </div>
-          )}
+      {/* PDF Content - A4 Format (paginé) */}
+      <div className="container py-8 print:py-0 flex flex-col items-center gap-6 print:gap-0 animate-fade-in" ref={contentRef}>
+        {(() => {
+          const ROWS_PAGE_1 = 22;
+          const ROWS_MIDDLE = 38;
+          const ROWS_LAST_WITH_TOTALS = 18;
 
-          <div className="flex-1">
-            {/* Header avec logo et QR code */}
-            <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
-              <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
-              <div className="text-center">
-                <h1 className="text-xl font-bold text-primary">DEVIS</h1>
-                <p className="text-sm font-semibold">{devisData.numero}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <QRCodeSVG value={qrData} size={60} level="M" />
-                <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
-              </div>
-            </div>
+          type Row = (typeof lignesAffichage)[number];
+          const allRows: Row[] = lignesAffichage as any;
+          const totalRows = allRows.length;
 
-            {/* Infos document + catégorie */}
-            <div className="flex justify-between text-xs mb-4">
-              <div>
-                <p><span className="font-semibold">Date:</span> {formatDate(devisData.date_creation || devisData.date)}</p>
-                <p><span className="font-semibold">Validité:</span> {formatDate(devisData.date_validite)}</p>
-              </div>
-              <div className="text-right">
-                <p>
-                  <span className="font-semibold">Catégorie:</span>{" "}
-                  {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
-                </p>
-                {devisData.type_operation && (
-                  <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
-                )}
-              </div>
-            </div>
+          const pages: Row[][] = [];
+          if (totalRows === 0) {
+            pages.push([]);
+          } else if (totalRows <= ROWS_PAGE_1) {
+            pages.push(allRows);
+          } else {
+            pages.push(allRows.slice(0, ROWS_PAGE_1));
+            let cursor = ROWS_PAGE_1;
+            while (totalRows - cursor > ROWS_LAST_WITH_TOTALS) {
+              pages.push(allRows.slice(cursor, cursor + ROWS_MIDDLE));
+              cursor += ROWS_MIDDLE;
+            }
+            pages.push(allRows.slice(cursor));
+          }
 
-            {/* Client (gauche) + Informations Opération (droite) */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="border p-3 rounded">
-                <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
-                <p className="font-semibold text-sm">{client?.nom}</p>
-                <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
-                <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
-                <p className="text-xs text-muted-foreground">Email: {client?.email}</p>
-                {(client?.nif || client?.rccm) && (
-                  <p className="text-xs text-muted-foreground">
-                    {client?.nif && `NIF: ${client.nif}`}
-                    {client?.nif && client?.rccm && ' | '}
-                    {client?.rccm && `RCCM: ${client.rccm}`}
-                  </p>
-                )}
-              </div>
-
-              <div className="border p-3 rounded">
-                <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
-                <div className="text-xs space-y-0.5">
-                  <p>
-                    <span className="font-semibold">Catégorie:</span>{" "}
-                    {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
-                  </p>
-                  {devisData.type_operation && (
-                    <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
-                  )}
-                  {devisData.numero_bl && (
-                    <p><span className="font-semibold">N° BL:</span> {devisData.numero_bl}</p>
-                  )}
-                  {devisData.armateur?.nom && (
-                    <p><span className="font-semibold">Armateur:</span> {devisData.armateur.nom}</p>
-                  )}
-                  {devisData.transitaire?.nom && (
-                    <p><span className="font-semibold">Transitaire:</span> {devisData.transitaire.nom}</p>
-                  )}
-                  {devisData.navire && (
-                    <p><span className="font-semibold">Navire:</span> {devisData.navire}</p>
-                  )}
-                  {devisData.representant?.nom && (
-                    <p><span className="font-semibold">Représentant:</span> {devisData.representant.nom}</p>
-                  )}
-                  {devisData.type_document === 'Independant' && devisData.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
-                    <>
-                      {devisData.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
-                        <p key={i}>
-                          <span className="font-semibold">Trajet:</span>{" "}
-                          {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
-                        </p>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
+          const renderTable = (rows: Row[], startIndex: number) => (
             <table className="w-full mb-4 text-xs border-collapse border">
               <thead>
                 <tr className="bg-primary text-primary-foreground">
@@ -276,80 +200,189 @@ export default function DevisPDFPage() {
                 </tr>
               </thead>
               <tbody>
-                {lignesAffichage.map((ligne, index) => (
-                  <tr key={ligne.id} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                    <td className="py-1.5 px-2 border-r border-b align-middle">{index + 1}</td>
+                {rows.length === 0 ? (
+                  <tr><td colSpan={5} className="py-3 px-2 border-b text-center text-muted-foreground">Aucune ligne</td></tr>
+                ) : rows.map((ligne: any, index: number) => (
+                  <tr key={ligne.id ?? index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-1.5 px-2 border-r border-b align-middle">{startIndex + index + 1}</td>
                     <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
                     <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
                     <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
                     <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montantHT)}</td>
                   </tr>
                 ))}
-                {Array.from({ length: Math.max(0, 8 - lignesAffichage.length) }).map((_, i) => (
-                  <tr key={`empty-${i}`} className="h-6">
-                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-r border-b align-middle">&nbsp;</td>
-                    <td className="py-1.5 px-2 border-b align-middle">&nbsp;</td>
-                  </tr>
-                ))}
               </tbody>
             </table>
+          );
 
-            <div className="flex justify-between mb-4 gap-4">
-              {/* Conditions de paiement (avec cachet en haut à gauche) */}
-              <div className="flex-1 p-3 border rounded text-xs relative">
-                <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
-                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                  <li>Devis valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
-                  <li>Paiement: 50% à la commande, 50% à la livraison</li>
-                  <li>Délai de réalisation: selon disponibilité</li>
-                </ul>
+          const renderTotaux = () => (
+            <>
+              <div className="flex justify-between mb-4 gap-4">
+                <div className="flex-1 p-3 border rounded text-xs relative">
+                  <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
+                  <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                    <li>Devis valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
+                    <li>Paiement: 50% à la commande, 50% à la livraison</li>
+                    <li>Délai de réalisation: selon disponibilité</li>
+                  </ul>
+                </div>
+
+                <div className="w-56 border text-xs self-start">
+                  <div className="flex justify-between py-1 px-3 border-b">
+                    <span>Total HT</span>
+                    <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 px-3 border-b">
+                    <span>TVA (18%)</span>
+                    <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 px-3 border-b">
+                    <span>CSS (1%)</span>
+                    <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
+                    <span>Total TTC</span>
+                    <span>{formatMontant(devisData.montant_ttc || 0)}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Totaux */}
-              <div className="w-56 border text-xs self-start">
-                <div className="flex justify-between py-1 px-3 border-b">
-                  <span>Total HT</span>
-                  <span className="font-medium">{formatMontant(devisData.montant_ht || 0)}</span>
+              {devisData.notes && (
+                <div className="mb-3 border p-2 rounded">
+                  <h3 className="text-xs font-bold mb-1">NOTES</h3>
+                  <p className="text-xs">{devisData.notes}</p>
                 </div>
-                <div className="flex justify-between py-1 px-3 border-b">
-                  <span>TVA (18%)</span>
-                  <span>{formatMontant(devisData.montant_tva || devisData.tva || 0)}</span>
+              )}
+            </>
+          );
+
+          const renderFullHeader = () => (
+            <>
+              <div className="flex justify-between items-start mb-4 border-b-2 border-primary pb-3">
+                <img src={logoLogistiga} alt="LOGISTIGA" className="h-20 w-auto" />
+                <div className="text-center">
+                  <h1 className="text-xl font-bold text-primary">DEVIS</h1>
+                  <p className="text-sm font-semibold">{devisData.numero}</p>
                 </div>
-                <div className="flex justify-between py-1 px-3 border-b">
-                  <span>CSS (1%)</span>
-                  <span>{formatMontant(devisData.montant_css || devisData.css || 0)}</span>
-                </div>
-                <div className="flex justify-between py-2 px-3 bg-primary text-primary-foreground font-bold">
-                  <span>Total TTC</span>
-                  <span>{formatMontant(devisData.montant_ttc || 0)}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <QRCodeSVG value={qrData} size={60} level="M" />
+                  <p className="text-[8px] text-muted-foreground">Scannez pour vérifier</p>
                 </div>
               </div>
+
+              <div className="flex justify-between text-xs mb-4">
+                <div>
+                  <p><span className="font-semibold">Date:</span> {formatDate(devisData.date_creation || devisData.date)}</p>
+                  <p><span className="font-semibold">Validité:</span> {formatDate(devisData.date_validite)}</p>
+                </div>
+                <div className="text-right">
+                  <p>
+                    <span className="font-semibold">Catégorie:</span>{" "}
+                    {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
+                  </p>
+                  {devisData.type_operation && (
+                    <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="border p-3 rounded">
+                  <h3 className="text-xs font-bold text-primary mb-1">CLIENT</h3>
+                  <p className="font-semibold text-sm">{client?.nom}</p>
+                  <p className="text-xs text-muted-foreground">{client?.adresse} - {client?.ville}, Gabon</p>
+                  <p className="text-xs text-muted-foreground">Tél: {client?.telephone}</p>
+                  {client?.email && <p className="text-xs text-muted-foreground">Email: {client?.email}</p>}
+                  {(client?.nif || client?.rccm) && (
+                    <p className="text-xs text-muted-foreground">
+                      {client?.nif && `NIF: ${client.nif}`}
+                      {client?.nif && client?.rccm && ' | '}
+                      {client?.rccm && `RCCM: ${client.rccm}`}
+                    </p>
+                  )}
+                </div>
+
+                <div className="border p-3 rounded">
+                  <h3 className="text-xs font-bold text-primary mb-1">INFORMATIONS OPÉRATION</h3>
+                  <div className="text-xs space-y-0.5">
+                    <p>
+                      <span className="font-semibold">Catégorie:</span>{" "}
+                      {devisData.type_document === 'Conteneur' ? 'Conteneurs' : devisData.type_document === 'Lot' ? 'Conventionnel' : 'Opérations Indépendantes'}
+                    </p>
+                    {devisData.type_operation && (
+                      <p><span className="font-semibold">Type:</span> {devisData.type_operation}</p>
+                    )}
+                    {devisData.numero_bl && (
+                      <p><span className="font-semibold">N° BL:</span> {devisData.numero_bl}</p>
+                    )}
+                    {devisData.armateur?.nom && (
+                      <p><span className="font-semibold">Armateur:</span> {devisData.armateur.nom}</p>
+                    )}
+                    {devisData.transitaire?.nom && (
+                      <p><span className="font-semibold">Transitaire:</span> {devisData.transitaire.nom}</p>
+                    )}
+                    {devisData.navire && (
+                      <p><span className="font-semibold">Navire:</span> {devisData.navire}</p>
+                    )}
+                    {devisData.representant?.nom && (
+                      <p><span className="font-semibold">Représentant:</span> {devisData.representant.nom}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+
+          const renderCompactHeader = (pageIndex: number, totalPages: number) => (
+            <div className="flex justify-between items-center mb-3 border-b border-primary/40 pb-2">
+              <div className="flex items-center gap-3">
+                <img src={logoLogistiga} alt="LOGISTIGA" className="h-10 w-auto" />
+                <div>
+                  <p className="text-sm font-bold text-primary leading-tight">DEVIS {devisData.numero}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {client?.nom} • {formatDate(devisData.date_creation || devisData.date)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Page {pageIndex + 1} / {totalPages}</p>
             </div>
+          );
 
-            {devisData.notes && (
-              <div className="mb-3 border p-2 rounded">
-                <h3 className="text-xs font-bold mb-1">NOTES</h3>
-                <p className="text-xs">{devisData.notes}</p>
-              </div>
-            )}
+          const startIndexes: number[] = [];
+          let acc = 0;
+          for (const p of pages) {
+            startIndexes.push(acc);
+            acc += p.length;
+          }
 
-            <div className="border-t pt-3 text-xs mb-4">
-              <h3 className="font-bold mb-1">Conditions</h3>
-              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                <li>Ce devis est valable jusqu&apos;au {formatDate(devisData.date_validite)}</li>
-                <li>Paiement: 50% à la commande, 50% à la livraison</li>
-                <li>Délai de réalisation: selon disponibilité</li>
-              </ul>
-            </div>
-          </div>
+          return pages.map((pageRows, pageIndex) => {
+            const isFirst = pageIndex === 0;
+            const isLast = pageIndex === pages.length - 1;
+            return (
+              <Card
+                key={pageIndex}
+                className="bg-white print:shadow-none print:border-none relative flex flex-col"
+                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
+              >
+                {isAnnule && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <div className="text-destructive/20 text-6xl font-bold rotate-[-30deg] border-4 border-destructive/20 px-6 py-3">
+                      ANNULÉ
+                    </div>
+                  </div>
+                )}
 
-          <div className="mt-auto">
-            <DocumentFooter fixed />
-          </div>
-        </Card>
+                {isFirst ? renderFullHeader() : renderCompactHeader(pageIndex, pages.length)}
+
+                {renderTable(pageRows, startIndexes[pageIndex])}
+
+                {isLast && renderTotaux()}
+
+                <DocumentFooter fixed />
+              </Card>
+            );
+          });
+        })()}
       </div>
 
       {/* Email Modal */}
