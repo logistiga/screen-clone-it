@@ -23,7 +23,7 @@ const A4_HEIGHT_MM = 297;
 const A4_WIDTH_MM = 210;
 const PAGE_PADDING_TOP_MM = 10;
 const PAGE_PADDING_BOTTOM_MM = 10;
-const FALLBACK_FOOTER_HEIGHT_MM = 18;
+const FALLBACK_FOOTER_HEIGHT_MM = 22;
 
 export const measurePdfFooterHeightMm = () => {
   if (typeof document === "undefined") return FALLBACK_FOOTER_HEIGHT_MM;
@@ -45,10 +45,10 @@ export const getPdfRowLimits = ({
   compactHeaderMm,
   lastContentMm,
   singleLastContentMm,
-  rowHeightMm = 5.8,
+  rowHeightMm = 6.4,
   tableHeaderMm = 8,
-  footerGapMm = 7,
-  safetyMm = 4,
+  footerGapMm = 12,
+  safetyMm = 6,
   minRows = 1,
 }: PdfRowLimitOptions): PdfRowLimits => {
   const footerReserveMm = Math.ceil(PAGE_PADDING_BOTTOM_MM + footerHeightMm + footerGapMm);
@@ -69,18 +69,40 @@ export const paginatePdfRows = <T>(rows: T[], limits: PdfRowLimits): T[][] => {
   if (rows.length === 0) return [[]];
   if (rows.length <= limits.singlePageRows) return [rows];
 
-  const pages: T[][] = [];
-  let cursor = Math.min(limits.firstPageRows, rows.length - 1);
-  pages.push(rows.slice(0, cursor));
-
-  while (rows.length - cursor > limits.lastPageRows) {
-    const remaining = rows.length - cursor;
-    const take = Math.min(limits.middlePageRows, remaining - limits.lastPageRows);
-    if (take <= 0) break;
-    pages.push(rows.slice(cursor, cursor + take));
-    cursor += take;
+  const firstCapacity = Math.max(1, limits.firstPageRows);
+  const middleCapacity = Math.max(1, limits.middlePageRows);
+  const lastCapacity = Math.max(1, limits.lastPageRows);
+  let pageCount = 2;
+  while (rows.length > firstCapacity + Math.max(0, pageCount - 2) * middleCapacity + lastCapacity) {
+    pageCount++;
   }
 
-  if (cursor < rows.length) pages.push(rows.slice(cursor));
+  const capacities = Array.from({ length: pageCount }, (_, index) => {
+    if (index === 0) return firstCapacity;
+    if (index === pageCount - 1) return lastCapacity;
+    return middleCapacity;
+  });
+  const preferredTrailingRows = Math.max(3, Math.min(12, Math.ceil(Math.min(middleCapacity, lastCapacity) * 0.35)));
+  const pages: T[][] = [];
+  let cursor = 0;
+
+  capacities.forEach((capacity, index) => {
+    const remainingRows = rows.length - cursor;
+    const remainingPages = pageCount - index;
+    if (remainingPages === 1) {
+      pages.push(rows.slice(cursor));
+      return;
+    }
+
+    const capacityAfter = capacities.slice(index + 1).reduce((sum, value) => sum + value, 0);
+    const minTake = Math.max(1, remainingRows - capacityAfter);
+    const reservePerPage = Math.min(preferredTrailingRows, Math.max(1, Math.ceil(remainingRows * 0.25)));
+    const maxTake = Math.max(minTake, remainingRows - reservePerPage * (remainingPages - 1));
+    const take = Math.min(capacity, maxTake);
+
+    pages.push(rows.slice(cursor, cursor + take));
+    cursor += take;
+  });
+
   return pages;
 };
