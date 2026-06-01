@@ -220,31 +220,19 @@ export default function OrdrePDFPage() {
       {/* PDF Content - A4 Format (paginé) */}
       <div className="container py-8 print:py-0 flex flex-col items-center gap-6 print:gap-0 animate-fade-in" ref={contentRef}>
         {(() => {
-          const ROWS_PAGE_1 = 18;
-          const ROWS_MIDDLE = 34;
-          const ROWS_LAST_WITH_TOTALS = 14;
-
           const allRows: any[] = isConteneur
             ? lignesConteneur
             : isConventionnel
               ? lignesConventionnel
               : lignesIndependant;
-          const totalRows = allRows.length;
-
-          const pages: any[][] = [];
-          if (totalRows === 0) {
-            pages.push([]);
-          } else if (totalRows <= ROWS_PAGE_1) {
-            pages.push(allRows);
-          } else {
-            pages.push(allRows.slice(0, ROWS_PAGE_1));
-            let cursor = ROWS_PAGE_1;
-            while (totalRows - cursor > ROWS_LAST_WITH_TOTALS) {
-              pages.push(allRows.slice(cursor, cursor + ROWS_MIDDLE));
-              cursor += ROWS_MIDDLE;
-            }
-            pages.push(allRows.slice(cursor));
-          }
+          const pagination = getPdfRowLimits({
+            footerHeightMm,
+            firstHeaderMm: 58,
+            compactHeaderMm: 16,
+            lastContentMm: ordre.motif_exoneration || ordre.notes ? 86 : 76,
+            singleLastContentMm: ordre.motif_exoneration || ordre.notes ? 90 : 80,
+          });
+          const pages = paginatePdfRows<any>(allRows, pagination);
 
           const renderTable = (rows: any[], startIndex: number) => {
             if (isConteneur) {
@@ -505,8 +493,9 @@ export default function OrdrePDFPage() {
             return (
               <Card
                 key={pageIndex}
+                data-pdf-page
                 className="bg-white print:shadow-none print:border-none relative flex flex-col"
-                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: '34mm', overflow: 'hidden' }}
+                style={{ width: '210mm', height: '297mm', padding: '10mm', paddingBottom: `${pagination.footerReserveMm}mm`, overflow: 'hidden' }}
               >
                 {isAnnule && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
