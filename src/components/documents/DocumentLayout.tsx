@@ -54,6 +54,7 @@ interface DocumentFooterProps {
 export function DocumentFooter({ fixed = false, className = "" }: DocumentFooterProps) {
   return (
     <div
+      data-document-footer
       className={`${fixed ? "absolute bottom-[10mm] left-[10mm] right-[10mm]" : "mt-4"} ${className} pt-3 border-t text-[10px] text-muted-foreground`}
     >
       <div className="text-center space-y-0.5">
