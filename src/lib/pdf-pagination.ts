@@ -70,7 +70,7 @@ export const paginatePdfRows = <T>(rows: T[], limits: PdfRowLimits): T[][] => {
   if (rows.length <= limits.singlePageRows) return [rows];
 
   const pages: T[][] = [];
-  let cursor = Math.min(limits.firstPageRows, Math.max(1, rows.length - limits.lastPageRows));
+  let cursor = Math.min(limits.firstPageRows, rows.length - 1);
   pages.push(rows.slice(0, cursor));
 
   while (rows.length - cursor > limits.lastPageRows) {
