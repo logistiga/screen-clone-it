@@ -10,6 +10,7 @@ import { DocumentFooter } from "@/components/documents/DocumentLayout";
 import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { useDevisById } from "@/hooks/use-commercial";
+import { getPdfRowLimits, measurePdfFooterHeightMm, paginatePdfRows } from "@/lib/pdf-pagination";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 export default function DevisPDFPage() {
@@ -25,6 +26,18 @@ export default function DevisPDFPage() {
   });
 
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [footerHeightMm, setFooterHeightMm] = useState(18);
+
+  useEffect(() => {
+    if (!devisData || isLoading) return;
+    const updateFooterHeight = () => setFooterHeightMm(measurePdfFooterHeightMm());
+    const frame = window.requestAnimationFrame(updateFooterHeight);
+    window.addEventListener("resize", updateFooterHeight);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateFooterHeight);
+    };
+  }, [devisData, isLoading]);
 
   // Téléchargement automatique au chargement (après le chargement des données)
   useEffect(() => {
