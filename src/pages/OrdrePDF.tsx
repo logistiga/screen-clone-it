@@ -311,7 +311,7 @@ export default function OrdrePDFPage() {
 
           const renderTotaux = () => (
             <>
-              <div className="flex justify-between mb-4 gap-4">
+              <div className="flex justify-between mb-4 gap-8 items-start">
                 <div className="flex-1 p-3 border rounded text-xs relative">
                   <SignatureCachet leftBlock size={150} />
                   <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
@@ -321,7 +321,11 @@ export default function OrdrePDFPage() {
                   </p>
                 </div>
 
-                <div className="w-72 border text-xs shrink-0">
+                <div className="w-72 border-2 border-primary rounded-md shadow-sm overflow-hidden text-xs shrink-0 self-start">
+                  <div className="bg-primary/10 px-3 py-1.5 border-b border-primary/30">
+                    <h3 className="text-[11px] font-bold text-primary uppercase tracking-wide">Récapitulatif</h3>
+                  </div>
+
                   <div className="flex justify-between items-center gap-2 py-1.5 px-3 bg-primary text-primary-foreground font-bold border-b">
                     <span className="whitespace-nowrap">Total TTC</span>
                     <span className="whitespace-nowrap tabular-nums">{formatMontant(ordre.montant_ttc)}</span>

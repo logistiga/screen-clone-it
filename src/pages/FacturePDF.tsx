@@ -321,7 +321,7 @@ export default function FacturePDFPage() {
 
           const renderTotaux = () => (
             <>
-              <div className="flex justify-between mb-4 gap-4">
+              <div className="flex justify-between mb-4 gap-8 items-start">
                 <div className="flex-1 p-3 border rounded text-xs relative">
                   <h3 className="font-bold mb-1">CONDITIONS DE PAIEMENT</h3>
                   <p className="text-muted-foreground">
@@ -329,7 +329,11 @@ export default function FacturePDFPage() {
                     seront appliquées conformément à la réglementation en vigueur.
                   </p>
                 </div>
-                <div className="w-72 border text-xs shrink-0 [&_span]:whitespace-nowrap [&_.amount]:tabular-nums">
+                <div className="w-72 border-2 border-primary rounded-md shadow-sm overflow-hidden text-xs shrink-0 [&_span]:whitespace-nowrap [&_.amount]:tabular-nums">
+                  <div className="bg-primary/10 px-3 py-1.5 border-b border-primary/30">
+                    <h3 className="text-[11px] font-bold text-primary uppercase tracking-wide">Récapitulatif</h3>
+                  </div>
+
                   {hasRemise ? (
                     <>
                       <div className="flex justify-between items-center gap-2 py-1 px-3 border-b">
