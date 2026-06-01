@@ -11,6 +11,7 @@ import { formatMontant, formatDate } from "@/data/mockData";
 import { DocumentFooter } from "@/components/documents/DocumentLayout";
 import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
+import { getPdfRowLimits, measurePdfFooterHeightMm, paginatePdfRows } from "@/lib/pdf-pagination";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 export default function OrdrePDFPage() {
@@ -24,6 +25,18 @@ export default function OrdrePDFPage() {
   });
 
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [footerHeightMm, setFooterHeightMm] = useState(18);
+
+  useEffect(() => {
+    if (!ordre) return;
+    const updateFooterHeight = () => setFooterHeightMm(measurePdfFooterHeightMm());
+    const frame = window.requestAnimationFrame(updateFooterHeight);
+    window.addEventListener("resize", updateFooterHeight);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateFooterHeight);
+    };
+  }, [ordre]);
 
   // Téléchargement automatique au chargement
   useEffect(() => {
