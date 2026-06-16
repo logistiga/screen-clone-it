@@ -129,6 +129,7 @@ class OperationEnAttenteController extends Controller
     public function ignorer(Request $request, string $operationId)
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $snapshot = $this->fetchOpsRow($operationId);
             DB::table('operations_externes_tracking')->updateOrInsert(
                 ['operation_id_externe' => $operationId],
