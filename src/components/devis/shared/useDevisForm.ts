@@ -136,9 +136,11 @@ export function useDevisForm(initial?: Partial<DevisFormState>) {
       }
 
       if (categorie === "operations_independantes" && independantData) {
-        data.type_operation_indep = independantData.typeOperationIndep || null;
+        data.type_marchandise = independantData.typeMarchandise || null;
+        data.description_generale = independantData.descriptionGenerale || null;
+        data.observation_interne = independantData.observationInterne || null;
         data.lignes = independantData.prestations.map((p) => ({
-          type_operation: independantData.typeOperationIndep || "manutention",
+          type_operation: p.typeOperation || "manutention",
           description: p.description || "",
           lieu_depart: p.lieuDepart || independantData.lieuChargement || null,
           lieu_arrivee: p.lieuArrivee || independantData.lieuDechargement || null,
