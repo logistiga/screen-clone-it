@@ -134,8 +134,13 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
                 ? "Independant"
                 : null,
         type_operation: categorie === "conteneurs" && conteneursData ? conteneursData.typeOperation : null,
-        type_operation_indep:
-          categorie === "operations_independantes" && independantData ? independantData.typeOperationIndep : null,
+        type_operation_indep: null,
+        type_marchandise:
+          categorie === "operations_independantes" && independantData ? independantData.typeMarchandise || null : null,
+        description_generale:
+          categorie === "operations_independantes" && independantData ? independantData.descriptionGenerale || null : null,
+        observation_interne:
+          categorie === "operations_independantes" && independantData ? independantData.observationInterne || null : null,
         notes:
           categorie === "conventionnel" && (conventionnelData as any)?.description
             ? (conventionnelData as any).description
