@@ -19,6 +19,9 @@ class OrdreTravailResource extends JsonResource
             'categorie' => DocumentCategory::normalize($this->categorie),
             'type_operation' => $this->type_operation,
             'type_operation_indep' => $this->type_operation_indep,
+            'type_marchandise' => $this->type_marchandise,
+            'description_generale' => $this->description_generale,
+            'observation_interne' => $this->observation_interne,
             'statut' => $this->statut,
             
             // IDs partenaires
