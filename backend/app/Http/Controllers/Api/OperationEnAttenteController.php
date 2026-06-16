@@ -152,6 +152,7 @@ class OperationEnAttenteController extends Controller
     public function confirmer(Request $request, string $operationId)
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $row = $this->fetchOpsRow($operationId);
             if (!$row) {
                 return response()->json(['success' => false, 'message' => 'Opération introuvable dans OPS'], 404);
