@@ -79,6 +79,7 @@ const ConnaissementPDFPage = lazy(() => import("./pages/ConnaissementPDF"));
 const ModifierOrdrePage = lazy(() => import("./pages/ModifierOrdre"));
 const ConteneursEnAttentePage = lazy(() => import("./pages/ConteneursEnAttente"));
 const DetentionsEnAttentePage = lazy(() => import("./pages/DetentionsEnAttente"));
+const OperationsEnAttentePage = lazy(() => import("./pages/OperationsEnAttente"));
 
 const FacturesPage = lazy(() => import("./pages/Factures"));
 const NouvelleFacturePage = lazy(() => import("./pages/NouvelleFacture"));
