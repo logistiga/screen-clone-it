@@ -55,7 +55,7 @@ class RecalculerTotauxDevis extends Command
                     'numero' => $d->numero,
                     'montant_ht' => $d->montant_ht,
                     'montant_ttc' => $d->montant_ttc,
-                });
+                ]);
             } catch (\Throwable $e) {
                 $errors++;
                 Log::error('Erreur recalcul devis', [
