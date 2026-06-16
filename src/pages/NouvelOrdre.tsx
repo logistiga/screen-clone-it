@@ -450,6 +450,9 @@ export default function NouvelOrdrePage() {
                   onDataChange={api.setIndependantData}
                   initialData={api.independantData ? {
                     typeOperationIndep: api.independantData.typeOperationIndep,
+                    typeMarchandise: api.independantData.typeMarchandise,
+                    descriptionGenerale: api.independantData.descriptionGenerale,
+                    observationInterne: api.independantData.observationInterne,
                     prestations: api.independantData.prestations,
                   } : undefined}
                 />

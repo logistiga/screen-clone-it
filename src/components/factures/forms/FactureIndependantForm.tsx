@@ -1,14 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   TypeOperationIndep,
+  TypeMarchandise,
   LignePrestationEtendue,
-  getOperationsIndepLabels,
   getInitialPrestationEtendue,
+  getTypeMarchandiseLabels,
   calculateDaysBetween,
 } from "@/types/documents";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
-import { FormError } from "@/components/ui/form-error";
 
 interface FactureIndependantFormProps {
   onDataChange: (data: FactureIndependantData) => void;
@@ -16,172 +25,132 @@ interface FactureIndependantFormProps {
 }
 
 export interface FactureIndependantData {
+  /** @deprecated */
   typeOperationIndep: TypeOperationIndep | "";
+  typeMarchandise: TypeMarchandise | "";
+  descriptionGenerale: string;
+  observationInterne: string;
   prestations: LignePrestationEtendue[];
   montantHT: number;
 }
 
-export default function FactureIndependantForm({
-  onDataChange,
-  initialData,
-}: FactureIndependantFormProps) {
+export default function FactureIndependantForm({ onDataChange, initialData }: FactureIndependantFormProps) {
   const lastInitKey = useRef<string>("");
-  const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
-  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
-  
-  // Validation state
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [typeMarchandise, setTypeMarchandise] = useState<TypeMarchandise | "">(
+    initialData?.typeMarchandise ?? ""
+  );
+  const [descriptionGenerale, setDescriptionGenerale] = useState(initialData?.descriptionGenerale ?? "");
+  const [observationInterne, setObservationInterne] = useState(initialData?.observationInterne ?? "");
+  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>(
+    initialData?.prestations?.length ? initialData.prestations : [getInitialPrestationEtendue()]
+  );
 
-  // Synchroniser l'état interne avec initialData (sans écraser les edits si rien n'a changé)
   useEffect(() => {
     if (!initialData) return;
-
-    const initKey = JSON.stringify({
-      typeOperationIndep: initialData.typeOperationIndep ?? "",
-      prestations: (initialData.prestations ?? []).map((p) => ({
-        id: p.id,
-        description: p.description,
-        lieuDepart: p.lieuDepart,
-        lieuArrivee: p.lieuArrivee,
-        dateDebut: p.dateDebut,
-        dateFin: p.dateFin,
-        quantite: p.quantite,
-        prixUnitaire: p.prixUnitaire,
-      })),
+    const key = JSON.stringify({
+      tm: initialData.typeMarchandise ?? "",
+      dg: initialData.descriptionGenerale ?? "",
+      oi: initialData.observationInterne ?? "",
+      ps: (initialData.prestations ?? []).map((p) => p.id),
     });
-
-    if (initKey === lastInitKey.current) return;
-
-    if (initialData.typeOperationIndep) {
-      setTypeOperationIndep(initialData.typeOperationIndep);
+    if (key === lastInitKey.current) return;
+    if (initialData.typeMarchandise !== undefined) setTypeMarchandise(initialData.typeMarchandise ?? "");
+    if (initialData.descriptionGenerale !== undefined)
+      setDescriptionGenerale(initialData.descriptionGenerale ?? "");
+    if (initialData.observationInterne !== undefined)
+      setObservationInterne(initialData.observationInterne ?? "");
+    if (initialData.prestations?.length) {
+      const oldType = initialData.typeOperationIndep;
+      setPrestations(
+        initialData.prestations.map((p) => ({
+          ...p,
+          typeOperation: p.typeOperation || (oldType as TypeOperationIndep | "") || "",
+        }))
+      );
     }
-
-    if (initialData.prestations && initialData.prestations.length > 0) {
-      setPrestations(initialData.prestations);
-    }
-
-    lastInitKey.current = initKey;
+    lastInitKey.current = key;
   }, [initialData]);
 
-  const operationsIndepLabels = getOperationsIndepLabels();
+  const totalHT = (items: LignePrestationEtendue[]) =>
+    items.reduce((s, p) => s + (p.montantHT || 0), 0);
 
-  const calculateTotalPrestations = (items: LignePrestationEtendue[]): number => {
-    return items.reduce((sum, p) => sum + (p.montantHT || 0), 0);
-  };
-
-  const updateParent = (items: LignePrestationEtendue[]) => {
-    const montantHT = calculateTotalPrestations(items);
-    onDataChange({
-      typeOperationIndep,
-      prestations: items,
-      montantHT,
-    });
-  };
-
-  // Toujours pousser vers le parent quand le type ou les lignes changent
   useEffect(() => {
-    updateParent(prestations);
+    onDataChange({
+      typeOperationIndep: "",
+      typeMarchandise,
+      descriptionGenerale,
+      observationInterne,
+      prestations,
+      montantHT: totalHT(prestations),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeOperationIndep, prestations]);
+  }, [typeMarchandise, descriptionGenerale, observationInterne, prestations]);
 
   const handleAddPrestation = () => {
-    const newPrestations = [...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }];
-    setPrestations(newPrestations);
-    updateParent(newPrestations);
+    setPrestations([...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }]);
   };
-
   const handleRemovePrestation = (id: string) => {
-    if (prestations.length > 1) {
-      const newPrestations = prestations.filter(p => p.id !== id);
-      setPrestations(newPrestations);
-      updateParent(newPrestations);
-    }
+    if (prestations.length > 1) setPrestations(prestations.filter((p) => p.id !== id));
   };
-
   const handlePrestationChange = (id: string, field: keyof LignePrestationEtendue, value: string | number) => {
-    const newPrestations = prestations.map(p => {
-      if (p.id === id) {
-        const updated = { ...p, [field]: value };
-        if (field === 'dateDebut' || field === 'dateFin') {
-          const dateDebut = field === 'dateDebut' ? String(value) : updated.dateDebut || '';
-          const dateFin = field === 'dateFin' ? String(value) : updated.dateFin || '';
-          if (dateDebut && dateFin) {
-            updated.quantite = calculateDaysBetween(dateDebut, dateFin);
+    setPrestations((curr) =>
+      curr.map((p) => {
+        if (p.id !== id) return p;
+        const updated: LignePrestationEtendue = { ...p, [field]: value } as LignePrestationEtendue;
+        if (field === "dateDebut" || field === "dateFin") {
+          const d = field === "dateDebut" ? String(value) : updated.dateDebut || "";
+          const f = field === "dateFin" ? String(value) : updated.dateFin || "";
+          if (d && f) {
+            updated.quantite = calculateDaysBetween(d, f);
             updated.montantHT = updated.quantite * updated.prixUnitaire;
           }
         }
-        if (field === 'quantite' || field === 'prixUnitaire') {
+        if (field === "quantite" || field === "prixUnitaire") {
           updated.montantHT = updated.quantite * updated.prixUnitaire;
         }
         return updated;
-      }
-      return p;
-    });
-    setPrestations(newPrestations);
-    updateParent(newPrestations);
+      })
+    );
   };
 
-  const handleBlur = (fieldName: string, value: unknown) => {
-    setTouched((prev) => ({ ...prev, [fieldName]: true }));
-    // Simple validation for description
-    if (fieldName.includes("description") && (!value || String(value).trim() === "")) {
-      setErrors((prev) => ({ ...prev, [fieldName]: "La description est obligatoire" }));
-    } else {
-      setErrors((prev) => {
-        const { [fieldName]: _, ...rest } = prev;
-        return rest;
-      });
-    }
-  };
-
-  const handleTypeSelect = (key: TypeOperationIndep) => {
-    setTypeOperationIndep(key);
-    setTouched((prev) => ({ ...prev, typeOperationIndep: true }));
-  };
+  const marchandiseLabels = getTypeMarchandiseLabels();
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Type d'opération indépendante *</CardTitle>
+          <CardTitle className="text-lg">Informations marchandise</CardTitle>
+          <CardDescription>Type, description et observation pour cette opération.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
-              const op = operationsIndepLabels[key];
-              const isSelected = typeOperationIndep === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleTypeSelect(key)}
-                  className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 text-center ${
-                    isSelected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div className={isSelected ? "text-primary" : "text-muted-foreground"}>{op.icon}</div>
-                  <span className={`text-sm font-medium ${isSelected ? "text-primary" : ""}`}>{op.label}</span>
-                </button>
-              );
-            })}
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Type de marchandise *</Label>
+            <Select value={typeMarchandise || undefined} onValueChange={(v) => setTypeMarchandise(v as TypeMarchandise)}>
+              <SelectTrigger className="h-11"><SelectValue placeholder="Sélectionner un type" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(marchandiseLabels) as TypeMarchandise[]).map((k) => (
+                  <SelectItem key={k} value={k}>{marchandiseLabels[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <FormError message={touched.typeOperationIndep && !typeOperationIndep ? "Veuillez sélectionner un type d'opération" : undefined} />
+          <div className="space-y-2">
+            <Label>Description générale</Label>
+            <Textarea value={descriptionGenerale} onChange={(e) => setDescriptionGenerale(e.target.value)} rows={3} placeholder="Description de l'opération (visible sur le document)" />
+          </div>
+          <div className="space-y-2">
+            <Label>Observation interne</Label>
+            <Textarea value={observationInterne} onChange={(e) => setObservationInterne(e.target.value)} rows={3} placeholder="Notes internes (non imprimées sur le PDF)" />
+          </div>
         </CardContent>
       </Card>
 
-      {typeOperationIndep && (
-        <OperationsIndependantesForm
-          typeOperationIndep={typeOperationIndep}
-          prestations={prestations}
-          onAddPrestation={handleAddPrestation}
-          onRemovePrestation={handleRemovePrestation}
-          onPrestationChange={handlePrestationChange}
-          errors={errors}
-          touched={touched}
-          onBlur={(fieldName: string) => handleBlur(fieldName, "")}
-        />
-      )}
+      <OperationsIndependantesForm
+        prestations={prestations}
+        onAddPrestation={handleAddPrestation}
+        onRemovePrestation={handleRemovePrestation}
+        onPrestationChange={handlePrestationChange}
+      />
     </>
   );
 }

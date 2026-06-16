@@ -25,6 +25,9 @@ class StoreFactureRequest extends FormRequest
             'type_document' => ['required', 'string', 'in:Conteneur,Lot,Independant'],
             'type_operation' => ['nullable', 'string', 'max:100'],
             'type_operation_indep' => ['nullable', 'string', 'in:transport,manutention,stockage,location,double_relevage'],
+            'type_marchandise' => ['nullable', 'in:conteneur,materiel,marchandise_generale,engin,autre'],
+            'description_generale' => ['nullable', 'string', 'max:2000'],
+            'observation_interne' => ['nullable', 'string', 'max:2000'],
             
             // Dates
             'date_echeance' => ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:today'],

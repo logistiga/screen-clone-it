@@ -73,10 +73,10 @@ export function buildOrdreStepsValidation({
   } else if (categorie === "operations_independantes") {
     const missing: string[] = [];
     const completed: string[] = [];
-    if (!independantData?.typeOperationIndep) missing.push("Type d'opération");
-    else completed.push(`Type : ${independantData.typeOperationIndep}`);
-    const validPrestations = independantData?.prestations?.filter((p) => p.description?.trim()).length || 0;
-    if (validPrestations === 0) missing.push("Au moins une prestation");
+    if (!independantData?.typeMarchandise) missing.push("Type de marchandise");
+    else completed.push(`Marchandise : ${independantData.typeMarchandise}`);
+    const validPrestations = independantData?.prestations?.filter((p) => p.description?.trim() && p.typeOperation).length || 0;
+    if (validPrestations === 0) missing.push("Au moins une ligne (type + description)");
     else completed.push(`${validPrestations} prestation(s)`);
     isStep3Valid = missing.length === 0;
     step3Details = isStep3Valid ? completed : missing;

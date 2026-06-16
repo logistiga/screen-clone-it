@@ -97,9 +97,12 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
       return { ok: true };
     }
     if (categorie === "operations_independantes") {
-      if (!independantData?.typeOperationIndep) return { ok: false, error: "Veuillez sélectionner un type d'opération" };
+      if (!independantData?.typeMarchandise) return { ok: false, error: "Veuillez sélectionner le type de marchandise" };
       if (!independantData.prestations?.length || independantData.prestations.every((p) => !p.description?.trim())) {
         return { ok: false, error: "Veuillez ajouter au moins une prestation" };
+      }
+      if (independantData.prestations.some((p) => !p.typeOperation)) {
+        return { ok: false, error: "Chaque ligne doit avoir un type d'opération" };
       }
       return { ok: true };
     }
@@ -131,8 +134,13 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
                 ? "Independant"
                 : null,
         type_operation: categorie === "conteneurs" && conteneursData ? conteneursData.typeOperation : null,
-        type_operation_indep:
-          categorie === "operations_independantes" && independantData ? independantData.typeOperationIndep : null,
+        type_operation_indep: null,
+        type_marchandise:
+          categorie === "operations_independantes" && independantData ? independantData.typeMarchandise || null : null,
+        description_generale:
+          categorie === "operations_independantes" && independantData ? independantData.descriptionGenerale || null : null,
+        observation_interne:
+          categorie === "operations_independantes" && independantData ? independantData.observationInterne || null : null,
         notes:
           categorie === "conventionnel" && (conventionnelData as any)?.description
             ? (conventionnelData as any).description
@@ -193,9 +201,8 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
       }
 
       if (categorie === "operations_independantes" && independantData) {
-        data.type_operation_indep = independantData.typeOperationIndep || null;
         data.lignes = independantData.prestations.map((p) => ({
-          type_operation: independantData.typeOperationIndep || "manutention",
+          type_operation: p.typeOperation || "manutention",
           description: p.description || "",
           lieu_depart: p.lieuDepart || null,
           lieu_arrivee: p.lieuArrivee || null,

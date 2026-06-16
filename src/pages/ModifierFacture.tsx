@@ -246,6 +246,7 @@ export default function ModifierFacturePage() {
 
     const prestations = (facture.lignes || []).map((l: any, idx: number) => ({
       id: String(l.id || idx),
+      typeOperation: (l.type_operation || typeOp || "") as TypeOperationIndep | "",
       description: l.description || "",
       lieuDepart: l.lieu_depart || "",
       lieuArrivee: l.lieu_arrivee || "",
@@ -258,6 +259,9 @@ export default function ModifierFacturePage() {
 
     return {
       typeOperationIndep: typeOp as TypeOperationIndep | "",
+      typeMarchandise: (facture.type_marchandise || "") as any,
+      descriptionGenerale: facture.description_generale || "",
+      observationInterne: facture.observation_interne || "",
       prestations,
       montantHT: prestations.reduce((sum: number, p: any) => sum + p.montantHT, 0),
     };

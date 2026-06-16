@@ -1,94 +1,102 @@
-
-# Refonte "Opérations Indépendantes" + Sync OT → App Opérations
-
 ## Objectif
-Refondre proprement la création de Devis / Ordre de Travail / Facture pour les opérations indépendantes avec 6 types de lignes typées, et pousser automatiquement chaque OT créé/maj vers l'app Opérations Logistiga via webhook HMAC. L'opérateur n'aura plus qu'à cliquer "Valider" côté Ops (aucun retour vers Facturation).
 
-## 1. Modèle de données (backend Laravel)
+Réorganiser le module **Opérations Indépendantes** (Ordres de Travail, Devis, Factures) :
 
-Migrations additives (pas de table polymorphique séparée, on étend l'existant).
+- En-tête simplifié : **client, date, type de marchandise (nouveau), description générale (nouveau), observation interne (nouveau)**.
+- **Plus de type d'opération unique** en en-tête — le type est désormais **choisi par ligne** parmi : Transport, Location, Manutention, Double Relevage, Stockage.
 
-Sur `lignes_devis`, `lignes_ordres`, `lignes_factures` :
-- `line_type` enum: `TRANSPORT | LOCATION | MANUTENTION | AUTRE | DOUBLE_RELEVAGE | STOCKAGE`
-- `position` integer (ordre d'affichage)
-- `libelle` string nullable (titre court de la ligne)
-- `type_transport` string nullable (camion / porte-char / etc.)
-- `mode_trajet` enum nullable (`aller_simple | aller_retour`)
-- `nombre_jours` integer nullable (calculé pour LOCATION/STOCKAGE à partir de dates)
-- `date_debut`, `date_fin` date nullable (LOCATION/STOCKAGE)
-- Montants restent `decimal(15,2)`, IDs restent `bigint` (pas d'UUID, pas de bigint FCFA).
+## Nouveau flux (formulaire)
 
-Backfill : commande `lignes:backfill-line-type` qui mappe l'ancien `type_operation_indep` + `type_operation` vers `line_type`, calcule `nombre_jours` pour location/stockage, et numérote `position` via `ROW_NUMBER()`.
+```text
+┌─ En-tête ────────────────────────────────────────┐
+│ Client *           Date opération *              │
+│ Type marchandise * [Conteneur│Matériel│MG│Engin│Autre]
+│ Description générale (textarea)                  │
+│ Observation interne (textarea, non imprimée PDF) │
+└──────────────────────────────────────────────────┘
 
-Nouvelle table `ops_webhook_deliveries` (audit des envois) :
-- `id`, `ordre_id`, `event` (created/updated/deleted), `payload_json`, `signature`, `attempts`, `last_status`, `last_response`, `next_retry_at`, timestamps.
+┌─ Lignes ────────────────────────── [+ Ajouter] ──┐
+│ Ligne 1                                          │
+│   Type d'opération * [Transport│Location│…]      │
+│   ↳ champs spécifiques au type sélectionné       │
+│   Description, Quantité, Prix, Montant HT        │
+│ Ligne 2  …                                       │
+└──────────────────────────────────────────────────┘
+```
 
-## 2. Backend services
+## Backend (Laravel)
 
-- `LineTypeRegistry` (PHP) : définit les 6 types, leurs champs requis et leur libellé par défaut.
-- `AutreService` : nouveau, gère libellé libre.
-- `LocationService` / `StockageService` : recalcul auto `nombre_jours = date_fin - date_debut + 1`.
-- `TransportService` : prend en compte `type_transport` + `mode_trajet` (aller_retour double la quantité par défaut).
-- Form requests (`StoreDevisRequest`, `StoreOrdreRequest`, `StoreFactureRequest`) : `lignes.*.line_type` requis, validations conditionnelles `required_if`.
-- Resources : exposent toutes les nouvelles colonnes.
+### Migration
+Nouveau fichier `add_marchandise_fields_to_documents.php` :
+- `ordres_travail`, `devis`, `factures` : ajouter
+  - `type_marchandise` ENUM('conteneur','materiel','marchandise_generale','engin','autre') NULL
+  - `description_generale` TEXT NULL
+  - `observation_interne` TEXT NULL
+- `lignes_ordres`, `lignes_devis`, `lignes_factures` : la colonne `type_operation` existe déjà → s'assurer qu'elle est NOT NULL via défaut applicatif (pas de changement de schéma destructif).
+- Migration de données : pour les OT/Devis/Facture existants en `categorie = operations_independantes`, copier `type_operation_indep` du parent dans chaque ligne enfant si `lignes.type_operation` est NULL.
 
-## 3. Sync OT → App Opérations (Push webhook)
+### Models / Resources
+- Ajouter les 3 champs dans `$fillable` de `OrdreTravail`, `Devis`, `Facture`.
+- Exposer dans `OrdreTravailResource`, `DevisResource`, `FactureResource`.
+- `LigneOrdreResource`, `LigneDevisResource`, `LigneFactureResource` : déjà retournent `type_operation` → OK.
 
-- Observer `OrdreTravailObserver` (créé / mis à jour / supprimé pour OT catégorie "opérations indépendantes" uniquement) → dispatch job `SendOpsWebhookJob`.
-- `SendOpsWebhookJob` (queue) :
-  - Construit payload JSON normalisé : header OT + lignes typées + client + montants.
-  - Signe `X-Logistiga-Signature: sha256=HMAC(payload, OPS_WEBHOOK_SECRET)`.
-  - POST vers `OPS_WEBHOOK_URL`.
-  - Retries exponentiels (1m, 5m, 30m, 2h, 6h — 5 tentatives), log dans `ops_webhook_deliveries`.
-- Endpoint admin `/admin/ops-webhooks` côté Facturation : liste les livraisons, replay manuel sur échec.
-- **One-way** : aucun endpoint inbound, aucun champ `valide_ops` côté Facturation (conformément au choix utilisateur).
+### FormRequests
+`StoreOrdreTravailRequest`, `UpdateOrdreTravailRequest`, et équivalents Devis/Facture :
+- ajouter validation :
+  - `type_marchandise` : `nullable|in:conteneur,materiel,marchandise_generale,engin,autre`
+  - `description_generale`, `observation_interne` : `nullable|string|max:2000`
+- `type_operation_indep` (en-tête) : devient **optionnel et deprecated** (conservé pour rétrocompatibilité, n'est plus exigé).
+- `lignes.*.type_operation` : reste `required_with:lignes`.
 
-**Secrets à demander** une fois le plan validé :
-- `OPS_WEBHOOK_URL` (URL de réception côté app Ops)
-- `OPS_WEBHOOK_SECRET` (secret HMAC partagé)
+### Services
+Dans `OrdreServiceFactory` / équivalents Devis & Facture : persister les 3 nouveaux champs lors de create/update. Aucun changement de calcul (totaux inchangés).
 
-## 4. Frontend
+## Frontend (React/TS)
 
-- `src/lib/api/commercial/types.ts` : nouveau type unifié `LigneApi` avec tous les champs typés.
-- `src/lib/commercial/LineTypeRegistry.ts` : miroir front (libellés, champs visibles par type, validations Zod).
-- `src/components/commercial/operations-independantes/` :
-  - `OperationsIndependantesForm.tsx` (partagé Devis / OT / Facture).
-  - `LineFormDialog.tsx` (form modal contextuel selon `line_type`).
-  - `TransportFormFields.tsx` étendu (`type_transport`, `mode_trajet`).
-  - `LocationFormFields.tsx` / `StockageFormFields.tsx` (date_debut/date_fin → auto nombre_jours).
-  - `ManutentionFormFields.tsx`, `DoubleRelevageFormFields.tsx`, `AutreFormFields.tsx` (libellé libre).
-- Intégration dans `DevisForm`, `OrdreTravailForm`, `FactureForm` (pages opérations indépendantes uniquement, autres catégories inchangées).
-- `toApiPayload()` simplifié — un seul mapping basé sur `line_type`.
+### Types (`src/types/documents.ts`)
+- Ajouter `TypeMarchandise = 'conteneur' | 'materiel' | 'marchandise_generale' | 'engin' | 'autre'` + helper labels.
+- Étendre `LignePrestationEtendue` avec `typeOperation: TypeOperationIndep` (par ligne).
 
-## 5. Affichage PDF
+### Composant principal : `OperationsIndependantesForm.tsx`
+- Supprimer la prop `typeOperationIndep` globale.
+- Pour chaque ligne, ajouter en haut un **sélecteur de type d'opération** (5 boutons compacts) qui détermine quel `*FormFields` rendre.
+- Remplacer `getInitialPrestationEtendue()` → renvoyer `typeOperation: ''` par défaut.
 
-- `buildLignesIndependant()` enrichi : rend la ligne selon `line_type` (icône + libellé typé, jours pour location/stockage, mode trajet pour transport, libellé libre pour autre).
-- Pas de changement de modèle PDF (toujours "Opérations Indépendantes"), seulement le contenu des lignes.
+### Composants parents (3 formulaires)
+- `OrdreIndependantForm.tsx`, `DevisIndependantForm.tsx`, `FactureIndependantForm.tsx` :
+  - **Retirer** la grosse Card « Sélection du type d'opération » globale.
+  - **Ajouter** une Card « Informations marchandise » avec : Type marchandise (Select 5 options), Description générale (Textarea), Observation interne (Textarea).
+  - Étendre `*Data` interface : `typeMarchandise`, `descriptionGenerale`, `observationInterne`.
+  - Supprimer (ou rendre optionnel deprecated) le state `typeOperationIndep`.
 
-## 6. Migration & non-régression
+### useOrdreForm + équivalents Devis/Facture
+- Mapper les nouveaux champs vers/depuis l'API.
+- Inclure `lignes[].type_operation` dans le payload (déjà supporté côté API).
 
-- Backfill exécuté en prod après déploiement.
-- Anciens OT/Devis/Factures ouverts en lecture : `line_type` rempli par backfill, comportement identique.
-- Tests manuels :
-  1. Créer Devis avec une ligne de chaque type → convertir en OT → convertir en Facture → vérifier PDF.
-  2. Modifier OT → vérifier ré-envoi webhook (event `updated`).
-  3. Couper l'app Ops → vérifier retries dans `ops_webhook_deliveries`.
+### Validations zod (`ordre-schemas.ts`, devis-schemas, facture-schemas)
+- Schémas indépendant : retirer l'obligation de `typeOperationIndep` à la racine, ajouter `typeMarchandise` requis, exiger `prestations[].typeOperation`.
 
-## Hors scope (explicitement)
-- Pas de table polymorphique séparée (`operations` / `operation_lines`).
-- Pas de migration UUID, pas de bigint FCFA.
-- Pas de retour de validation Ops → Facturation (one-way confirmé).
-- Pas de `/api/v1`, pas d'`operation_charges` / `payments` / `bonuses`.
+### Affichage (helpers/table/badge)
+- `ordres-helpers.tsx` : `getTypeBadge` pour catégorie `operations_independantes` → si plusieurs lignes de types différents → badge "Indépendant (multi)", sinon afficher le type de la première ligne. Bonus : afficher `type_marchandise` comme sous-libellé.
 
-## Détails techniques (section dev)
+### PDF (Blade templates `pdf/devis.blade.php`, `pdf/facture.blade.php`, `pdf/ordre-travail.blade.php` si présent)
+- En tête : afficher Type marchandise + Description générale.
+- Ne **pas** imprimer Observation interne.
+- Colonne « Type opération » ajoutée dans le tableau des lignes pour les Indépendantes.
 
-- Enum PG `line_type_enum` créé via migration, ajouté aux 3 tables.
-- HMAC : `hash_hmac('sha256', $rawJson, $secret)`.
-- Job queue : connexion `database` (déjà utilisée par le projet), tag `ops-webhook`.
-- Observer filtre : `if ($ordre->categorie !== 'operations_independantes') return;`.
-- Front : `LigneApi.discriminatedUnion('line_type', [...])` côté Zod pour validation typée.
+## Rétrocompatibilité
 
-## Livraison
-Tout en un seul plan (backend migrations + services + webhook + frontend + PDF) comme demandé.
+- `type_operation_indep` (en-tête) conservé en base et lu en fallback : si nouveau document n'a pas ce champ mais a des lignes, OK ; les anciens documents continuent d'afficher correctement.
+- Migration backfills `lignes.type_operation` depuis `type_operation_indep` parent pour éviter des lignes orphelines.
 
-Prochaine étape après approbation : je demande les 2 secrets (`OPS_WEBHOOK_URL`, `OPS_WEBHOOK_SECRET`) puis j'implémente.
+## Hors périmètre
+
+- Pas de changement aux Conteneurs ni Conventionnel.
+- Pas de changement aux calculs de taxes/totaux.
+- Vue OPS `v_ops_independantes` : sera mise à jour dans un second temps pour exposer les nouveaux champs (à confirmer après validation de ce plan).
+
+## Livrables (fichiers touchés)
+
+Backend (~10) : 1 migration + 3 models + 3 resources + 6 FormRequests + 3 services.
+Frontend (~10) : `types/documents.ts`, `OperationsIndependantesForm.tsx`, 3 forms parents, 3 validations, `ordres-helpers.tsx`, `useOrdreForm` (+ Devis/Facture).
+PDF (3 blade).

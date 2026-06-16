@@ -165,8 +165,12 @@ export default function ModifierOrdrePage() {
     const normalizedType = typeFromOrder.toLowerCase().replace(/\s+/g, "_").replace("double relevage", "double_relevage");
     return {
       typeOperationIndep: normalizedType as any,
+      typeMarchandise: ((ordreData as any).type_marchandise || "") as any,
+      descriptionGenerale: (ordreData as any).description_generale || "",
+      observationInterne: (ordreData as any).observation_interne || "",
       prestations: ordreData.lignes.map((l: any) => ({
         id: String(l.id),
+        typeOperation: (l.type_operation || normalizedType || "") as any,
         description: l.description || "",
         lieuDepart: l.lieu_depart || "",
         lieuArrivee: l.lieu_arrivee || "",
