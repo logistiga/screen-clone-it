@@ -6,7 +6,16 @@ export type CategorieDocument = "conteneurs" | "conventionnel" | "operations_ind
 
 // Types d'opérations
 export type TypeOperation = "import" | "export";
-export type TypeOperationIndep = "location" | "transport" | "manutention" | "double_relevage" | "stockage";
+// Types acceptés en BDD (rétrocompat lecture incluant les anciens)
+export type TypeOperationIndep =
+  | "transport"
+  | "location"
+  | "manutention"
+  | "autre"
+  | "double_relevage"
+  | "stockage";
+// Types proposés à la création (alignés OPS)
+export type TypeOperationIndepCreation = "transport" | "location" | "manutention" | "autre";
 
 // Type de marchandise (en-tête des opérations indépendantes)
 export type TypeMarchandise = "conteneur" | "materiel" | "marchandise_generale" | "engin" | "autre";
@@ -20,7 +29,9 @@ export const getTypeMarchandiseLabels = (): Record<TypeMarchandise, string> => (
 });
 
 // Types d'opérations disponibles pour conteneurs
-export type TypeOperationConteneur = "arrivee" | "stockage" | "depotage" | "double_relevage" | "sortie" | "transport" | "manutention" | "escorte";
+export type TypeOperationConteneur =
+  | "arrivee" | "stockage" | "depotage" | "double_relevage"
+  | "sortie" | "transport" | "manutention" | "escorte";
 
 // Interfaces
 export interface OperationConteneur {
@@ -70,27 +81,25 @@ export const typesOperationConteneur: Record<TypeOperationConteneur, { label: st
   escorte: { label: "Escorte", prixDefaut: 50000 },
 };
 
-// Mock data pour armateurs, transitaires et représentants
+// Mocks (legacy)
 export const armateurs = [
   { id: "arm1", nom: "MSC" },
   { id: "arm2", nom: "MAERSK" },
   { id: "arm3", nom: "CMA CGM" },
   { id: "arm4", nom: "HAPAG-LLOYD" },
 ];
-
 export const transitaires = [
   { id: "trans1", nom: "Transit Express" },
   { id: "trans2", nom: "Global Transit" },
   { id: "trans3", nom: "Africa Logistics" },
 ];
-
 export const representants = [
   { id: "rep1", nom: "Jean Dupont" },
   { id: "rep2", nom: "Marie Koumba" },
   { id: "rep3", nom: "Paul Mbongo" },
 ];
 
-// Labels pour les catégories (création dynamique avec les icônes)
+// Labels pour les catégories
 export const getCategoriesLabels = (): Record<CategorieDocument, { label: string; description: string; icon: React.ReactNode }> => ({
   conteneurs: {
     label: "Conteneurs",
@@ -104,46 +113,68 @@ export const getCategoriesLabels = (): Record<CategorieDocument, { label: string
   },
   operations_independantes: {
     label: "Opérations indépendantes",
-    description: "Location, Transport, Manutention, Stockage",
+    description: "Transport, Location, Manutention, Autre",
     icon: React.createElement(Truck, { className: "h-6 w-6" }),
   },
 });
 
-// Labels pour les opérations indépendantes
-export const getOperationsIndepLabels = (): Record<TypeOperationIndep, { label: string; icon: React.ReactNode }> => ({
-  location: { label: "Location", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
-  transport: { label: "Transport", icon: React.createElement(Truck, { className: "h-6 w-6" }) },
-  manutention: { label: "Manutention", icon: React.createElement(Forklift, { className: "h-6 w-6" }) },
-  double_relevage: { label: "Double relevage", icon: React.createElement(ArrowLeftRight, { className: "h-6 w-6" }) },
-  stockage: { label: "Stockage", icon: React.createElement(Warehouse, { className: "h-6 w-6" }) },
+// Labels des 4 types de lignes proposés à la création
+export const getOperationsIndepLabels = (): Record<TypeOperationIndepCreation, { label: string; icon: React.ReactNode }> => ({
+  transport: { label: "Transport", icon: React.createElement(Truck, { className: "h-5 w-5" }) },
+  location: { label: "Location", icon: React.createElement(Truck, { className: "h-5 w-5" }) },
+  manutention: { label: "Manutention", icon: React.createElement(Forklift, { className: "h-5 w-5" }) },
+  autre: { label: "Autre", icon: React.createElement(Package, { className: "h-5 w-5" }) },
 });
 
-// Interface pour les prestations avec champs spécifiques
+// Labels pour lecture (inclut anciens types stockage / double_relevage)
+export const getOperationsIndepLabelsAll = (): Record<TypeOperationIndep, string> => ({
+  transport: "Transport",
+  location: "Location",
+  manutention: "Manutention",
+  autre: "Autre",
+  double_relevage: "Double relevage",
+  stockage: "Stockage",
+});
+
+// Prestation enrichie (champs spécifiques par-ligne)
 export interface LignePrestationEtendue extends LignePrestation {
-  // Type d'opération désormais PAR LIGNE (et non plus en en-tête)
   typeOperation?: TypeOperationIndep | "";
-  // Pour transport hors Libreville
-  lieuDepart?: string;
-  lieuArrivee?: string;
-  // Pour location et stockage
+  // Transport
+  pointDepart?: string;
+  pointArrivee?: string;
+  typeTransport?: "conteneur" | "marchandise" | "engin" | "materiel" | "";
+  modeTrajet?: "aller_simple" | "aller_retour" | "";
+  // Location & manutention
+  materiel?: string;
+  // Location (dates)
   dateDebut?: string;
   dateFin?: string;
+  nombreJours?: number;
+  // Compat héritée
+  lieuDepart?: string;
+  lieuArrivee?: string;
 }
 
 export const getInitialPrestationEtendue = (): LignePrestationEtendue => ({
-  id: "1",
+  id: String(Date.now()),
   typeOperation: "",
   description: "",
   quantite: 1,
   prixUnitaire: 0,
   montantHT: 0,
-  lieuDepart: "",
-  lieuArrivee: "",
+  pointDepart: "Libreville",
+  pointArrivee: "",
+  typeTransport: "",
+  modeTrajet: "",
+  materiel: "",
   dateDebut: "",
   dateFin: "",
+  nombreJours: 1,
+  lieuDepart: "",
+  lieuArrivee: "",
 });
 
-// Calcul du nombre de jours entre deux dates
+// Nombre de jours entre 2 dates
 export const calculateDaysBetween = (dateDebut: string, dateFin: string): number => {
   if (!dateDebut || !dateFin) return 1;
   const debut = new Date(dateDebut);
@@ -155,44 +186,23 @@ export const calculateDaysBetween = (dateDebut: string, dateFin: string): number
 
 // États initiaux
 export const getInitialConteneur = (): LigneConteneur => ({
-  id: "1",
-  numero: "",
-  taille: "",
-  description: "",
-  prixUnitaire: 0,
-  operations: []
+  id: "1", numero: "", taille: "", description: "", prixUnitaire: 0, operations: [],
 });
-
 export const getInitialLot = (): LigneLot => ({
-  id: "1",
-  numeroLot: "",
-  description: "",
-  quantite: 1,
-  prixUnitaire: 0,
-  prixTotal: 0
+  id: "1", numeroLot: "", description: "", quantite: 1, prixUnitaire: 0, prixTotal: 0,
 });
-
 export const getInitialPrestation = (): LignePrestation => ({
-  id: "1",
-  description: "",
-  quantite: 1,
-  prixUnitaire: 0,
-  montantHT: 0
+  id: "1", description: "", quantite: 1, prixUnitaire: 0, montantHT: 0,
 });
 
-// Fonctions de calcul partagées
+// Calculs
 export const calculateTotalConteneurs = (conteneurs: LigneConteneur[]): number => {
   const totalConteneurs = conteneurs.reduce((sum, c) => sum + (c.prixUnitaire || 0), 0);
-  const totalOperations = conteneurs.reduce((sum, c) => 
-    sum + c.operations.reduce((opSum, op) => opSum + op.prixTotal, 0), 0
+  const totalOperations = conteneurs.reduce(
+    (sum, c) => sum + c.operations.reduce((s, op) => s + op.prixTotal, 0), 0
   );
   return totalConteneurs + totalOperations;
 };
-
-export const calculateTotalLots = (lots: LigneLot[]): number => {
-  return lots.reduce((sum, l) => sum + l.prixTotal, 0);
-};
-
-export const calculateTotalPrestations = (prestations: LignePrestation[]): number => {
-  return prestations.reduce((sum, p) => sum + p.montantHT, 0);
-};
+export const calculateTotalLots = (lots: LigneLot[]): number => lots.reduce((s, l) => s + l.prixTotal, 0);
+export const calculateTotalPrestations = (prestations: LignePrestation[]): number =>
+  prestations.reduce((s, p) => s + p.montantHT, 0);
