@@ -231,6 +231,7 @@ export default function OrdreIndependantForm({ onDataChange, initialData }: Ordr
         onAddPrestation={handleAddPrestation}
         onRemovePrestation={handleRemovePrestation}
         onPrestationChange={handlePrestationChange}
+        onReplacePrestations={setPrestations}
         errors={errors}
         touched={touched}
         onBlur={handleBlur}

@@ -168,6 +168,7 @@ export default function DevisIndependantForm({ onDataChange, initialData }: Devi
         onAddPrestation={handleAddPrestation}
         onRemovePrestation={handleRemovePrestation}
         onPrestationChange={handlePrestationChange}
+        onReplacePrestations={setPrestations}
       />
     </>
   );
