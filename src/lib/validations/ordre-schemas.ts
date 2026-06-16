@@ -156,17 +156,19 @@ export const ordreConventionnelSchema = z.object({
 
 export const lignePrestationEtendueSchema = z.object({
   id: z.string(),
-  typeOperation: z.enum(["location", "transport", "manutention", "double_relevage", "stockage"], {
-    errorMap: () => ({ message: "Sélectionnez un type d'opération pour cette ligne" }),
+  typeOperation: z.enum(["transport", "location", "manutention", "autre", "double_relevage", "stockage"], {
+    errorMap: () => ({ message: "Sélectionnez un type de ligne" }),
   }),
-  description: z
-    .string()
-    .trim()
-    .min(1, { message: "La description de la prestation est obligatoire" })
-    .max(500, { message: messages.string.max(500) }),
+  description: z.string().trim().max(500, { message: messages.string.max(500) }).optional().or(z.literal("")),
   quantite: quantiteSchema,
   prixUnitaire: prixSchema,
   montantHT: prixSchema,
+  pointDepart: lieuSchema,
+  pointArrivee: lieuSchema,
+  typeTransport: z.string().optional().or(z.literal("")),
+  modeTrajet: z.string().optional().or(z.literal("")),
+  materiel: z.string().optional().or(z.literal("")),
+  nombreJours: z.number().optional(),
   lieuDepart: lieuSchema,
   lieuArrivee: lieuSchema,
   dateDebut: dateOptionalSchema,
