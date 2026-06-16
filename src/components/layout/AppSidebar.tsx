@@ -4,7 +4,7 @@ import {
   Wallet, Building2, PiggyBank, BarChart3, TrendingUp, CreditCard,
   Settings, UserCog, Shield, History, Mail, Percent, Building, Hash,
   FileStack, Handshake, LayoutDashboard, ChevronDown, ChevronLeft, ChevronRight,
-  Tag, BookOpen, ShieldAlert, Clock, Bot
+  Tag, BookOpen, ShieldAlert, Clock, Bot, Activity
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -53,6 +53,7 @@ const menuItems = {
       { title: "Ordres de travail", url: "/ordres", icon: ClipboardList },
       { title: "Conteneurs en attente", url: "/conteneurs-en-attente", icon: ClipboardList },
       { title: "Détention en attente", url: "/detentions-en-attente", icon: Clock },
+      { title: "Opérations en attente", url: "/operations-en-attente", icon: Activity },
       { title: "Factures", url: "/factures", icon: Receipt },
       { title: "Notes de début", url: "/notes-debut", icon: FileStack },
       { title: "Annulations", url: "/annulations", icon: XCircle },
