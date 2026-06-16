@@ -53,6 +53,7 @@ const menuItems = {
       { title: "Ordres de travail", url: "/ordres", icon: ClipboardList },
       { title: "Conteneurs en attente", url: "/conteneurs-en-attente", icon: ClipboardList },
       { title: "Détention en attente", url: "/detentions-en-attente", icon: Clock },
+      { title: "Opérations en attente", url: "/operations-en-attente", icon: Activity },
       { title: "Factures", url: "/factures", icon: Receipt },
       { title: "Notes de début", url: "/notes-debut", icon: FileStack },
       { title: "Annulations", url: "/annulations", icon: XCircle },
