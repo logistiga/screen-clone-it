@@ -13,6 +13,7 @@ class LigneDevis extends Model
 
     protected $fillable = [
         'devis_id',
+        'type_operation',
         'description',
         'quantite',
         'prix_unitaire',
