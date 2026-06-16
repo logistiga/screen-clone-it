@@ -156,6 +156,9 @@ export const ordreConventionnelSchema = z.object({
 
 export const lignePrestationEtendueSchema = z.object({
   id: z.string(),
+  typeOperation: z.enum(["location", "transport", "manutention", "double_relevage", "stockage"], {
+    errorMap: () => ({ message: "Sélectionnez un type d'opération pour cette ligne" }),
+  }),
   description: z
     .string()
     .trim()
@@ -181,8 +184,8 @@ export const lignePrestationEtendueSchema = z.object({
 // ==================== Schéma Opérations Indépendantes ====================
 
 export const ordreIndependantSchema = z.object({
-  typeOperationIndep: z.enum(["location", "transport", "manutention", "double_relevage", "stockage"], {
-    errorMap: () => ({ message: "Veuillez sélectionner un type d'opération" }),
+  typeMarchandise: z.enum(["conteneur", "materiel", "marchandise_generale", "engin", "autre"], {
+    errorMap: () => ({ message: "Veuillez sélectionner le type de marchandise" }),
   }),
   prestations: z
     .array(lignePrestationEtendueSchema)
