@@ -24,6 +24,9 @@ class StoreDevisRequest extends FormRequest
             'type_document' => 'required|in:Conteneur,Lot,Independant',
             'type_operation' => 'nullable|string|in:import,export',
             'type_operation_indep' => 'nullable|string|in:location,transport,manutention,double_relevage,stockage',
+            'type_marchandise' => 'nullable|in:conteneur,materiel,marchandise_generale,engin,autre',
+            'description_generale' => 'nullable|string|max:2000',
+            'observation_interne' => 'nullable|string|max:2000',
             
             // Infos navire
             'bl_numero' => 'nullable|string|max:100',
