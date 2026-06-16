@@ -78,6 +78,31 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | Connexion Logistiga OPS Indépendantes (READ ONLY)
+        |--------------------------------------------------------------------------
+        | Opérations indépendantes en attente : OPS (app) → FAC
+        */
+        'ops_ind' => [
+            'driver' => 'mysql',
+            'host' => env('OPSIND_DB_HOST', env('OPS_DB_HOST', '127.0.0.1')),
+            'port' => env('OPSIND_DB_PORT', env('OPS_DB_PORT', '3306')),
+            'database' => env('OPSIND_DB_DATABASE', 'logiwkuh_OPS'),
+            'username' => env('OPSIND_DB_USERNAME', env('OPS_DB_USERNAME', 'fac_reader')),
+            'password' => env('OPSIND_DB_PASSWORD', env('OPS_DB_PASSWORD', '')),
+            'unix_socket' => env('OPSIND_DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
         | Connexion Logistiga CNV (READ ONLY)
         |--------------------------------------------------------------------------
         | Primes conventionnelles
