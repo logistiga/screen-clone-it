@@ -1,18 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FormError } from "@/components/ui/form-error";
 import {
   TypeOperationIndep,
+  TypeMarchandise,
   LignePrestationEtendue,
-  getOperationsIndepLabels,
   getInitialPrestationEtendue,
+  getTypeMarchandiseLabels,
   calculateDaysBetween,
 } from "@/types/documents";
 import { ordreIndependantSchema } from "@/lib/validations/ordre-schemas";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
-import { cn } from "@/lib/utils";
 
 interface OrdreIndependantFormProps {
   onDataChange: (data: OrdreIndependantData) => void;
@@ -20,253 +27,214 @@ interface OrdreIndependantFormProps {
 }
 
 export interface OrdreIndependantData {
+  /** @deprecated conservé pour compat ; ne plus utiliser */
   typeOperationIndep: TypeOperationIndep | "";
+  typeMarchandise: TypeMarchandise | "";
+  descriptionGenerale: string;
+  observationInterne: string;
   prestations: LignePrestationEtendue[];
   montantHT: number;
 }
 
-export default function OrdreIndependantForm({
-  onDataChange,
-  initialData,
-}: OrdreIndependantFormProps) {
+export default function OrdreIndependantForm({ onDataChange, initialData }: OrdreIndependantFormProps) {
   const lastInitKey = useRef<string>("");
-  const [typeOperationIndep, setTypeOperationIndep] = useState<TypeOperationIndep | "">("");
-  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>([getInitialPrestationEtendue()]);
-  
-  // Validation errors state
+  const [typeMarchandise, setTypeMarchandise] = useState<TypeMarchandise | "">(
+    initialData?.typeMarchandise ?? ""
+  );
+  const [descriptionGenerale, setDescriptionGenerale] = useState(initialData?.descriptionGenerale ?? "");
+  const [observationInterne, setObservationInterne] = useState(initialData?.observationInterne ?? "");
+  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>(
+    initialData?.prestations?.length ? initialData.prestations : [getInitialPrestationEtendue()]
+  );
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // Synchroniser l'état interne avec initialData (sans écraser les edits si rien n'a changé)
+  // Synchroniser avec initialData
   useEffect(() => {
     if (!initialData) return;
-
     const initKey = JSON.stringify({
-      typeOperationIndep: initialData.typeOperationIndep ?? "",
+      tm: initialData.typeMarchandise ?? "",
+      dg: initialData.descriptionGenerale ?? "",
+      oi: initialData.observationInterne ?? "",
       prestations: (initialData.prestations ?? []).map((p) => ({
         id: p.id,
+        typeOperation: p.typeOperation,
         description: p.description,
-        lieuDepart: p.lieuDepart,
-        lieuArrivee: p.lieuArrivee,
-        dateDebut: p.dateDebut,
-        dateFin: p.dateFin,
         quantite: p.quantite,
         prixUnitaire: p.prixUnitaire,
       })),
     });
-
     if (initKey === lastInitKey.current) return;
-
-    console.log("OrdreIndependantForm - Sync initialData:", initialData);
-
-    if (initialData.typeOperationIndep) {
-      setTypeOperationIndep(initialData.typeOperationIndep);
-    }
-
+    if (initialData.typeMarchandise !== undefined) setTypeMarchandise(initialData.typeMarchandise ?? "");
+    if (initialData.descriptionGenerale !== undefined)
+      setDescriptionGenerale(initialData.descriptionGenerale ?? "");
+    if (initialData.observationInterne !== undefined)
+      setObservationInterne(initialData.observationInterne ?? "");
     if (initialData.prestations && initialData.prestations.length > 0) {
-      setPrestations(initialData.prestations);
+      // Fallback : si lignes sans typeOperation mais avec typeOperationIndep (ancien) -> hériter
+      const oldType = initialData.typeOperationIndep;
+      setPrestations(
+        initialData.prestations.map((p) => ({
+          ...p,
+          typeOperation: p.typeOperation || (oldType as TypeOperationIndep | "") || "",
+        }))
+      );
     }
-
     lastInitKey.current = initKey;
   }, [initialData]);
 
-  // Validate on blur
-  const validateField = useCallback((fieldPath: string) => {
-    const data = {
-      typeOperationIndep,
-      prestations,
-    };
-
-    const result = ordreIndependantSchema.safeParse(data);
-    
-    if (!result.success) {
-      const fieldError = result.error.errors.find(e => e.path.join('.') === fieldPath);
-      if (fieldError) {
-        setErrors(prev => ({ ...prev, [fieldPath]: fieldError.message }));
+  const validateField = useCallback(
+    (fieldPath: string) => {
+      const data = { typeMarchandise, prestations };
+      const result = ordreIndependantSchema.safeParse(data);
+      if (!result.success) {
+        const fe = result.error.errors.find((e) => e.path.join(".") === fieldPath);
+        if (fe) setErrors((p) => ({ ...p, [fieldPath]: fe.message }));
+        else
+          setErrors((p) => {
+            const n = { ...p };
+            delete n[fieldPath];
+            return n;
+          });
       } else {
-        setErrors(prev => {
-          const next = { ...prev };
-          delete next[fieldPath];
-          return next;
+        setErrors((p) => {
+          const n = { ...p };
+          delete n[fieldPath];
+          return n;
         });
       }
-    } else {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[fieldPath];
-        return next;
-      });
-    }
-  }, [typeOperationIndep, prestations]);
+    },
+    [typeMarchandise, prestations]
+  );
 
   const handleBlur = (fieldPath: string) => {
-    setTouched(prev => ({ ...prev, [fieldPath]: true }));
+    setTouched((p) => ({ ...p, [fieldPath]: true }));
     validateField(fieldPath);
   };
 
-  const getFieldError = (fieldPath: string) => {
-    return touched[fieldPath] ? errors[fieldPath] : undefined;
-  };
+  const getFieldError = (fp: string) => (touched[fp] ? errors[fp] : undefined);
 
-  const operationsIndepLabels = getOperationsIndepLabels();
+  const calculateTotalPrestations = (items: LignePrestationEtendue[]) =>
+    items.reduce((s, p) => s + (p.montantHT || 0), 0);
 
-  const calculateTotalPrestations = (items: LignePrestationEtendue[]): number => {
-    return items.reduce((sum, p) => sum + (p.montantHT || 0), 0);
-  };
-
-  const updateParent = (items: LignePrestationEtendue[]) => {
-    const montantHT = calculateTotalPrestations(items);
+  const pushParent = (
+    items: LignePrestationEtendue[],
+    overrides?: Partial<OrdreIndependantData>
+  ) => {
     onDataChange({
-      typeOperationIndep,
+      typeOperationIndep: "",
+      typeMarchandise,
+      descriptionGenerale,
+      observationInterne,
       prestations: items,
-      montantHT,
+      montantHT: calculateTotalPrestations(items),
+      ...overrides,
     });
   };
 
-  // Toujours pousser vers le parent quand le type ou les lignes changent
   useEffect(() => {
-    updateParent(prestations);
+    pushParent(prestations);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeOperationIndep, prestations]);
+  }, [prestations, typeMarchandise, descriptionGenerale, observationInterne]);
 
   const handleAddPrestation = () => {
-    const newPrestations = [...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }];
-    setPrestations(newPrestations);
-    updateParent(newPrestations);
+    setPrestations([...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }]);
   };
 
   const handleRemovePrestation = (id: string) => {
-    if (prestations.length > 1) {
-      const newPrestations = prestations.filter(p => p.id !== id);
-      setPrestations(newPrestations);
-      updateParent(newPrestations);
-    }
+    if (prestations.length > 1) setPrestations(prestations.filter((p) => p.id !== id));
   };
 
-  const handlePrestationChange = (id: string, field: keyof LignePrestationEtendue, value: string | number) => {
-    const newPrestations = prestations.map(p => {
-      if (p.id === id) {
-        const updated = { ...p, [field]: value };
-        if (field === 'dateDebut' || field === 'dateFin') {
-          const dateDebut = field === 'dateDebut' ? String(value) : updated.dateDebut || '';
-          const dateFin = field === 'dateFin' ? String(value) : updated.dateFin || '';
-          if (dateDebut && dateFin) {
-            updated.quantite = calculateDaysBetween(dateDebut, dateFin);
+  const handlePrestationChange = (
+    id: string,
+    field: keyof LignePrestationEtendue,
+    value: string | number
+  ) => {
+    setPrestations((curr) =>
+      curr.map((p) => {
+        if (p.id !== id) return p;
+        const updated: LignePrestationEtendue = { ...p, [field]: value } as LignePrestationEtendue;
+        if (field === "dateDebut" || field === "dateFin") {
+          const d = field === "dateDebut" ? String(value) : updated.dateDebut || "";
+          const f = field === "dateFin" ? String(value) : updated.dateFin || "";
+          if (d && f) {
+            updated.quantite = calculateDaysBetween(d, f);
             updated.montantHT = updated.quantite * updated.prixUnitaire;
           }
         }
-        if (field === 'quantite' || field === 'prixUnitaire') {
+        if (field === "quantite" || field === "prixUnitaire") {
           updated.montantHT = updated.quantite * updated.prixUnitaire;
         }
         return updated;
-      }
-      return p;
-    });
-    setPrestations(newPrestations);
-    updateParent(newPrestations);
+      })
+    );
   };
 
-  const handleTypeChange = (key: TypeOperationIndep) => {
-    setTypeOperationIndep(key);
-    setTouched(prev => ({ ...prev, typeOperationIndep: true }));
-    // Clear the error when a valid type is selected
-    setErrors(prev => {
-      const next = { ...prev };
-      delete next['typeOperationIndep'];
-      return next;
-    });
-  };
+  const marchandiseLabels = getTypeMarchandiseLabels();
 
   return (
     <div className="space-y-6">
-      {/* Sélection du type d'opération */}
-      <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                Type d'opération indépendante *
-                {typeOperationIndep && (
-                  <Badge variant="secondary" className="ml-2">
-                    {operationsIndepLabels[typeOperationIndep]?.label}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Sélectionnez le type d'opération pour cette prestation
-              </CardDescription>
-            </div>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Informations marchandise</CardTitle>
+          <CardDescription>Type, description et observation pour cette opération.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
-              const op = operationsIndepLabels[key];
-              const isSelected = typeOperationIndep === key;
-              const hasError = touched['typeOperationIndep'] && !typeOperationIndep;
-              return (
-                <motion.button
-                  key={key}
-                  type="button"
-                  onClick={() => handleTypeChange(key)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={cn(
-                    "p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 text-center relative overflow-hidden",
-                    isSelected 
-                      ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20" 
-                      : "border-border hover:border-primary/50 hover:bg-muted/50",
-                    hasError && "border-destructive"
-                  )}
-                >
-                  {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-3 h-3 rounded-full bg-primary"
-                    />
-                  )}
-                  <motion.div 
-                    className={`p-3 rounded-full ${isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}
-                    animate={isSelected ? { scale: [1, 1.1, 1] } : {}}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {op.icon}
-                  </motion.div>
-                  <span className={`text-sm font-semibold ${isSelected ? "text-primary" : ""}`}>
-                    {op.label}
-                  </span>
-                </motion.button>
-              );
-            })}
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Type de marchandise *</Label>
+            <Select
+              value={typeMarchandise || undefined}
+              onValueChange={(v) => {
+                setTypeMarchandise(v as TypeMarchandise);
+                handleBlur("typeMarchandise");
+              }}
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Sélectionner un type" />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(marchandiseLabels) as TypeMarchandise[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {marchandiseLabels[k]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormError message={getFieldError("typeMarchandise")} />
           </div>
-          <FormError message={getFieldError('typeOperationIndep')} />
+
+          <div className="space-y-2">
+            <Label>Description générale</Label>
+            <Textarea
+              placeholder="Description de l'opération (visible sur le document)"
+              value={descriptionGenerale}
+              onChange={(e) => setDescriptionGenerale(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Observation interne</Label>
+            <Textarea
+              placeholder="Notes internes (non imprimées sur le PDF)"
+              value={observationInterne}
+              onChange={(e) => setObservationInterne(e.target.value)}
+              rows={3}
+            />
+          </div>
         </CardContent>
       </Card>
 
-      {/* Formulaire des prestations */}
-      <AnimatePresence mode="wait">
-        {typeOperationIndep && (
-          <motion.div
-            key={typeOperationIndep}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <OperationsIndependantesForm
-              typeOperationIndep={typeOperationIndep}
-              prestations={prestations}
-              onAddPrestation={handleAddPrestation}
-              onRemovePrestation={handleRemovePrestation}
-              onPrestationChange={handlePrestationChange}
-              errors={errors}
-              touched={touched}
-              onBlur={handleBlur}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <OperationsIndependantesForm
+        prestations={prestations}
+        onAddPrestation={handleAddPrestation}
+        onRemovePrestation={handleRemovePrestation}
+        onPrestationChange={handlePrestationChange}
+        errors={errors}
+        touched={touched}
+        onBlur={handleBlur}
+      />
     </div>
   );
 }
