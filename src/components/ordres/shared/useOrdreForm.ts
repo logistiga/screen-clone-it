@@ -201,9 +201,8 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
       }
 
       if (categorie === "operations_independantes" && independantData) {
-        data.type_operation_indep = independantData.typeOperationIndep || null;
         data.lignes = independantData.prestations.map((p) => ({
-          type_operation: independantData.typeOperationIndep || "manutention",
+          type_operation: p.typeOperation || "manutention",
           description: p.description || "",
           lieu_depart: p.lieuDepart || null,
           lieu_arrivee: p.lieuArrivee || null,
