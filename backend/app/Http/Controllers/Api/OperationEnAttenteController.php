@@ -28,7 +28,7 @@ class OperationEnAttenteController extends Controller
     public function index(Request $request)
     {
         try {
-            $this->refreshOpsConfigFromEnv();
+            $this->refreshOpsIndConfigFromEnv();
             $table = $this->resolveOpsTable();
             if (!$table) {
                 return response()->json([
@@ -51,7 +51,7 @@ class OperationEnAttenteController extends Controller
             $traitedIds = DB::table('operations_externes_tracking')
                 ->pluck('operation_id_externe')->toArray();
 
-            $query = DB::connection('ops')->table($table);
+            $query = DB::connection('ops_ind')->table($table);
             if (!empty($traitedIds)) {
                 $query->whereNotIn($idCol, $traitedIds);
             }
@@ -102,7 +102,7 @@ class OperationEnAttenteController extends Controller
     public function stats()
     {
         try {
-            $this->refreshOpsConfigFromEnv();
+            $this->refreshOpsIndConfigFromEnv();
             $table = $this->resolveOpsTable();
             if (!$table) {
                 return response()->json(['en_attente' => 0, 'ignorees' => 0, 'converties' => 0]);
@@ -112,7 +112,7 @@ class OperationEnAttenteController extends Controller
             $traitedIds = DB::table('operations_externes_tracking')
                 ->pluck('operation_id_externe')->toArray();
 
-            $q = DB::connection('ops')->table($table);
+            $q = DB::connection('ops_ind')->table($table);
             if ($idCol && !empty($traitedIds)) $q->whereNotIn($idCol, $traitedIds);
 
             return response()->json([
@@ -129,7 +129,7 @@ class OperationEnAttenteController extends Controller
     public function ignorer(Request $request, string $operationId)
     {
         try {
-            $this->refreshOpsConfigFromEnv();
+            $this->refreshOpsIndConfigFromEnv();
             $snapshot = $this->fetchOpsRow($operationId);
             DB::table('operations_externes_tracking')->updateOrInsert(
                 ['operation_id_externe' => $operationId],
@@ -152,7 +152,7 @@ class OperationEnAttenteController extends Controller
     public function confirmer(Request $request, string $operationId)
     {
         try {
-            $this->refreshOpsConfigFromEnv();
+            $this->refreshOpsIndConfigFromEnv();
             $row = $this->fetchOpsRow($operationId);
             if (!$row) {
                 return response()->json(['success' => false, 'message' => 'Opération introuvable dans OPS'], 404);
@@ -226,7 +226,7 @@ class OperationEnAttenteController extends Controller
     private function resolveOpsTable(): ?string
     {
         try {
-            $schema = Schema::connection('ops');
+            $schema = Schema::connection('ops_ind');
             foreach (self::OPS_TABLES as $t) {
                 if ($schema->hasTable($t)) return $t;
             }
@@ -236,7 +236,7 @@ class OperationEnAttenteController extends Controller
 
     private function columns(string $table): array
     {
-        try { return Schema::connection('ops')->getColumnListing($table); }
+        try { return Schema::connection('ops_ind')->getColumnListing($table); }
         catch (\Throwable) { return []; }
     }
 
@@ -252,7 +252,7 @@ class OperationEnAttenteController extends Controller
         if (!$table) return null;
         $idCol = $this->pickColumn($this->columns($table), ['id', 'operation_id']);
         if (!$idCol) return null;
-        $row = DB::connection('ops')->table($table)->where($idCol, $operationId)->first();
+        $row = DB::connection('ops_ind')->table($table)->where($idCol, $operationId)->first();
         return $row ? (array) $row : null;
     }
 
