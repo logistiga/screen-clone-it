@@ -20,12 +20,15 @@ use Illuminate\Support\Facades\Schema;
  */
 class OperationEnAttenteController extends Controller
 {
+    use SyncDiagnosticHelpersTrait;
+
     /** Tables candidates dans OPS, par ordre de priorité */
     private const OPS_TABLES = ['operations_independantes', 'operations'];
 
     public function index(Request $request)
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $table = $this->resolveOpsTable();
             if (!$table) {
                 return response()->json([
@@ -99,6 +102,7 @@ class OperationEnAttenteController extends Controller
     public function stats()
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $table = $this->resolveOpsTable();
             if (!$table) {
                 return response()->json(['en_attente' => 0, 'ignorees' => 0, 'converties' => 0]);
@@ -125,6 +129,7 @@ class OperationEnAttenteController extends Controller
     public function ignorer(Request $request, string $operationId)
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $snapshot = $this->fetchOpsRow($operationId);
             DB::table('operations_externes_tracking')->updateOrInsert(
                 ['operation_id_externe' => $operationId],
@@ -147,6 +152,7 @@ class OperationEnAttenteController extends Controller
     public function confirmer(Request $request, string $operationId)
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $row = $this->fetchOpsRow($operationId);
             if (!$row) {
                 return response()->json(['success' => false, 'message' => 'Opération introuvable dans OPS'], 404);
