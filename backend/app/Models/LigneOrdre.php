@@ -13,6 +13,7 @@ class LigneOrdre extends Model
 
     protected $fillable = [
         'ordre_id',
+        'type_operation',
         'description',
         'quantite',
         'prix_unitaire',
