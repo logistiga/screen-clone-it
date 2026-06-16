@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ConteneurTraiteController;
 use App\Http\Controllers\Api\ConteneurAnomalieController;
 use App\Http\Controllers\Api\SyncDiagnosticController;
 use App\Http\Controllers\Api\DetentionEnAttenteController;
+use App\Http\Controllers\Api\OperationEnAttenteController;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
@@ -62,4 +63,18 @@ Route::prefix('detentions-attente')->middleware('audit')->group(function () {
         ->middleware('permission:ordres.voir');
     Route::get('stats', [DetentionEnAttenteController::class, 'stats'])
         ->middleware('permission:ordres.voir');
+});
+
+// ============================================
+// OPÉRATIONS EN ATTENTE (depuis OPS)
+// ============================================
+Route::prefix('operations-en-attente')->middleware('audit')->group(function () {
+    Route::get('/', [OperationEnAttenteController::class, 'index'])
+        ->middleware('permission:ordres.voir');
+    Route::get('stats', [OperationEnAttenteController::class, 'stats'])
+        ->middleware('permission:ordres.voir');
+    Route::post('{operationId}/confirmer', [OperationEnAttenteController::class, 'confirmer'])
+        ->middleware('permission:ordres.creer');
+    Route::post('{operationId}/ignorer', [OperationEnAttenteController::class, 'ignorer'])
+        ->middleware('permission:ordres.modifier');
 });
