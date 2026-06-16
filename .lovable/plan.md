@@ -1,153 +1,109 @@
-# Plan — Module "Opération" Logistiga (intégration Facturation)
+## Refonte « Opérations Indépendantes » — Modal d'ajout de ligne typée (OT / Devis / Facture)
 
-Objectif : implémenter dans l'app Facturation un module **Opération** strictement aligné sur la spec Logistiga v1.0, permettant la création bidirectionnelle Facture ↔ Opération avec les mêmes colonnes, énums, unités (entiers FCFA) et règles de calcul.
+Aligner le module Facturation sur le système OPS visible sur les captures : un **modal "Ajouter une ligne"** avec sélecteur de type en haut, puis champs dynamiques selon le type. Le type est **par ligne** (déjà fait côté schéma), mais l'UI actuelle utilise un formulaire inline → on la remplace par un dialog modal identique aux captures.
 
-> ⚠️ Ce chantier est **gros** (≈ 25 migrations, 9 modèles, 6+ controllers, 10+ écrans React). Je propose de le livrer en **4 lots** indépendants et testables. Chaque lot se termine par `php artisan migrate` + smoke test.
+### 1. Types de ligne — alignement OPS (4 types au lieu de 5)
 
----
+Aligner sur OPS qui n'a que **4 types** : `TRANSPORT`, `LOCATION`, `MANUTENTION`, `AUTRE`.
 
-## Lot 1 — Schéma BDD miroir + modèles + énums (fondations)
+- Supprimer `double_relevage` et `stockage` du sélecteur de ligne (ils restent valides en BDD pour rétrocompat lecture, mais ne sont plus proposés à la création).
+- Ajouter `autre` comme nouveau type côté front + backend (service `AutreService`, validation, factory).
 
-### Backend — migrations (toutes en UUID, FCFA `unsignedBigInteger`, softDeletes)
-1. `create_operations_table` — entête + `numero_operation` unique `OP-YYYYMM-####`
-2. `create_operation_lines_table` — pivot polymorphe (`line_type`, `line_id`, `position` unique par op)
-3. `create_transport_operation_lines_table`
-4. `create_location_operation_lines_table`
-5. `create_manutention_operation_lines_table`
-6. `create_autre_operation_lines_table`
-7. `create_operation_charges_table` (source: `auto_transport` | `manual`)
-8. `create_operation_payments_table`
-9. `create_operation_bonuses_table` (prime/commission + validation)
-10. `add_operation_link_to_factures` — `operation_id uuid NULL`, `operation_numero varchar(30) NULL` + index
+### 2. Champs dynamiques par type (selon captures)
 
-### Backend — modèles
-- `Operation`, `OperationLine` (morphTo `line`), `TransportOperationLine`, `LocationOperationLine`, `ManutentionOperationLine`, `AutreOperationLine`, `OperationCharge`, `OperationPayment`, `OperationBonus`
-- Tous avec `HasUuids`, `SoftDeletes`, `$fillable`, casts (`date`, entiers)
-- Observer `OperationObserver` pour recalcul `total_transport_fcfa` (via Eloquent Observer — conforme mémoire projet)
+| Type | Champs spécifiques |
+|---|---|
+| **Transport** | Point de départ (défaut « Libreville », readonly hint), Point d'arrivée (select destinations), Type de transport (Conteneur / Marchandise / Engin / Matériel), Mode de trajet (Aller simple / Aller-retour), Quantité, Prix transport, Description (optionnel) |
+| **Location** | Matériel à louer (select), Date début, Date fin, Nombre de jours (auto-calculé, éditable), Prix/jour, Description (optionnel). Total = jours × prix/jour affiché en bas du modal |
+| **Manutention** | Matériel utilisé (select), Description, Quantité, Prix unitaire. Total affiché |
+| **Autre** | Description (requis), Quantité, Prix unitaire. Total affiché |
 
-### Frontend — types
-- `src/types/operations/` : `operation.ts`, `operationLine.ts`, `transportOperation.ts`, `locationOperation.ts`, `manutentionOperation.ts`, `autreOperation.ts`, `operationCharge.ts`, `operationPayment.ts`, `operationBonus.ts`, `enums.ts` (section 5 de la spec copiée verbatim)
+### 3. Composant `LigneModal` (nouveau)
 
-**Critère de sortie** : `php artisan migrate` passe, tables créées avec bons types/index, modèles instanciables en tinker.
+Créer `src/components/operations/LigneModal.tsx` :
+- Dialog shadcn avec header « Ajouter une ligne » / « Modifier la ligne »
+- Select type en haut + helper "Une opération peut combiner plusieurs types de lignes."
+- Sous-formulaires par type : `TransportFields`, `LocationFields`, `ManutentionFields`, `AutreFields`
+- Footer : Annuler / Ajouter (ou Enregistrer)
+- Validation locale avant submit, calcul `montantHT` injecté dans la ligne renvoyée
 
----
+### 4. Refonte `OperationsIndependantesForm.tsx`
 
-## Lot 2 — Services de calcul + API REST `/api/v1/operations`
+Remplacer le rendu actuel (cartes inline avec 5 boutons par ligne) par :
+- Liste compacte des lignes ajoutées (tableau : Type / Description / Qté / PU / Total / actions)
+- Bouton **« + Ajouter une ligne »** qui ouvre `LigneModal` en mode création
+- Clic sur une ligne → ouvre `LigneModal` en mode édition
+- Bouton supprimer par ligne
+- Bandeau total HT en bas
 
-### Backend — services (source de vérité calculs)
-- `App\Services\Operations\TransportOperationCalculationService`
-  - `total_ligne = max(0, prix) * max(1, qte)`
-  - LOCATION : `nombre_jours = (date_fin - date_debut) + 1` puis `* prix_jour`
-  - `total_transport = Σ operation_lines.total_ligne_fcfa`
-  - **Toujours recalculé dans une transaction côté back** (jamais confiance au front)
-- `OperationNumberService` — séquence mensuelle `OP-YYYYMM-####` (lock pessimiste)
-- `OperationLineDispatcher` — crée la bonne sous-table selon `type`
-- `CreateOperationAction` — orchestration transactionnelle
+### 5. Données de référence (selects)
 
-### Backend — controllers / requests / resources
-- `Api\V1\Operations\OperationController` (index, show, store, destroy)
-- `Api\V1\Operations\OperationChargeController` (+ endpoint `auto-transport` idempotent)
-- `Api\V1\Operations\OperationPaymentController`
-- `Api\V1\Operations\OperationBonusController`
-- FormRequests : `StoreOperationRequest`, `StoreChargeRequest`, `StorePaymentRequest`, `StoreBonusRequest` (validation énums section 5)
-- Resources : `OperationResource`, `OperationLineResource`, `TransportOperationLineResource`, etc. — forme exacte section 6.5, avec `whenLoaded` + null checks (conforme mémoire)
-- Routes dans nouveau fichier `backend/routes/api_operations.php` chargé depuis `api.php` (conforme mémoire modular API routing)
-- Permissions Spatie : `operations.manage`, `operations.delete`
+- **Destinations transport** : liste configurable (ex: Port-Gentil, Franceville, Oyem, Mouila, Lambaréné, Tchibanga…). Stockée dans `src/data/transportData.ts`.
+- **Types de transport** : `conteneur | marchandise | engin | materiel`
+- **Mode de trajet** : `aller_simple | aller_retour`
+- **Matériels** (location & manutention) : récupérés depuis `descriptionsApi` filtré par catégorie, fallback liste statique (`Grue`, `Chariot élévateur`, `Camion plateau`, `Reach stacker`, etc.) dans `src/data/materielsData.ts`.
 
-### Frontend — couche API
-- `src/lib/api/operations/` : `operationsApi.ts`, `chargesApi.ts`, `paymentsApi.ts`, `bonusesApi.ts`
-- Utilisation `api-normalize.ts` (conforme mémoire)
+### 6. Persistance des champs spécifiques
 
-**Critère de sortie** : Postman/curl POST `/api/v1/operations` avec payload section 6.4 → réponse 201 conforme section 6.5, totaux corrects.
-
----
-
-## Lot 3 — UI Frontend (liste, création, détail)
-
-Structure (conforme limite 300 lignes/fichier, mémoire projet) :
-
-```
-src/pages/operations/
-  OperationsList.tsx
-  OperationCreate.tsx
-  OperationDetail.tsx
-  OperationEdit.tsx
-src/components/operations/v2/
-  OperationGeneralInfo.tsx        (date, client autocomplete, marchandise)
-  OperationLinesTable.tsx         (table + bouton + ligne)
-  LineFormDialog.tsx              (dispatcher par type via lineTypeRegistry)
-  forms/
-    TransportLineForm.tsx         (point_depart, point_arrivee, type_transport, mode_trajet, qte, prix)
-    LocationLineForm.tsx          (tariff, date_debut, date_fin, jours auto, prix/jour)
-    ManutentionLineForm.tsx       (tariff, libelle, qte, prix_unitaire)
-    AutreLineForm.tsx             (description, qte, prix_unitaire)
-  tabs/
-    OperationChargesTab.tsx       (auto-transport + manuel)
-    OperationPaymentsTab.tsx
-    OperationBonusesTab.tsx
-  OperationSummary.tsx            (total transport / charges / payé / reste)
-  lineTypeRegistry.ts             (mapping LineType → composant form)
-  format.ts                       (formatFCFA entier)
+Étendre `LignePrestationEtendue` (déjà partiellement fait) avec :
+```ts
+typeOperation: 'transport'|'location'|'manutention'|'autre'|''
+// transport
+pointDepart?: string
+pointArrivee?: string
+typeTransport?: 'conteneur'|'marchandise'|'engin'|'materiel'
+modeTrajet?: 'aller_simple'|'aller_retour'
+// location
+materiel?: string
+dateDebut?: string
+dateFin?: string
+nombreJours?: number
+// manutention
+materielManutention?: string
 ```
 
-- Hooks : `useAutoOperationCharges`, `useAutoOperationBonuses`
-- Routing : ajouter routes `/operations`, `/operations/nouvelle`, `/operations/:id`, `/operations/:id/modifier` dans `App.tsx`
-- Sidebar : entrée "Opérations" dans `AppSidebar.tsx`
-- Réutiliser autocomplete client existant (`external_client_id` = `clients.id` côté Facturation)
+**Backend** : ajouter migration `2026_06_18_000001_add_ligne_operation_fields.php` qui ajoute sur `lignes_ordres`, `lignes_devis`, `lignes_factures` :
+- `point_depart` (string, null)
+- `point_arrivee` (string, null)
+- `type_transport` (string, null)
+- `mode_trajet` (string, null)
+- `materiel` (string, null)
+- `nombre_jours` (integer, null)
+- `date_debut`, `date_fin` déjà existants ou à ajouter si absents
 
-**Critère de sortie** : Créer une opération complète (4 types de lignes) depuis l'UI, voir le détail, ajouter charge/paiement/prime.
+Mise à jour `LigneOrdre`/`LigneDevis`/`LigneFacture` ($fillable + casts), Resources, FormRequests, services de normalisation (`TransportService`, `LocationService`, `ManutentionService`, nouveau `AutreService`).
 
----
+### 7. Mapping front ↔ backend
 
-## Lot 4 — Lien bidirectionnel Facture ↔ Opération + Webhooks HMAC
+`useOrdreForm.ts` / `useDevisForm.ts` / `useFactureForm.ts` : étendre le payload de mapping des lignes avec les nouveaux champs (snake_case). Hydratation inverse dans `ModifierOrdre` / `ModifierDevis` / `ModifierFacture`.
 
-### Backend
-- Endpoint `POST /api/v1/factures/from-operation` (body `{operation_id}`) :
-  - Lit l'opération locale (ou via service HTTP si externe — voir env)
-  - Crée la facture catégorie "Opérations indépendantes" en copiant ligne par ligne (`position`, `line_type`, champs typés, `total_ligne_fcfa`)
-  - Set `factures.operation_id` + `operation_numero`
-- Middleware `VerifyHmacSignature` (header `X-Signature: sha256=<hex>`, body brut, `hash_equals`)
-- Routes webhook `/api/v1/webhooks/invoice-created|validated|paid` et `/operation-created|deleted`
-- Events Laravel + Listeners émettant les webhooks vers `LOGISTIGA_API_URL` signés avec `WEBHOOK_SHARED_SECRET`
-- Endpoint `GET /api/v1/external-clients` exposant `{id, name, type, phone, email}` (Logistiga lit cette base)
+### 8. Nettoyage
 
-### Frontend
-- Bouton "Générer la facture" sur `OperationDetail` → appelle `from-operation` puis redirige
-- Bouton "Voir l'opération liée" sur `FactureDetail` si `operation_id` présent
-- Bandeau "Cette facture est liée à l'opération OP-YYYYMM-####"
+- Supprimer les anciens fichiers `DoubleRelevageFormFields.tsx`, `StockageFormFields.tsx` (non utilisés dans le nouveau flow) ou les laisser inertes.
+- Garder la rétrocompat lecture : si une ligne existante a `type_operation = 'double_relevage' | 'stockage'`, l'afficher en lecture comme `Autre` dans la liste.
 
-### Secrets à ajouter (via outil secrets, après confirmation utilisateur)
-- `LOGISTIGA_API_URL`
-- `LOGISTIGA_SERVICE_TOKEN`
-- `WEBHOOK_SHARED_SECRET` (≥ 32 chars)
+### 9. Non-objectifs (hors scope de ce lot)
 
-**Critère de sortie** : Créer opération → générer facture → `total_transport_fcfa` identique des deux côtés, webhook reçu signé OK.
+- PDF templates (mise à jour visuelle des nouveaux champs) — sera fait ensuite
+- Synchronisation OPS (lecture cross-DB) — déjà géré par la vue SQL
+- Migration de données historiques (le backfill précédent suffit)
 
----
+### Fichiers touchés (estimation)
 
-## Points d'attention / décisions à confirmer avant Lot 1
+**Nouveaux** :
+- `src/components/operations/LigneModal.tsx`
+- `src/components/operations/forms/TransportFields.tsx` (refait)
+- `src/components/operations/forms/LocationFields.tsx` (refait)
+- `src/components/operations/forms/ManutentionFields.tsx` (refait)
+- `src/components/operations/forms/AutreFields.tsx`
+- `src/data/transportData.ts`, `src/data/materielsData.ts`
+- `backend/database/migrations/2026_06_18_000001_add_ligne_operation_fields.php`
+- `backend/app/Services/OperationsIndependantes/AutreService.php`
 
-1. **Coexistence avec l'existant** : le projet a déjà un module "Opérations indépendantes" intégré dans `lignes_ordres/devis/factures` (modal `LigneModal`, factory `OperationIndependanteFactory`). La spec demande un **nouveau modèle parallèle** (`operations` + tables typées dédiées, FCFA entiers, UUID). → Je propose de **garder l'ancien intact** (rétrocompat lecture) et de bâtir le nouveau module en parallèle sous le namespace `Operations\V2` / route `/api/v1/operations`. À terme migration des données existantes (hors scope).
-
-2. **Unités FCFA entières** : conflit avec la convention actuelle du projet qui stocke en `decimal` arrondi. Pour le nouveau module on respecte la spec (`unsignedBigInteger`). Le mapping vers `factures.lignes_factures.montant_ht` (decimal) se fait au moment de `from-operation`.
-
-3. **Tables `destinations` et `location_tariffs`** : référencées par FK dans transport/location/manutention. Existent-elles déjà ? Sinon il faut les créer ou nuller les FK. → À confirmer.
-
-4. **Direction par défaut** : Implémenter d'abord **A — création depuis Opération puis bouton "Générer facture"** (recommandé par la spec). La direction B (Facturation → Logistiga distant) viendra plus tard si besoin.
-
----
-
-## Estimation
-- Lot 1 : ~10 migrations + 9 modèles + types TS → 1 session
-- Lot 2 : services + 4 controllers + resources + routes → 1-2 sessions
-- Lot 3 : ~15 composants React + routing → 2 sessions
-- Lot 4 : webhooks + bridge facture + secrets → 1 session
-
-**Total : 5-6 sessions de build.**
-
----
-
-### Questions avant de démarrer
-- ✅ OK pour démarrer par le **Lot 1** (schéma + modèles + types) ?
-- Les tables `destinations` et `location_tariffs` existent-elles déjà côté Facturation, ou faut-il les créer (champs, énums) ?
-- Garder l'ancien module "Opérations indépendantes" en lecture seule, ou le remplacer ?
+**Modifiés** :
+- `src/components/operations/OperationsIndependantesForm.tsx` (refonte)
+- `src/types/documents.ts`
+- `src/components/ordres/shared/useOrdreForm.ts`, `useDevisForm.ts`, `useFactureForm.ts`
+- `src/pages/ModifierOrdre.tsx`, `ModifierDevis.tsx`, `ModifierFacture.tsx`
+- `src/lib/validations/ordre-schemas.ts` (+ devis/facture si existants)
+- Backend : modèles lignes, Resources, FormRequests, `OperationIndependanteFactory`, services Transport/Location/Manutention
