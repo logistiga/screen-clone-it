@@ -462,16 +462,24 @@ export default function NouvelleFacturePage() {
         prix_unitaire: l.prixUnitaire,
       }));
     } else if (categorie === "operations_independantes" && independantData) {
-      lignesData = independantData.prestations.map(p => ({
-        type_operation: independantData.typeOperationIndep,
-        description: p.description,
-        lieu_depart: p.lieuDepart,
-        lieu_arrivee: p.lieuArrivee,
-        date_debut: p.dateDebut,
-        date_fin: p.dateFin,
-        quantite: p.quantite,
-        prix_unitaire: p.prixUnitaire,
-      }));
+      lignesData = independantData.prestations
+        .filter((p: any) => p.typeOperation)
+        .map((p: any) => ({
+          type_operation: p.typeOperation || "autre",
+          description: p.description,
+          lieu_depart: p.pointDepart || p.lieuDepart || null,
+          lieu_arrivee: p.pointArrivee || p.lieuArrivee || null,
+          point_depart: p.pointDepart || null,
+          point_arrivee: p.pointArrivee || null,
+          type_transport: p.typeTransport || null,
+          mode_trajet: p.modeTrajet || null,
+          materiel: p.materiel || null,
+          nombre_jours: p.nombreJours || null,
+          date_debut: p.dateDebut || null,
+          date_fin: p.dateFin || null,
+          quantite: p.quantite,
+          prix_unitaire: p.prixUnitaire,
+        }));
     }
 
     const blNumero =

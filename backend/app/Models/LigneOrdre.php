@@ -22,6 +22,12 @@ class LigneOrdre extends Model
         'lieu_arrivee',
         'date_debut',
         'date_fin',
+        'point_depart',
+        'point_arrivee',
+        'type_transport',
+        'mode_trajet',
+        'materiel',
+        'nombre_jours',
     ];
 
     protected $casts = [
@@ -30,6 +36,7 @@ class LigneOrdre extends Model
         'montant_ht' => 'decimal:2',
         'date_debut' => 'date',
         'date_fin' => 'date',
+        'nombre_jours' => 'integer',
     ];
 
     // Relations

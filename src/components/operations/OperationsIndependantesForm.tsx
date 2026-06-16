@@ -1,29 +1,21 @@
-import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-error";
 import { formatMontant } from "@/data/mockData";
 import {
-  TypeOperationIndep,
   LignePrestationEtendue,
-  getOperationsIndepLabels,
+  getOperationsIndepLabelsAll,
 } from "@/types/documents";
-import {
-  LocationFormFields,
-  TransportFormFields,
-  ManutentionFormFields,
-  DoubleRelevageFormFields,
-  StockageFormFields,
-} from "./forms";
-import { cn } from "@/lib/utils";
+import LigneModal from "./LigneModal";
 
-interface OperationsIndependantesFormProps {
+interface Props {
   prestations: LignePrestationEtendue[];
   onAddPrestation: () => void;
   onRemovePrestation: (id: string) => void;
   onPrestationChange: (id: string, field: keyof LignePrestationEtendue, value: string | number) => void;
+  onReplacePrestations?: (next: LignePrestationEtendue[]) => void;
   errors?: Record<string, string>;
   touched?: Record<string, boolean>;
   onBlur?: (fieldPath: string) => void;
@@ -34,158 +26,126 @@ export default function OperationsIndependantesForm({
   onAddPrestation,
   onRemovePrestation,
   onPrestationChange,
+  onReplacePrestations,
   errors = {},
-  touched = {},
-  onBlur,
-}: OperationsIndependantesFormProps) {
-  const operationsIndepLabels = getOperationsIndepLabels();
+}: Props) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<LignePrestationEtendue | null>(null);
+  const labels = getOperationsIndepLabelsAll();
 
-  const getFieldError = (fieldPath: string) =>
-    touched[fieldPath] ? errors[fieldPath] : undefined;
+  // Filtrer les lignes vides (ajoutées par défaut)
+  const visible = prestations.filter((p) => p.typeOperation || p.description || p.prixUnitaire);
 
-  const handleBlur = (fieldPath: string) => onBlur?.(fieldPath);
+  const openCreate = () => { setEditing(null); setModalOpen(true); };
+  const openEdit = (p: LignePrestationEtendue) => { setEditing(p); setModalOpen(true); };
 
-  const renderSpecificFields = (prestation: LignePrestationEtendue) => {
-    switch (prestation.typeOperation) {
-      case "location":
-        return <LocationFormFields prestation={prestation} onPrestationChange={onPrestationChange} />;
-      case "transport":
-        return <TransportFormFields prestation={prestation} onPrestationChange={onPrestationChange} />;
-      case "manutention":
-        return <ManutentionFormFields prestation={prestation} onPrestationChange={onPrestationChange} />;
-      case "double_relevage":
-        return <DoubleRelevageFormFields prestation={prestation} onPrestationChange={onPrestationChange} />;
-      case "stockage":
-        return <StockageFormFields prestation={prestation} onPrestationChange={onPrestationChange} />;
-      default:
-        return null;
+  const replace = (next: LignePrestationEtendue[]) => {
+    if (onReplacePrestations) onReplacePrestations(next);
+    else {
+      // fallback : update champ par champ
+      next.forEach((p) => {
+        Object.keys(p).forEach((k) => {
+          onPrestationChange(p.id, k as keyof LignePrestationEtendue, (p as any)[k]);
+        });
+      });
     }
   };
+
+  const handleSubmit = (ligne: LignePrestationEtendue) => {
+    const idx = prestations.findIndex((p) => p.id === ligne.id);
+    let next: LignePrestationEtendue[];
+    if (idx >= 0) {
+      next = prestations.map((p) => (p.id === ligne.id ? ligne : p));
+    } else {
+      // Remplacer la première ligne vide si elle existe, sinon ajouter
+      const emptyIdx = prestations.findIndex((p) => !p.typeOperation && !p.description);
+      if (emptyIdx >= 0) {
+        next = prestations.map((p, i) => (i === emptyIdx ? ligne : p));
+      } else {
+        next = [...prestations, ligne];
+      }
+    }
+    replace(next);
+  };
+
+  const total = visible.reduce((s, p) => s + (p.montantHT || 0), 0);
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Prestations</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={onAddPrestation} className="gap-1">
-            <Plus className="h-4 w-4" /> Ajouter ligne
+          <CardTitle className="text-lg">Lignes de l'opération</CardTitle>
+          <Button type="button" size="sm" onClick={openCreate} className="gap-1">
+            <Plus className="h-4 w-4" /> Ajouter une ligne
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <FormError message={getFieldError("prestations")} />
-        <div className="space-y-6">
-          {prestations.map((prestation, index) => {
-            const isDateBased =
-              prestation.typeOperation === "location" || prestation.typeOperation === "stockage";
-            return (
-              <div key={prestation.id} className="p-4 border rounded-lg bg-muted/20 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Ligne {index + 1}</span>
-                  {prestations.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onRemovePrestation(prestation.id)}
-                      className="text-destructive h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+        <FormError message={errors["prestations"]} />
 
-                {/* Sélecteur de type d'opération par ligne */}
-                <div className="space-y-2">
-                  <Label>Type d'opération *</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    {(Object.keys(operationsIndepLabels) as TypeOperationIndep[]).map((key) => {
-                      const op = operationsIndepLabels[key];
-                      const isSelected = prestation.typeOperation === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => onPrestationChange(prestation.id, "typeOperation", key)}
-                          className={cn(
-                            "p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 text-center",
-                            isSelected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border hover:border-primary/50 text-muted-foreground"
-                          )}
-                        >
-                          <span className="scale-75">{op.icon}</span>
-                          <span className="text-xs font-medium">{op.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <FormError message={getFieldError(`prestations.${index}.typeOperation`)} />
-                </div>
-
-                {prestation.typeOperation && (
-                  <>
-                    {/* Champs spécifiques au type */}
-                    {renderSpecificFields(prestation)}
-
-                    {/* Description */}
-                    <div className="space-y-2">
-                      <Label>Description *</Label>
-                      <Input
-                        placeholder="Description de la prestation..."
-                        value={prestation.description}
-                        onChange={(e) => onPrestationChange(prestation.id, "description", e.target.value)}
-                        onBlur={() => handleBlur(`prestations.${index}.description`)}
-                        className={cn(
-                          "h-11",
-                          getFieldError(`prestations.${index}.description`) && "border-destructive"
-                        )}
-                      />
-                      <FormError message={getFieldError(`prestations.${index}.description`)} />
-                    </div>
-
-                    {/* Quantité, Prix, Montant */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>{isDateBased ? "Nombre de jours" : "Quantité"}</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={prestation.quantite}
-                          onChange={(e) =>
-                            onPrestationChange(prestation.id, "quantite", parseInt(e.target.value) || 0)
-                          }
-                          disabled={isDateBased}
-                          className={cn("h-11", isDateBased && "bg-muted")}
-                        />
+        {visible.length === 0 ? (
+          <div className="text-sm text-muted-foreground border border-dashed rounded-md p-8 text-center">
+            Aucune ligne ajoutée. Cliquez sur « Ajouter une ligne » pour commencer.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 px-2">Type</th>
+                  <th className="py-2 px-2">Description</th>
+                  <th className="py-2 px-2 text-right">Qté</th>
+                  <th className="py-2 px-2 text-right">Prix U.</th>
+                  <th className="py-2 px-2 text-right">Total HT</th>
+                  <th className="py-2 px-2 w-24 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((p) => (
+                  <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="py-2 px-2 font-medium">{labels[p.typeOperation as keyof typeof labels] || "—"}</td>
+                    <td className="py-2 px-2">
+                      <div className="line-clamp-2">{p.description || "—"}</div>
+                      {p.typeOperation === "transport" && (
+                        <div className="text-xs text-muted-foreground">{p.pointDepart} → {p.pointArrivee}</div>
+                      )}
+                      {(p.typeOperation === "location" || p.typeOperation === "manutention") && p.materiel && (
+                        <div className="text-xs text-muted-foreground">{p.materiel}</div>
+                      )}
+                    </td>
+                    <td className="py-2 px-2 text-right">{p.quantite}</td>
+                    <td className="py-2 px-2 text-right">{formatMontant(p.prixUnitaire || 0)}</td>
+                    <td className="py-2 px-2 text-right font-medium">{formatMontant(p.montantHT || 0)}</td>
+                    <td className="py-2 px-2">
+                      <div className="flex justify-end gap-1">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemovePrestation(p.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Prix unitaire (FCFA)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={prestation.prixUnitaire || ""}
-                          onChange={(e) =>
-                            onPrestationChange(prestation.id, "prixUnitaire", parseInt(e.target.value) || 0)
-                          }
-                          className="h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Montant HT</Label>
-                        <Input
-                          value={formatMontant(prestation.montantHT)}
-                          disabled
-                          className="bg-muted font-medium h-11"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={4} className="py-2 px-2 text-right font-medium">Total HT</td>
+                  <td className="py-2 px-2 text-right font-bold">{formatMontant(total)}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        <LigneModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleSubmit}
+          initial={editing}
+        />
       </CardContent>
     </Card>
   );

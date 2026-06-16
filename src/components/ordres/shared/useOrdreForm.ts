@@ -201,16 +201,24 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
       }
 
       if (categorie === "operations_independantes" && independantData) {
-        data.lignes = independantData.prestations.map((p) => ({
-          type_operation: p.typeOperation || "manutention",
-          description: p.description || "",
-          lieu_depart: p.lieuDepart || null,
-          lieu_arrivee: p.lieuArrivee || null,
-          date_debut: p.dateDebut || null,
-          date_fin: p.dateFin || null,
-          quantite: p.quantite || 1,
-          prix_unitaire: p.prixUnitaire || 0,
-        }));
+        data.lignes = independantData.prestations
+          .filter((p) => p.typeOperation)
+          .map((p) => ({
+            type_operation: p.typeOperation || "autre",
+            description: p.description || "",
+            lieu_depart: p.pointDepart || p.lieuDepart || null,
+            lieu_arrivee: p.pointArrivee || p.lieuArrivee || null,
+            point_depart: p.pointDepart || null,
+            point_arrivee: p.pointArrivee || null,
+            type_transport: p.typeTransport || null,
+            mode_trajet: p.modeTrajet || null,
+            materiel: p.materiel || null,
+            nombre_jours: p.nombreJours || null,
+            date_debut: p.dateDebut || null,
+            date_fin: p.dateFin || null,
+            quantite: p.quantite || 1,
+            prix_unitaire: p.prixUnitaire || 0,
+          }));
       }
 
       return data;

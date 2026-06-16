@@ -150,6 +150,7 @@ export default function FactureIndependantForm({ onDataChange, initialData }: Fa
         onAddPrestation={handleAddPrestation}
         onRemovePrestation={handleRemovePrestation}
         onPrestationChange={handlePrestationChange}
+        onReplacePrestations={setPrestations}
       />
     </>
   );

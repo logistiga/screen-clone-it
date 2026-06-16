@@ -250,6 +250,12 @@ export default function ModifierFacturePage() {
       description: l.description || "",
       lieuDepart: l.lieu_depart || "",
       lieuArrivee: l.lieu_arrivee || "",
+      pointDepart: l.point_depart || l.lieu_depart || "",
+      pointArrivee: l.point_arrivee || l.lieu_arrivee || "",
+      typeTransport: l.type_transport || "",
+      modeTrajet: l.mode_trajet || "",
+      materiel: l.materiel || "",
+      nombreJours: l.nombre_jours || undefined,
       dateDebut: l.date_debut || "",
       dateFin: l.date_fin || "",
       quantite: parseFloat(l.quantite) || 1,
@@ -574,16 +580,24 @@ export default function ModifierFacturePage() {
     }
 
     if (categorie === "operations_independantes" && independantData) {
-      data.lignes = independantData.prestations.map(p => ({
-        type_operation: independantData.typeOperationIndep || "manutention",
-        description: p.description || "",
-        lieu_depart: p.lieuDepart || null,
-        lieu_arrivee: p.lieuArrivee || null,
-        date_debut: p.dateDebut || null,
-        date_fin: p.dateFin || null,
-        quantite: p.quantite || 1,
-        prix_unitaire: p.prixUnitaire || 0
-      }));
+      data.lignes = independantData.prestations
+        .filter((p: any) => p.typeOperation)
+        .map((p: any) => ({
+          type_operation: p.typeOperation || "autre",
+          description: p.description || "",
+          lieu_depart: p.pointDepart || p.lieuDepart || null,
+          lieu_arrivee: p.pointArrivee || p.lieuArrivee || null,
+          point_depart: p.pointDepart || null,
+          point_arrivee: p.pointArrivee || null,
+          type_transport: p.typeTransport || null,
+          mode_trajet: p.modeTrajet || null,
+          materiel: p.materiel || null,
+          nombre_jours: p.nombreJours || null,
+          date_debut: p.dateDebut || null,
+          date_fin: p.dateFin || null,
+          quantite: p.quantite || 1,
+          prix_unitaire: p.prixUnitaire || 0,
+        }));
     }
 
     try {
