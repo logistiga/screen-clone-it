@@ -1,102 +1,109 @@
-## Objectif
+## Refonte « Opérations Indépendantes » — Modal d'ajout de ligne typée (OT / Devis / Facture)
 
-Réorganiser le module **Opérations Indépendantes** (Ordres de Travail, Devis, Factures) :
+Aligner le module Facturation sur le système OPS visible sur les captures : un **modal "Ajouter une ligne"** avec sélecteur de type en haut, puis champs dynamiques selon le type. Le type est **par ligne** (déjà fait côté schéma), mais l'UI actuelle utilise un formulaire inline → on la remplace par un dialog modal identique aux captures.
 
-- En-tête simplifié : **client, date, type de marchandise (nouveau), description générale (nouveau), observation interne (nouveau)**.
-- **Plus de type d'opération unique** en en-tête — le type est désormais **choisi par ligne** parmi : Transport, Location, Manutention, Double Relevage, Stockage.
+### 1. Types de ligne — alignement OPS (4 types au lieu de 5)
 
-## Nouveau flux (formulaire)
+Aligner sur OPS qui n'a que **4 types** : `TRANSPORT`, `LOCATION`, `MANUTENTION`, `AUTRE`.
 
-```text
-┌─ En-tête ────────────────────────────────────────┐
-│ Client *           Date opération *              │
-│ Type marchandise * [Conteneur│Matériel│MG│Engin│Autre]
-│ Description générale (textarea)                  │
-│ Observation interne (textarea, non imprimée PDF) │
-└──────────────────────────────────────────────────┘
+- Supprimer `double_relevage` et `stockage` du sélecteur de ligne (ils restent valides en BDD pour rétrocompat lecture, mais ne sont plus proposés à la création).
+- Ajouter `autre` comme nouveau type côté front + backend (service `AutreService`, validation, factory).
 
-┌─ Lignes ────────────────────────── [+ Ajouter] ──┐
-│ Ligne 1                                          │
-│   Type d'opération * [Transport│Location│…]      │
-│   ↳ champs spécifiques au type sélectionné       │
-│   Description, Quantité, Prix, Montant HT        │
-│ Ligne 2  …                                       │
-└──────────────────────────────────────────────────┘
+### 2. Champs dynamiques par type (selon captures)
+
+| Type | Champs spécifiques |
+|---|---|
+| **Transport** | Point de départ (défaut « Libreville », readonly hint), Point d'arrivée (select destinations), Type de transport (Conteneur / Marchandise / Engin / Matériel), Mode de trajet (Aller simple / Aller-retour), Quantité, Prix transport, Description (optionnel) |
+| **Location** | Matériel à louer (select), Date début, Date fin, Nombre de jours (auto-calculé, éditable), Prix/jour, Description (optionnel). Total = jours × prix/jour affiché en bas du modal |
+| **Manutention** | Matériel utilisé (select), Description, Quantité, Prix unitaire. Total affiché |
+| **Autre** | Description (requis), Quantité, Prix unitaire. Total affiché |
+
+### 3. Composant `LigneModal` (nouveau)
+
+Créer `src/components/operations/LigneModal.tsx` :
+- Dialog shadcn avec header « Ajouter une ligne » / « Modifier la ligne »
+- Select type en haut + helper "Une opération peut combiner plusieurs types de lignes."
+- Sous-formulaires par type : `TransportFields`, `LocationFields`, `ManutentionFields`, `AutreFields`
+- Footer : Annuler / Ajouter (ou Enregistrer)
+- Validation locale avant submit, calcul `montantHT` injecté dans la ligne renvoyée
+
+### 4. Refonte `OperationsIndependantesForm.tsx`
+
+Remplacer le rendu actuel (cartes inline avec 5 boutons par ligne) par :
+- Liste compacte des lignes ajoutées (tableau : Type / Description / Qté / PU / Total / actions)
+- Bouton **« + Ajouter une ligne »** qui ouvre `LigneModal` en mode création
+- Clic sur une ligne → ouvre `LigneModal` en mode édition
+- Bouton supprimer par ligne
+- Bandeau total HT en bas
+
+### 5. Données de référence (selects)
+
+- **Destinations transport** : liste configurable (ex: Port-Gentil, Franceville, Oyem, Mouila, Lambaréné, Tchibanga…). Stockée dans `src/data/transportData.ts`.
+- **Types de transport** : `conteneur | marchandise | engin | materiel`
+- **Mode de trajet** : `aller_simple | aller_retour`
+- **Matériels** (location & manutention) : récupérés depuis `descriptionsApi` filtré par catégorie, fallback liste statique (`Grue`, `Chariot élévateur`, `Camion plateau`, `Reach stacker`, etc.) dans `src/data/materielsData.ts`.
+
+### 6. Persistance des champs spécifiques
+
+Étendre `LignePrestationEtendue` (déjà partiellement fait) avec :
+```ts
+typeOperation: 'transport'|'location'|'manutention'|'autre'|''
+// transport
+pointDepart?: string
+pointArrivee?: string
+typeTransport?: 'conteneur'|'marchandise'|'engin'|'materiel'
+modeTrajet?: 'aller_simple'|'aller_retour'
+// location
+materiel?: string
+dateDebut?: string
+dateFin?: string
+nombreJours?: number
+// manutention
+materielManutention?: string
 ```
 
-## Backend (Laravel)
+**Backend** : ajouter migration `2026_06_18_000001_add_ligne_operation_fields.php` qui ajoute sur `lignes_ordres`, `lignes_devis`, `lignes_factures` :
+- `point_depart` (string, null)
+- `point_arrivee` (string, null)
+- `type_transport` (string, null)
+- `mode_trajet` (string, null)
+- `materiel` (string, null)
+- `nombre_jours` (integer, null)
+- `date_debut`, `date_fin` déjà existants ou à ajouter si absents
 
-### Migration
-Nouveau fichier `add_marchandise_fields_to_documents.php` :
-- `ordres_travail`, `devis`, `factures` : ajouter
-  - `type_marchandise` ENUM('conteneur','materiel','marchandise_generale','engin','autre') NULL
-  - `description_generale` TEXT NULL
-  - `observation_interne` TEXT NULL
-- `lignes_ordres`, `lignes_devis`, `lignes_factures` : la colonne `type_operation` existe déjà → s'assurer qu'elle est NOT NULL via défaut applicatif (pas de changement de schéma destructif).
-- Migration de données : pour les OT/Devis/Facture existants en `categorie = operations_independantes`, copier `type_operation_indep` du parent dans chaque ligne enfant si `lignes.type_operation` est NULL.
+Mise à jour `LigneOrdre`/`LigneDevis`/`LigneFacture` ($fillable + casts), Resources, FormRequests, services de normalisation (`TransportService`, `LocationService`, `ManutentionService`, nouveau `AutreService`).
 
-### Models / Resources
-- Ajouter les 3 champs dans `$fillable` de `OrdreTravail`, `Devis`, `Facture`.
-- Exposer dans `OrdreTravailResource`, `DevisResource`, `FactureResource`.
-- `LigneOrdreResource`, `LigneDevisResource`, `LigneFactureResource` : déjà retournent `type_operation` → OK.
+### 7. Mapping front ↔ backend
 
-### FormRequests
-`StoreOrdreTravailRequest`, `UpdateOrdreTravailRequest`, et équivalents Devis/Facture :
-- ajouter validation :
-  - `type_marchandise` : `nullable|in:conteneur,materiel,marchandise_generale,engin,autre`
-  - `description_generale`, `observation_interne` : `nullable|string|max:2000`
-- `type_operation_indep` (en-tête) : devient **optionnel et deprecated** (conservé pour rétrocompatibilité, n'est plus exigé).
-- `lignes.*.type_operation` : reste `required_with:lignes`.
+`useOrdreForm.ts` / `useDevisForm.ts` / `useFactureForm.ts` : étendre le payload de mapping des lignes avec les nouveaux champs (snake_case). Hydratation inverse dans `ModifierOrdre` / `ModifierDevis` / `ModifierFacture`.
 
-### Services
-Dans `OrdreServiceFactory` / équivalents Devis & Facture : persister les 3 nouveaux champs lors de create/update. Aucun changement de calcul (totaux inchangés).
+### 8. Nettoyage
 
-## Frontend (React/TS)
+- Supprimer les anciens fichiers `DoubleRelevageFormFields.tsx`, `StockageFormFields.tsx` (non utilisés dans le nouveau flow) ou les laisser inertes.
+- Garder la rétrocompat lecture : si une ligne existante a `type_operation = 'double_relevage' | 'stockage'`, l'afficher en lecture comme `Autre` dans la liste.
 
-### Types (`src/types/documents.ts`)
-- Ajouter `TypeMarchandise = 'conteneur' | 'materiel' | 'marchandise_generale' | 'engin' | 'autre'` + helper labels.
-- Étendre `LignePrestationEtendue` avec `typeOperation: TypeOperationIndep` (par ligne).
+### 9. Non-objectifs (hors scope de ce lot)
 
-### Composant principal : `OperationsIndependantesForm.tsx`
-- Supprimer la prop `typeOperationIndep` globale.
-- Pour chaque ligne, ajouter en haut un **sélecteur de type d'opération** (5 boutons compacts) qui détermine quel `*FormFields` rendre.
-- Remplacer `getInitialPrestationEtendue()` → renvoyer `typeOperation: ''` par défaut.
+- PDF templates (mise à jour visuelle des nouveaux champs) — sera fait ensuite
+- Synchronisation OPS (lecture cross-DB) — déjà géré par la vue SQL
+- Migration de données historiques (le backfill précédent suffit)
 
-### Composants parents (3 formulaires)
-- `OrdreIndependantForm.tsx`, `DevisIndependantForm.tsx`, `FactureIndependantForm.tsx` :
-  - **Retirer** la grosse Card « Sélection du type d'opération » globale.
-  - **Ajouter** une Card « Informations marchandise » avec : Type marchandise (Select 5 options), Description générale (Textarea), Observation interne (Textarea).
-  - Étendre `*Data` interface : `typeMarchandise`, `descriptionGenerale`, `observationInterne`.
-  - Supprimer (ou rendre optionnel deprecated) le state `typeOperationIndep`.
+### Fichiers touchés (estimation)
 
-### useOrdreForm + équivalents Devis/Facture
-- Mapper les nouveaux champs vers/depuis l'API.
-- Inclure `lignes[].type_operation` dans le payload (déjà supporté côté API).
+**Nouveaux** :
+- `src/components/operations/LigneModal.tsx`
+- `src/components/operations/forms/TransportFields.tsx` (refait)
+- `src/components/operations/forms/LocationFields.tsx` (refait)
+- `src/components/operations/forms/ManutentionFields.tsx` (refait)
+- `src/components/operations/forms/AutreFields.tsx`
+- `src/data/transportData.ts`, `src/data/materielsData.ts`
+- `backend/database/migrations/2026_06_18_000001_add_ligne_operation_fields.php`
+- `backend/app/Services/OperationsIndependantes/AutreService.php`
 
-### Validations zod (`ordre-schemas.ts`, devis-schemas, facture-schemas)
-- Schémas indépendant : retirer l'obligation de `typeOperationIndep` à la racine, ajouter `typeMarchandise` requis, exiger `prestations[].typeOperation`.
-
-### Affichage (helpers/table/badge)
-- `ordres-helpers.tsx` : `getTypeBadge` pour catégorie `operations_independantes` → si plusieurs lignes de types différents → badge "Indépendant (multi)", sinon afficher le type de la première ligne. Bonus : afficher `type_marchandise` comme sous-libellé.
-
-### PDF (Blade templates `pdf/devis.blade.php`, `pdf/facture.blade.php`, `pdf/ordre-travail.blade.php` si présent)
-- En tête : afficher Type marchandise + Description générale.
-- Ne **pas** imprimer Observation interne.
-- Colonne « Type opération » ajoutée dans le tableau des lignes pour les Indépendantes.
-
-## Rétrocompatibilité
-
-- `type_operation_indep` (en-tête) conservé en base et lu en fallback : si nouveau document n'a pas ce champ mais a des lignes, OK ; les anciens documents continuent d'afficher correctement.
-- Migration backfills `lignes.type_operation` depuis `type_operation_indep` parent pour éviter des lignes orphelines.
-
-## Hors périmètre
-
-- Pas de changement aux Conteneurs ni Conventionnel.
-- Pas de changement aux calculs de taxes/totaux.
-- Vue OPS `v_ops_independantes` : sera mise à jour dans un second temps pour exposer les nouveaux champs (à confirmer après validation de ce plan).
-
-## Livrables (fichiers touchés)
-
-Backend (~10) : 1 migration + 3 models + 3 resources + 6 FormRequests + 3 services.
-Frontend (~10) : `types/documents.ts`, `OperationsIndependantesForm.tsx`, 3 forms parents, 3 validations, `ordres-helpers.tsx`, `useOrdreForm` (+ Devis/Facture).
-PDF (3 blade).
+**Modifiés** :
+- `src/components/operations/OperationsIndependantesForm.tsx` (refonte)
+- `src/types/documents.ts`
+- `src/components/ordres/shared/useOrdreForm.ts`, `useDevisForm.ts`, `useFactureForm.ts`
+- `src/pages/ModifierOrdre.tsx`, `ModifierDevis.tsx`, `ModifierFacture.tsx`
+- `src/lib/validations/ordre-schemas.ts` (+ devis/facture si existants)
+- Backend : modèles lignes, Resources, FormRequests, `OperationIndependanteFactory`, services Transport/Location/Manutention
