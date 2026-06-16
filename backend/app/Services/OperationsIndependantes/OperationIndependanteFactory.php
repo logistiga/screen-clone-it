@@ -2,12 +2,6 @@
 
 namespace App\Services\OperationsIndependantes;
 
-use Illuminate\Support\Facades\Log;
-
-/**
- * Factory pour les services d'opérations indépendantes.
- * Route vers le service spécialisé selon le type d'opération.
- */
 class OperationIndependanteFactory
 {
     protected LocationService $locationService;
@@ -15,25 +9,25 @@ class OperationIndependanteFactory
     protected ManutentionService $manutentionService;
     protected DoubleRelevageService $doubleRelevageService;
     protected StockageService $stockageService;
+    protected AutreService $autreService;
 
     public function __construct(
         LocationService $locationService,
         TransportService $transportService,
         ManutentionService $manutentionService,
         DoubleRelevageService $doubleRelevageService,
-        StockageService $stockageService
+        StockageService $stockageService,
+        AutreService $autreService
     ) {
         $this->locationService = $locationService;
         $this->transportService = $transportService;
         $this->manutentionService = $manutentionService;
         $this->doubleRelevageService = $doubleRelevageService;
         $this->stockageService = $stockageService;
+        $this->autreService = $autreService;
     }
 
-    /**
-     * Obtenir le service approprié selon le type d'opération
-     */
-    public function getService(string $typeOperation): LocationService|TransportService|ManutentionService|DoubleRelevageService|StockageService
+    public function getService(string $typeOperation)
     {
         return match ($typeOperation) {
             'location' => $this->locationService,
@@ -41,67 +35,44 @@ class OperationIndependanteFactory
             'manutention' => $this->manutentionService,
             'double_relevage' => $this->doubleRelevageService,
             'stockage' => $this->stockageService,
-            default => $this->manutentionService,
+            'autre' => $this->autreService,
+            default => $this->autreService,
         };
     }
 
-    /**
-     * Obtenir tous les types d'opérations disponibles
-     */
     public function getTypesDisponibles(): array
     {
         return [
-            'location' => LocationService::LABEL,
             'transport' => TransportService::LABEL,
+            'location' => LocationService::LABEL,
             'manutention' => ManutentionService::LABEL,
-            'double_relevage' => DoubleRelevageService::LABEL,
-            'stockage' => StockageService::LABEL,
+            'autre' => AutreService::LABEL,
         ];
     }
 
-    /**
-     * Valider une ligne selon son type d'opération
-     */
     public function validerLigne(array $ligne): array
     {
         $typeOperation = $ligne['type_operation'] ?? '';
-        
         if (empty($typeOperation)) {
             return ['Type d\'opération requis'];
         }
-
-        $service = $this->getService($typeOperation);
-        return $service->validerDonnees($ligne);
+        return $this->getService($typeOperation)->validerDonnees($ligne);
     }
 
-    /**
-     * Normaliser une ligne selon son type d'opération
-     */
     public function normaliserLigne(array $ligne): array
     {
-        $typeOperation = $ligne['type_operation'] ?? 'manutention';
-        $service = $this->getService($typeOperation);
-        
-        return $service->normaliserLigne($ligne);
+        $typeOperation = $ligne['type_operation'] ?? 'autre';
+        return $this->getService($typeOperation)->normaliserLigne($ligne);
     }
 
-    /**
-     * Calculer le montant d'une ligne selon son type
-     */
     public function calculerMontant(array $ligne): float
     {
-        $typeOperation = $ligne['type_operation'] ?? 'manutention';
-        $service = $this->getService($typeOperation);
-        
-        return $service->calculerMontant($ligne);
+        $typeOperation = $ligne['type_operation'] ?? 'autre';
+        return $this->getService($typeOperation)->calculerMontant($ligne);
     }
 
-    /**
-     * Obtenir les champs spécifiques d'un type d'opération
-     */
     public function getChampsSpecifiques(string $typeOperation): array
     {
-        $service = $this->getService($typeOperation);
-        return $service->getChampsSpecifiques();
+        return $this->getService($typeOperation)->getChampsSpecifiques();
     }
 }
