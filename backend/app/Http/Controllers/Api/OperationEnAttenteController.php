@@ -20,12 +20,15 @@ use Illuminate\Support\Facades\Schema;
  */
 class OperationEnAttenteController extends Controller
 {
+    use SyncDiagnosticHelpersTrait;
+
     /** Tables candidates dans OPS, par ordre de priorité */
     private const OPS_TABLES = ['operations_independantes', 'operations'];
 
     public function index(Request $request)
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $table = $this->resolveOpsTable();
             if (!$table) {
                 return response()->json([
