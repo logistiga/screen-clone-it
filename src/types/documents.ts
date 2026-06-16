@@ -8,6 +8,17 @@ export type CategorieDocument = "conteneurs" | "conventionnel" | "operations_ind
 export type TypeOperation = "import" | "export";
 export type TypeOperationIndep = "location" | "transport" | "manutention" | "double_relevage" | "stockage";
 
+// Type de marchandise (en-tête des opérations indépendantes)
+export type TypeMarchandise = "conteneur" | "materiel" | "marchandise_generale" | "engin" | "autre";
+
+export const getTypeMarchandiseLabels = (): Record<TypeMarchandise, string> => ({
+  conteneur: "Conteneur",
+  materiel: "Matériel",
+  marchandise_generale: "Marchandise générale",
+  engin: "Engin",
+  autre: "Autre",
+});
+
 // Types d'opérations disponibles pour conteneurs
 export type TypeOperationConteneur = "arrivee" | "stockage" | "depotage" | "double_relevage" | "sortie" | "transport" | "manutention" | "escorte";
 
