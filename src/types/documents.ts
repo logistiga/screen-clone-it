@@ -120,6 +120,8 @@ export const getOperationsIndepLabels = (): Record<TypeOperationIndep, { label: 
 
 // Interface pour les prestations avec champs spécifiques
 export interface LignePrestationEtendue extends LignePrestation {
+  // Type d'opération désormais PAR LIGNE (et non plus en en-tête)
+  typeOperation?: TypeOperationIndep | "";
   // Pour transport hors Libreville
   lieuDepart?: string;
   lieuArrivee?: string;
@@ -130,6 +132,7 @@ export interface LignePrestationEtendue extends LignePrestation {
 
 export const getInitialPrestationEtendue = (): LignePrestationEtendue => ({
   id: "1",
+  typeOperation: "",
   description: "",
   quantite: 1,
   prixUnitaire: 0,
