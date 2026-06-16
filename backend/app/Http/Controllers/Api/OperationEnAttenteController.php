@@ -102,6 +102,7 @@ class OperationEnAttenteController extends Controller
     public function stats()
     {
         try {
+            $this->refreshOpsConfigFromEnv();
             $table = $this->resolveOpsTable();
             if (!$table) {
                 return response()->json(['en_attente' => 0, 'ignorees' => 0, 'converties' => 0]);
