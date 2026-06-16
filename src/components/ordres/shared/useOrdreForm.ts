@@ -97,9 +97,12 @@ export function useOrdreForm(initial?: OrdreFormInitial) {
       return { ok: true };
     }
     if (categorie === "operations_independantes") {
-      if (!independantData?.typeOperationIndep) return { ok: false, error: "Veuillez sélectionner un type d'opération" };
+      if (!independantData?.typeMarchandise) return { ok: false, error: "Veuillez sélectionner le type de marchandise" };
       if (!independantData.prestations?.length || independantData.prestations.every((p) => !p.description?.trim())) {
         return { ok: false, error: "Veuillez ajouter au moins une prestation" };
+      }
+      if (independantData.prestations.some((p) => !p.typeOperation)) {
+        return { ok: false, error: "Chaque ligne doit avoir un type d'opération" };
       }
       return { ok: true };
     }
