@@ -261,19 +261,33 @@ class OperationEnAttenteController extends Controller
     private function formatRow(object $row, array $cols, string $idCol): array
     {
         $r = (array) $row;
+        $get = function(array $candidates) use ($r) {
+            foreach ($candidates as $c) {
+                if (array_key_exists($c, $r) && $r[$c] !== null && $r[$c] !== '') return $r[$c];
+            }
+            return null;
+        };
+        $num = $get(['numero', 'reference', 'ref', 'num_operation', 'numero_operation', 'code', 'num']);
+        $type = $get(['type', 'type_operation', 'nature', 'categorie', 'type_op']);
+        $client = $get(['client_nom', 'client', 'nom_client', 'raison_sociale', 'designation_client']);
+        $desc = $get(['description', 'designation', 'libelle', 'objet', 'commentaire', 'observation', 'details']);
+        $depart = $get(['point_depart', 'depart', 'origine', 'lieu_depart', 'from']);
+        $arrivee = $get(['point_arrivee', 'arrivee', 'destination', 'lieu_arrivee', 'to']);
+        $date = $get(['date_operation', 'date', 'date_op', 'date_creation', 'created_at']);
+        $qte = $get(['quantite', 'qte', 'nb', 'nombre']);
+        $mt = $get(['montant_ht', 'montant', 'prix', 'prix_ht', 'montant_total', 'total_ht', 'tarif', 'prix_unitaire']);
+
         return [
             'id' => (string) $r[$idCol],
-            'numero' => $r['numero'] ?? $r['reference'] ?? null,
-            'type' => $r['type'] ?? $r['type_operation'] ?? null,
-            'client_nom' => $r['client_nom'] ?? $r['client'] ?? null,
-            'description' => $r['description'] ?? null,
-            'point_depart' => $r['point_depart'] ?? null,
-            'point_arrivee' => $r['point_arrivee'] ?? null,
-            'date_operation' => $r['date_operation'] ?? $r['date'] ?? $r['created_at'] ?? null,
-            'quantite' => isset($r['quantite']) ? (float) $r['quantite'] : null,
-            'montant_ht' => isset($r['montant_ht']) ? (float) $r['montant_ht']
-                : (isset($r['montant']) ? (float) $r['montant']
-                : (isset($r['prix']) ? (float) $r['prix'] : null)),
+            'numero' => $num,
+            'type' => $type,
+            'client_nom' => $client,
+            'description' => $desc,
+            'point_depart' => $depart,
+            'point_arrivee' => $arrivee,
+            'date_operation' => $date,
+            'quantite' => $qte !== null ? (float) $qte : null,
+            'montant_ht' => $mt !== null ? (float) $mt : null,
             'raw' => $r,
         ];
     }
