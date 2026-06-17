@@ -88,6 +88,8 @@ class OperationEnAttenteController extends Controller
                     'last_page' => $results->lastPage(),
                     'per_page' => $results->perPage(),
                     'total' => $results->total(),
+                    'ops_table' => $table,
+                    'ops_columns' => $cols,
                 ],
             ]);
         } catch (\Throwable $e) {
