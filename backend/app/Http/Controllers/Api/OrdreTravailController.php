@@ -115,8 +115,11 @@ class OrdreTravailController extends Controller
             $query->where('client_id', $request->get('client_id'));
         }
 
-        if ($request->has('categorie')) {
-            $query->where('categorie', $request->get('categorie'));
+        if ($request->filled('categorie')) {
+            $valeurs = DocumentCategory::equivalentValues($request->get('categorie'));
+            if (!empty($valeurs)) {
+                $query->whereIn('categorie', $valeurs);
+            }
         }
 
         if ($request->has('date_debut') && $request->has('date_fin')) {
