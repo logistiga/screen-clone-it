@@ -68,8 +68,11 @@ class OrdreTravailController extends Controller
             $query->where('client_id', $clientId);
         }
 
-        if ($request->filled('categorie') && in_array($request->get('categorie'), ['Conteneur', 'Lot', 'Independant'])) {
-            $query->where('categorie', $request->get('categorie'));
+        if ($request->filled('categorie')) {
+            $valeurs = DocumentCategory::equivalentValues($request->get('categorie'));
+            if (!empty($valeurs)) {
+                $query->whereIn('categorie', $valeurs);
+            }
         }
 
         // Dates validées
