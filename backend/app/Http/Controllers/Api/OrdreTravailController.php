@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateOrdreTravailRequest;
 use App\Http\Resources\OrdreTravailResource;
 use App\Http\Resources\FactureResource;
 use App\Http\Traits\SecureQueryParameters;
+use App\Support\DocumentCategory;
 use App\Models\OrdreTravail;
 use App\Models\Audit;
 use App\Services\OrdreTravail\OrdreServiceFactory;
