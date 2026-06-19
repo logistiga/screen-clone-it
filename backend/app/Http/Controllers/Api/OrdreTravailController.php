@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateOrdreTravailRequest;
 use App\Http\Resources\OrdreTravailResource;
 use App\Http\Resources\FactureResource;
 use App\Http\Traits\SecureQueryParameters;
+use App\Support\DocumentCategory;
 use App\Models\OrdreTravail;
 use App\Models\Audit;
 use App\Services\OrdreTravail\OrdreServiceFactory;
@@ -67,8 +68,11 @@ class OrdreTravailController extends Controller
             $query->where('client_id', $clientId);
         }
 
-        if ($request->filled('categorie') && in_array($request->get('categorie'), ['Conteneur', 'Lot', 'Independant'])) {
-            $query->where('categorie', $request->get('categorie'));
+        if ($request->filled('categorie')) {
+            $valeurs = DocumentCategory::equivalentValues($request->get('categorie'));
+            if (!empty($valeurs)) {
+                $query->whereIn('categorie', $valeurs);
+            }
         }
 
         // Dates validées
@@ -111,8 +115,11 @@ class OrdreTravailController extends Controller
             $query->where('client_id', $request->get('client_id'));
         }
 
-        if ($request->has('categorie')) {
-            $query->where('categorie', $request->get('categorie'));
+        if ($request->filled('categorie')) {
+            $valeurs = DocumentCategory::equivalentValues($request->get('categorie'));
+            if (!empty($valeurs)) {
+                $query->whereIn('categorie', $valeurs);
+            }
         }
 
         if ($request->has('date_debut') && $request->has('date_fin')) {
