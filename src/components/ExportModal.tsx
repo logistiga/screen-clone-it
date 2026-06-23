@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Download, FileText, FileSpreadsheet, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { clients } from "@/data/mockData";
+import { useClients } from "@/hooks/commercial/use-clients-devis";
 
 interface ExportModalProps {
   open: boolean;
@@ -33,11 +33,18 @@ type FiltreStatut = "tous" | "paye" | "impaye";
 export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const { toast } = useToast();
   const [clientId, setClientId] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [filtreStatut, setFiltreStatut] = useState<FiltreStatut>("tous");
   const [format, setFormat] = useState<FormatExport>("pdf");
   const [isExporting, setIsExporting] = useState(false);
+
+  const { data: clientsData, isLoading: isLoadingClients } = useClients({
+    search: clientSearch || undefined,
+    per_page: 100,
+  });
+  const clients = clientsData?.data ?? [];
 
   const handleExport = async () => {
     if (!clientId) {
@@ -72,7 +79,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     // Simulation d'export
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    const client = clients.find((c) => c.id === clientId);
+    const client = clients.find((c) => String(c.id) === clientId);
     const statutLabel = filtreStatut === "tous" ? "tous les documents" : filtreStatut === "paye" ? "les documents payés" : "les documents impayés";
 
     console.log("Export:", {
@@ -110,13 +117,22 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
           {/* Client */}
           <div className="space-y-2">
             <Label>Client</Label>
+            <Input
+              placeholder="Rechercher un client..."
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              className="mb-2"
+            />
             <Select value={clientId} onValueChange={setClientId}>
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un client" />
+                <SelectValue placeholder={isLoadingClients ? "Chargement..." : "Sélectionner un client"} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72">
+                {clients.length === 0 && !isLoadingClients && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">Aucun client</div>
+                )}
                 {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
+                  <SelectItem key={c.id} value={String(c.id)}>
                     {c.nom}
                   </SelectItem>
                 ))}
