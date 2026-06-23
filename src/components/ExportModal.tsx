@@ -117,13 +117,22 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
           {/* Client */}
           <div className="space-y-2">
             <Label>Client</Label>
+            <Input
+              placeholder="Rechercher un client..."
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              className="mb-2"
+            />
             <Select value={clientId} onValueChange={setClientId}>
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un client" />
+                <SelectValue placeholder={isLoadingClients ? "Chargement..." : "Sélectionner un client"} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72">
+                {clients.length === 0 && !isLoadingClients && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">Aucun client</div>
+                )}
                 {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
+                  <SelectItem key={c.id} value={String(c.id)}>
                     {c.nom}
                   </SelectItem>
                 ))}
