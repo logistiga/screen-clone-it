@@ -136,6 +136,8 @@ export function useDevisForm(initial?: Partial<DevisFormState>) {
       }
 
       if (categorie === "operations_independantes" && independantData) {
+        const firstTypeOp = independantData.prestations?.find((p: any) => p?.typeOperation)?.typeOperation;
+        data.type_operation_indep = independantData.typeOperationIndep || firstTypeOp || null;
         data.type_marchandise = independantData.typeMarchandise || null;
         data.description_generale = independantData.descriptionGenerale || null;
         data.observation_interne = independantData.observationInterne || null;

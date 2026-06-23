@@ -111,8 +111,12 @@ export default function NouveauDevisPage() {
     if (api.categorie === "conventionnel" && !api.conventionnelData?.numeroBL) {
       toast.error("Veuillez saisir le numéro de BL"); return;
     }
-    if (api.categorie === "operations_independantes" && !api.independantData?.typeOperationIndep) {
-      toast.error("Veuillez sélectionner un type d'opération"); return;
+    if (api.categorie === "operations_independantes") {
+      const prestations = api.independantData?.prestations ?? [];
+      const hasType = prestations.some((p: any) => p?.typeOperation);
+      if (!hasType && !api.independantData?.typeOperationIndep) {
+        toast.error("Veuillez sélectionner un type d'opération sur au moins une ligne"); return;
+      }
     }
 
     const data = api.buildPayload({
