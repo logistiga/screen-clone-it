@@ -79,7 +79,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     // Simulation d'export
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    const client = clients.find((c) => c.id === clientId);
+    const client = clients.find((c) => String(c.id) === clientId);
     const statutLabel = filtreStatut === "tous" ? "tous les documents" : filtreStatut === "paye" ? "les documents payés" : "les documents impayés";
 
     console.log("Export:", {
