@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Download, FileText, FileSpreadsheet, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { clients } from "@/data/mockData";
+import { useClients } from "@/hooks/commercial/use-clients-devis";
 
 interface ExportModalProps {
   open: boolean;
