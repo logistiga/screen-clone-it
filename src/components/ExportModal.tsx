@@ -33,11 +33,18 @@ type FiltreStatut = "tous" | "paye" | "impaye";
 export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const { toast } = useToast();
   const [clientId, setClientId] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [filtreStatut, setFiltreStatut] = useState<FiltreStatut>("tous");
   const [format, setFormat] = useState<FormatExport>("pdf");
   const [isExporting, setIsExporting] = useState(false);
+
+  const { data: clientsData, isLoading: isLoadingClients } = useClients({
+    search: clientSearch || undefined,
+    per_page: 100,
+  });
+  const clients = clientsData?.data ?? [];
 
   const handleExport = async () => {
     if (!clientId) {
