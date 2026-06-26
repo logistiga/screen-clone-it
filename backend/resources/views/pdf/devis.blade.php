@@ -309,8 +309,18 @@
                 // Lignes directes
                 if (!empty($devis->lignes) && count($devis->lignes) > 0) {
                     foreach ($devis->lignes as $l) {
+                        $desc = trim((string)($l->description ?? '')) ?: ($l->type_operation ?? 'Prestation');
+                        $trajet = null;
+                        if (($l->type_operation ?? '') === 'transport') {
+                            $dep = $l->point_depart ?? $l->lieu_depart ?? null;
+                            $arr = $l->point_arrivee ?? $l->lieu_arrivee ?? null;
+                            if ($dep || $arr) {
+                                $trajet = 'Trajet : ' . ($dep ?: '—') . ' → ' . ($arr ?: '—');
+                            }
+                        }
                         $lignes[] = [
-                            'description' => $l->description ?? $l->type_operation ?? 'Prestation',
+                            'description' => $desc,
+                            'trajet' => $trajet,
                             'quantite' => $l->quantite ?? 1,
                             'prix_unitaire' => $l->prix_unitaire ?? 0,
                             'montant_ht' => $l->montant_ht ?? (($l->quantite ?? 1) * ($l->prix_unitaire ?? 0)),
@@ -355,7 +365,7 @@
             @foreach($lignes as $index => $ligne)
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $ligne['description'] }}</td>
+                <td>{{ $ligne['description'] }}@if(!empty($ligne['trajet']))<br><span style="color:#666;font-size:10px">{{ $ligne['trajet'] }}</span>@endif</td>
                 <td>{{ $ligne['quantite'] }}</td>
                 <td>{{ number_format($ligne['prix_unitaire'], 0, ',', ' ') }} FCFA</td>
                 <td>{{ number_format($ligne['montant_ht'], 0, ',', ' ') }} FCFA</td>
