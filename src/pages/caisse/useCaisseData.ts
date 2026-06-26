@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, format } from "date-fns";
-import api from "@/lib/api";
+import { fetchCaisseMouvements, fetchCaisseSolde, fetchCaisseSoldeJour } from "@/services/api";
 
 interface MouvementCaisse {
   id: string;
@@ -47,37 +47,33 @@ export function useCaisseData() {
 
   const { data: mouvementsData, isLoading, refetch } = useQuery({
     queryKey: ['caisse-mouvements', currentPage, pageSize, searchTerm, typeFilter],
-    queryFn: async () => {
+    queryFn: () => {
       const params: Record<string, string | number> = { page: currentPage, per_page: pageSize, source: 'caisse' };
       if (searchTerm) params.search = searchTerm;
       if (typeFilter !== 'all') params.type = typeFilter;
-      const response = await api.get<CaisseResponse>('/caisse', { params });
-      return response.data;
+      return fetchCaisseMouvements<CaisseResponse>(params);
     },
   });
 
   const { data: soldeData } = useQuery({
     queryKey: ['caisse-solde'],
-    queryFn: async () => { const r = await api.get<SoldeResponse>('/caisse/solde'); return r.data; },
+    queryFn: () => fetchCaisseSolde<SoldeResponse>(),
   });
 
   const { data: soldeJourData } = useQuery({
     queryKey: ['caisse-solde-jour'],
-    queryFn: async () => {
+    queryFn: () => {
       const today = new Date().toISOString().split('T')[0];
-      const r = await api.get<{ entrees: number; sorties: number; solde: number }>('/caisse/solde-jour', { params: { date: today } });
-      return r.data;
+      return fetchCaisseSoldeJour<{ entrees: number; sorties: number; solde: number }>(today);
     },
   });
 
   // Mouvements du mois en cours pour les totaux mensuels
   const { data: mouvementsMoisData } = useQuery({
     queryKey: ['caisse-mouvements-mois', dateDebut, dateFin],
-    queryFn: async () => {
-      const params = { source: 'caisse', date_debut: dateDebut, date_fin: dateFin, per_page: 10000 };
-      const response = await api.get<CaisseResponse>('/caisse', { params });
-      return response.data;
-    },
+    queryFn: () => fetchCaisseMouvements<CaisseResponse>({
+      source: 'caisse', date_debut: dateDebut, date_fin: dateFin, per_page: 10000,
+    }),
   });
 
   const mouvements = mouvementsData?.data || [];

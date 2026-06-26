@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { XCircle, Loader2 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { refuserPrime, type CaisseSourceKey } from "@/services/api";
 import { PrimeEnAttente } from "./types";
 
 interface RefusModalProps {
@@ -24,20 +24,8 @@ export function RefusModal({ open, onOpenChange, prime }: RefusModalProps) {
   const [motif, setMotif] = useState("");
 
   const mutation = useMutation({
-    mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const endpointMap: Record<string, string> = {
-        CNV: `/caisse-cnv/${primeId}/refuser`,
-        HORSLBV: `/caisse-horslbv/${primeId}/refuser`,
-        GARAGE: `/caisse-garage/${primeId}/refuser`,
-        GARAGE_PRIME: `/caisse-garage/primes/${primeId}/refuser`,
-        OPS: `/caisse-en-attente/${primeId}/refuser`,
-        PRIME_REP: `/caisse-primes-rep/${primeId}/refuser`,
-        PRIME_TRANS: `/caisse-primes-trans/${primeId}/refuser`,
-      };
-      const endpoint = endpointMap[source] || endpointMap.OPS;
-      const response = await api.post(endpoint, { motif });
-      return response.data;
-    },
+    mutationFn: ({ primeId, source }: { primeId: string; source: string }) =>
+      refuserPrime(source as CaisseSourceKey, primeId, { motif }),
     onSuccess: () => {
       toast.success("Achat refusé avec succès");
       queryClient.invalidateQueries({ queryKey: ['caisse-en-attente'] });

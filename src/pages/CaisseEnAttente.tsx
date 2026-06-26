@@ -6,7 +6,7 @@ import {
   CheckCircle2, Wallet, Clock, Banknote, Truck, FileText, MapPin, Wrench, Users, Building2,
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
-import api from "@/lib/api";
+import { fetchCaisseAttenteStats } from "@/services/api";
 import { DocumentStatCard } from "@/components/shared/documents";
 import { PrimesTable } from "@/components/caisse/caisse-attente/PrimesTable";
 import { GarageTable } from "@/components/caisse/caisse-attente/GarageTable";
@@ -23,58 +23,37 @@ export default function CaisseEnAttentePage() {
 
   const { data: opsStatsData } = useQuery({
     queryKey: ['caisse-en-attente-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-en-attente/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('OPS'),
   });
 
   const { data: cnvStatsData } = useQuery({
     queryKey: ['caisse-cnv-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-cnv/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('CNV'),
   });
 
   const { data: horslbvStatsData } = useQuery({
     queryKey: ['caisse-horslbv-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-horslbv/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('HORSLBV'),
   });
 
   const { data: garageStatsData } = useQuery({
     queryKey: ['caisse-garage-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-garage/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('GARAGE'),
   });
 
   const { data: repStatsData } = useQuery({
     queryKey: ['caisse-primes-rep-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-primes-rep/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('PRIME_REP'),
   });
 
   const { data: transStatsData } = useQuery({
     queryKey: ['caisse-primes-trans-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-primes-trans/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('PRIME_TRANS'),
   });
 
   const { data: garagePrimesStatsData } = useQuery({
     queryKey: ['caisse-garage-primes-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/caisse-garage/primes/stats');
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<StatsResponse>('GARAGE_PRIME'),
   });
 
   const emptyStats: StatsResponse = { total_valide: 0, nombre_primes: 0, total_a_decaisser: 0, nombre_a_decaisser: 0, deja_decaissees: 0, total_decaisse: 0 };
