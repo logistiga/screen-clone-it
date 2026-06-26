@@ -1,59 +1,85 @@
-## Objectif L1
-Mutualiser les 9 formulaires Devis/Ordre/Facture (Conteneurs / Conventionnel / Indépendant) + les 3 formulaires `Lignes*` en un seul ensemble paramétré par `documentType: 'devis' | 'ordre' | 'facture'`. Cible : ~ -2 500 à -3 000 lignes.
+## Lot L1.3 — Unification des pages Nouveau* / Modifier* Devis · Ordre · Facture
 
-État actuel : **3 581 lignes** sur 12 fichiers.
+### État actuel (6 pages, 3 316 lignes)
 
 ```text
-devis/forms/         474 + 260 + 175 + 114 = 1023
-ordres/forms/        718 + 310 + 241 + 103 = 1372
-factures/forms/      604 + 284 + 157 + 113 = 1158
+NouveauDevis.tsx        229
+ModifierDevis.tsx       255
+NouvelOrdre.tsx         557
+ModifierOrdre.tsx       558
+NouvelleFacture.tsx     823
+ModifierFacture.tsx     894
 ```
 
-## Architecture cible
+Patterns dupliqués page-à-page (≈ 75 % de code commun entre `Nouveau*` et `Modifier*` de chaque document, et ≈ 40 % entre les 3 documents) :
 
-Nouveau dossier `src/components/documents/forms/` :
+- chargement parallèle `clients / armateurs / transitaires / représentants` + `toArray`
+- hook formulaire (`useDevisForm` / `useOrdreForm` / `useFactureForm`)
+- init taxes recommandées
+- auto-save brouillon (création) / hydratation depuis API (édition)
+- pré-remplissage `prefill` via `sessionStorage` (Ordre & Facture)
+- header back + titre + badge statut (édition) + `AutoSaveIndicator` (création)
+- rendu `<XxxForm mode="create"|"edit">` ou stepper inline (Ordre / Facture)
+- submit → mutation → navigate + gestion erreurs Laravel `errors{}`
+
+### Architecture cible
+
+Un seul shell par document, qui couvre les deux modes via une prop `mode`. Les pages racine deviennent des shims de ~30 lignes.
 
 ```text
-src/components/documents/forms/
+src/components/documents/pages/
 ├── index.ts
-├── types.ts                    # DocumentType, DocumentFormConfig, Ligne unifiée
-├── config.ts                   # labels/champs par documentType (titres, libellés, clés)
-├── LignesForm.tsx              # remplace LignesDevisForm + LignesOrdreForm + LignesFactureForm
-├── DocumentConteneursForm.tsx  # remplace les 3 *ConteneursForm
-├── DocumentConventionnelForm.tsx
-└── DocumentIndependantForm.tsx
+├── useDocumentPageData.ts        # fetch clients/armateurs/transitaires/representants + toArray + isLoading/error agrégés
+├── useDocumentPrefill.ts         # lecture sessionStorage "prefill_ordre" / "prefill_facture" (no-op pour devis)
+├── useDocumentHydration.ts       # hydratation API → api.setX (mode edit) + extraction initialChildData
+├── useDocumentAutoSave.ts        # wrap useAutoSave + save/restore typés par document (mode create)
+├── useDocumentSubmit.ts          # create vs update + toast erreurs Laravel + clear draft + navigate
+├── DocumentPageHeader.tsx        # back + titre + icône + badge statut (edit) + AutoSaveIndicator (create)
+├── DevisPageShell.tsx            # assemble les hooks + <DevisForm mode>
+├── OrdrePageShell.tsx            # idem + stepper Ordre + ConfirmationSaveModal
+└── FacturePageShell.tsx          # idem + spécificités facture
 ```
 
-Chaque formulaire reçoit `documentType` + données + handlers ; le rendu différencié (titre "Lignes du devis" / "Lignes de l'ordre" / "Lignes de facture", clé `montant` vs `montantHT`, libellé `Désignation` vs `Description`, présence de `unite`, etc.) est piloté par `config.ts`.
+Les pages racine (`src/pages/NouveauDevis.tsx`, etc.) deviennent :
 
-## Compatibilité
-
-Pour ne pas casser les 5 pages consommatrices (`NouveauDevis`, `NouvelOrdre`, `NouvelleFacture`, `ModifierOrdre`, `ModifierFacture`) ni les hooks `useDevisForm` / `useOrdreForm`, les anciens chemins (`@/components/devis/forms`, `ordres/forms`, `factures/forms`) seront conservés en **shims** :
-
-```ts
-// src/components/devis/forms/index.ts
-export { DocumentConteneursForm as DevisConteneursForm } from "@/components/documents/forms";
-// + ré-exports des types existants
+```tsx
+export default function NouveauDevisPage() {
+  return <DevisPageShell mode="create" />;
+}
 ```
 
-→ aucune modification des imports existants nécessaire. Les pages continuent de fonctionner. Les types `LigneDevis` / `LigneOrdre` / `LigneFacture` restent exportés sous leurs anciens noms (alias d'un type unifié `DocumentLigne`).
+### Compatibilité
 
-## Découpage en sous-lots
+- Routes inchangées (`/devis/nouveau`, `/devis/:id/modifier`, etc.).
+- `useDevisForm` / `useOrdreForm` / `useFactureForm` réutilisés tels quels — pas de modification des hooks de formulaire ni des composants `*Form` shims (livrés en L1.1 / L1.2).
+- Aucune modification backend.
+- `AutoSaveIndicator`, `ConfirmationSaveModal`, `OrdreStepper`, validations Zod : réutilisés à l'identique.
 
-- **L1.1** Mutualiser `LignesForm` (3 → 1 fichier). Gain ~ 220 lignes. Risque faible.
-- **L1.2** Mutualiser `IndependantForm` (3 → 1). Gain ~ 350 lignes.
-- **L1.3** Mutualiser `ConventionnelForm` (3 → 1). Gain ~ 580 lignes.
-- **L1.4** Mutualiser `ConteneursForm` (3 → 1). Gain ~ 1 250 lignes. Le plus complexe (Ordre = 718 lignes vs Devis = 474), nécessite normalisation des champs spécifiques (numéro BL, dates de livraison, etc.).
+### Découpage en sous-lots
 
-Livraison **un sous-lot à la fois**, avec `tsgo` après chaque, et rapport conforme aux règles maîtres (fichiers créés / modifiés / supprimés / risques).
+Livraison **un document à la fois**, `tsgo --noEmit` après chaque :
 
-## Validation
+- **L1.3.a** Hooks + header partagés (`useDocumentPageData`, `useDocumentHydration`, `useDocumentAutoSave`, `useDocumentSubmit`, `DocumentPageHeader`). Aucun changement visible.
+- **L1.3.b** `DevisPageShell` + shims `NouveauDevis` / `ModifierDevis`. Gain ≈ 380 lignes (sur 484).
+- **L1.3.c** `OrdrePageShell` + shims `NouvelOrdre` / `ModifierOrdre`. Gain ≈ 950 lignes (sur 1 115). Inclut prefill conteneur + stepper + ConfirmationSaveModal.
+- **L1.3.d** `FacturePageShell` + shims `NouvelleFacture` / `ModifierFacture`. Gain ≈ 1 480 lignes (sur 1 717). Le plus complexe (prefill ordre→facture, gestion remise/taxes hydratées).
+
+Gain total estimé : **~ 2 800 lignes supprimées** (3 316 → ~ 510).
+
+### Risques
+
+- **Modes mixtes** : `Modifier*` n'a pas d'auto-save mais a hydratation API ; `Nouveau*` l'inverse. Le shell doit gérer les deux sans réintroduire les bugs (double init taxes, double hydratation, prefill qui écrase l'API).
+- **Facture conteneurs** : la pré-remplissage depuis ordre touche `conteneursData` complet (lots, prix, opérations) — à porter intégralement, sans simplifier.
+- **Ordre conteneurs (prefill `?prefill=conteneur`)** : 65 lignes spécifiques à conserver telles quelles dans `useDocumentPrefill`.
+- **Tests manuels obligatoires après chaque sous-lot** : créer + modifier 1 document de chaque catégorie (conteneurs / conventionnel / indépendant).
+
+### Validation
 
 - `tsgo --noEmit` après chaque sous-lot.
 - Build Vite final.
-- Smoke test manuel : créer un devis, un ordre, une facture (chaque catégorie) + modifier un ordre et une facture existants.
+- Smoke test : créer un devis indépendant → convertir en ordre (prefill) → convertir l'ordre en facture (prefill) → modifier la facture.
 
-## Question
-Tu confirmes :
-1. Le découpage en 4 sous-lots livrés un par un (recommandé) ?
-2. La stratégie shim (anciens chemins préservés) — ou tu préfères qu'on migre les 5 pages en même temps vers `@/components/documents/forms` ?
+### Question
+
+1. Je démarre directement par **L1.3.a + L1.3.b (Devis)** en une seule livraison (le plus petit, sert de référence pour valider l'archi) ?
+2. Ou je commence par L1.3.a seul (hooks + header) puis pause pour validation avant les shells ?
