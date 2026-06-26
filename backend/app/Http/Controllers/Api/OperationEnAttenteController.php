@@ -52,6 +52,12 @@ class OperationEnAttenteController extends Controller
                 ->pluck('operation_id_externe')->toArray();
 
             $query = DB::connection('ops_ind')->table($table);
+
+            // Soft delete OPS
+            if (in_array('deleted_at', $cols, true)) {
+                $query->whereNull('deleted_at');
+            }
+
             if (!empty($traitedIds)) {
                 $query->whereNotIn($idCol, $traitedIds);
             }
@@ -59,8 +65,10 @@ class OperationEnAttenteController extends Controller
             // Recherche
             if ($search = $request->input('search')) {
                 $searchable = array_intersect($cols, [
-                    'numero', 'reference', 'client_nom', 'client', 'description',
-                    'type', 'point_depart', 'point_arrivee',
+                    'numero_operation', 'numero', 'reference',
+                    'snapshot_client_name', 'client_nom', 'client',
+                    'description_generale', 'description',
+                    'type_marchandise', 'type',
                 ]);
                 if (!empty($searchable)) {
                     $query->where(function ($q) use ($searchable, $search) {
