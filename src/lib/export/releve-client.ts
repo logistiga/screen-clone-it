@@ -47,6 +47,10 @@ const keepByStatus = (doc: ReleveDoc, filter: ReleveStatut) => {
   if (filter === "tous") return true;
   return filter === "paye" ? isPaid(doc) : !isPaid(doc);
 };
+const keepByPeriod = (doc: ReleveDoc, start: string, end: string) => {
+  const date = (doc.date || "").slice(0, 10);
+  return !!date && date >= start && date <= end;
+};
 
 const normalizeFacture = (f: Facture): ReleveDoc => ({
   type: "Facture",
@@ -71,8 +75,6 @@ const normalizeOrdre = (o: OrdreTravail): ReleveDoc => ({
 export async function fetchClientStatement(options: ExportOptions) {
   const params = {
     client_id: String(options.client.id),
-    date_debut: options.dateDebut,
-    date_fin: options.dateFin,
   };
 
   const [factures, ordres] = await Promise.all([
@@ -81,6 +83,7 @@ export async function fetchClientStatement(options: ExportOptions) {
   ]);
 
   return [...factures.map(normalizeFacture), ...ordres.map(normalizeOrdre)]
+    .filter((doc) => keepByPeriod(doc, options.dateDebut, options.dateFin))
     .filter((doc) => keepByStatus(doc, options.filtreStatut))
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
