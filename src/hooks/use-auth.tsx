@@ -1,5 +1,17 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, type Context } from 'react';
-import api, { getAuthToken, setAuthToken, removeAuthToken, initializeCsrf, resetCsrf, isCookieAuthEnabled } from '@/lib/api';
+import {
+  fetchCurrentUser,
+  loginRequest,
+  logoutRequest,
+  refreshTokenRequest,
+  syncArmateursOps,
+  getAuthToken,
+  setAuthToken,
+  removeAuthToken,
+  initializeCsrf,
+  resetCsrf,
+  isCookieAuthEnabled,
+} from '@/services/api';
 
 type NamedEntity = { name: string };
 
@@ -89,8 +101,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (isCookieAuthEnabled()) {
       isRefreshingRef.current = true;
       try {
-        const userResponse = await api.get('/auth/user');
-        setUser(userResponse.data);
+        const userData = await fetchCurrentUser();
+        setUser(userData);
         return true;
       } catch (error) {
         console.error('[Auth] Erreur session cookie:', error);
@@ -114,15 +126,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isRefreshingRef.current = true;
 
     try {
-      const response = await api.post('/auth/refresh');
-      if (response.data?.token) {
-        setAuthToken(response.data.token);
+      const refreshData = await refreshTokenRequest();
+      if (refreshData?.token) {
+        setAuthToken(refreshData.token);
       }
 
       console.log('[Auth] Token rafraîchi avec succès');
 
-      const userResponse = await api.get('/auth/user');
-      setUser(userResponse.data);
+      const userData = await fetchCurrentUser();
+      setUser(userData);
 
       return true;
     } catch (error) {
@@ -223,16 +235,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const checkAuthStatus = useCallback(async () => {
     try {
       // Essayer de récupérer l'utilisateur (la session cookie sera envoyée automatiquement)
-      const response = await api.get('/auth/user');
-      setUser(response.data);
+      const userData = await fetchCurrentUser();
+      setUser(userData);
       updateLastActivity();
     } catch {
       // Pas de session valide, vérifier le token localStorage (fallback)
       const token = getAuthToken();
       if (token) {
         try {
-          const response = await api.get('/auth/user');
-          setUser(response.data);
+          const userData = await fetchCurrentUser();
+          setUser(userData);
           updateLastActivity();
         } catch {
           removeAuthToken();
@@ -259,21 +271,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       // Appel de login
-      const response = await api.post('/auth/login', { email, password });
+      const data = await loginRequest(email, password);
 
       // Extraire les infos de connexion suspecte si présentes
-      const securityInfo = response.data?.security;
-      const suspiciousLoginId = response.data?.suspicious_login_id;
+      const securityInfo = data?.security;
+      const suspiciousLoginId = data?.suspicious_login_id;
 
       // Le backend renvoie toujours un token (même en mode cookie).
       // On le stocke IMMÉDIATEMENT pour garantir que /auth/user fonctionne.
       const token =
-        response.data?.token ??
-        response.data?.access_token ??
-        response.data?.plainTextToken ??
-        response.data?.plain_text_token ??
-        response.data?.data?.token ??
-        response.data?.data?.access_token;
+        data?.token ??
+        data?.access_token ??
+        data?.plainTextToken ??
+        data?.plain_text_token ??
+        data?.data?.token ??
+        data?.data?.access_token;
 
       // IMPORTANT: Stocker le token AVANT d'appeler /auth/user
       // En cross-origin, les cookies SameSite=none ne marchent pas toujours
@@ -283,12 +295,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Récupérer les infos utilisateur (le Bearer token sera ajouté par l'intercepteur)
       try {
-        const userResponse = await api.get('/auth/user');
-        setUser(userResponse.data);
+        const userData = await fetchCurrentUser();
+        setUser(userData);
         updateLastActivity();
 
         // Synchroniser les armateurs depuis OPS en arrière-plan (fire & forget)
-        api.post('/sync-diagnostic/sync-armateurs').catch(() => {
+        syncArmateursOps().catch(() => {
           // Silencieux - ne pas bloquer la connexion si la sync échoue
         });
 
@@ -359,7 +371,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
 
-      await api.post('/auth/logout');
+      await logoutRequest();
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
