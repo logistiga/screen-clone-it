@@ -1,89 +1,59 @@
-# Lot L4 — Centralisation des appels API
+## Objectif L1
+Mutualiser les 9 formulaires Devis/Ordre/Facture (Conteneurs / Conventionnel / Indépendant) + les 3 formulaires `Lignes*` en un seul ensemble paramétré par `documentType: 'devis' | 'ordre' | 'facture'`. Cible : ~ -2 500 à -3 000 lignes.
 
-## Objectif
-Supprimer tous les imports directs de l'instance axios brute (`@/lib/api`) depuis les **composants, pages et hooks**. Toute la communication réseau passera par des modules dans `src/services/api/` (qui réutilisent l'instance axios partagée).
-
-## Fichiers à migrer (25)
-
-**Hooks (4)**
-- `src/hooks/use-network-status.tsx`
-- `src/hooks/use-auto-sync.tsx`
-- `src/hooks/use-auth.tsx`
-- `src/hooks/use-detentions-attente.ts`
-
-**Pages (10)**
-- `src/pages/Dashboard.tsx`
-- `src/pages/CaisseEnAttente.tsx`
-- `src/pages/Reporting.tsx`
-- `src/pages/Roles.tsx`
-- `src/pages/NoteDebutPDF.tsx`
-- `src/pages/SecurityAction.tsx`
-- `src/pages/PendingApproval.tsx`
-- `src/pages/PrimesDecaissement.tsx`
-- `src/pages/caisse/useCaisseData.ts`
-- `src/pages/notes-debut/NotesTable.tsx`
-- `src/pages/paiements-fournisseurs/usePaiementsFournisseursData.ts`
-- `src/pages/paiements-fournisseurs/PFModals.tsx`
-
-**Composants (7)**
-- `src/components/RemboursementAnnulationModal.tsx`
-- `src/components/debug/DebugPanel.tsx`
-- `src/components/caisse/ExportCaisseModal.tsx`
-- `src/components/caisse/ExportCaisseGlobaleModal.tsx`
-- `src/components/caisse/caisse-attente/RefusModal.tsx`
-- `src/components/caisse/caisse-attente/PrimesTable.tsx`
-- `src/components/caisse/caisse-attente/GarageTable.tsx`
-- `src/components/caisse/caisse-attente/DecaissementModal.tsx`
-
-**Utilitaires (1)**
-- `src/lib/export/releve-client.ts`
-
-> Hors scope : `src/lib/api/**` (définitions), `src/services/**` (déjà couche service), `src/lib/offline/**`, `src/lib/sessions.ts`, `src/lib/suspicious-logins.ts` (infra légitime).
-
-## Structure cible
-
-Création de `src/services/api/` avec un module par domaine, qui ré-exporte/wrappe les appels existants :
+État actuel : **3 581 lignes** sur 12 fichiers.
 
 ```text
-src/services/api/
-├── index.ts                  # barrel
-├── auth.api.ts               # /login, /logout, /me, /csrf
-├── dashboard.api.ts          # /dashboard/*
-├── caisse.api.ts             # /caisse, /caisse-en-attente, primes, garage
-├── paiements-fournisseurs.api.ts
-├── notes-debut.api.ts        # wrapper sur lib/api/notes-debut
-├── reporting.api.ts
-├── roles.api.ts
-├── security.api.ts           # security-action, pending-approval
-├── annulations.api.ts        # remboursements
-├── network.api.ts            # ping/health
-├── sync.api.ts               # auto-sync endpoints
-├── debug.api.ts
-└── export.api.ts             # releve-client, export caisse
+devis/forms/         474 + 260 + 175 + 114 = 1023
+ordres/forms/        718 + 310 + 241 + 103 = 1372
+factures/forms/      604 + 284 + 157 + 113 = 1158
 ```
 
-Chaque module : fonctions typées (pas de `any`), retour `Promise<T>`, gestion erreur déléguée à React Query / appelant.
+## Architecture cible
 
-## Procédure par fichier
-1. Lire le fichier.
-2. Extraire chaque `api.get/post/...` dans une fonction nommée dans le module `services/api/<domaine>.api.ts`.
-3. Remplacer l'import `@/lib/api` par l'import nommé depuis `@/services/api`.
-4. Garder strictement la même signature côté UI (pas de changement de comportement).
+Nouveau dossier `src/components/documents/forms/` :
+
+```text
+src/components/documents/forms/
+├── index.ts
+├── types.ts                    # DocumentType, DocumentFormConfig, Ligne unifiée
+├── config.ts                   # labels/champs par documentType (titres, libellés, clés)
+├── LignesForm.tsx              # remplace LignesDevisForm + LignesOrdreForm + LignesFactureForm
+├── DocumentConteneursForm.tsx  # remplace les 3 *ConteneursForm
+├── DocumentConventionnelForm.tsx
+└── DocumentIndependantForm.tsx
+```
+
+Chaque formulaire reçoit `documentType` + données + handlers ; le rendu différencié (titre "Lignes du devis" / "Lignes de l'ordre" / "Lignes de facture", clé `montant` vs `montantHT`, libellé `Désignation` vs `Description`, présence de `unite`, etc.) est piloté par `config.ts`.
+
+## Compatibilité
+
+Pour ne pas casser les 5 pages consommatrices (`NouveauDevis`, `NouvelOrdre`, `NouvelleFacture`, `ModifierOrdre`, `ModifierFacture`) ni les hooks `useDevisForm` / `useOrdreForm`, les anciens chemins (`@/components/devis/forms`, `ordres/forms`, `factures/forms`) seront conservés en **shims** :
+
+```ts
+// src/components/devis/forms/index.ts
+export { DocumentConteneursForm as DevisConteneursForm } from "@/components/documents/forms";
+// + ré-exports des types existants
+```
+
+→ aucune modification des imports existants nécessaire. Les pages continuent de fonctionner. Les types `LigneDevis` / `LigneOrdre` / `LigneFacture` restent exportés sous leurs anciens noms (alias d'un type unifié `DocumentLigne`).
+
+## Découpage en sous-lots
+
+- **L1.1** Mutualiser `LignesForm` (3 → 1 fichier). Gain ~ 220 lignes. Risque faible.
+- **L1.2** Mutualiser `IndependantForm` (3 → 1). Gain ~ 350 lignes.
+- **L1.3** Mutualiser `ConventionnelForm` (3 → 1). Gain ~ 580 lignes.
+- **L1.4** Mutualiser `ConteneursForm` (3 → 1). Gain ~ 1 250 lignes. Le plus complexe (Ordre = 718 lignes vs Devis = 474), nécessite normalisation des champs spécifiques (numéro BL, dates de livraison, etc.).
+
+Livraison **un sous-lot à la fois**, avec `tsgo` après chaque, et rapport conforme aux règles maîtres (fichiers créés / modifiés / supprimés / risques).
 
 ## Validation
-- `tsgo` après chaque lot (groupes de 5 fichiers).
+
+- `tsgo --noEmit` après chaque sous-lot.
 - Build Vite final.
-- Smoke test : Dashboard, Caisse en attente, Reporting, Login.
-
-## Découpage en sous-lots (pour limiter le risque)
-- **L4.1** Hooks (4 fichiers) + `auth.api.ts`, `network.api.ts`, `sync.api.ts`, `caisse.api.ts` (détentions)
-- **L4.2** Caisse (8 fichiers composants + `useCaisseData`) + `caisse.api.ts`, `export.api.ts`
-- **L4.3** Paiements fournisseurs (2 fichiers) + `paiements-fournisseurs.api.ts`
-- **L4.4** Notes début + Reporting + Roles + PrimesDecaissement + NoteDebutPDF (5 fichiers)
-- **L4.5** Dashboard + SecurityAction + PendingApproval + DebugPanel + RemboursementAnnulationModal + releve-client (6 fichiers)
-
-## Livrable
-Après chaque sous-lot, rapport conforme aux règles maîtres : fichiers créés / modifiés / risques.
+- Smoke test manuel : créer un devis, un ordre, une facture (chaque catégorie) + modifier un ordre et une facture existants.
 
 ## Question
-Tu confirmes ce découpage en 5 sous-lots livrés un par un (recommandé) — ou tu veux que je livre tout L4 d'un coup ?
+Tu confirmes :
+1. Le découpage en 4 sous-lots livrés un par un (recommandé) ?
+2. La stratégie shim (anciens chemins préservés) — ou tu préfères qu'on migre les 5 pages en même temps vers `@/components/documents/forms` ?
