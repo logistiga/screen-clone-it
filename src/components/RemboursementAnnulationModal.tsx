@@ -21,7 +21,7 @@ import {
 import { useRembourserAnnulation } from "@/hooks/use-annulations";
 import { formatMontant } from "@/data/mockData";
 import type { Annulation } from "@/lib/api/annulations";
-import api from "@/lib/api";
+import { banquesApi } from "@/lib/api/commercial";
 import { useQuery } from "@tanstack/react-query";
 
 interface RemboursementAnnulationModalProps {
@@ -48,10 +48,7 @@ export function RemboursementAnnulationModal({
   // Charger les banques
   const { data: banquesData } = useQuery({
     queryKey: ['banques'],
-    queryFn: async () => {
-      const res = await api.get('/banques');
-      return res.data;
-    },
+    queryFn: () => banquesApi.getAll(),
   });
 
   const banques = banquesData?.data || [];

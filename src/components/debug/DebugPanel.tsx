@@ -82,10 +82,10 @@ export function DebugPanel({ title = "Debug API", data, onRefresh }: DebugPanelP
   const syncFromOps = async () => {
     setSyncStatus({ syncing: true, result: null });
     try {
-      const response = await api.post('/sync-diagnostic/sync-conteneurs');
-      setSyncStatus({ syncing: false, result: response.data });
-      if (response.data.success) {
-        toast.success(response.data.message || 'Synchronisation réussie');
+      const data = await syncConteneursOps();
+      setSyncStatus({ syncing: false, result: data });
+      if (data.success) {
+        toast.success(data.message || 'Synchronisation réussie');
         // Rafraîchir les données après sync
         onRefresh?.();
       }
