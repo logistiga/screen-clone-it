@@ -290,6 +290,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
             if (modePaiement !== 'tous') params.mode_paiement = modePaiement;
             if (categorie !== 'tous') params.categorie = categorie;
             if (documentType !== 'tous') params.document_type = documentType;
+            if (typeTransport !== 'tous') params.type_transport = typeTransport;
           }
 
           const response = await api.get(endpoint, {
@@ -355,6 +356,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         if (categorie !== 'tous') {
           filters.categorie = categorie;
         }
+        if (typeTransport !== 'tous') {
+          (filters as any).type_transport = typeTransport;
+        }
         if (exportType === 'tableau-de-bord' || exportType === 'chiffre-affaires') {
           filters.annee = annee;
         }
@@ -392,6 +396,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   );
   const showDocumentTypeFilter = selectedExports.some(e => 
     exportOptions.find(o => o.id === e)?.hasDocumentTypeFilter
+  );
+  const showTypeTransportFilter = selectedExports.some(e => 
+    exportOptions.find(o => o.id === e)?.hasTypeTransportFilter
   );
 
   return (
@@ -488,7 +495,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
           </div>
 
           {/* Filtres conditionnels */}
-          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter || showDocumentTypeFilter) && (
+          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter || showDocumentTypeFilter || showTypeTransportFilter) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Filtres</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
