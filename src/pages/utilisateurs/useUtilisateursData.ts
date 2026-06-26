@@ -1,9 +1,13 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   useUsers, useUserStats, useUserRoles,
   useCreateUser, useUpdateUser, useDeleteUser, useToggleUserActif
 } from "@/hooks/use-users";
 import { User, CreateUserData, UpdateUserData } from "@/services/userService";
+
+type RoleStat = { role: string; count: number };
 
 export const CHART_COLORS = [
   'hsl(var(--primary))',
@@ -61,7 +65,7 @@ export function useUtilisateursData() {
   const totalPages = usersData?.last_page || 1;
   const totalUsers = usersData?.total || 0;
   const roles = Array.isArray(rolesData) ? rolesData : [];
-  const stats = useMemo(() => statsData || null, [statsData]);
+  const stats = statsData || null;
 
   // Si la modale d'ajout est ouverte et que les rôles arrivent après coup,
   // on pré-sélectionne automatiquement le premier rôle disponible.
@@ -71,20 +75,15 @@ export function useUtilisateursData() {
     }
   }, [roles, showModal, isEditing, formData.role]);
 
-  const pieChartData = useMemo(() => {
-    if (!stats?.par_role) return [];
-    return stats.par_role.map((r: any, i: number) => ({
+  const pieChartData = stats?.par_role
+    ? stats.par_role.map((r: RoleStat, i: number) => ({
       name: r.role, value: r.count, color: CHART_COLORS[i % CHART_COLORS.length],
-    }));
-  }, [stats]);
+    }))
+    : [];
 
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const getRoleName = (user: User) => user.roles[0]?.name || 'Sans rôle';
-  const formatDate = (date: string) => {
-    const { format } = require('date-fns');
-    const { fr } = require('date-fns/locale');
-    return format(new Date(date), 'dd MMM yyyy', { locale: fr });
-  };
+  const formatDate = (date: string) => format(new Date(date), 'dd MMM yyyy', { locale: fr });
 
   const resetForm = () => {
     setFormData({ nom: '', email: '', password: '', password_confirmation: '', role: roles[0]?.name || '', actif: true });
