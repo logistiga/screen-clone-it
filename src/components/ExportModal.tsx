@@ -43,7 +43,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [format, setFormat] = useState<FormatExport>("pdf");
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: clients = [], isLoading: isLoadingClients, isFetching: isFetchingClients } = useAllClients(clientSearch);
+  const { data: clients = [], isLoading: isLoadingClients, isFetching: isFetchingClients } = useAllClients(clientSearch, open);
   const displayedClients = selectedClient && !clients.some((c) => String(c.id) === String(selectedClient.id))
     ? [selectedClient, ...clients]
     : clients;
