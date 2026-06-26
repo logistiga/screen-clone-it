@@ -92,7 +92,7 @@ class ExportConteneursService
                 'date_sortie' => $c->date_sortie,
                 'date_retour' => $c->date_retour,
                 'statut' => $c->statut,
-                'statut_label' => $c->statut_label,
+                'statut_label' => $c->statut ? (string) $c->statut_label : '-',
                 'prix' => $prix,
             ];
         });
