@@ -93,6 +93,7 @@ export default function OperationsIndependantesForm({
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-2 px-2">Type</th>
+                  <th className="py-2 px-2">Trajet</th>
                   <th className="py-2 px-2">Description</th>
                   <th className="py-2 px-2 text-right">Qté</th>
                   <th className="py-2 px-2 text-right">Prix U.</th>
@@ -105,13 +106,18 @@ export default function OperationsIndependantesForm({
                   <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="py-2 px-2 font-medium">{labels[p.typeOperation as keyof typeof labels] || "—"}</td>
                     <td className="py-2 px-2">
-                      <div className="line-clamp-2">{p.description || "—"}</div>
-                      {p.typeOperation === "transport" && (
-                        <div className="text-xs text-muted-foreground">{p.pointDepart} → {p.pointArrivee}</div>
+                      {p.typeOperation === "transport" ? (
+                        <div className="text-sm">
+                          {(p.pointDepart || p.lieuDepart || "—")} → {(p.pointArrivee || p.lieuArrivee || "—")}
+                        </div>
+                      ) : (p.typeOperation === "location" || p.typeOperation === "manutention") && p.materiel ? (
+                        <div className="text-sm">{p.materiel}</div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">—</div>
                       )}
-                      {(p.typeOperation === "location" || p.typeOperation === "manutention") && p.materiel && (
-                        <div className="text-xs text-muted-foreground">{p.materiel}</div>
-                      )}
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="line-clamp-2 text-sm">{p.description?.trim() || <span className="text-muted-foreground">—</span>}</div>
                     </td>
                     <td className="py-2 px-2 text-right">{p.quantite}</td>
                     <td className="py-2 px-2 text-right">{formatMontant(p.prixUnitaire || 0)}</td>
@@ -131,7 +137,7 @@ export default function OperationsIndependantesForm({
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4} className="py-2 px-2 text-right font-medium">Total HT</td>
+                  <td colSpan={5} className="py-2 px-2 text-right font-medium">Total HT</td>
                   <td className="py-2 px-2 text-right font-bold">{formatMontant(total)}</td>
                   <td />
                 </tr>
