@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { downloadExportBlob, triggerBlobDownload, fetchCaisseMouvements, fetchCaisseSolde } from "@/services/api";
 import { useConfiguration } from "@/hooks/use-commercial";
 
 interface ExportCaisseModalProps {
@@ -81,41 +81,26 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
   };
 
   const handleExportCSV = async (range: { from: Date; to: Date }) => {
-    const response = await api.get('/exports/caisse-especes', {
-      params: {
-        date_debut: format(range.from, 'yyyy-MM-dd'),
-        date_fin: format(range.to, 'yyyy-MM-dd'),
-      },
-      responseType: 'blob',
+    const blob = await downloadExportBlob('/exports/caisse-especes', {
+      date_debut: format(range.from, 'yyyy-MM-dd'),
+      date_fin: format(range.to, 'yyyy-MM-dd'),
     });
 
-    const blob = new Blob([response.data], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    
-    const periodLabel = periodType === "today" 
+    const periodLabel = periodType === "today"
       ? format(range.from, 'dd-MM-yyyy')
       : `${format(range.from, 'dd-MM-yyyy')}_${format(range.to, 'dd-MM-yyyy')}`;
-    link.download = `caisse-especes-${periodLabel}.csv`;
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    triggerBlobDownload(blob, `caisse-especes-${periodLabel}.csv`, 'text/csv');
   };
 
   const handleExportPDF = async (range: { from: Date; to: Date }) => {
-    const response = await api.get('/caisse', {
-      params: {
-        date_debut: format(range.from, 'yyyy-MM-dd'),
-        date_fin: format(range.to, 'yyyy-MM-dd'),
-        source: 'caisse',
-        per_page: 1000,
-      },
+    const responseData = await fetchCaisseMouvements<{ data?: MouvementCaisse[] }>({
+      date_debut: format(range.from, 'yyyy-MM-dd'),
+      date_fin: format(range.to, 'yyyy-MM-dd'),
+      source: 'caisse',
+      per_page: 1000,
     });
 
-    const mouvements: MouvementCaisse[] = response.data?.data || [];
+    const mouvements: MouvementCaisse[] = responseData?.data || [];
 
     const totalEntrees = mouvements
       .filter(m => m.type === 'entree')
@@ -128,8 +113,8 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
     // Fetch solde actuel caisse
     let soldeActuel = solde;
     try {
-      const soldeResp = await api.get('/caisse/solde', { params: { source: 'caisse' } });
-      soldeActuel = Number(soldeResp.data?.solde ?? solde);
+      const soldeResp = await fetchCaisseSolde<{ solde?: number }>({ source: 'caisse' });
+      soldeActuel = Number(soldeResp?.solde ?? solde);
     } catch { /* use period solde as fallback */ }
 
     const entreprise = config?.entreprise;

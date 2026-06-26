@@ -30,7 +30,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { downloadExportBlob, triggerBlobDownload } from "@/services/api";
 import { useBanques } from "@/hooks/use-commercial";
 
 interface ExportCaisseGlobaleModalProps {
@@ -128,28 +128,16 @@ export function ExportCaisseGlobaleModal({ open, onOpenChange }: ExportCaisseGlo
         params.banque_id = selectedBanqueId;
       }
 
-      const response = await api.get('/export/caisse-globale', {
-        params,
-        responseType: 'blob',
-      });
+      const blob = await downloadExportBlob('/export/caisse-globale', params);
 
       // Create download link
-      const contentType = exportFormat === 'pdf' 
-        ? 'application/pdf' 
+      const contentType = exportFormat === 'pdf'
+        ? 'application/pdf'
         : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      const blob = new Blob([response.data], { type: contentType });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
+
       const periodLabel = `${format(range.from, 'dd-MM-yyyy')}_${format(range.to, 'dd-MM-yyyy')}`;
       const extension = exportFormat === 'pdf' ? 'pdf' : 'xlsx';
-      link.download = `caisse-globale-${periodLabel}.${extension}`;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      triggerBlobDownload(blob, `caisse-globale-${periodLabel}.${extension}`, contentType);
 
       toast.success(`Export ${exportFormat.toUpperCase()} téléchargé avec succès`);
       onOpenChange(false);
