@@ -365,7 +365,7 @@
             @foreach($lignes as $index => $ligne)
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $ligne['description'] }}</td>
+                <td>{{ $ligne['description'] }}@if(!empty($ligne['trajet']))<br><span style="color:#666;font-size:10px">{{ $ligne['trajet'] }}</span>@endif</td>
                 <td>{{ $ligne['quantite'] }}</td>
                 <td>{{ number_format($ligne['prix_unitaire'], 0, ',', ' ') }} FCFA</td>
                 <td>{{ number_format($ligne['montant_ht'], 0, ',', ' ') }} FCFA</td>
