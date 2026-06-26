@@ -152,7 +152,7 @@ class ExportCsvController extends Controller
     public function conteneurs(Request $request)
     {
         try {
-            $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur']);
+            $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur', 'type_transport']);
             $csv = $this->exportService->exportConteneursCSV($filters);
             return $this->streamCSV($csv, 'conteneurs');
         } catch (\Throwable $e) {

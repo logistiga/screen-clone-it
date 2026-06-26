@@ -433,10 +433,13 @@ class ExportPdfController extends Controller
     public function conteneursPdf(Request $request)
     {
         try {
-            $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur']);
+            $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur', 'type_transport']);
             $data = $this->exportService->fetchConteneursData($filters);
 
             $statutLabel = !empty($filters['statut']) ? ucfirst(str_replace('_', ' ', $filters['statut'])) : null;
+            $typeTransportLabel = !empty($filters['type_transport']) && strtolower((string) $filters['type_transport']) !== 'tous'
+                ? ucfirst(strtolower((string) $filters['type_transport']))
+                : null;
 
             $pdf = Pdf::loadView('pdf.export-conteneurs', [
                 'conteneurs' => $data['rows'],
@@ -446,6 +449,7 @@ class ExportPdfController extends Controller
                 'periode' => ($filters['date_debut'] ?? '') . ' — ' . ($filters['date_fin'] ?? ''),
                 'statut_label' => $statutLabel,
                 'armateur_label' => $filters['armateur_code'] ?? null,
+                'type_transport_label' => $typeTransportLabel,
             ])->setPaper('a4', 'landscape')->setOptions(['defaultFont' => 'DejaVu Sans']);
 
             return $pdf->download('conteneurs-' . now()->format('Y-m-d') . '.pdf');

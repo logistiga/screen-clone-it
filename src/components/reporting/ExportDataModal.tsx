@@ -46,6 +46,7 @@ interface ExportOption {
   hasModePaiementFilter?: boolean;
   hasCategorieFilter?: boolean;
   hasDocumentTypeFilter?: boolean;
+  hasTypeTransportFilter?: boolean;
 }
 
 const exportOptions: ExportOption[] = [
@@ -148,6 +149,7 @@ const exportOptions: ExportOption[] = [
     label: 'Conteneurs',
     description: 'Liste conteneurs livrés + prix',
     icon: Container,
+    hasTypeTransportFilter: true,
   },
 ];
 
@@ -198,6 +200,12 @@ const modesPaiement = [
   { value: 'cheque', label: 'Chèque' },
 ];
 
+const typesTransport = [
+  { value: 'tous', label: 'Tous (Import + Export)' },
+  { value: 'import', label: 'Import uniquement' },
+  { value: 'export', label: 'Export uniquement' },
+];
+
 export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportDataModalProps) {
   const navigate = useNavigate();
   const [selectedExports, setSelectedExports] = useState<ExportType[]>(['factures']);
@@ -215,6 +223,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const [isExporting, setIsExporting] = useState(false);
   const [annee, setAnnee] = useState(new Date().getFullYear());
   const [documentType, setDocumentType] = useState("tous");
+  const [typeTransport, setTypeTransport] = useState("tous");
 
   const toggleExport = (exportId: ExportType) => {
     setSelectedExports(prev => 
@@ -281,6 +290,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
             if (modePaiement !== 'tous') params.mode_paiement = modePaiement;
             if (categorie !== 'tous') params.categorie = categorie;
             if (documentType !== 'tous') params.document_type = documentType;
+            if (typeTransport !== 'tous') params.type_transport = typeTransport;
           }
 
           const response = await api.get(endpoint, {
@@ -346,6 +356,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
         if (categorie !== 'tous') {
           filters.categorie = categorie;
         }
+        if (typeTransport !== 'tous') {
+          (filters as any).type_transport = typeTransport;
+        }
         if (exportType === 'tableau-de-bord' || exportType === 'chiffre-affaires') {
           filters.annee = annee;
         }
@@ -383,6 +396,9 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   );
   const showDocumentTypeFilter = selectedExports.some(e => 
     exportOptions.find(o => o.id === e)?.hasDocumentTypeFilter
+  );
+  const showTypeTransportFilter = selectedExports.some(e => 
+    exportOptions.find(o => o.id === e)?.hasTypeTransportFilter
   );
 
   return (
@@ -479,7 +495,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
           </div>
 
           {/* Filtres conditionnels */}
-          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter || showDocumentTypeFilter) && (
+          {(showClientFilter || showStatutFilter || showModePaiementFilter || showCategorieFilter || showDocumentTypeFilter || showTypeTransportFilter) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Filtres</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -567,6 +583,24 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
                         <SelectItem value="tous">Tous (Ordres + Factures)</SelectItem>
                         <SelectItem value="ordre">Ordres de Travail</SelectItem>
                         <SelectItem value="facture">Factures</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {showTypeTransportFilter && (
+                  <div className="space-y-2">
+                    <Label>Type de transport</Label>
+                    <Select value={typeTransport} onValueChange={setTypeTransport}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typesTransport.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

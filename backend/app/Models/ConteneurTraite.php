@@ -32,6 +32,7 @@ class ConteneurTraite extends Model
         'prime_chauffeur',
         'destination_type',
         'destination_adresse',
+        'type_transport',
         'statut_ops',
         'statut',
         'ordre_travail_id',
