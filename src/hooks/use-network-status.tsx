@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import api from '@/lib/api';
+import { pingBackend } from '@/services/api';
 
 export interface NetworkStatus {
   isOnline: boolean;
@@ -70,7 +70,7 @@ export function useNetworkStatus(): NetworkStatus & {
 
       // Vérifier la connectivité via un endpoint léger du backend (évite les préflights CORS).
       // NOTE: notre API expose GET|HEAD /api/ping.
-      await api.head('/ping', {
+      await pingBackend({
         signal: controller.signal,
         timeout: PING_TIMEOUT,
       });
