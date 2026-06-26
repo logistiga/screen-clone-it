@@ -275,27 +275,31 @@ class OperationEnAttenteController extends Controller
             }
             return null;
         };
-        $num = $get(['numero', 'reference', 'ref', 'num_operation', 'numero_operation', 'code', 'num']);
-        $type = $get(['type', 'type_operation', 'nature', 'categorie', 'type_op']);
-        $client = $get(['client_nom', 'client', 'nom_client', 'raison_sociale', 'designation_client']);
-        $desc = $get(['description', 'designation', 'libelle', 'objet', 'commentaire', 'observation', 'details']);
-        $depart = $get(['point_depart', 'depart', 'origine', 'lieu_depart', 'from']);
-        $arrivee = $get(['point_arrivee', 'arrivee', 'destination', 'lieu_arrivee', 'to']);
-        $date = $get(['date_operation', 'date', 'date_op', 'date_creation', 'created_at']);
+        $num = $get(['numero_operation', 'numero', 'reference', 'ref', 'code']);
+        $type = $get(['type_marchandise', 'type', 'type_operation', 'nature', 'categorie']);
+        $client = $get(['snapshot_client_name', 'client_nom', 'client', 'nom_client', 'raison_sociale']);
+        $clientId = $get(['external_client_id', 'client_id']);
+        $desc = $get(['description_generale', 'description', 'designation', 'libelle', 'objet', 'observation']);
+        $depart = $get(['point_depart', 'depart', 'origine', 'lieu_depart']);
+        $arrivee = $get(['point_arrivee', 'arrivee', 'destination', 'lieu_arrivee']);
+        $date = $get(['date_operation', 'date', 'date_op', 'created_at']);
         $qte = $get(['quantite', 'qte', 'nb', 'nombre']);
-        $mt = $get(['montant_ht', 'montant', 'prix', 'prix_ht', 'montant_total', 'total_ht', 'tarif', 'prix_unitaire']);
+        $mt = $get(['total_transport_fcfa', 'montant_ht', 'montant', 'prix', 'prix_ht', 'montant_total', 'total_ht']);
+        $statut = $get(['statut', 'status', 'state']);
 
         return [
             'id' => (string) $r[$idCol],
             'numero' => $num,
             'type' => $type,
             'client_nom' => $client,
+            'client_id_externe' => $clientId,
             'description' => $desc,
             'point_depart' => $depart,
             'point_arrivee' => $arrivee,
             'date_operation' => $date,
             'quantite' => $qte !== null ? (float) $qte : null,
             'montant_ht' => $mt !== null ? (float) $mt : null,
+            'statut' => $statut,
             'raw' => $r,
         ];
     }
@@ -303,8 +307,10 @@ class OperationEnAttenteController extends Controller
     private function buildNotes(array $row): string
     {
         $bits = [];
-        if (!empty($row['numero'])) $bits[] = "Réf OPS : {$row['numero']}";
-        if (!empty($row['description'])) $bits[] = $row['description'];
+        $num = $row['numero_operation'] ?? $row['numero'] ?? null;
+        if ($num) $bits[] = "Réf OPS : {$num}";
+        $desc = $row['description_generale'] ?? $row['description'] ?? null;
+        if ($desc) $bits[] = $desc;
         if (!empty($row['point_depart']) || !empty($row['point_arrivee'])) {
             $bits[] = trim(($row['point_depart'] ?? '?') . ' → ' . ($row['point_arrivee'] ?? '?'));
         }
