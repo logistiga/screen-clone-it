@@ -172,7 +172,7 @@ class OperationEnAttenteController extends Controller
             DB::beginTransaction();
 
             // Résoudre / créer le client
-            $clientNom = $row['client_nom'] ?? $row['client'] ?? 'Client OPS';
+            $clientNom = $row['snapshot_client_name'] ?? $row['client_nom'] ?? $row['client'] ?? 'Client OPS';
             $client = Client::firstOrCreate(
                 ['nom' => $clientNom],
                 ['code' => strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $clientNom) ?: 'CLI', 0, 3)) . rand(100, 999)]
@@ -189,12 +189,13 @@ class OperationEnAttenteController extends Controller
             ]);
 
             // Ajouter une ligne simple si lignes_ordres existe et que des montants sont présents
-            $montant = (float) ($row['montant_ht'] ?? $row['montant'] ?? $row['prix'] ?? 0);
+            $montant = (float) ($row['total_transport_fcfa'] ?? $row['montant_ht'] ?? $row['montant'] ?? $row['prix'] ?? 0);
+            $description = $row['description_generale'] ?? $row['description'] ?? $row['type_marchandise'] ?? $row['type'] ?? 'Opération OPS';
             if ($montant > 0 && Schema::hasTable('lignes_ordres')) {
                 try {
                     $ordre->lignes()->create([
-                        'description' => $row['description'] ?? ($row['type'] ?? 'Opération OPS'),
-                        'type_operation' => strtolower($row['type'] ?? 'autre'),
+                        'description' => $description,
+                        'type_operation' => strtolower($row['type_marchandise'] ?? $row['type'] ?? 'autre'),
                         'quantite' => (float) ($row['quantite'] ?? 1),
                         'prix_unitaire' => $montant,
                         'montant_ht' => $montant,
