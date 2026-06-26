@@ -162,7 +162,8 @@ export interface TableauDeBordData {
 export type ExportType = 
   | 'factures' | 'devis' | 'ordres-travail' | 'paiements' | 'caisse' 
   | 'clients' | 'primes' | 'chiffre-affaires' | 'creances' | 'tresorerie' 
-  | 'credits' | 'annulations' | 'activite-globale' | 'tableau-de-bord';
+  | 'credits' | 'annulations' | 'activite-globale' | 'tableau-de-bord'
+  | 'conteneurs';
 
 export interface ExportFilters {
   date_debut?: string;
