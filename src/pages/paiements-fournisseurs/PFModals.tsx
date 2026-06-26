@@ -10,7 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, ArrowUpCircle, Loader2, Receipt, Banknote } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import {
+  createPaiementFournisseur,
+  avancerPaiementFournisseur,
+  fetchPaiementFournisseurDetail,
+} from "@/services/api";
 import type { PaiementFournisseur, Tranche } from "./usePaiementsFournisseursData";
 
 // ─── Modal Création Facture ───────────────────────
@@ -21,12 +25,10 @@ export function CreateFactureModal({ open, onOpenChange }: { open: boolean; onOp
   });
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      const response = await api.post('/paiements-fournisseurs', {
-        ...form, montant_total: parseFloat(form.montant_total),
-      });
-      return response.data;
-    },
+    mutationFn: () => createPaiementFournisseur({
+      ...form,
+      montant_total: parseFloat(form.montant_total),
+    }),
     onSuccess: () => {
       toast.success("Facture fournisseur créée");
       queryClient.invalidateQueries({ queryKey: ['paiements-fournisseurs'] });
@@ -90,12 +92,14 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
   const [notes, setNotes] = useState("");
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      if (!pf) return;
-      const response = await api.post(`/paiements-fournisseurs/${pf.id}/avancer`, {
-        montant: parseFloat(montant), mode_paiement: modePaiement, reference, notes,
+    mutationFn: () => {
+      if (!pf) return Promise.resolve(null);
+      return avancerPaiementFournisseur<any>(pf.id, {
+        montant: parseFloat(montant),
+        mode_paiement: modePaiement,
+        reference,
+        notes,
       });
-      return response.data;
     },
     onSuccess: (data) => {
       toast.success(`Avance de ${formatMontant(parseFloat(montant))} enregistrée. Reste: ${formatMontant(data?.reste || 0)}`);
@@ -194,11 +198,7 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
 export function DetailModal({ open, onOpenChange, pf }: { open: boolean; onOpenChange: (v: boolean) => void; pf: PaiementFournisseur | null }) {
   const { data: detail, isLoading } = useQuery({
     queryKey: ['paiement-fournisseur-detail', pf?.id],
-    queryFn: async () => {
-      if (!pf) return null;
-      const response = await api.get(`/paiements-fournisseurs/${pf.id}`);
-      return response.data;
-    },
+    queryFn: () => (pf ? fetchPaiementFournisseurDetail<any>(pf.id) : Promise.resolve(null)),
     enabled: open && !!pf,
   });
 

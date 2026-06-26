@@ -9,3 +9,4 @@ export * from './sync.api';
 export * from './detentions.api';
 export * from './caisse.api';
 export * from './export.api';
+export * from './paiements-fournisseurs.api';
