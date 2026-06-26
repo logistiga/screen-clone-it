@@ -37,8 +37,9 @@ export const TYPE_TRANSPORT_LABELS: Record<TypeTransport, string> = {
   materiel: "Matériel",
 };
 
-export type ModeTrajet = "aller_simple" | "aller_retour";
+export type ModeTrajet = "aller_simple" | "retour_simple" | "aller_retour";
 export const MODE_TRAJET_LABELS: Record<ModeTrajet, string> = {
   aller_simple: "Aller simple",
+  retour_simple: "Retour simple",
   aller_retour: "Aller-retour",
 };

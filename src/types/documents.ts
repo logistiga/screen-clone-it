@@ -143,7 +143,7 @@ export interface LignePrestationEtendue extends LignePrestation {
   pointDepart?: string;
   pointArrivee?: string;
   typeTransport?: "conteneur" | "marchandise" | "engin" | "materiel" | "";
-  modeTrajet?: "aller_simple" | "aller_retour" | "";
+  modeTrajet?: "aller_simple" | "retour_simple" | "aller_retour" | "";
   // Location & manutention
   materiel?: string;
   // Location (dates)
