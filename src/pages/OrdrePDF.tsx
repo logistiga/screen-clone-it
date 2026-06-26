@@ -466,10 +466,8 @@ export default function OrdrePDFPage() {
                   </div>
                 </div>
               </div>
-                  </div>
-                </div>
-              </div>
             </>
+          );
           );
 
           const renderCompactHeader = (pageIndex: number, totalPages: number) => (
