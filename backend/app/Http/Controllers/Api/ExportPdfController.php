@@ -22,10 +22,12 @@ use Illuminate\Support\Facades\Log;
 class ExportPdfController extends Controller
 {
     protected ReportingService $reportingService;
+    protected \App\Services\ExportService $exportService;
 
-    public function __construct(ReportingService $reportingService)
+    public function __construct(ReportingService $reportingService, \App\Services\ExportService $exportService)
     {
         $this->reportingService = $reportingService;
+        $this->exportService = $exportService;
     }
 
     public function facturesPdf(Request $request)
