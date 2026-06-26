@@ -3,3 +3,4 @@ export { default as IndependantForm } from "./IndependantForm";
 export type { IndependantFormData, IndependantFormInitial } from "./IndependantForm";
 export * from "./types";
 export * from "./config";
+export * from "./hooks";
