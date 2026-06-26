@@ -46,6 +46,7 @@ interface ExportOption {
   hasModePaiementFilter?: boolean;
   hasCategorieFilter?: boolean;
   hasDocumentTypeFilter?: boolean;
+  hasTypeTransportFilter?: boolean;
 }
 
 const exportOptions: ExportOption[] = [
@@ -148,6 +149,7 @@ const exportOptions: ExportOption[] = [
     label: 'Conteneurs',
     description: 'Liste conteneurs livrés + prix',
     icon: Container,
+    hasTypeTransportFilter: true,
   },
 ];
 
@@ -198,6 +200,12 @@ const modesPaiement = [
   { value: 'cheque', label: 'Chèque' },
 ];
 
+const typesTransport = [
+  { value: 'tous', label: 'Tous (Import + Export)' },
+  { value: 'import', label: 'Import uniquement' },
+  { value: 'export', label: 'Export uniquement' },
+];
+
 export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportDataModalProps) {
   const navigate = useNavigate();
   const [selectedExports, setSelectedExports] = useState<ExportType[]>(['factures']);
@@ -215,6 +223,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
   const [isExporting, setIsExporting] = useState(false);
   const [annee, setAnnee] = useState(new Date().getFullYear());
   const [documentType, setDocumentType] = useState("tous");
+  const [typeTransport, setTypeTransport] = useState("tous");
 
   const toggleExport = (exportId: ExportType) => {
     setSelectedExports(prev => 
