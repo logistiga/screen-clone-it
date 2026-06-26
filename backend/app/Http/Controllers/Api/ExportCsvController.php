@@ -138,15 +138,22 @@ class ExportCsvController extends Controller
             'include_details' => $request->get('include_details', '1') === '1',
             'include_summary' => $request->get('include_summary', '1') === '1',
         ];
-        
+
         $format = $request->get('format', 'pdf');
-        
+
         if ($format === 'pdf') {
             return $this->exportService->exportCaisseGlobalePDF($filters);
         }
-        
+
         $csv = $this->exportService->exportCaisseGlobaleCSV($filters);
         return $this->streamCSV($csv, 'caisse-globale');
+    }
+
+    public function conteneurs(Request $request): StreamedResponse
+    {
+        $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur']);
+        $csv = $this->exportService->exportConteneursCSV($filters);
+        return $this->streamCSV($csv, 'conteneurs');
     }
 
     public function streamCSV(string $content, string $filename): StreamedResponse
