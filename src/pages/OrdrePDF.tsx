@@ -158,12 +158,21 @@ export default function OrdrePDFPage() {
   };
 
   const buildLignesIndependant = () => {
-    const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
+    const lignes: Array<{ description: string; trajet?: string; quantite: number; prixUnitaire: number; montant: number }> = [];
     
     if (ordre.lignes && ordre.lignes.length > 0) {
       ordre.lignes.forEach((ligne: any) => {
+        let trajet: string | undefined;
+        if ((ligne.type_operation || '') === 'transport') {
+          const dep = ligne.point_depart || ligne.lieu_depart;
+          const arr = ligne.point_arrivee || ligne.lieu_arrivee;
+          if (dep || arr) {
+            trajet = `Trajet : ${dep || '—'} → ${arr || '—'}`;
+          }
+        }
         lignes.push({
           description: ligne.description || ligne.type_operation || 'Prestation',
+          trajet,
           quantite: ligne.quantite || 1,
           prixUnitaire: ligne.prix_unitaire || 0,
           montant: ligne.montant_ht || (ligne.quantite * ligne.prix_unitaire) || 0
@@ -299,7 +308,12 @@ export default function OrdrePDFPage() {
                   ) : rows.map((ligne: any, index: number) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
                       <td className="py-1.5 px-2 border-r border-b align-middle">{startIndex + index + 1}</td>
-                      <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
+                      <td className="py-1.5 px-2 border-r border-b align-middle">
+                        <div>{ligne.description}</div>
+                        {ligne.trajet && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{ligne.trajet}</div>
+                        )}
+                      </td>
                       <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
                       <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
                       <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montant)}</td>
@@ -449,21 +463,12 @@ export default function OrdrePDFPage() {
                     {(ordre as any).representant?.nom && (
                       <p><span className="font-semibold">Représentant:</span> {(ordre as any).representant.nom}</p>
                     )}
-                    {isIndependant && ordre.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
-                      <>
-                        {ordre.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
-                          <p key={i}>
-                            <span className="font-semibold">Trajet:</span>{" "}
-                            {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
-                          </p>
-                        ))}
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
             </>
           );
+
 
           const renderCompactHeader = (pageIndex: number, totalPages: number) => (
             <div className="flex justify-between items-center mb-3 border-b border-primary/40 pb-2">
