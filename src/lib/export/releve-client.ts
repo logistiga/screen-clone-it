@@ -71,6 +71,7 @@ const normalizeOrdre = (o: OrdreTravail): ReleveDoc => ({
   montantTtc: Number(o.montant_ttc || 0),
   montantPaye: Number(o.montant_paye || 0),
 });
+const isConvertedOrdre = (o: OrdreTravail) => !!o.facture || ["facture", "facturé", "Facturé"].includes(o.statut || "");
 
 export async function fetchClientStatement(options: ExportOptions) {
   const params = {
@@ -82,7 +83,7 @@ export async function fetchClientStatement(options: ExportOptions) {
     fetchAll<OrdreTravail>("/ordres-travail", params),
   ]);
 
-  return [...factures.map(normalizeFacture), ...ordres.map(normalizeOrdre)]
+  return [...factures.map(normalizeFacture), ...ordres.filter((o) => !isConvertedOrdre(o)).map(normalizeOrdre)]
     .filter((doc) => keepByPeriod(doc, options.dateDebut, options.dateFin))
     .filter((doc) => keepByStatus(doc, options.filtreStatut))
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
