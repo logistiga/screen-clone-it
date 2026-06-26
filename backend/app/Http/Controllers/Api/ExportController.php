@@ -19,8 +19,6 @@ class ExportController extends Controller
 
     public function __construct(ExportService $exportService, ReportingService $reportingService)
     {
-        $this->csvController = new ExportCsvController();
-        // Inject via constructor manually
         $this->csvController = app(ExportCsvController::class);
         $this->pdfController = app(ExportPdfController::class);
         $this->rolesController = app(ExportRolesController::class);
