@@ -463,16 +463,9 @@ export default function OrdrePDFPage() {
                     {(ordre as any).representant?.nom && (
                       <p><span className="font-semibold">Représentant:</span> {(ordre as any).representant.nom}</p>
                     )}
-                    {isIndependant && ordre.lignes?.some((l: any) => l.lieu_depart || l.lieu_arrivee) && (
-                      <>
-                        {ordre.lignes.filter((l: any) => l.lieu_depart || l.lieu_arrivee).map((l: any, i: number) => (
-                          <p key={i}>
-                            <span className="font-semibold">Trajet:</span>{" "}
-                            {l.lieu_depart && l.lieu_arrivee ? `${l.lieu_depart} → ${l.lieu_arrivee}` : l.lieu_depart || l.lieu_arrivee}
-                          </p>
-                        ))}
-                      </>
-                    )}
+                  </div>
+                </div>
+              </div>
                   </div>
                 </div>
               </div>
