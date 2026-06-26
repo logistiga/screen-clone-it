@@ -651,7 +651,8 @@ export type ExportType =
   | 'credits' 
   | 'annulations'
   | 'activite-globale'
-  | 'tableau-de-bord';
+  | 'tableau-de-bord'
+  | 'conteneurs';
 
 export interface ExportFilters {
   date_debut?: string;
