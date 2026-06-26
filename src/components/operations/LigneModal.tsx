@@ -257,12 +257,10 @@ function defaultLigne(): LignePrestationEtendue {
 }
 
 function deriveDescription(l: LignePrestationEtendue): string {
-  const d = (l.description || "").trim();
-  if (d) return d;
-  if (l.typeOperation === "transport") return `Transport ${l.pointDepart || "Libreville"} → ${l.pointArrivee || ""}`.trim();
-  if (l.typeOperation === "location") return `Location ${l.materiel || ""}`.trim();
-  if (l.typeOperation === "manutention") return `Manutention ${l.materiel || ""}`.trim();
-  return "";
+  // On garde toujours la description saisie par l'utilisateur (peut être vide).
+  // Le "trajet" (Transport X → Y) est désormais affiché à partir de pointDepart/pointArrivee
+  // et n'écrase plus la description.
+  return (l.description || "").trim();
 }
 
 function NumberField({ label, value, onChange, min = 0 }: { label: string; value?: number; onChange: (v: number) => void; min?: number }) {
