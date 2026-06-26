@@ -12,3 +12,6 @@ export * from './export.api';
 export * from './paiements-fournisseurs.api';
 export * from './notes.api';
 export * from './primes-camion.api';
+export * from './security.api';
+export * from './diagnostics.api';
+export * from './pagination.api';
