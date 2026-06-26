@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,12 +14,15 @@ import {
   TypeOperationIndep,
   TypeMarchandise,
   LignePrestationEtendue,
-  getInitialPrestationEtendue,
   getTypeMarchandiseLabels,
-  calculateDaysBetween,
 } from "@/types/documents";
-import { ordreIndependantSchema } from "@/lib/validations/ordre-schemas";
 import OperationsIndependantesForm from "@/components/operations/OperationsIndependantesForm";
+import {
+  useInitialDataSync,
+  useEmitFormData,
+  usePrestations,
+  useIndependantValidation,
+} from "./hooks";
 
 /**
  * Données communes à tous les formulaires Indépendant
@@ -55,139 +58,81 @@ export default function IndependantForm({
   trackLieux = false,
   withValidation = false,
 }: IndependantFormProps) {
-  const lastInitKey = useRef<string>("");
   const [typeMarchandise, setTypeMarchandise] = useState<TypeMarchandise | "">(
-    initialData?.typeMarchandise ?? ""
+    initialData?.typeMarchandise ?? "",
   );
   const [descriptionGenerale, setDescriptionGenerale] = useState(
-    initialData?.descriptionGenerale ?? ""
+    initialData?.descriptionGenerale ?? "",
   );
   const [observationInterne, setObservationInterne] = useState(
-    initialData?.observationInterne ?? ""
+    initialData?.observationInterne ?? "",
   );
   const [lieuChargement, setLieuChargement] = useState(initialData?.lieuChargement ?? "");
   const [lieuDechargement, setLieuDechargement] = useState(initialData?.lieuDechargement ?? "");
-  const [prestations, setPrestations] = useState<LignePrestationEtendue[]>(
-    initialData?.prestations?.length ? initialData.prestations : [getInitialPrestationEtendue()]
+
+  const { prestations, setPrestations, add, remove, change, totalHT } = usePrestations(
+    initialData?.prestations,
+    {
+      onLieuDepartChange: trackLieux ? setLieuChargement : undefined,
+      onLieuArriveeChange: trackLieux ? setLieuDechargement : undefined,
+    },
   );
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  // Synchronisation initialData → état local (anti-boucle via clé sérialisable)
+  useInitialDataSync(
+    initialData,
+    (d) =>
+      JSON.stringify({
+        tm: d.typeMarchandise ?? "",
+        dg: d.descriptionGenerale ?? "",
+        oi: d.observationInterne ?? "",
+        ps: (d.prestations ?? []).map((p) => p.id),
+      }),
+    (d) => {
+      if (d.typeMarchandise !== undefined) setTypeMarchandise(d.typeMarchandise ?? "");
+      if (d.descriptionGenerale !== undefined) setDescriptionGenerale(d.descriptionGenerale ?? "");
+      if (d.observationInterne !== undefined) setObservationInterne(d.observationInterne ?? "");
+      if (d.prestations?.length) {
+        const oldType = d.typeOperationIndep;
+        setPrestations(
+          d.prestations.map((p) => ({
+            ...p,
+            typeOperation:
+              p.typeOperation || (oldType as TypeOperationIndep | "") || "",
+          })),
+        );
+      }
+    },
+  );
 
-  // Sync avec initialData (anti-boucle via lastInitKey)
-  useEffect(() => {
-    if (!initialData) return;
-    const key = JSON.stringify({
-      tm: initialData.typeMarchandise ?? "",
-      dg: initialData.descriptionGenerale ?? "",
-      oi: initialData.observationInterne ?? "",
-      ps: (initialData.prestations ?? []).map((p) => p.id),
-    });
-    if (key === lastInitKey.current) return;
-    if (initialData.typeMarchandise !== undefined)
-      setTypeMarchandise(initialData.typeMarchandise ?? "");
-    if (initialData.descriptionGenerale !== undefined)
-      setDescriptionGenerale(initialData.descriptionGenerale ?? "");
-    if (initialData.observationInterne !== undefined)
-      setObservationInterne(initialData.observationInterne ?? "");
-    if (initialData.prestations?.length) {
-      const oldType = initialData.typeOperationIndep;
-      setPrestations(
-        initialData.prestations.map((p) => ({
-          ...p,
-          typeOperation: p.typeOperation || (oldType as TypeOperationIndep | "") || "",
-        }))
-      );
-    }
-    lastInitKey.current = key;
-  }, [initialData]);
+  // Validation (Ordre uniquement)
+  const { errors, touched, handleBlur, getFieldError } = useIndependantValidation({
+    enabled: withValidation,
+    typeMarchandise,
+    prestations,
+  });
 
-  const totalHT = (items: LignePrestationEtendue[]) =>
-    items.reduce((s, p) => s + (p.montantHT || 0), 0);
-
-  useEffect(() => {
-    const payload: IndependantFormData = {
-      typeOperationIndep: "",
+  // Émission du payload vers le parent
+  useEmitFormData(
+    {
+      typeOperationIndep: "" as TypeOperationIndep | "",
       typeMarchandise,
       descriptionGenerale,
       observationInterne,
       prestations,
-      montantHT: totalHT(prestations),
-    };
-    if (trackLieux) {
-      payload.lieuChargement = lieuChargement;
-      payload.lieuDechargement = lieuDechargement;
-    }
-    onDataChange(payload);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeMarchandise, descriptionGenerale, observationInterne, prestations, lieuChargement, lieuDechargement]);
-
-  const validateField = useCallback(
-    (fieldPath: string) => {
-      if (!withValidation) return;
-      const data = { typeMarchandise, prestations };
-      const result = ordreIndependantSchema.safeParse(data);
-      if (!result.success) {
-        const fe = result.error.errors.find((e) => e.path.join(".") === fieldPath);
-        if (fe) setErrors((p) => ({ ...p, [fieldPath]: fe.message }));
-        else
-          setErrors((p) => {
-            const n = { ...p };
-            delete n[fieldPath];
-            return n;
-          });
-      } else {
-        setErrors((p) => {
-          const n = { ...p };
-          delete n[fieldPath];
-          return n;
-        });
-      }
-    },
-    [withValidation, typeMarchandise, prestations]
+      montantHT: totalHT,
+      ...(trackLieux ? { lieuChargement, lieuDechargement } : {}),
+    } as IndependantFormData,
+    onDataChange,
+    [
+      typeMarchandise,
+      descriptionGenerale,
+      observationInterne,
+      prestations,
+      lieuChargement,
+      lieuDechargement,
+    ],
   );
-
-  const handleBlur = (fieldPath: string) => {
-    if (!withValidation) return;
-    setTouched((p) => ({ ...p, [fieldPath]: true }));
-    validateField(fieldPath);
-  };
-
-  const getFieldError = (fp: string) =>
-    withValidation && touched[fp] ? errors[fp] : undefined;
-
-  const handleAddPrestation = () => {
-    setPrestations([...prestations, { ...getInitialPrestationEtendue(), id: String(Date.now()) }]);
-  };
-  const handleRemovePrestation = (id: string) => {
-    if (prestations.length > 1) setPrestations(prestations.filter((p) => p.id !== id));
-  };
-  const handlePrestationChange = (
-    id: string,
-    field: keyof LignePrestationEtendue,
-    value: string | number
-  ) => {
-    setPrestations((curr) =>
-      curr.map((p) => {
-        if (p.id !== id) return p;
-        const updated: LignePrestationEtendue = { ...p, [field]: value } as LignePrestationEtendue;
-        if (field === "dateDebut" || field === "dateFin") {
-          const d = field === "dateDebut" ? String(value) : updated.dateDebut || "";
-          const f = field === "dateFin" ? String(value) : updated.dateFin || "";
-          if (d && f) {
-            updated.quantite = calculateDaysBetween(d, f);
-            updated.montantHT = updated.quantite * updated.prixUnitaire;
-          }
-        }
-        if (field === "quantite" || field === "prixUnitaire") {
-          updated.montantHT = updated.quantite * updated.prixUnitaire;
-        }
-        if (trackLieux && field === "lieuDepart") setLieuChargement(String(value));
-        if (trackLieux && field === "lieuArrivee") setLieuDechargement(String(value));
-        return updated;
-      })
-    );
-  };
 
   const marchandiseLabels = getTypeMarchandiseLabels();
 
@@ -246,9 +191,9 @@ export default function IndependantForm({
 
       <OperationsIndependantesForm
         prestations={prestations}
-        onAddPrestation={handleAddPrestation}
-        onRemovePrestation={handleRemovePrestation}
-        onPrestationChange={handlePrestationChange}
+        onAddPrestation={add}
+        onRemovePrestation={remove}
+        onPrestationChange={change}
         onReplacePrestations={setPrestations}
         errors={withValidation ? errors : undefined}
         touched={withValidation ? touched : undefined}
