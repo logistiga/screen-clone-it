@@ -57,7 +57,7 @@ const SecurityActionPage = () => {
         } else {
           setResult({
             status: 'error',
-            message: response.data.message || 'Une erreur est survenue',
+            message: data.message || 'Une erreur est survenue',
           });
         }
       } catch (error: any) {

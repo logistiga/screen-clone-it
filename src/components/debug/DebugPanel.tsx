@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { checkOpsHealth, syncConteneursOps } from "@/services/api";
 
 interface DebugData {
   apiUrl?: string;
@@ -66,15 +66,15 @@ export function DebugPanel({ title = "Debug API", data, onRefresh }: DebugPanelP
   const testOpsConnection = async () => {
     setOpsStatus({ testing: true, result: null });
     try {
-      const response = await api.get('/sync-diagnostic/health-ops');
-      setOpsStatus({ testing: false, result: response.data });
+      const data = await checkOpsHealth();
+      setOpsStatus({ testing: false, result: data });
     } catch (error: any) {
-      setOpsStatus({ 
-        testing: false, 
-        result: { 
-          success: false, 
+      setOpsStatus({
+        testing: false,
+        result: {
+          success: false,
           error: error.response?.data?.message || error.message || 'Erreur de connexion'
-        } 
+        }
       });
     }
   };
