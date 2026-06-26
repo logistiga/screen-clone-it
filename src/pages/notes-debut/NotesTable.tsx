@@ -7,7 +7,7 @@ import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components
 import { AnimatedTableRow, AnimatedTableBody } from "@/components/ui/animated-table";
 import { Eye, Edit, Download, Mail, CreditCard, Trash2, FileText, Anchor, Container, Wrench, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { downloadNoteDebitPdf } from "@/services/api";
 import { formatMontant, formatDate } from "@/data/mockData";
 import { NoteDebut } from "@/lib/api/notes-debut";
 import { getNoteAmount, getNotePaid, getNoteAdvance, getNoteRemaining, getNoteStatus, getNoteType } from "./useNotesDebutData";
@@ -106,7 +106,7 @@ export function NotesTable({
                             e.stopPropagation();
                             try {
                               toast.info(`Génération du PDF ${note.numero}...`);
-                              const response = await api.get(`/notes-debit/${note.id}/pdf`, { responseType: 'blob' });
+                              const response = await downloadNoteDebitPdf(note.id);
                               const ct = response.headers['content-type'] || '';
                               if (ct.includes('application/json') || (response.data as Blob)?.size < 500) {
                                 const text = await (response.data as Blob).text();

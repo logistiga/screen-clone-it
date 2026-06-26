@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import api from "@/lib/api";
-import type { Client, Facture, OrdreTravail, PaginatedResponse } from "@/lib/api/commercial";
+import { fetchAllPaginated } from "@/services/api";
+import type { Client, Facture, OrdreTravail } from "@/lib/api/commercial";
 
 export type ReleveFormat = "pdf" | "excel";
 export type ReleveStatut = "tous" | "paye" | "impaye";
@@ -32,14 +32,7 @@ const safe = (value?: string | number | null) =>
 const fileSafe = (value: string) => value.replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "");
 
 async function fetchAll<T>(url: string, params: Record<string, string | number>) {
-  const first = await api.get<PaginatedResponse<T>>(url, { params: { ...params, page: 1, per_page: 100 } });
-  const items = Array.isArray(first.data.data) ? [...first.data.data] : [];
-  const lastPage = Number(first.data.meta?.last_page || 1);
-  for (let page = 2; page <= lastPage; page += 1) {
-    const response = await api.get<PaginatedResponse<T>>(url, { params: { ...params, page, per_page: 100 } });
-    if (Array.isArray(response.data.data)) items.push(...response.data.data);
-  }
-  return items;
+  return fetchAllPaginated<T>(url, params, 100);
 }
 
 const isPaid = (doc: ReleveDoc) => doc.montantPaye + 1 >= doc.montantTtc;

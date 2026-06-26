@@ -22,7 +22,7 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { fetchCaisseAttenteStats } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 
 // === Types ===
@@ -111,10 +111,7 @@ export default function DashboardPage() {
   // Caisse en attente stats
   const { data: caisseAttenteStats } = useQuery({
     queryKey: ["caisse-en-attente-stats"],
-    queryFn: async () => {
-      const response = await api.get("/caisse-en-attente/stats");
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<any>('OPS'),
     enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000,
     retry: 1,
@@ -124,10 +121,7 @@ export default function DashboardPage() {
   // CNV stats
   const { data: caisseCnvStats } = useQuery({
     queryKey: ["caisse-cnv-stats"],
-    queryFn: async () => {
-      const response = await api.get("/caisse-cnv/stats");
-      return response.data;
-    },
+    queryFn: () => fetchCaisseAttenteStats<any>('CNV'),
     enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000,
     retry: 1,

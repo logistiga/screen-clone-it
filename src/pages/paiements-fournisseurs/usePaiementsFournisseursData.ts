@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPaiementsFournisseurs, fetchPaiementsFournisseursStats } from "@/services/api";
 
 export interface PaiementFournisseur {
   id: number;
@@ -42,20 +42,16 @@ export function usePaiementsFournisseursData() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['paiements-fournisseurs', page, pageSize, search, statut],
-    queryFn: async () => {
-      const params: Record<string, any> = { page, per_page: pageSize, statut };
+    queryFn: () => {
+      const params: Record<string, string | number> = { page, per_page: pageSize, statut };
       if (search) params.search = search;
-      const response = await api.get('/paiements-fournisseurs', { params });
-      return response.data;
+      return fetchPaiementsFournisseurs<any>(params);
     },
   });
 
   const { data: stats } = useQuery({
     queryKey: ['paiements-fournisseurs-stats'],
-    queryFn: async () => {
-      const response = await api.get('/paiements-fournisseurs/stats');
-      return response.data;
-    },
+    queryFn: () => fetchPaiementsFournisseursStats<any>(),
   });
 
   const items: PaiementFournisseur[] = data?.data || [];

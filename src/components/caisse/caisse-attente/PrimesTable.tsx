@@ -12,7 +12,7 @@ import {
   AlertTriangle, RefreshCw, Receipt, Ban, XCircle, Truck, FileText,
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
-import api from "@/lib/api";
+import { fetchCaisseAttenteList, type CaisseSourceKey } from "@/services/api";
 import { TablePagination } from "@/components/TablePagination";
 import { DocumentFilters, DocumentLoadingState } from "@/components/shared/documents";
 import { PrimeEnAttente, statutFilterOptions, itemVariants } from "./types";
@@ -39,25 +39,15 @@ export function PrimesTable({ source, onDecaisser, onRefuser }: PrimesTableProps
   };
   const queryKey = queryKeyMap[source];
 
-  const apiEndpointMap: Record<string, string> = {
-    OPS: '/caisse-en-attente',
-    CNV: '/caisse-cnv',
-    HORSLBV: '/caisse-horslbv',
-    PRIME_REP: '/caisse-primes-rep',
-    PRIME_TRANS: '/caisse-primes-trans',
-  };
-  const apiEndpoint = apiEndpointMap[source];
-
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey,
-    queryFn: async () => {
+    queryFn: () => {
       const params: Record<string, string | number> = {
         page, per_page: pageSize, statut,
       };
       if (source === 'OPS') params.source = 'OPS';
       if (search) params.search = search;
-      const response = await api.get(apiEndpoint, { params });
-      return response.data;
+      return fetchCaisseAttenteList<any>(source as CaisseSourceKey, params);
     },
   });
 

@@ -26,7 +26,7 @@ import {
   useDeleteRole, useDuplicateRole,
 } from "@/hooks/use-roles";
 import { Role, RoleFilters } from "@/services/roleService";
-import api from "@/lib/api";
+import { downloadExportBlob, triggerBlobDownload } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { getPermissionsByModule } from "@/config/permissionsConfig";
 import { RolesStatsCards } from "./roles/RolesStatsCards";
@@ -100,14 +100,11 @@ export default function RolesPage() {
   const handleExport = async (format: 'pdf' | 'excel') => {
     setIsExporting(true);
     try {
-      const params = new URLSearchParams(); params.append('format', format);
-      if (searchTerm) params.append('search', searchTerm);
-      const response = await api.get(`/exports/roles?${params.toString()}`, { responseType: 'blob' });
+      const params: Record<string, string> = { format };
+      if (searchTerm) params.search = searchTerm;
+      const blob = await downloadExportBlob('/exports/roles', params);
       const ext = format === 'pdf' ? 'pdf' : 'csv';
-      const blob = new Blob([response.data], { type: response.headers['content-type'] });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url; link.download = `roles-${new Date().toISOString().split('T')[0]}.${ext}`;
-      document.body.appendChild(link); link.click(); document.body.removeChild(link); window.URL.revokeObjectURL(url);
+      triggerBlobDownload(blob, `roles-${new Date().toISOString().split('T')[0]}.${ext}`);
       toast({ title: "Export réussi", description: `Fichier ${format.toUpperCase()} téléchargé.` });
     } catch { toast({ title: "Erreur d'export", variant: "destructive" }); }
     finally { setIsExporting(false); }

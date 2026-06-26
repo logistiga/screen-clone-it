@@ -5,7 +5,7 @@ import { Shield, Clock, CheckCircle2, XCircle, Loader2, Smartphone, MapPin, Refr
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import api from "@/lib/api";
+import { fetchSuspiciousLoginStatus } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 
 interface PendingApprovalState {
@@ -32,8 +32,8 @@ export default function PendingApprovalPage() {
     
     setIsChecking(true);
     try {
-      const response = await api.get(`/security/suspicious-login/${state.suspiciousLoginId}/status`);
-      const newStatus = response.data?.status;
+      const data = await fetchSuspiciousLoginStatus(state.suspiciousLoginId);
+      const newStatus = data?.status;
       
       if (newStatus === 'approved') {
         setStatus('approved');

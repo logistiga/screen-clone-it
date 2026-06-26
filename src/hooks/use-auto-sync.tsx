@@ -1,22 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
+import { syncArmateursOps, syncConteneursOps, type SyncResult } from '@/services/api';
 import { toast } from 'sonner';
 import { useNotificationStore } from '@/stores/notificationStore';
 
 const SYNC_INTERVAL_MS = 60 * 1000; // 1 minute
 const INITIAL_DELAY_MS = 10_000; // 10s après chargement
 
-interface SyncResult {
-  success: boolean;
-  created?: number;
-  updated?: number;
-  total?: number;
-  nouveaux?: number;
-  mis_a_jour?: number;
-  message?: string;
-}
 
 // Demander la permission pour les notifications browser
 function requestNotificationPermission() {
@@ -38,8 +29,7 @@ function sendBrowserNotification(title: string, body: string) {
 
 async function syncArmateurs(): Promise<SyncResult | null> {
   try {
-    const response = await api.post('/sync-diagnostic/sync-armateurs');
-    return response.data;
+    return await syncArmateursOps();
   } catch (error: any) {
     console.error('[AutoSync] Échec sync armateurs:', error?.response?.status);
     return null;
@@ -48,8 +38,7 @@ async function syncArmateurs(): Promise<SyncResult | null> {
 
 async function syncConteneurs(): Promise<SyncResult | null> {
   try {
-    const response = await api.post('/sync-diagnostic/sync-conteneurs');
-    return response.data;
+    return await syncConteneursOps();
   } catch (error: any) {
     console.error('[AutoSync] Échec sync conteneurs:', error?.response?.status);
     return null;

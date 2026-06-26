@@ -13,7 +13,7 @@ import {
   ShoppingCart, Coins, Ban, XCircle, Receipt, Hash,
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
-import api from "@/lib/api";
+import { fetchCaisseAttenteList } from "@/services/api";
 import { TablePagination } from "@/components/TablePagination";
 import { DocumentFilters, DocumentLoadingState } from "@/components/shared/documents";
 import { PrimeEnAttente, StatsResponse, statutFilterOptions, itemVariants } from "./types";
@@ -41,13 +41,12 @@ function GarageSubTable({
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['caisse-garage', fournisseurFilter, page, pageSize, search, statut],
-    queryFn: async () => {
+    queryFn: () => {
       const params: Record<string, string | number> = {
         page, per_page: pageSize, statut, fournisseur_filter: fournisseurFilter,
       };
       if (search) params.search = search;
-      const response = await api.get('/caisse-garage', { params });
-      return response.data;
+      return fetchCaisseAttenteList<any>('GARAGE', params);
     },
   });
 
@@ -273,11 +272,10 @@ function GaragePrimesSubTable({ onDecaisser, onRefuser }: { onDecaisser: (prime:
 
   const { data, isLoading } = useQuery({
     queryKey: ['caisse-garage-primes', page, pageSize, search, statut],
-    queryFn: async () => {
+    queryFn: () => {
       const params: Record<string, string | number> = { page, per_page: pageSize, statut };
       if (search) params.search = search;
-      const response = await api.get('/caisse-garage/primes', { params });
-      return response.data;
+      return fetchCaisseAttenteList<any>('GARAGE_PRIME', params);
     },
   });
 

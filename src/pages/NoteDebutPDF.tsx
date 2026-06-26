@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useNoteDebut } from "@/hooks/use-notes-debut";
 import { EmailModalWithTemplate } from "@/components/EmailModalWithTemplate";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { downloadNoteDebitPdf } from "@/services/api";
 
 export default function NoteDebutPDF() {
   const { id } = useParams();
@@ -31,9 +31,7 @@ export default function NoteDebutPDF() {
     console.log(`[PDF] Début téléchargement note ID: ${id}`);
     console.log(`[PDF] URL appelée: /notes-debit/${id}/pdf`);
     try {
-      const response = await api.get(`/notes-debit/${id}/pdf`, {
-        responseType: 'blob',
-      });
+      const response = await downloadNoteDebitPdf(id);
       
       console.log(`[PDF] Réponse reçue - Status: ${response.status}, Content-Type: ${response.headers['content-type']}, Size: ${(response.data as Blob)?.size || 'unknown'}`);
       

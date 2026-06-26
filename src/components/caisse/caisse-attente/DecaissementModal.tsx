@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Wallet, Coins, Loader2, AlertTriangle } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import { fetchCategoriesDepenses, decaisserPrime, type CaisseSourceKey } from "@/services/api";
 import { PrimeEnAttente } from "./types";
 
 interface DecaissementModalProps {
@@ -36,10 +36,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   // Charger les catégories de dépenses
   const { data: categoriesData } = useQuery({
     queryKey: ['categories-depenses', { type: 'Sortie', actif: true }],
-    queryFn: async () => {
-      const response = await api.get('/categories-depenses', { params: { type: 'Sortie', actif: true } });
-      return response.data;
-    },
+    queryFn: () => fetchCategoriesDepenses<any>({ type: 'Sortie', actif: true }),
     enabled: open,
   });
 
@@ -70,19 +67,9 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   }, [prime, open]);
 
   const mutation = useMutation({
-    mutationFn: async ({ primeId, source }: { primeId: string; source: string }) => {
-      const endpointMap: Record<string, string> = {
-        CNV: `/caisse-cnv/${primeId}/decaisser`,
-        HORSLBV: `/caisse-horslbv/${primeId}/decaisser`,
-        GARAGE: `/caisse-garage/${primeId}/decaisser`,
-        GARAGE_PRIME: `/caisse-garage/primes/${primeId}/decaisser`,
-        OPS: `/caisse-en-attente/${primeId}/decaisser`,
-        PRIME_REP: `/caisse-primes-rep/${primeId}/decaisser`,
-        PRIME_TRANS: `/caisse-primes-trans/${primeId}/decaisser`,
-      };
-      const endpoint = endpointMap[source] || endpointMap.OPS;
+    mutationFn: ({ primeId, source }: { primeId: string; source: string }) => {
       const montant = paiementPartiel ? parseFloat(montantDecaisse) : prime?.montant;
-      const response = await api.post(endpoint, {
+      return decaisserPrime(source as CaisseSourceKey, primeId, {
         mode_paiement: modePaiement,
         reference,
         notes,
@@ -91,7 +78,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
         montant: montant,
         paiement_partiel: paiementPartiel,
       });
-      return response.data;
     },
     onSuccess: () => {
       toast.success("Décaissement validé avec succès");

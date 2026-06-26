@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { fetchDetentionsAttente, fetchDetentionsAttenteStats } from "@/services/api";
 
 export interface DetentionAttente {
   id: string | null;
@@ -34,7 +34,7 @@ export interface DetentionStats {
   non_payes: number;
 }
 
-interface DetentionsParams {
+export interface DetentionsParams {
   page: number;
   per_page: number;
   search?: string;
@@ -48,23 +48,13 @@ interface DetentionsParams {
 export function useDetentionsAttente(params: DetentionsParams) {
   return useQuery({
     queryKey: ["detentions-attente", params],
-    queryFn: async () => {
-      const { data } = await api.get("/detentions-attente", { params });
-      return data as {
-        data: DetentionAttente[];
-        meta: { current_page: number; last_page: number; per_page: number; total: number };
-        source_errors?: Record<string, string>;
-      };
-    },
+    queryFn: () => fetchDetentionsAttente(params),
   });
 }
 
 export function useDetentionsAttenteStats() {
   return useQuery({
     queryKey: ["detentions-attente-stats"],
-    queryFn: async () => {
-      const { data } = await api.get("/detentions-attente/stats");
-      return data as DetentionStats;
-    },
+    queryFn: () => fetchDetentionsAttenteStats(),
   });
 }
