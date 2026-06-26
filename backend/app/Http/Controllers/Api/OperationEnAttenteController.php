@@ -123,6 +123,7 @@ class OperationEnAttenteController extends Controller
                 ->pluck('operation_id_externe')->toArray();
 
             $q = DB::connection('ops_ind')->table($table);
+            if (in_array('deleted_at', $cols, true)) $q->whereNull('deleted_at');
             if ($idCol && !empty($traitedIds)) $q->whereNotIn($idCol, $traitedIds);
 
             return response()->json([
