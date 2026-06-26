@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Download, FileText, FileSpreadsheet, Calendar, 
   Receipt, FileCheck, Truck, Wallet, Users, 
-  Building2, CreditCard, XCircle, BarChart3 
+  Building2, CreditCard, XCircle, BarChart3, Container
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportApi, ExportType, ExportFilters } from "@/lib/api/reporting";
