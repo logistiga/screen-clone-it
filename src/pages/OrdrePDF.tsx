@@ -468,7 +468,7 @@ export default function OrdrePDFPage() {
               </div>
             </>
           );
-          );
+
 
           const renderCompactHeader = (pageIndex: number, totalPages: number) => (
             <div className="flex justify-between items-center mb-3 border-b border-primary/40 pb-2">
