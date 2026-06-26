@@ -143,6 +143,12 @@ const exportOptions: ExportOption[] = [
     description: 'Synthèse générale',
     icon: BarChart3,
   },
+  {
+    id: 'conteneurs',
+    label: 'Conteneurs',
+    description: 'Liste conteneurs livrés + prix',
+    icon: Container,
+  },
 ];
 
 const statutsFacture = [
