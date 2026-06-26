@@ -44,6 +44,9 @@ class ExportConteneursService
         if (!empty($filters['type_conteneur'])) {
             $query->where('type_conteneur', $filters['type_conteneur']);
         }
+        if (!empty($filters['type_transport']) && strtolower((string) $filters['type_transport']) !== 'tous') {
+            $query->whereRaw('LOWER(type_transport) = ?', [strtolower((string) $filters['type_transport'])]);
+        }
 
         $conteneurs = $query->orderBy('date_sortie', 'desc')
             ->orderBy('numero_conteneur')
@@ -90,6 +93,7 @@ class ExportConteneursService
                 'armateur_nom' => $c->armateur_nom ?: ($c->armateur_code ?: '-'),
                 'camion_plaque' => $c->camion_plaque ?: '-',
                 'chauffeur_nom' => $c->chauffeur_nom ?: '-',
+                'type_transport' => $c->type_transport ? ucfirst(strtolower((string) $c->type_transport)) : '-',
                 'date_sortie' => $c->date_sortie,
                 'date_retour' => $c->date_retour,
                 'statut' => $c->statut,
@@ -98,6 +102,7 @@ class ExportConteneursService
             ];
         });
 
+        $typeTransportLower = $rows->map(fn ($r) => strtolower((string) $r->type_transport));
         $stats = [
             'total' => $rows->count(),
             'total_prix' => (float) $rows->sum('prix'),
@@ -105,6 +110,8 @@ class ExportConteneursService
             'nb_affectes' => $rows->where('statut', 'affecte')->count(),
             'nb_factures' => $rows->where('statut', 'facture')->count(),
             'nb_en_attente' => $rows->where('statut', 'en_attente')->count(),
+            'nb_import' => $typeTransportLower->filter(fn ($t) => $t === 'import')->count(),
+            'nb_export' => $typeTransportLower->filter(fn ($t) => $t === 'export')->count(),
         ];
 
         return ['rows' => $rows, 'stats' => $stats];
@@ -115,7 +122,7 @@ class ExportConteneursService
         $data = $this->fetch($filters);
 
         $headers = [
-            'N° Conteneur', 'Client', 'Type', 'N° BL', 'Armateur',
+            'N° Conteneur', 'Client', 'Type', 'Transport', 'N° BL', 'Armateur',
             'N° Camion', 'Chauffeur', 'Date sortie', 'Date retour', 'Statut', 'Prix (FCFA)',
         ];
 
@@ -124,6 +131,7 @@ class ExportConteneursService
                 $c->numero_conteneur,
                 $c->client_nom,
                 $c->type_conteneur,
+                $c->type_transport,
                 $c->numero_bl,
                 $c->armateur_nom,
                 $c->camion_plaque,

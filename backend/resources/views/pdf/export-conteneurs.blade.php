@@ -22,14 +22,16 @@
         <span><strong>Période:</strong> {{ $date_debut ?? '-' }} au {{ $date_fin ?? '-' }}</span>
         @if(!empty($statut_label))<span><strong>Statut:</strong> {{ $statut_label }}</span>@endif
         @if(!empty($armateur_label))<span><strong>Armateur:</strong> {{ $armateur_label }}</span>@endif
+        @if(!empty($type_transport_label))<span><strong>Transport:</strong> {{ $type_transport_label }}</span>@endif
     </div>
 
     {{-- KPIs --}}
     <table class="kpi-table">
         <tr>
             <td><div class="kpi-label">Total Conteneurs</div><div class="kpi-value">{{ $stats['total'] ?? 0 }}</div></td>
+            <td><div class="kpi-label">Import</div><div class="kpi-value">{{ $stats['nb_import'] ?? 0 }}</div></td>
+            <td><div class="kpi-label">Export</div><div class="kpi-value">{{ $stats['nb_export'] ?? 0 }}</div></td>
             <td class="kpi-success"><div class="kpi-label">Affectés</div><div class="kpi-value">{{ $stats['nb_affectes'] ?? 0 }}</div></td>
-            <td><div class="kpi-label">Facturés</div><div class="kpi-value">{{ $stats['nb_factures'] ?? 0 }}</div></td>
             <td class="kpi-danger"><div class="kpi-label">Montant Total</div><div class="kpi-value">{{ number_format($stats['total_prix'] ?? 0, 0, ',', ' ') }} FCFA</div></td>
         </tr>
     </table>
@@ -43,6 +45,7 @@
                 <th>N° Conteneur</th>
                 <th>Client</th>
                 <th>Type</th>
+                <th class="text-center">Transport</th>
                 <th>N° BL</th>
                 <th>Armateur</th>
                 <th>N° Camion</th>
@@ -60,6 +63,7 @@
                 <td><strong>{{ $c->numero_conteneur }}</strong></td>
                 <td>{{ $c->client_nom }}</td>
                 <td>{{ $c->type_conteneur }}</td>
+                <td class="text-center">{{ $c->type_transport }}</td>
                 <td>{{ $c->numero_bl }}</td>
                 <td>{{ $c->armateur_nom }}</td>
                 <td>{{ $c->camion_plaque }}</td>
@@ -69,11 +73,11 @@
             </tr>
             @endforeach
             @if(count($conteneurs) === 0)
-            <tr><td colspan="10" class="text-center" style="padding:20px;color:#999">Aucun conteneur trouvé pour la période</td></tr>
+            <tr><td colspan="12" class="text-center" style="padding:20px;color:#999">Aucun conteneur trouvé pour la période</td></tr>
             @endif
             @if(count($conteneurs) > 0)
             <tr class="row-total">
-                <td colspan="9">TOTAL</td>
+                <td colspan="11">TOTAL</td>
                 <td class="text-right text-red">{{ number_format($totPrix, 0, ',', ' ') }}</td>
             </tr>
             @endif
