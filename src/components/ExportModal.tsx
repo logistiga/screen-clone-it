@@ -22,6 +22,7 @@ import { Download, FileText, FileSpreadsheet, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAllClients } from "@/hooks/use-all-clients";
 import { downloadClientStatement } from "@/lib/export/releve-client";
+import type { Client } from "@/lib/api/commercial";
 
 interface ExportModalProps {
   open: boolean;
@@ -34,6 +35,7 @@ type FiltreStatut = "tous" | "paye" | "impaye";
 export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const { toast } = useToast();
   const [clientId, setClientId] = useState("");
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
@@ -71,7 +73,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       return;
     }
 
-    const client = clients.find((c) => String(c.id) === clientId);
+    const client = selectedClient || clients.find((c) => String(c.id) === clientId);
     if (!client) {
       toast({
         title: "Erreur",
@@ -125,7 +127,10 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
               onChange={(e) => setClientSearch(e.target.value)}
               className="mb-2"
             />
-            <Select value={clientId} onValueChange={setClientId}>
+            <Select value={clientId} onValueChange={(value) => {
+              setClientId(value);
+              setSelectedClient(clients.find((c) => String(c.id) === value) || null);
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder={isLoadingClients || isFetchingClients ? "Chargement..." : "Sélectionner un client"} />
               </SelectTrigger>
