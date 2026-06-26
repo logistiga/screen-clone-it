@@ -248,6 +248,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
     'annulations': '/export/annulations/pdf',
     'credits': '/export/credits/pdf',
     'activite-globale': '/export/activite-globale/pdf',
+    'conteneurs': '/export/conteneurs/pdf',
   };
 
   const handleExport = async () => {
