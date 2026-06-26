@@ -343,8 +343,18 @@
                 $lignes = [];
                 if (!empty($facture->lignes) && count($facture->lignes) > 0) {
                     foreach ($facture->lignes as $l) {
+                        $desc = trim((string)($l->description ?? '')) ?: ($l->type_operation ?? 'Prestation');
+                        $trajet = null;
+                        if (($l->type_operation ?? '') === 'transport') {
+                            $dep = $l->point_depart ?? $l->lieu_depart ?? null;
+                            $arr = $l->point_arrivee ?? $l->lieu_arrivee ?? null;
+                            if ($dep || $arr) {
+                                $trajet = 'Trajet : ' . ($dep ?: '—') . ' → ' . ($arr ?: '—');
+                            }
+                        }
                         $lignes[] = [
-                            'description' => $l->description ?? $l->type_operation ?? 'Prestation',
+                            'description' => $desc,
+                            'trajet' => $trajet,
                             'quantite' => $l->quantite ?? 1,
                             'prix_unitaire' => $l->prix_unitaire ?? 0,
                             'montant_ht' => $l->montant_ht ?? (($l->quantite ?? 1) * ($l->prix_unitaire ?? 0)),
