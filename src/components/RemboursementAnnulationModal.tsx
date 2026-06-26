@@ -51,7 +51,7 @@ export function RemboursementAnnulationModal({
     queryFn: () => banquesApi.getAll(),
   });
 
-  const banques = Array.isArray(banquesData) ? banquesData : (banquesData?.data || []);
+  const banques = Array.isArray(banquesData) ? banquesData : ((banquesData as { data?: unknown[] })?.data || []);
 
   useEffect(() => {
     if (annulation) {
