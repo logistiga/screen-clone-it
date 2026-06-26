@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Download, FileText, FileSpreadsheet, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useClients } from "@/hooks/commercial/use-clients-devis";
+import { useAllClients } from "@/hooks/use-all-clients";
+import { downloadClientStatement } from "@/lib/export/releve-client";
 
 interface ExportModalProps {
   open: boolean;
@@ -40,11 +41,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [format, setFormat] = useState<FormatExport>("pdf");
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: clientsData, isLoading: isLoadingClients } = useClients({
-    search: clientSearch || undefined,
-    per_page: 100,
-  });
-  const clients = clientsData?.data ?? [];
+  const { data: clients = [], isLoading: isLoadingClients, isFetching: isFetchingClients } = useAllClients(clientSearch);
 
   const handleExport = async () => {
     if (!clientId) {
@@ -74,30 +71,35 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       return;
     }
 
-    setIsExporting(true);
-
-    // Simulation d'export
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     const client = clients.find((c) => String(c.id) === clientId);
+    if (!client) {
+      toast({
+        title: "Erreur",
+        description: "Client introuvable. Recherchez puis sélectionnez le client à nouveau.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const statutLabel = filtreStatut === "tous" ? "tous les documents" : filtreStatut === "paye" ? "les documents payés" : "les documents impayés";
-
-    console.log("Export:", {
-      clientId,
-      clientNom: client?.nom,
-      dateDebut,
-      dateFin,
-      filtreStatut,
-      format,
-    });
-
-    toast({
-      title: `Export ${format.toUpperCase()} généré`,
-      description: `Relevé de ${client?.nom} (${statutLabel}) du ${dateDebut} au ${dateFin}.`,
-    });
-
-    setIsExporting(false);
-    onOpenChange(false);
+    setIsExporting(true);
+    try {
+      const count = await downloadClientStatement({ client, dateDebut, dateFin, filtreStatut, format });
+      toast({
+        title: `Export ${format.toUpperCase()} téléchargé`,
+        description: `Relevé de ${client.nom} (${statutLabel}) : ${count} document(s).`,
+      });
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Erreur export relevé client", error);
+      toast({
+        title: "Erreur export",
+        description: error?.response?.data?.message || "Le téléchargement du relevé a échoué.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -125,10 +127,10 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
             />
             <Select value={clientId} onValueChange={setClientId}>
               <SelectTrigger>
-                <SelectValue placeholder={isLoadingClients ? "Chargement..." : "Sélectionner un client"} />
+                <SelectValue placeholder={isLoadingClients || isFetchingClients ? "Chargement..." : "Sélectionner un client"} />
               </SelectTrigger>
               <SelectContent className="max-h-72">
-                {clients.length === 0 && !isLoadingClients && (
+                {clients.length === 0 && !isLoadingClients && !isFetchingClients && (
                   <div className="px-3 py-2 text-sm text-muted-foreground">Aucun client</div>
                 )}
                 {clients.map((c) => (
