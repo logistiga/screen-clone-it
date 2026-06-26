@@ -34,7 +34,7 @@ export interface DetentionStats {
   non_payes: number;
 }
 
-interface DetentionsParams {
+export interface DetentionsParams {
   page: number;
   per_page: number;
   search?: string;
