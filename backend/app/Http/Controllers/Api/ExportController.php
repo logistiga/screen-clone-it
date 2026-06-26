@@ -57,6 +57,7 @@ class ExportController extends Controller
     public function annulationsPdf(Request $r) { return $this->pdfController->annulationsPdf($r); }
     public function creditsPdf(Request $r) { return $this->pdfController->creditsPdf($r); }
     public function activiteGlobalePdf(Request $r) { return $this->pdfController->activiteGlobalePdf($r); }
+    public function conteneursPdf(Request $r) { return $this->pdfController->conteneursPdf($r); }
 
     // === Roles ===
     public function roles(Request $r) { return $this->rolesController->roles($r); }
