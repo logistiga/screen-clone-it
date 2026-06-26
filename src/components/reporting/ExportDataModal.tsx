@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Download, FileText, FileSpreadsheet, Calendar, 
   Receipt, FileCheck, Truck, Wallet, Users, 
-  Building2, CreditCard, XCircle, BarChart3 
+  Building2, CreditCard, XCircle, BarChart3, Container
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportApi, ExportType, ExportFilters } from "@/lib/api/reporting";
@@ -143,6 +143,12 @@ const exportOptions: ExportOption[] = [
     description: 'Synthèse générale',
     icon: BarChart3,
   },
+  {
+    id: 'conteneurs',
+    label: 'Conteneurs',
+    description: 'Liste conteneurs livrés + prix',
+    icon: Container,
+  },
 ];
 
 const statutsFacture = [
@@ -242,6 +248,7 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
     'annulations': '/export/annulations/pdf',
     'credits': '/export/credits/pdf',
     'activite-globale': '/export/activite-globale/pdf',
+    'conteneurs': '/export/conteneurs/pdf',
   };
 
   const handleExport = async () => {

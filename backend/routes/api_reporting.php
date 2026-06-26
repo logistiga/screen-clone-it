@@ -82,6 +82,8 @@ Route::prefix('export')->middleware(['audit', 'throttle:exports'])->group(functi
         ->middleware('permission:reporting.voir');
     Route::get('roles', [ExportController::class, 'roles'])
         ->middleware('permission:utilisateurs.voir');
+    Route::get('conteneurs', [ExportController::class, 'conteneurs'])
+        ->middleware('permission:ordres.voir');
 
     // PDF exports
     Route::get('factures/pdf', [ExportController::class, 'facturesPdf'])
@@ -106,4 +108,7 @@ Route::prefix('export')->middleware(['audit', 'throttle:exports'])->group(functi
         ->middleware('permission:credits.voir');
     Route::get('activite-globale/pdf', [ExportController::class, 'activiteGlobalePdf'])
         ->middleware('permission:reporting.voir');
+    Route::get('conteneurs/pdf', [ExportController::class, 'conteneursPdf'])
+        ->middleware('permission:ordres.voir');
 });
+

@@ -43,6 +43,7 @@ class ExportController extends Controller
     public function annulations(Request $r): StreamedResponse { return $this->csvController->annulations($r); }
     public function tableauDeBord(Request $r): StreamedResponse { return $this->csvController->tableauDeBord($r); }
     public function caisseGlobale(Request $r) { return $this->csvController->caisseGlobale($r); }
+    public function conteneurs(Request $r): StreamedResponse { return $this->csvController->conteneurs($r); }
 
     // === PDF ===
     public function facturesPdf(Request $r) { return $this->pdfController->facturesPdf($r); }
@@ -56,6 +57,7 @@ class ExportController extends Controller
     public function annulationsPdf(Request $r) { return $this->pdfController->annulationsPdf($r); }
     public function creditsPdf(Request $r) { return $this->pdfController->creditsPdf($r); }
     public function activiteGlobalePdf(Request $r) { return $this->pdfController->activiteGlobalePdf($r); }
+    public function conteneursPdf(Request $r) { return $this->pdfController->conteneursPdf($r); }
 
     // === Roles ===
     public function roles(Request $r) { return $this->rolesController->roles($r); }
