@@ -63,6 +63,14 @@ export function useUtilisateursData() {
   const roles = Array.isArray(rolesData) ? rolesData : [];
   const stats = useMemo(() => statsData || null, [statsData]);
 
+  // Si la modale d'ajout est ouverte et que les rôles arrivent après coup,
+  // on pré-sélectionne automatiquement le premier rôle disponible.
+  useEffect(() => {
+    if (showModal && !isEditing && !formData.role && roles.length > 0) {
+      setFormData(prev => ({ ...prev, role: roles[0].name }));
+    }
+  }, [roles, showModal, isEditing, formData.role]);
+
   const pieChartData = useMemo(() => {
     if (!stats?.par_role) return [];
     return stats.par_role.map((r: any, i: number) => ({
