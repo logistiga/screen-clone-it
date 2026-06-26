@@ -55,15 +55,17 @@ class ExportConteneursService
         $lignesOrdre = collect();
         $operations = collect();
         if ($ordreIds->isNotEmpty() && $numeros->isNotEmpty()) {
-            $lignesOrdre = ConteneurOrdre::whereIn('ordre_id', $ordreIds)
+            $lignesOrdreFlat = ConteneurOrdre::whereIn('ordre_id', $ordreIds)
                 ->whereIn('numero', $numeros)
-                ->get()
-                ->groupBy(fn ($l) => $l->ordre_id . '|' . $l->numero);
+                ->get();
 
-            $operations = OperationConteneurOrdre::whereIn(
-                'conteneur_id',
-                $lignesOrdre->flatten()->pluck('id')
-            )->get()->groupBy('conteneur_id');
+            $lignesOrdre = $lignesOrdreFlat->groupBy(fn ($l) => $l->ordre_id . '|' . $l->numero);
+
+            $ligneIds = $lignesOrdreFlat->pluck('id')->filter()->values();
+            if ($ligneIds->isNotEmpty()) {
+                $operations = OperationConteneurOrdre::whereIn('conteneur_id', $ligneIds)
+                    ->get()->groupBy('conteneur_id');
+            }
         }
 
         $rows = $conteneurs->map(function (ConteneurTraite $c) use ($lignesOrdre, $operations) {
