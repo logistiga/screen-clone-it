@@ -10,3 +10,5 @@ export * from './detentions.api';
 export * from './caisse.api';
 export * from './export.api';
 export * from './paiements-fournisseurs.api';
+export * from './notes.api';
+export * from './primes-camion.api';
