@@ -99,6 +99,7 @@ class SyncConteneursController extends Controller
                     'prime_chauffeur' => $opsConteneur->prime_chauffeur,
                     'destination_type' => $opsConteneur->destination,
                     'destination_adresse' => $opsConteneur->adresse_livraison,
+                    'type_transport' => $opsConteneur->type_transport ?? null,
                     'statut_ops' => $opsConteneur->statut_ops,
                     'statut' => $existing?->statut ?? 'en_attente',
                     'ordre_travail_id' => $existing?->ordre_travail_id,
