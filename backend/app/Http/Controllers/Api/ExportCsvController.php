@@ -149,11 +149,19 @@ class ExportCsvController extends Controller
         return $this->streamCSV($csv, 'caisse-globale');
     }
 
-    public function conteneurs(Request $request): StreamedResponse
+    public function conteneurs(Request $request)
     {
-        $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur']);
-        $csv = $this->exportService->exportConteneursCSV($filters);
-        return $this->streamCSV($csv, 'conteneurs');
+        try {
+            $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur']);
+            $csv = $this->exportService->exportConteneursCSV($filters);
+            return $this->streamCSV($csv, 'conteneurs');
+        } catch (\Throwable $e) {
+            \Log::error('Export CSV conteneurs: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'Erreur export conteneurs: ' . $e->getMessage(),
+                'error' => 'export_error',
+            ], 422);
+        }
     }
 
     public function streamCSV(string $content, string $filename): StreamedResponse
