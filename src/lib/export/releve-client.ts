@@ -25,7 +25,8 @@ type ExportOptions = {
 
 const money = (value: number) => `${Math.round(value || 0).toLocaleString("fr-FR")} FCFA`;
 const dateFr = (value: string) => (value ? new Date(value).toLocaleDateString("fr-FR") : "-");
-const safe = (value?: string | number | null) => String(value ?? "-").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
+const htmlEntities: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;" };
+const safe = (value?: string | number | null) => String(value ?? "-").replace(/[<>&]/g, (c) => htmlEntities[c] || c);
 const fileSafe = (value: string) => value.replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "");
 
 async function fetchAll<T>(url: string, params: Record<string, string | number>) {
