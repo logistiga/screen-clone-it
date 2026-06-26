@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle, XCircle, AlertTriangle, Loader2, Shield } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import api from '@/lib/api';
+import { processSuspiciousLoginAction, type SuspiciousLoginAction } from '@/services/api';
 
 type ActionType = 'approve' | 'block';
 type Status = 'loading' | 'success' | 'error' | 'expired' | 'already_processed';
@@ -42,9 +42,9 @@ const SecurityActionPage = () => {
       }
 
       try {
-        const response = await api.get(`/security/suspicious-login/${token}/${action}`);
-        
-        if (response.data.success) {
+        const data = await processSuspiciousLoginAction(token, action as SuspiciousLoginAction);
+
+        if (data.success) {
           setResult({
             status: 'success',
             message: action === 'approve' 
