@@ -23,7 +23,7 @@ class OperationEnAttenteController extends Controller
     use SyncDiagnosticHelpersTrait;
 
     /** Tables candidates dans OPS, par ordre de priorité */
-    private const OPS_TABLES = ['operations_independantes', 'operations'];
+    private const OPS_TABLES = ['operations', 'operations_independantes'];
 
     public function index(Request $request)
     {
