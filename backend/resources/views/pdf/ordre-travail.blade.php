@@ -406,8 +406,10 @@
                         if (($l->type_operation ?? '') === 'transport') {
                             $dep = $l->point_depart ?? $l->lieu_depart ?? null;
                             $arr = $l->point_arrivee ?? $l->lieu_arrivee ?? null;
+                            $modeRaw = strtolower((string)($l->mode_trajet ?? ''));
+                            $modeLabel = $modeRaw === 'aller_retour' ? 'Aller-retour' : ($modeRaw === 'retour_simple' ? 'Retour simple' : ($modeRaw === 'aller_simple' ? 'Aller simple' : ''));
                             if ($dep || $arr) {
-                                $trajet = 'Trajet : ' . ($dep ?: '—') . ' → ' . ($arr ?: '—');
+                                $trajet = 'Trajet : ' . ($dep ?: '—') . ' → ' . ($arr ?: '—') . ($modeLabel ? ' (' . $modeLabel . ')' : '');
                             }
                         }
                         $lignes[] = [

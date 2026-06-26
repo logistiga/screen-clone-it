@@ -166,10 +166,19 @@ export default function OrdrePDFPage() {
         if ((ligne.type_operation || '') === 'transport') {
           const dep = ligne.point_depart || ligne.lieu_depart;
           const arr = ligne.point_arrivee || ligne.lieu_arrivee;
+          const modeRaw = (ligne.mode_trajet || '').toString().toLowerCase();
+          const modeLabel = modeRaw === 'aller_retour'
+            ? 'Aller-retour'
+            : modeRaw === 'retour_simple'
+              ? 'Retour simple'
+              : modeRaw === 'aller_simple'
+                ? 'Aller simple'
+                : '';
           if (dep || arr) {
-            trajet = `Trajet : ${dep || '—'} → ${arr || '—'}`;
+            trajet = `Trajet : ${dep || '—'} → ${arr || '—'}${modeLabel ? ` (${modeLabel})` : ''}`;
           }
         }
+
         lignes.push({
           description: ligne.description || ligne.type_operation || 'Prestation',
           trajet,
