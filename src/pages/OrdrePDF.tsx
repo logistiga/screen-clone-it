@@ -158,12 +158,21 @@ export default function OrdrePDFPage() {
   };
 
   const buildLignesIndependant = () => {
-    const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
+    const lignes: Array<{ description: string; trajet?: string; quantite: number; prixUnitaire: number; montant: number }> = [];
     
     if (ordre.lignes && ordre.lignes.length > 0) {
       ordre.lignes.forEach((ligne: any) => {
+        let trajet: string | undefined;
+        if ((ligne.type_operation || '') === 'transport') {
+          const dep = ligne.point_depart || ligne.lieu_depart;
+          const arr = ligne.point_arrivee || ligne.lieu_arrivee;
+          if (dep || arr) {
+            trajet = `Trajet : ${dep || '—'} → ${arr || '—'}`;
+          }
+        }
         lignes.push({
           description: ligne.description || ligne.type_operation || 'Prestation',
+          trajet,
           quantite: ligne.quantite || 1,
           prixUnitaire: ligne.prix_unitaire || 0,
           montant: ligne.montant_ht || (ligne.quantite * ligne.prix_unitaire) || 0
