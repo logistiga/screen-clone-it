@@ -5,7 +5,7 @@ const PER_PAGE = 500;
 
 const getClientName = (client: Client) => client.nom || `Client #${client.id}`;
 
-export function useAllClients(search?: string) {
+export function useAllClients(search?: string, enabled = true) {
   return useQuery({
     queryKey: ["clients", "all", search || ""],
     queryFn: async () => {
@@ -29,6 +29,7 @@ export function useAllClients(search?: string) {
 
       return clients.sort((a, b) => getClientName(a).localeCompare(getClientName(b), "fr"));
     },
+    enabled,
     staleTime: 2 * 60 * 1000,
   });
 }
