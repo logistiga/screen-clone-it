@@ -587,6 +587,24 @@ export function ExportDataModal({ open, onOpenChange, clients = [] }: ExportData
                     </Select>
                   </div>
                 )}
+
+                {showTypeTransportFilter && (
+                  <div className="space-y-2">
+                    <Label>Type de transport</Label>
+                    <Select value={typeTransport} onValueChange={setTypeTransport}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typesTransport.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
           )}
