@@ -23,7 +23,7 @@ class OperationEnAttenteController extends Controller
     use SyncDiagnosticHelpersTrait;
 
     /** Tables candidates dans OPS, par ordre de priorité */
-    private const OPS_TABLES = ['operations_independantes', 'operations'];
+    private const OPS_TABLES = ['operations', 'operations_independantes'];
 
     public function index(Request $request)
     {
@@ -52,6 +52,12 @@ class OperationEnAttenteController extends Controller
                 ->pluck('operation_id_externe')->toArray();
 
             $query = DB::connection('ops_ind')->table($table);
+
+            // Soft delete OPS
+            if (in_array('deleted_at', $cols, true)) {
+                $query->whereNull('deleted_at');
+            }
+
             if (!empty($traitedIds)) {
                 $query->whereNotIn($idCol, $traitedIds);
             }
@@ -59,8 +65,10 @@ class OperationEnAttenteController extends Controller
             // Recherche
             if ($search = $request->input('search')) {
                 $searchable = array_intersect($cols, [
-                    'numero', 'reference', 'client_nom', 'client', 'description',
-                    'type', 'point_depart', 'point_arrivee',
+                    'numero_operation', 'numero', 'reference',
+                    'snapshot_client_name', 'client_nom', 'client',
+                    'description_generale', 'description',
+                    'type_marchandise', 'type',
                 ]);
                 if (!empty($searchable)) {
                     $query->where(function ($q) use ($searchable, $search) {
@@ -115,6 +123,7 @@ class OperationEnAttenteController extends Controller
                 ->pluck('operation_id_externe')->toArray();
 
             $q = DB::connection('ops_ind')->table($table);
+            if (in_array('deleted_at', $cols, true)) $q->whereNull('deleted_at');
             if ($idCol && !empty($traitedIds)) $q->whereNotIn($idCol, $traitedIds);
 
             return response()->json([
@@ -164,7 +173,7 @@ class OperationEnAttenteController extends Controller
             DB::beginTransaction();
 
             // Résoudre / créer le client
-            $clientNom = $row['client_nom'] ?? $row['client'] ?? 'Client OPS';
+            $clientNom = $row['snapshot_client_name'] ?? $row['client_nom'] ?? $row['client'] ?? 'Client OPS';
             $client = Client::firstOrCreate(
                 ['nom' => $clientNom],
                 ['code' => strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $clientNom) ?: 'CLI', 0, 3)) . rand(100, 999)]
@@ -181,12 +190,13 @@ class OperationEnAttenteController extends Controller
             ]);
 
             // Ajouter une ligne simple si lignes_ordres existe et que des montants sont présents
-            $montant = (float) ($row['montant_ht'] ?? $row['montant'] ?? $row['prix'] ?? 0);
+            $montant = (float) ($row['total_transport_fcfa'] ?? $row['montant_ht'] ?? $row['montant'] ?? $row['prix'] ?? 0);
+            $description = $row['description_generale'] ?? $row['description'] ?? $row['type_marchandise'] ?? $row['type'] ?? 'Opération OPS';
             if ($montant > 0 && Schema::hasTable('lignes_ordres')) {
                 try {
                     $ordre->lignes()->create([
-                        'description' => $row['description'] ?? ($row['type'] ?? 'Opération OPS'),
-                        'type_operation' => strtolower($row['type'] ?? 'autre'),
+                        'description' => $description,
+                        'type_operation' => strtolower($row['type_marchandise'] ?? $row['type'] ?? 'autre'),
                         'quantite' => (float) ($row['quantite'] ?? 1),
                         'prix_unitaire' => $montant,
                         'montant_ht' => $montant,
@@ -267,27 +277,31 @@ class OperationEnAttenteController extends Controller
             }
             return null;
         };
-        $num = $get(['numero', 'reference', 'ref', 'num_operation', 'numero_operation', 'code', 'num']);
-        $type = $get(['type', 'type_operation', 'nature', 'categorie', 'type_op']);
-        $client = $get(['client_nom', 'client', 'nom_client', 'raison_sociale', 'designation_client']);
-        $desc = $get(['description', 'designation', 'libelle', 'objet', 'commentaire', 'observation', 'details']);
-        $depart = $get(['point_depart', 'depart', 'origine', 'lieu_depart', 'from']);
-        $arrivee = $get(['point_arrivee', 'arrivee', 'destination', 'lieu_arrivee', 'to']);
-        $date = $get(['date_operation', 'date', 'date_op', 'date_creation', 'created_at']);
+        $num = $get(['numero_operation', 'numero', 'reference', 'ref', 'code']);
+        $type = $get(['type_marchandise', 'type', 'type_operation', 'nature', 'categorie']);
+        $client = $get(['snapshot_client_name', 'client_nom', 'client', 'nom_client', 'raison_sociale']);
+        $clientId = $get(['external_client_id', 'client_id']);
+        $desc = $get(['description_generale', 'description', 'designation', 'libelle', 'objet', 'observation']);
+        $depart = $get(['point_depart', 'depart', 'origine', 'lieu_depart']);
+        $arrivee = $get(['point_arrivee', 'arrivee', 'destination', 'lieu_arrivee']);
+        $date = $get(['date_operation', 'date', 'date_op', 'created_at']);
         $qte = $get(['quantite', 'qte', 'nb', 'nombre']);
-        $mt = $get(['montant_ht', 'montant', 'prix', 'prix_ht', 'montant_total', 'total_ht', 'tarif', 'prix_unitaire']);
+        $mt = $get(['total_transport_fcfa', 'montant_ht', 'montant', 'prix', 'prix_ht', 'montant_total', 'total_ht']);
+        $statut = $get(['statut', 'status', 'state']);
 
         return [
             'id' => (string) $r[$idCol],
             'numero' => $num,
             'type' => $type,
             'client_nom' => $client,
+            'client_id_externe' => $clientId,
             'description' => $desc,
             'point_depart' => $depart,
             'point_arrivee' => $arrivee,
             'date_operation' => $date,
             'quantite' => $qte !== null ? (float) $qte : null,
             'montant_ht' => $mt !== null ? (float) $mt : null,
+            'statut' => $statut,
             'raw' => $r,
         ];
     }
@@ -295,8 +309,10 @@ class OperationEnAttenteController extends Controller
     private function buildNotes(array $row): string
     {
         $bits = [];
-        if (!empty($row['numero'])) $bits[] = "Réf OPS : {$row['numero']}";
-        if (!empty($row['description'])) $bits[] = $row['description'];
+        $num = $row['numero_operation'] ?? $row['numero'] ?? null;
+        if ($num) $bits[] = "Réf OPS : {$num}";
+        $desc = $row['description_generale'] ?? $row['description'] ?? null;
+        if ($desc) $bits[] = $desc;
         if (!empty($row['point_depart']) || !empty($row['point_arrivee'])) {
             $bits[] = trim(($row['point_depart'] ?? '?') . ' → ' . ($row['point_arrivee'] ?? '?'));
         }
