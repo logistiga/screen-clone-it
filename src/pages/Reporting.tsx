@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { clientsApi } from "@/lib/api/commercial";
 import { ExportDataModal } from "@/components/reporting/ExportDataModal";
 import {
   useTableauDeBord, useChiffreAffaires, useCreances, useRentabilite,
@@ -58,7 +58,10 @@ export default function ReportingPage() {
 
   const { data: clientsData } = useQuery({
     queryKey: ['clients-list'],
-    queryFn: async () => { const r = await api.get('/clients'); return r.data.data || []; },
+    queryFn: async () => {
+      const r = await clientsApi.getAll({ per_page: 1000 });
+      return (r as any)?.data || [];
+    },
     staleTime: 10 * 60 * 1000,
   });
   const clients = clientsData?.map((c: any) => ({ id: String(c.id), nom: c.nom })) || [];

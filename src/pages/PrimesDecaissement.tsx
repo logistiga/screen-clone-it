@@ -27,7 +27,7 @@ import {
   Receipt
 } from "lucide-react";
 import { formatMontant, formatDate } from "@/data/mockData";
-import api from "@/lib/api";
+import { fetchPrimesCamion, fetchPrimesCamionStats, decaisserPrimeCamion } from "@/services/api";
 import { TablePagination } from "@/components/TablePagination";
 import {
   DocumentStatCard,
@@ -117,38 +117,30 @@ export default function PrimesDecaissementPage() {
   // Fetch primes camion depuis OPS
   const { data: primesData, isLoading, refetch } = useQuery({
     queryKey: ['primes-camion', currentPage, pageSize, searchTerm, statutFilter],
-    queryFn: async () => {
+    queryFn: () => {
       const params: Record<string, string | number> = {
         page: currentPage,
         per_page: pageSize,
         statut: statutFilter,
       };
       if (searchTerm) params.search = searchTerm;
-      
-      const response = await api.get<PrimeCamionResponse>('/primes-camion', { params });
-      return response.data;
+      return fetchPrimesCamion<PrimeCamionResponse>(params);
     },
   });
 
   // Fetch statistiques
   const { data: statsData } = useQuery({
     queryKey: ['primes-camion-stats'],
-    queryFn: async () => {
-      const response = await api.get<StatsResponse>('/primes-camion/stats');
-      return response.data;
-    },
+    queryFn: () => fetchPrimesCamionStats<StatsResponse>(),
   });
 
   // Mutation pour valider le décaissement
   const decaissementMutation = useMutation({
-    mutationFn: async (primeId: number) => {
-      const response = await api.post(`/primes-camion/${primeId}/decaisser`, {
-        mode_paiement: modePaiement,
-        reference,
-        notes,
-      });
-      return response.data;
-    },
+    mutationFn: (primeId: number) => decaisserPrimeCamion(primeId, {
+      mode_paiement: modePaiement,
+      reference,
+      notes,
+    }),
     onSuccess: () => {
       toast.success("Décaissement validé avec succès");
       queryClient.invalidateQueries({ queryKey: ['primes-camion'] });
