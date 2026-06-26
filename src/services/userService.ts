@@ -171,10 +171,22 @@ export const userService = {
     return response.data;
   },
 
-  // Liste des rôles disponibles
+  // Liste des rôles disponibles (récupère TOUS les rôles, pas la pagination)
   async getRoles(): Promise<UserRole[]> {
-    const response = await api.get('/admin/roles');
-    return normalizeArrayResponse<UserRole>(response.data);
+    const response = await api.get('/admin/roles', { params: { per_page: 999, page: 1 } });
+    // Le backend peut renvoyer:
+    //  - un tableau direct
+    //  - { data: [...] } (paginé Laravel)
+    //  - { success, data: { data: [...] } } (wrapper)
+    const raw = response.data;
+    const firstPass = normalizeArrayResponse<UserRole>(raw);
+    if (firstPass.length > 0) return firstPass;
+    if (raw && typeof raw === 'object' && 'data' in raw) {
+      const inner = (raw as Record<string, unknown>).data;
+      const secondPass = normalizeArrayResponse<UserRole>(inner);
+      if (secondPass.length > 0) return secondPass;
+    }
+    return firstPass;
   },
 
   // Profil de l'utilisateur connecté
