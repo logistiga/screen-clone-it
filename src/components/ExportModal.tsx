@@ -44,6 +44,9 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const { data: clients = [], isLoading: isLoadingClients, isFetching: isFetchingClients } = useAllClients(clientSearch);
+  const displayedClients = selectedClient && !clients.some((c) => String(c.id) === String(selectedClient.id))
+    ? [selectedClient, ...clients]
+    : clients;
 
   const handleExport = async () => {
     if (!clientId) {
@@ -129,7 +132,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
             />
             <Select value={clientId} onValueChange={(value) => {
               setClientId(value);
-              setSelectedClient(clients.find((c) => String(c.id) === value) || null);
+              setSelectedClient(displayedClients.find((c) => String(c.id) === value) || null);
             }}>
               <SelectTrigger>
                 <SelectValue placeholder={isLoadingClients || isFetchingClients ? "Chargement..." : "Sélectionner un client"} />
@@ -138,7 +141,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
                 {clients.length === 0 && !isLoadingClients && !isFetchingClients && (
                   <div className="px-3 py-2 text-sm text-muted-foreground">Aucun client</div>
                 )}
-                {clients.map((c) => (
+                {displayedClients.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     {c.nom}
                   </SelectItem>
