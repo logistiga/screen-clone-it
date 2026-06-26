@@ -5,6 +5,7 @@ namespace App\Services\Export;
 use App\Models\ConteneurTraite;
 use App\Models\ConteneurOrdre;
 use App\Models\OperationConteneurOrdre;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -127,13 +128,30 @@ class ExportConteneursService
                 $c->armateur_nom,
                 $c->camion_plaque,
                 $c->chauffeur_nom,
-                $c->date_sortie ? $c->date_sortie->format('d/m/Y') : '-',
-                $c->date_retour ? $c->date_retour->format('d/m/Y') : '-',
+                $this->formatDate($c->date_sortie),
+                $this->formatDate($c->date_retour),
                 $this->formatStatut($c->statut),
                 number_format($c->prix, 0, ',', ' '),
             ];
         });
 
         return $this->generateCSV($headers, $rows);
+    }
+
+    private function formatDate($date): string
+    {
+        if (empty($date)) {
+            return '-';
+        }
+
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('d/m/Y');
+        }
+
+        try {
+            return Carbon::parse((string) $date)->format('d/m/Y');
+        } catch (\Throwable) {
+            return (string) $date;
+        }
     }
 }
