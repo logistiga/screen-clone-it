@@ -429,4 +429,29 @@ class ExportPdfController extends Controller
             return response()->json(['message' => 'Erreur export PDF activité clients: ' . $e->getMessage(), 'error' => 'export_error'], 422);
         }
     }
+
+    public function conteneursPdf(Request $request)
+    {
+        try {
+            $filters = $request->only(['date_debut', 'date_fin', 'statut', 'armateur_code', 'type_conteneur']);
+            $data = $this->exportService->fetchConteneursData($filters);
+
+            $statutLabel = !empty($filters['statut']) ? ucfirst(str_replace('_', ' ', $filters['statut'])) : null;
+
+            $pdf = Pdf::loadView('pdf.export-conteneurs', [
+                'conteneurs' => $data['rows'],
+                'stats' => $data['stats'],
+                'date_debut' => $filters['date_debut'] ?? '-',
+                'date_fin' => $filters['date_fin'] ?? '-',
+                'periode' => ($filters['date_debut'] ?? '') . ' — ' . ($filters['date_fin'] ?? ''),
+                'statut_label' => $statutLabel,
+                'armateur_label' => $filters['armateur_code'] ?? null,
+            ])->setPaper('a4', 'landscape')->setOptions(['defaultFont' => 'DejaVu Sans']);
+
+            return $pdf->download('conteneurs-' . now()->format('Y-m-d') . '.pdf');
+        } catch (\Throwable $e) {
+            Log::error('Export PDF conteneurs: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Erreur export PDF conteneurs: ' . $e->getMessage(), 'error' => 'export_error'], 422);
+        }
+    }
 }
