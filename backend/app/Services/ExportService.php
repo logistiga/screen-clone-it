@@ -5,11 +5,12 @@ namespace App\Services;
 use App\Services\Export\ExportDocumentsService;
 use App\Services\Export\ExportFinanceService;
 use App\Services\Export\ExportCaisseGlobaleService;
+use App\Services\Export\ExportConteneursService;
 use App\Services\Export\ExportHelpersTrait;
 use Illuminate\Support\Collection;
 
 /**
- * Façade ExportService — délègue à ExportDocumentsService, ExportFinanceService, ExportCaisseGlobaleService
+ * Façade ExportService — délègue aux sous-services spécialisés.
  */
 class ExportService
 {
@@ -18,6 +19,7 @@ class ExportService
     protected ExportDocumentsService $documents;
     protected ExportFinanceService $finance;
     protected ExportCaisseGlobaleService $caisseGlobale;
+    protected ExportConteneursService $conteneurs;
     protected ReportingService $reportingService;
 
     public function __construct(ReportingService $reportingService)
@@ -26,6 +28,7 @@ class ExportService
         $this->documents = new ExportDocumentsService();
         $this->finance = new ExportFinanceService($reportingService);
         $this->caisseGlobale = new ExportCaisseGlobaleService();
+        $this->conteneurs = new ExportConteneursService();
     }
 
     // === Documents ===
@@ -50,4 +53,8 @@ class ExportService
     // === Caisse Globale ===
     public function exportCaisseGlobaleCSV(array $filters = []): string { return $this->caisseGlobale->exportCaisseGlobaleCSV($filters); }
     public function exportCaisseGlobalePDF(array $filters = []) { return $this->caisseGlobale->exportCaisseGlobalePDF($filters); }
+
+    // === Conteneurs ===
+    public function exportConteneursCSV(array $filters = []): string { return $this->conteneurs->exportConteneursCSV($filters); }
+    public function fetchConteneursData(array $filters = []): array { return $this->conteneurs->fetch($filters); }
 }
