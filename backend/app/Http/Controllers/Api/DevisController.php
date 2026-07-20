@@ -160,17 +160,16 @@ class DevisController extends Controller
 
     private function recalculerSiMontantsIncoherents(Devis $devis): void
     {
-        $sourceTotal = $devis->lignes->sum(fn($ligne) => (float) $ligne->quantite * (float) $ligne->prix_unitaire)
-            + $devis->lots->sum(fn($lot) => (float) $lot->quantite * (float) $lot->prix_unitaire)
-            + $devis->conteneurs->sum(function ($conteneur) {
-                return (float) ($conteneur->prix_unitaire ?? 0)
-                    + $conteneur->operations->sum(fn($op) => (float) $op->quantite * (float) $op->prix_unitaire);
-            });
-
-        if ($sourceTotal > 0 && (float) ($devis->montant_ttc ?? 0) <= 0) {
+        // Recalcul systématique des totaux pour garantir la cohérence
+        try {
             $service = $this->devisFactory->getService($devis->categorie);
             $service->calculerTotaux($devis);
             $devis->refresh()->loadMissing([...self::RELATIONS, 'ordre', 'annulation']);
+        } catch (\Throwable $e) {
+            Log::warning('Recalcul auto devis (show) échoué', [
+                'devis_id' => $devis->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }
