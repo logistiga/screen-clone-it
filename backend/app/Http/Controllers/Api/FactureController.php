@@ -132,6 +132,23 @@ class FactureController extends Controller
             'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
+        // Recalcul systématique des totaux pour garantir la cohérence
+        try {
+            $service = $this->factureFactory->getService(
+                \App\Support\DocumentCategory::normalize($facture->categorie)
+            );
+            $service->calculerTotaux($facture);
+            $facture->refresh()->load([
+                'client', 'transitaire', 'representant', 'armateur', 'ordreTravail', 'lignes',
+                'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Recalcul auto facture (show) échoué', [
+                'facture_id' => $facture->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json(
             new FactureResource($facture),
             200,
