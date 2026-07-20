@@ -71,6 +71,12 @@ export function OrdreConteneursTable({ conteneurs }: OrdreConteneursTableProps) 
               {conteneurs.map((conteneur, index) => {
                 const ops = conteneur.operations || [];
                 const baseHT = Number(conteneur.prix_unitaire ?? 0);
+                const opsTotal = ops.reduce((sum, op) => {
+                  const q = Number(op.quantite ?? 1);
+                  const pu = Number(op.prix_unitaire ?? 0);
+                  return sum + Number(op.prix_total ?? op.montant_ht ?? q * pu);
+                }, 0);
+                const totalConteneur = Number(conteneur.montant_ht ?? baseHT + opsTotal);
                 return (
                   <Fragment key={conteneur.id}>
                     <TableRow key={`c-${conteneur.id}`} className="border-b bg-muted/20">
@@ -86,7 +92,7 @@ export function OrdreConteneursTable({ conteneurs }: OrdreConteneursTableProps) 
                       <TableCell className="text-muted-foreground">{conteneur.description || '—'}</TableCell>
                       <TableCell className="text-center">1</TableCell>
                       <TableCell className="text-right">{formatMontant(baseHT)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatMontant(baseHT)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatMontant(totalConteneur)}</TableCell>
                     </TableRow>
                     {ops.map((op, i) => {
                       const qte = Number(op.quantite ?? 1);
