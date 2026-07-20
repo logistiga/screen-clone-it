@@ -180,6 +180,21 @@ class OrdreTravailController extends Controller
                 'createdBy',
             ]);
 
+            // Recalcul systématique des totaux pour garantir la cohérence
+            try {
+                $service = app(\App\Services\OrdreTravail\OrdreServiceFactory::class)
+                    ->getService($ordreTravail->categorie);
+                $service->calculerTotaux($ordreTravail);
+                $ordreTravail->refresh()->load([
+                    'conteneurs.operations', 'lots', 'lignes',
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('Recalcul auto OT (show) échoué', [
+                    'ordre_id' => $ordreTravail->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return response()->json(new OrdreTravailResource($ordreTravail));
         } catch (\Throwable $e) {
             return response()->json([
