@@ -79,8 +79,10 @@ class OrdreConventionnelService
     {
         return [
             'lots' => $ordre->lots->map(function ($lot) {
+                $texte = trim((string) ($lot->description ?? ''));
                 return [
-                    'designation' => $lot->description ?? $lot->designation,
+                    'designation' => $texte,
+                    'description' => $texte,
                     'numero_lot' => $lot->numero_lot,
                     'quantite' => $lot->quantite,
                     'poids' => $lot->poids,
@@ -96,21 +98,21 @@ class OrdreConventionnelService
      */
     protected function normaliserLot(array $data, int $index): array
     {
-        // API envoie designation, DB utilise description
-        if (isset($data['designation']) && !isset($data['description'])) {
-            $data['description'] = $data['designation'];
+        $designation = isset($data['designation']) ? trim((string) $data['designation']) : '';
+        $description = isset($data['description']) ? trim((string) $data['description']) : '';
+        $texte = $description !== '' ? $description : $designation;
+        if ($texte !== '') {
+            $data['description'] = $texte;
         }
         unset($data['designation']);
-        
-        // Générer un numéro de lot si absent
+
         if (empty($data['numero_lot'])) {
             $data['numero_lot'] = 'LOT-' . ($index + 1);
         }
-        
-        // Valeurs par défaut
+
         $data['quantite'] = $data['quantite'] ?? 1;
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
-        
+
         return $data;
     }
 }
