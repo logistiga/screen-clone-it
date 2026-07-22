@@ -101,22 +101,25 @@ class FactureConventionnelService
      */
     protected function normaliserLot(array $data, int $index): array
     {
-        // API envoie designation, DB utilise description
-        if (isset($data['designation']) && !isset($data['description'])) {
-            $data['description'] = $data['designation'];
+        // API envoie 'designation', DB utilise 'description' — prendre la valeur non vide
+        $designation = isset($data['designation']) ? trim((string) $data['designation']) : '';
+        $description = isset($data['description']) ? trim((string) $data['description']) : '';
+        $texte = $description !== '' ? $description : $designation;
+        if ($texte !== '') {
+            $data['description'] = $texte;
         }
         unset($data['designation']);
-        
+
         // Générer un numéro de lot si absent
         if (empty($data['numero_lot'])) {
             $data['numero_lot'] = 'LOT-' . ($index + 1);
         }
-        
+
         // Valeurs par défaut
         $data['quantite'] = $data['quantite'] ?? 1;
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
-        $data['prix_total'] = $data['quantite'] * $data['prix_unitaire'];
-        
+        $data['prix_total'] = (float) $data['quantite'] * (float) $data['prix_unitaire'];
+
         return $data;
     }
 }
