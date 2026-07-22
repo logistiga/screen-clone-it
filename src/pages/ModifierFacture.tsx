@@ -211,7 +211,7 @@ export default function ModifierFacturePage() {
     
     const lots = (facture.lots || []).map((l: any, idx: number) => ({
       id: String(l.id || idx),
-      numeroLot: l.designation || l.numero_lot || `Lot ${idx + 1}`,
+      numeroLot: l.numero_lot || `Lot ${idx + 1}`,
       description: l.description || l.designation || "",
       quantite: parseFloat(l.quantite) || 1,
       prixUnitaire: parseFloat(l.prix_unitaire) || 0,
