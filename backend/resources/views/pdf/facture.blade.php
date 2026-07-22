@@ -386,9 +386,12 @@
                     }
                 }
                 elseif (!empty($facture->lots) && count($facture->lots) > 0) {
-                    foreach ($facture->lots as $l) {
+                    foreach ($facture->lots as $idx => $l) {
+                        $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
+                        $desig = trim($l->description ?? '');
+                        $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
                         $lignes[] = [
-                            'description' => $l->description ?? $l->numero_lot ?? 'Lot',
+                            'description' => $desc,
                             'quantite' => $l->quantite ?? 1,
                             'prix_unitaire' => $l->prix_unitaire ?? 0,
                             'montant_ht' => $l->prix_total ?? (($l->quantite ?? 1) * ($l->prix_unitaire ?? 0)),
