@@ -132,9 +132,11 @@ export default function FacturePDFPage() {
   const buildLignesConventionnel = () => {
     const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
     if (facture.lots && facture.lots.length > 0) {
-      facture.lots.forEach((lot: any) => {
+      facture.lots.forEach((lot: any, index: number) => {
+        const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
+        const designation = String(lot.designation || lot.description || '').trim();
         lignes.push({
-          description: lot.designation || lot.description || `Lot ${lot.numero_lot || ''}`,
+          description: designation ? `${numeroLot} — ${designation}` : numeroLot,
           quantite: lot.quantite || 1,
           prixUnitaire: lot.prix_unitaire || 0,
           montant: lot.montant_ht || lot.prix_total || (lot.quantite * lot.prix_unitaire) || 0
