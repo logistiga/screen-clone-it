@@ -341,11 +341,11 @@
         <tbody>
             @php
                 $lignes = [];
-                $isConventionnel = ($facture->categorie ?? null) === 'conventionnel';
+                $isConventionnel = \App\Support\DocumentCategory::normalize($facture->categorie ?? null) === \App\Support\DocumentCategory::CONVENTIONNEL;
                 if ($isConventionnel && !empty($facture->lots) && count($facture->lots) > 0) {
                     foreach ($facture->lots as $idx => $l) {
                         $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
-                        $desig = trim($l->description ?? '');
+                        $desig = trim($l->description ?? $l->designation ?? '');
                         $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
                         $lignes[] = [
                             'description' => $desc,
@@ -402,7 +402,7 @@
                 elseif (!empty($facture->lots) && count($facture->lots) > 0) {
                     foreach ($facture->lots as $idx => $l) {
                         $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
-                        $desig = trim($l->description ?? '');
+                        $desig = trim($l->description ?? $l->designation ?? '');
                         $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
                         $lignes[] = [
                             'description' => $desc,
