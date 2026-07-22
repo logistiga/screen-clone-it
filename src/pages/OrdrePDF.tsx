@@ -144,9 +144,12 @@ export default function OrdrePDFPage() {
     const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
     
     if (ordre.lots && ordre.lots.length > 0) {
-      ordre.lots.forEach((lot: any) => {
+      ordre.lots.forEach((lot: any, idx: number) => {
+        const numero = lot.numero_lot || `Lot ${idx + 1}`;
+        const designation = lot.designation || lot.description || '';
+        const label = designation ? `${numero} — ${designation}` : numero;
         lignes.push({
-          description: lot.designation || `Lot`,
+          description: label,
           quantite: lot.quantite || 1,
           prixUnitaire: lot.prix_unitaire || 0,
           montant: lot.montant_ht || (lot.quantite * lot.prix_unitaire) || 0
