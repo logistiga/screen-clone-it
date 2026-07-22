@@ -136,7 +136,7 @@ export default function FacturePDFPage() {
         const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
         const designation = String(lot.designation || lot.description || '').trim();
         lignes.push({
-          description: designation ? `${numeroLot} — ${designation}` : numeroLot,
+          description: designation || numeroLot,
           quantite: lot.quantite || 1,
           prixUnitaire: lot.prix_unitaire || 0,
           montant: lot.montant_ht || lot.prix_total || (lot.quantite * lot.prix_unitaire) || 0
