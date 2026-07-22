@@ -251,6 +251,51 @@ export default function FactureDetailPage() {
                     </Card>
                   )}
 
+                  {/* Lots (Conventionnel) */}
+                  {facture.lots && facture.lots.length > 0 && (
+                    <Card className="overflow-hidden border-0 shadow-lg">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+                          <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                            <Package className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          Lots
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50">
+                              <TableHead>N° Lot</TableHead>
+                              <TableHead>Désignation</TableHead>
+                              <TableHead className="text-center">Quantité</TableHead>
+                              <TableHead className="text-right">Prix unitaire</TableHead>
+                              <TableHead className="text-right">Montant HT</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {facture.lots.map((lot: any, index: number) => {
+                              const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
+                              const designation = String(lot.designation || lot.description || '').trim() || '—';
+                              const qte = Number(lot.quantite ?? 1);
+                              const pu = Number(lot.prix_unitaire ?? 0);
+                              const montant = Number(lot.montant_ht ?? lot.prix_total ?? qte * pu);
+                              return (
+                                <TableRow key={lot.id ?? index} className="hover:bg-muted/50">
+                                  <TableCell className="font-mono font-medium">{numeroLot}</TableCell>
+                                  <TableCell>{designation}</TableCell>
+                                  <TableCell className="text-center">{qte}</TableCell>
+                                  <TableCell className="text-right">{formatMontant(pu)}</TableCell>
+                                  <TableCell className="text-right font-medium">{formatMontant(montant)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Conteneurs */}
                   {facture.conteneurs && facture.conteneurs.length > 0 && (
                     <Card className="overflow-hidden border-0 shadow-lg">
