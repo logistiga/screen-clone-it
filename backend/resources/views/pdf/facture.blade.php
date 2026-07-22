@@ -341,7 +341,21 @@
         <tbody>
             @php
                 $lignes = [];
-                if (!empty($facture->lignes) && count($facture->lignes) > 0) {
+                $isConventionnel = ($facture->categorie ?? null) === 'conventionnel';
+                if ($isConventionnel && !empty($facture->lots) && count($facture->lots) > 0) {
+                    foreach ($facture->lots as $idx => $l) {
+                        $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
+                        $desig = trim($l->description ?? '');
+                        $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
+                        $lignes[] = [
+                            'description' => $desc,
+                            'quantite' => $l->quantite ?? 1,
+                            'prix_unitaire' => $l->prix_unitaire ?? 0,
+                            'montant_ht' => $l->prix_total ?? (($l->quantite ?? 1) * ($l->prix_unitaire ?? 0)),
+                        ];
+                    }
+                }
+                elseif (!empty($facture->lignes) && count($facture->lignes) > 0) {
                     foreach ($facture->lignes as $l) {
                         $desc = trim((string)($l->description ?? '')) ?: ($l->type_operation ?? 'Prestation');
                         $trajet = null;
