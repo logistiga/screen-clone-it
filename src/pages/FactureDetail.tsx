@@ -330,7 +330,7 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.conteneurs.map((conteneur: any) => {
+                            {facConteneurs.map((conteneur: any) => {
                               const ops = conteneur.operations || [];
                               const baseHT = Number(conteneur.prix_unitaire ?? 0);
                               return (
