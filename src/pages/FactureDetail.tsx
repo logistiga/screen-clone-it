@@ -170,6 +170,9 @@ export default function FactureDetailPage() {
                     updatedAt={facture.updated_at}
                   />
 
+                  {/* Ordre de travail lié */}
+                  <FactureOrdreLinkCard facture={facture} />
+
                   {/* Infos BL */}
                   {facture.bl_numero && (
                     <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card via-card to-blue-500/5">
