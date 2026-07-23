@@ -342,10 +342,29 @@
             @php
                 $lignes = [];
                 $isConventionnel = \App\Support\DocumentCategory::normalize($facture->categorie ?? null) === \App\Support\DocumentCategory::CONVENTIONNEL;
-                if ($isConventionnel && !empty($facture->lots) && count($facture->lots) > 0) {
-                    foreach ($facture->lots as $idx => $l) {
+                $normalizeNum = function($n){ $t = strtolower(trim((string)$n)); $t = preg_replace('/[^a-z0-9]+/', '', $t) ?? ''; return str_starts_with($t,'lot')?substr($t,3):$t; };
+                $isGenericTxt = function($t){ $s = trim((string)$t); return $s==='' || preg_match('/^lots?[\s_-]*\d+$/i',$s)===1; };
+                $ordreLotsPdf = collect();
+                if (!empty($facture->ordreTravail) && !empty($facture->ordreTravail->lots)) {
+                    $ordreLotsPdf = collect($facture->ordreTravail->lots);
+                }
+                $resolveDesig = function($l, $idx) use ($ordreLotsPdf, $normalizeNum, $isGenericTxt) {
+                    $desig = trim((string)($l->description ?? $l->designation ?? ''));
+                    if (!$isGenericTxt($desig)) return $desig;
+                    if ($ordreLotsPdf->isEmpty()) return $desig;
+                    $num = $normalizeNum($l->numero_lot ?? '');
+                    $src = $ordreLotsPdf->first(fn($ol) => $normalizeNum($ol->numero_lot ?? '') === $num) ?? $ordreLotsPdf->values()->get($idx);
+                    if ($src) {
+                        $srcTxt = trim((string)($src->description ?? ''));
+                        if ($srcTxt !== '') return $srcTxt;
+                    }
+                    return $desig;
+                };
+                $lotsSource = (!empty($facture->lots) && count($facture->lots) > 0) ? $facture->lots : $ordreLotsPdf;
+                if ($isConventionnel && count($lotsSource) > 0) {
+                    foreach ($lotsSource as $idx => $l) {
                         $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
-                        $desig = trim($l->description ?? $l->designation ?? '');
+                        $desig = $resolveDesig($l, $idx);
                         $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
                         $lignes[] = [
                             'description' => $desc,
