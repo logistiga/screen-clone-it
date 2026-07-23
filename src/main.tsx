@@ -4,7 +4,7 @@ import "./index.css";
 
 // Nettoyage unique du Service Worker + caches pour forcer le rechargement
 // de la nouvelle interface (résout l'affichage de l'ancienne version cachée).
-const SW_CLEANUP_KEY = "sw-cleanup-v2";
+const SW_CLEANUP_KEY = "sw-cleanup-v3";
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   if (!localStorage.getItem(SW_CLEANUP_KEY)) {
     navigator.serviceWorker
