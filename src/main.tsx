@@ -25,4 +25,23 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   }
 }
 
+// Recharge automatiquement quand un chunk JS échoue à se charger
+// (ancien index.html référencant des hash supprimés après un nouveau build)
+const CHUNK_RELOAD_KEY = "chunk-reload-once";
+const isChunkError = (msg?: string) =>
+  !!msg && /Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(msg);
+window.addEventListener("error", (e) => {
+  if (isChunkError(e?.message) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+    window.location.reload();
+  }
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const msg = (e?.reason && (e.reason.message || String(e.reason))) || "";
+  if (isChunkError(msg) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+    window.location.reload();
+  }
+});
+
 createRoot(document.getElementById("root")!).render(<App />);
