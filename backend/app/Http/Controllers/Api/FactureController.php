@@ -140,6 +140,11 @@ class FactureController extends Controller
         ]);
 
         $this->maintenanceService->reparerLotsConventionnelsDepuisOrdre($facture);
+        $facture->refresh()->load([
+            'client', 'transitaire', 'representant', 'armateur',
+            'ordreTravail.conteneurs.operations', 'ordreTravail.lots', 'ordreTravail.lignes',
+            'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
+        ]);
 
         // Recalcul systématique des totaux pour garantir la cohérence
         try {
