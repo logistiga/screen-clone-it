@@ -39,7 +39,7 @@ class FactureMaintenanceService
 
     public function reparerLotsConventionnelsDepuisOrdre(Facture $facture): void
     {
-        if (!DocumentCategory::isConventionnel($facture->categorie) || empty($facture->ordre_id)) {
+        if (empty($facture->ordre_id)) {
             return;
         }
 
@@ -49,7 +49,7 @@ class FactureMaintenanceService
             return;
         }
 
-        if (!$this->doitReparerLots($facture)) {
+        if (!$this->estConventionnel($facture)) {
             return;
         }
 
@@ -64,9 +64,10 @@ class FactureMaintenanceService
                 'description' => $description,
                 'quantite' => $lotOrdre->quantite ?? 1,
                 'prix_unitaire' => $lotOrdre->prix_unitaire ?? 0,
+                'prix_total' => (float) ($lotOrdre->quantite ?? 1) * (float) ($lotOrdre->prix_unitaire ?? 0),
             ];
 
-            $lotFacture = $facture->lots->values()->get($index);
+            $lotFacture = $this->trouverLotFacture($facture, (string) $payload['numero_lot'], $index);
             if ($lotFacture && $this->descriptionEstVideOuGenerique($lotFacture->description)) {
                 $lotFacture->update($payload);
                 continue;
@@ -81,11 +82,20 @@ class FactureMaintenanceService
         $facture->load('lots');
     }
 
-    protected function doitReparerLots(Facture $facture): bool
+    protected function estConventionnel(Facture $facture): bool
     {
-        return $facture->lots->isEmpty() || $facture->lots->contains(
-            fn ($lot) => $this->descriptionEstVideOuGenerique($lot->description)
-        );
+        return DocumentCategory::isConventionnel($facture->categorie)
+            || DocumentCategory::isConventionnel($facture->ordreTravail?->categorie)
+            || $facture->lots->isNotEmpty();
+    }
+
+    protected function trouverLotFacture(Facture $facture, string $numeroLot, int $index)
+    {
+        $numeroNormalise = $this->normaliserNumeroLot($numeroLot);
+
+        return $facture->lots->first(function ($lot) use ($numeroNormalise) {
+            return $this->normaliserNumeroLot((string) ($lot->numero_lot ?? '')) === $numeroNormalise;
+        }) ?? $facture->lots->values()->get($index);
     }
 
     protected function descriptionEstVideOuGenerique(?string $description): bool
@@ -93,5 +103,13 @@ class FactureMaintenanceService
         $texte = trim((string) $description);
 
         return $texte === '' || preg_match('/^lots?[\s_-]*\d+$/i', $texte) === 1;
+    }
+
+    protected function normaliserNumeroLot(string $numeroLot): string
+    {
+        $texte = strtolower(trim($numeroLot));
+        $texte = preg_replace('/[^a-z0-9]+/', '', $texte) ?? '';
+
+        return str_starts_with($texte, 'lot') ? substr($texte, 3) : $texte;
     }
 }
