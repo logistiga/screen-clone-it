@@ -141,7 +141,7 @@ export default function FacturePDFPage() {
         const prixUnitaire = readNumber(lot.prix_unitaire);
         const montantStocke = readNumber(lot.montant_ht ?? lot.prix_total);
         lignes.push({
-          description: designation || numeroLot,
+          description: designation ? `${numeroLot} — ${designation}` : numeroLot,
           quantite,
           prixUnitaire,
           montant: montantStocke > 0 ? montantStocke : quantite * prixUnitaire
