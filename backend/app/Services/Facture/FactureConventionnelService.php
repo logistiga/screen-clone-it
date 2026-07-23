@@ -82,9 +82,11 @@ class FactureConventionnelService
         $lots = [];
         
         foreach ($document->lots as $lot) {
+            $texte = trim((string) ($lot->description ?? ''));
             $lots[] = [
                 'numero_lot' => $lot->numero_lot,
-                'description' => $lot->description,
+                'description' => $texte,
+                'designation' => $texte,
                 'quantite' => $lot->quantite,
                 'poids' => $lot->poids ?? null,
                 'volume' => $lot->volume ?? null,
@@ -104,7 +106,7 @@ class FactureConventionnelService
         // API envoie 'designation', DB utilise 'description' — prendre la valeur non vide
         $designation = isset($data['designation']) ? trim((string) $data['designation']) : '';
         $description = isset($data['description']) ? trim((string) $data['description']) : '';
-        $texte = $description !== '' ? $description : $designation;
+        $texte = $this->choisirTexteLot($description, $designation);
         if ($texte !== '') {
             $data['description'] = $texte;
         }
@@ -121,5 +123,23 @@ class FactureConventionnelService
         $data['prix_total'] = (float) $data['quantite'] * (float) $data['prix_unitaire'];
 
         return $data;
+    }
+
+    protected function choisirTexteLot(string $description, string $designation): string
+    {
+        if ($description !== '' && !$this->texteLotGenerique($description)) {
+            return $description;
+        }
+
+        if ($designation !== '') {
+            return $designation;
+        }
+
+        return $description;
+    }
+
+    protected function texteLotGenerique(string $texte): bool
+    {
+        return preg_match('/^lots?[\s_-]*\d+$/i', trim($texte)) === 1;
     }
 }

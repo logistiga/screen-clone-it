@@ -104,7 +104,7 @@ class OrdreConventionnelService
     {
         $designation = isset($data['designation']) ? trim((string) $data['designation']) : '';
         $description = isset($data['description']) ? trim((string) $data['description']) : '';
-        $texte = $description !== '' ? $description : $designation;
+        $texte = $this->choisirTexteLot($description, $designation);
         if ($texte !== '') {
             $data['description'] = $texte;
         }
@@ -118,5 +118,23 @@ class OrdreConventionnelService
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
 
         return $data;
+    }
+
+    protected function choisirTexteLot(string $description, string $designation): string
+    {
+        if ($description !== '' && !$this->texteLotGenerique($description)) {
+            return $description;
+        }
+
+        if ($designation !== '') {
+            return $designation;
+        }
+
+        return $description;
+    }
+
+    protected function texteLotGenerique(string $texte): bool
+    {
+        return preg_match('/^lots?[\s_-]*\d+$/i', trim($texte)) === 1;
     }
 }
