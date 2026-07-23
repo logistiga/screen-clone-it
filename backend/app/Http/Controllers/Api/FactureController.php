@@ -128,8 +128,9 @@ class FactureController extends Controller
     public function show(Facture $facture): JsonResponse
     {
         $facture->load([
-            'client', 'transitaire', 'representant', 'armateur', 'ordreTravail', 'lignes',
-            'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
+            'client', 'transitaire', 'representant', 'armateur',
+            'ordreTravail.conteneurs.operations', 'ordreTravail.lots', 'ordreTravail.lignes',
+            'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
         // Recalcul systématique des totaux pour garantir la cohérence
@@ -139,9 +140,11 @@ class FactureController extends Controller
             );
             $service->calculerTotaux($facture);
             $facture->refresh()->load([
-                'client', 'transitaire', 'representant', 'armateur', 'ordreTravail', 'lignes',
-                'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
+                'client', 'transitaire', 'representant', 'armateur',
+                'ordreTravail.conteneurs.operations', 'ordreTravail.lots', 'ordreTravail.lignes',
+                'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
             ]);
+
         } catch (\Throwable $e) {
             \Log::warning('Recalcul auto facture (show) échoué', [
                 'facture_id' => $facture->id,
