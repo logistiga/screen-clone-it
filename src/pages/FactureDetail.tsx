@@ -52,6 +52,9 @@ const readText = (row: DetailRow, keys: string[]): string => {
     if (typeof value === "string" && value.trim() !== "") {
       return value.trim();
     }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
   }
   return "";
 };
@@ -63,7 +66,7 @@ const readNumber = (value: unknown, fallback = 0): number => {
 
 const isGenericLotText = (value: string): boolean => {
   const text = value.trim();
-  return text === "" || text === "—" || /^lot[\s-]*\d+$/i.test(text);
+  return text === "" || text === "—" || /^lots?[\s_-]*\d+$/i.test(text);
 };
 
 const mergeLotsAvecOrdre = (factureLots: DetailRow[], ordreLots: DetailRow[]): DetailRow[] => {
