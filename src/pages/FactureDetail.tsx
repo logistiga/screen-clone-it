@@ -27,6 +27,7 @@ import {
 } from "@/components/factures/shared";
 import { ExonerationStatusCard } from "@/components/shared/ExonerationStatusCard";
 import { FactureItemsTables } from "@/components/factures/FactureItemsTables";
+import { FactureOrdreLinkCard } from "@/components/factures/FactureOrdreLinkCard";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -168,6 +169,9 @@ export default function FactureDetailPage() {
                     montantCss={facture.montant_css}
                     updatedAt={facture.updated_at}
                   />
+
+                  {/* Ordre de travail lié */}
+                  <FactureOrdreLinkCard facture={facture} />
 
                   {/* Infos BL */}
                   {facture.bl_numero && (
