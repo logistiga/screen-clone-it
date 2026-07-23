@@ -9,7 +9,6 @@ use App\Http\Requests\AnnulerFactureRequest;
 use App\Http\Resources\FactureResource;
 use App\Http\Traits\SecureQueryParameters;
 use App\Models\Facture;
-use App\Models\Annulation;
 use App\Models\Audit;
 use App\Services\Facture\FactureServiceFactory;
 use App\Services\Facture\FactureMaintenanceService;
