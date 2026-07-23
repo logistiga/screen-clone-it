@@ -346,7 +346,7 @@
                     foreach ($facture->lots as $idx => $l) {
                         $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
                         $desig = trim($l->description ?? $l->designation ?? '');
-                        $desc = $desig !== '' ? $desig : $numLot;
+                        $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
                         $lignes[] = [
                             'description' => $desc,
                             'quantite' => $l->quantite ?? 1,
@@ -403,7 +403,7 @@
                     foreach ($facture->lots as $idx => $l) {
                         $numLot = $l->numero_lot ?? ('Lot ' . ($idx + 1));
                         $desig = trim($l->description ?? $l->designation ?? '');
-                        $desc = $desig !== '' ? $desig : $numLot;
+                        $desc = $desig !== '' ? ($numLot . ' — ' . $desig) : $numLot;
                         $lignes[] = [
                             'description' => $desc,
                             'quantite' => $l->quantite ?? 1,
