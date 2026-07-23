@@ -80,14 +80,18 @@ class OrdreConventionnelService
         return [
             'lots' => $ordre->lots->map(function ($lot) {
                 $texte = trim((string) ($lot->description ?? ''));
+                $quantite = (float) ($lot->quantite ?? 1);
+                $prixUnitaire = (float) ($lot->prix_unitaire ?? 0);
+
                 return [
-                    'designation' => $texte,
-                    'description' => $texte,
                     'numero_lot' => $lot->numero_lot,
-                    'quantite' => $lot->quantite,
+                    'description' => $texte,
+                    'designation' => $texte,
+                    'quantite' => $quantite,
                     'poids' => $lot->poids,
                     'volume' => $lot->volume,
-                    'prix_unitaire' => $lot->prix_unitaire,
+                    'prix_unitaire' => $prixUnitaire,
+                    'prix_total' => $quantite * $prixUnitaire,
                 ];
             })->toArray(),
         ];
@@ -100,7 +104,7 @@ class OrdreConventionnelService
     {
         $designation = isset($data['designation']) ? trim((string) $data['designation']) : '';
         $description = isset($data['description']) ? trim((string) $data['description']) : '';
-        $texte = $description !== '' ? $description : $designation;
+        $texte = $this->choisirTexteLot($description, $designation);
         if ($texte !== '') {
             $data['description'] = $texte;
         }
@@ -114,5 +118,23 @@ class OrdreConventionnelService
         $data['prix_unitaire'] = $data['prix_unitaire'] ?? 0;
 
         return $data;
+    }
+
+    protected function choisirTexteLot(string $description, string $designation): string
+    {
+        if ($description !== '' && !$this->texteLotGenerique($description)) {
+            return $description;
+        }
+
+        if ($designation !== '') {
+            return $designation;
+        }
+
+        return $description;
+    }
+
+    protected function texteLotGenerique(string $texte): bool
+    {
+        return preg_match('/^lots?[\s_-]*\d+$/i', trim($texte)) === 1;
     }
 }

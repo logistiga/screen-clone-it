@@ -12,6 +12,7 @@ import { DocumentFooter, DocumentBankDetails } from "@/components/documents/Docu
 import { SignatureCachet } from "@/components/documents/SignatureCachet";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
 import { getPdfRowLimits, measurePdfFooterHeightMm, paginatePdfRows } from "@/lib/pdf-pagination";
+import { getFactureLotsAvecOrdre, readNumber, readText } from "@/lib/facture-lots";
 import logoLogistiga from "@/assets/lojistiga-logo.png";
 
 export default function FacturePDFPage() {
@@ -77,10 +78,11 @@ export default function FacturePDFPage() {
 
   const isAnnulee = facture.statut === "annulee";
   const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
+  const lotsConventionnels = getFactureLotsAvecOrdre(facture);
 
   // Déterminer le type de facture
   const isConteneur = facture.categorie === "conteneurs" || (facture.conteneurs && facture.conteneurs.length > 0);
-  const isConventionnel = facture.categorie === "conventionnel" || (facture.lots && facture.lots.length > 0);
+  const isConventionnel = facture.categorie === "conventionnel" || lotsConventionnels.length > 0;
   const isIndependant = facture.categorie === "operations_independantes" || (!isConteneur && !isConventionnel && facture.lignes && facture.lignes.length > 0);
 
   // Type d'opération (Import/Export)
@@ -131,15 +133,18 @@ export default function FacturePDFPage() {
   // Construire les lignes pour CONVENTIONNEL (Lots)
   const buildLignesConventionnel = () => {
     const lignes: Array<{ description: string; quantite: number; prixUnitaire: number; montant: number }> = [];
-    if (facture.lots && facture.lots.length > 0) {
-      facture.lots.forEach((lot: any, index: number) => {
-        const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
-        const designation = String(lot.designation || lot.description || '').trim();
+    if (lotsConventionnels.length > 0) {
+      lotsConventionnels.forEach((lot, index) => {
+        const numeroLot = readText(lot, ["numero_lot"]) || `Lot ${index + 1}`;
+        const designation = readText(lot, ["designation", "description"]);
+        const quantite = readNumber(lot.quantite, 1);
+        const prixUnitaire = readNumber(lot.prix_unitaire);
+        const montantStocke = readNumber(lot.montant_ht ?? lot.prix_total);
         lignes.push({
           description: designation || numeroLot,
-          quantite: lot.quantite || 1,
-          prixUnitaire: lot.prix_unitaire || 0,
-          montant: lot.montant_ht || lot.prix_total || (lot.quantite * lot.prix_unitaire) || 0
+          quantite,
+          prixUnitaire,
+          montant: montantStocke > 0 ? montantStocke : quantite * prixUnitaire
         });
       });
     }

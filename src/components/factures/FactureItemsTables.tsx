@@ -10,77 +10,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMontant } from "@/data/mockData";
+import {
+  asRecord,
+  asRows,
+  getFactureLotsAvecOrdre,
+  readNumber,
+  readText,
+} from "@/lib/facture-lots";
 
 type DetailRow = Record<string, unknown>;
-
-const asRecord = (value: unknown): DetailRow | undefined =>
-  value && typeof value === "object" ? (value as DetailRow) : undefined;
-
-const asRows = (value: unknown): DetailRow[] =>
-  Array.isArray(value) ? value.map(asRecord).filter((row): row is DetailRow => Boolean(row)) : [];
-
-const readText = (row: DetailRow, keys: string[]): string => {
-  for (const key of keys) {
-    const value = row[key];
-    if (typeof value === "string" && value.trim() !== "") {
-      return value.trim();
-    }
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return String(value);
-    }
-  }
-  return "";
-};
-
-const readNumber = (value: unknown, fallback = 0): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const isGenericLotText = (value: string): boolean => {
-  const text = value.trim();
-  return text === "" || text === "—" || /^lots?[\s_-]*\d+$/i.test(text);
-};
-
-const mergeLotsAvecOrdre = (factureLots: DetailRow[], ordreLots: DetailRow[]): DetailRow[] => {
-  if (factureLots.length === 0) {
-    return ordreLots;
-  }
-
-  return factureLots.map((lot, index) => {
-    const designation = readText(lot, ["designation", "description"]);
-    if (!isGenericLotText(designation)) {
-      return lot;
-    }
-
-    const numero = readText(lot, ["numero_lot"]);
-    const source = ordreLots.find((ordreLot) => readText(ordreLot, ["numero_lot"]) === numero) ?? ordreLots[index];
-    if (!source) {
-      return lot;
-    }
-
-    const sourceDesignation = readText(source, ["designation", "description"]);
-    if (isGenericLotText(sourceDesignation)) {
-      return lot;
-    }
-
-    return { ...source, ...lot, designation: sourceDesignation, description: sourceDesignation };
-  });
-};
 
 const getRows = (facture: unknown) => {
   const factureRecord = asRecord(facture) ?? {};
   const ot = asRecord(factureRecord.ordre_travail) ?? asRecord(factureRecord.ordreTravail);
   const ownLignes = asRows(factureRecord.lignes);
-  const ownLots = asRows(factureRecord.lots);
   const ownConteneurs = asRows(factureRecord.conteneurs);
   const otLignes = asRows(ot?.lignes);
-  const otLots = asRows(ot?.lots);
   const otConteneurs = asRows(ot?.conteneurs);
 
   return {
     lignes: ownLignes.length > 0 ? ownLignes : otLignes,
-    lots: mergeLotsAvecOrdre(ownLots, otLots),
+    lots: getFactureLotsAvecOrdre(facture),
     conteneurs: ownConteneurs.length > 0 ? ownConteneurs : otConteneurs,
   };
 };
