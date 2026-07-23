@@ -248,7 +248,7 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.lignes.map((ligne: any) => (
+                            {facLignes.map((ligne: any) => (
                               <TableRow key={ligne.id} className="hover:bg-muted/50">
                                 <TableCell>{ligne.description || ligne.type_operation}</TableCell>
                                 <TableCell className="text-center">{ligne.quantite}</TableCell>
