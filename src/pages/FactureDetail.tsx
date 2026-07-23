@@ -285,7 +285,7 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.lots.map((lot: any, index: number) => {
+                            {facLots.map((lot: any, index: number) => {
                               const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
                               const designation = String(lot.designation || lot.description || '').trim() || '—';
                               const qte = Number(lot.quantite ?? 1);
