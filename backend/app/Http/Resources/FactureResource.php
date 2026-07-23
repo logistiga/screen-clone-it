@@ -105,7 +105,7 @@ class FactureResource extends JsonResource
             'ordre_travail' => $this->whenLoaded('ordreTravail', fn() => $this->ordreTravail ? new OrdreTravailResource($this->ordreTravail) : null),
             'lignes' => LigneFactureResource::collection($this->whenLoaded('lignes')),
             'conteneurs' => ConteneurFactureResource::collection($this->whenLoaded('conteneurs')),
-            'lots' => LotFactureResource::collection($this->whenLoaded('lots')),
+            'lots' => $this->buildLotsAvecFallbackOrdre(),
             'paiements' => PaiementResource::collection($this->whenLoaded('paiements')),
             'primes' => PrimeResource::collection($this->whenLoaded('primes')),
             'annulation' => $this->whenLoaded('annulation', fn() => $this->annulation ? [
