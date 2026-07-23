@@ -8,10 +8,11 @@ use App\Http\Requests\UpdateFactureRequest;
 use App\Http\Requests\AnnulerFactureRequest;
 use App\Http\Resources\FactureResource;
 use App\Http\Traits\SecureQueryParameters;
-use App\Models\Facture;
 use App\Models\Annulation;
+use App\Models\Facture;
 use App\Models\Audit;
 use App\Services\Facture\FactureServiceFactory;
+use App\Services\Facture\FactureMaintenanceService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class FactureController extends Controller
     use SecureQueryParameters;
 
     protected FactureServiceFactory $factureFactory;
+    protected FactureMaintenanceService $maintenanceService;
 
     /**
      * Colonnes autorisées pour le tri
@@ -38,15 +40,19 @@ class FactureController extends Controller
         'Brouillon', 'Envoyée', 'Payée', 'Partiellement payée', 'Annulée'
     ];
 
-    public function __construct(FactureServiceFactory $factureFactory)
+    public function __construct(
+        FactureServiceFactory $factureFactory,
+        FactureMaintenanceService $maintenanceService
+    )
     {
         $this->factureFactory = $factureFactory;
+        $this->maintenanceService = $maintenanceService;
     }
 
     public function index(Request $request): JsonResponse
     {
         // Auto-créer les annulations manquantes pour les factures annulées sans enregistrement
-        $this->synchroniserAnnulationsFactures();
+        $this->maintenanceService->synchroniserAnnulationsFactures();
 
         $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements', 'annulation']);
 
@@ -132,6 +138,8 @@ class FactureController extends Controller
             'ordreTravail.conteneurs.operations', 'ordreTravail.lots', 'ordreTravail.lignes',
             'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
+
+        $this->maintenanceService->reparerLotsConventionnelsDepuisOrdre($facture);
 
         // Recalcul systématique des totaux pour garantir la cohérence
         try {
@@ -259,37 +267,6 @@ class FactureController extends Controller
         $factures = $query->orderBy('date_echeance', 'asc')->get();
 
         return response()->json(FactureResource::collection($factures));
-    }
-
-    /**
-     * Synchronise les annulations manquantes pour les factures annulées
-     */
-    protected function synchroniserAnnulationsFactures(): void
-    {
-        $facturesAnnulees = Facture::where('statut', 'annulee')
-            ->whereNotExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('annulations')
-                    ->whereColumn('annulations.document_id', 'factures.id')
-                    ->where('annulations.type', 'facture');
-            })
-            ->get();
-
-        foreach ($facturesAnnulees as $facture) {
-            Annulation::create([
-                'numero' => Annulation::genererNumero(),
-                'type' => 'facture',
-                'document_id' => $facture->id,
-                'document_numero' => $facture->numero,
-                'client_id' => $facture->client_id,
-                'montant' => $facture->montant_ttc ?? 0,
-                'date' => $facture->updated_at ?? now(),
-                'motif' => 'Annulation enregistrée automatiquement',
-                'avoir_genere' => true,
-                'numero_avoir' => Annulation::genererNumeroAvoir(),
-                'solde_avoir' => $facture->montant_ttc ?? 0,
-            ]);
-        }
     }
 
     /**
