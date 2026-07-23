@@ -176,7 +176,9 @@ export function useFactureById(id: string) {
     queryKey: ['factures', id],
     queryFn: () => facturesApi.getById(id),
     enabled: !!id,
-    staleTime: STALE_TIME,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
     gcTime: CACHE_TIME,
   });
 }

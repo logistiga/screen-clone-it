@@ -159,7 +159,7 @@ export const facturesApi = {
   },
   
   getById: async (id: string) => {
-    const response = await api.get(`/factures/${id}`);
+    const response = await api.get(`/factures/${id}`, { params: { _t: Date.now() } });
     const payload = response.data;
     return (payload?.data ?? payload) as Facture;
   },

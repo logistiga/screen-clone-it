@@ -38,6 +38,60 @@ import {
 } from "@/components/factures/shared";
 import { ExonerationStatusCard } from "@/components/shared/ExonerationStatusCard";
 
+type DetailRow = Record<string, unknown>;
+
+const asRecord = (value: unknown): DetailRow | undefined =>
+  value && typeof value === "object" ? (value as DetailRow) : undefined;
+
+const asRows = (value: unknown): DetailRow[] =>
+  Array.isArray(value) ? value.map(asRecord).filter((row): row is DetailRow => Boolean(row)) : [];
+
+const readText = (row: DetailRow, keys: string[]): string => {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
+const readNumber = (value: unknown, fallback = 0): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const isGenericLotText = (value: string): boolean => {
+  const text = value.trim();
+  return text === "" || text === "—" || /^lot[\s-]*\d+$/i.test(text);
+};
+
+const mergeLotsAvecOrdre = (factureLots: DetailRow[], ordreLots: DetailRow[]): DetailRow[] => {
+  if (factureLots.length === 0) {
+    return ordreLots;
+  }
+
+  return factureLots.map((lot, index) => {
+    const designation = readText(lot, ["designation", "description"]);
+    if (!isGenericLotText(designation)) {
+      return lot;
+    }
+
+    const numero = readText(lot, ["numero_lot"]);
+    const source = ordreLots.find((ordreLot) => readText(ordreLot, ["numero_lot"]) === numero) ?? ordreLots[index];
+    if (!source) {
+      return lot;
+    }
+
+    const sourceDesignation = readText(source, ["designation", "description"]);
+    if (isGenericLotText(sourceDesignation)) {
+      return lot;
+    }
+
+    return { ...source, ...lot, designation: sourceDesignation, description: sourceDesignation };
+  });
+};
+
 export default function FactureDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -103,10 +157,17 @@ export default function FactureDetailPage() {
 
   // Fallback: si la facture n'a pas ses propres lignes/lots/conteneurs (conversion incomplète),
   // afficher celles de l'OT d'origine pour montrer les Désignations
-  const ot: any = (facture as any).ordre_travail || (facture as any).ordreTravail;
-  const facLignes = (facture as any).lignes?.length ? (facture as any).lignes : (ot?.lignes ?? []);
-  const facLots = (facture as any).lots?.length ? (facture as any).lots : (ot?.lots ?? []);
-  const facConteneurs = (facture as any).conteneurs?.length ? (facture as any).conteneurs : (ot?.conteneurs ?? []);
+  const factureRecord = facture as unknown as DetailRow;
+  const ot = asRecord(factureRecord.ordre_travail) ?? asRecord(factureRecord.ordreTravail);
+  const ownLignes = asRows(factureRecord.lignes);
+  const ownLots = asRows(factureRecord.lots);
+  const ownConteneurs = asRows(factureRecord.conteneurs);
+  const otLignes = asRows(ot?.lignes);
+  const otLots = asRows(ot?.lots);
+  const otConteneurs = asRows(ot?.conteneurs);
+  const facLignes = ownLignes.length > 0 ? ownLignes : otLignes;
+  const facLots = mergeLotsAvecOrdre(ownLots, otLots);
+  const facConteneurs = ownConteneurs.length > 0 ? ownConteneurs : otConteneurs;
 
 
   return (
@@ -248,12 +309,12 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facLignes.map((ligne: any) => (
-                              <TableRow key={ligne.id} className="hover:bg-muted/50">
-                                <TableCell>{ligne.description || ligne.type_operation}</TableCell>
-                                <TableCell className="text-center">{ligne.quantite}</TableCell>
-                                <TableCell className="text-right">{formatMontant(ligne.prix_unitaire)}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMontant(ligne.montant_ht)}</TableCell>
+                            {facLignes.map((ligne, index) => (
+                              <TableRow key={String(ligne.id ?? index)} className="hover:bg-muted/50">
+                                <TableCell>{readText(ligne, ["description", "type_operation"])}</TableCell>
+                                <TableCell className="text-center">{readNumber(ligne.quantite, 1)}</TableCell>
+                                <TableCell className="text-right">{formatMontant(readNumber(ligne.prix_unitaire))}</TableCell>
+                                <TableCell className="text-right font-medium">{formatMontant(readNumber(ligne.montant_ht))}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -285,14 +346,15 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facLots.map((lot: any, index: number) => {
-                              const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
-                              const designation = String(lot.designation || lot.description || '').trim() || '—';
-                              const qte = Number(lot.quantite ?? 1);
-                              const pu = Number(lot.prix_unitaire ?? 0);
-                              const montant = Number(lot.montant_ht ?? lot.prix_total ?? qte * pu);
+                            {facLots.map((lot, index) => {
+                              const numeroLot = readText(lot, ["numero_lot"]) || `Lot ${index + 1}`;
+                              const designation = readText(lot, ["designation", "description"]) || "—";
+                              const qte = readNumber(lot.quantite, 1);
+                              const pu = readNumber(lot.prix_unitaire);
+                              const montantStocke = readNumber(lot.montant_ht ?? lot.prix_total);
+                              const montant = montantStocke > 0 ? montantStocke : qte * pu;
                               return (
-                                <TableRow key={lot.id ?? index} className="hover:bg-muted/50">
+                                <TableRow key={String(lot.id ?? index)} className="hover:bg-muted/50">
                                   <TableCell className="font-mono font-medium">{numeroLot}</TableCell>
                                   <TableCell>{designation}</TableCell>
                                   <TableCell className="text-center">{qte}</TableCell>
@@ -330,30 +392,34 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facConteneurs.map((conteneur: any) => {
-                              const ops = conteneur.operations || [];
-                              const baseHT = Number(conteneur.prix_unitaire ?? 0);
+                            {facConteneurs.map((conteneur, conteneurIndex) => {
+                              const ops = asRows(conteneur.operations);
+                              const baseHT = readNumber(conteneur.prix_unitaire);
+                              const numero = readText(conteneur, ["numero"]);
+                              const taille = readText(conteneur, ["taille"]);
+                              const type = readText(conteneur, ["type"]);
                               return (
-                                <Fragment key={conteneur.id}>
+                                <Fragment key={String(conteneur.id ?? conteneurIndex)}>
                                   <TableRow className="bg-muted/20">
                                     <TableCell className="font-mono font-medium">
-                                      {conteneur.numero}
-                                      {conteneur.taille && <span className="ml-2 text-xs text-muted-foreground">{conteneur.taille}'</span>}
-                                      {conteneur.type && <span className="ml-2 text-xs text-muted-foreground">{conteneur.type}</span>}
+                                      {numero}
+                                      {taille && <span className="ml-2 text-xs text-muted-foreground">{taille}'</span>}
+                                      {type && <span className="ml-2 text-xs text-muted-foreground">{type}</span>}
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground">{conteneur.description || '—'}</TableCell>
+                                    <TableCell className="text-muted-foreground">{readText(conteneur, ["description"]) || "—"}</TableCell>
                                     <TableCell className="text-center">1</TableCell>
                                     <TableCell className="text-right">{formatMontant(baseHT)}</TableCell>
                                     <TableCell className="text-right font-medium">{formatMontant(baseHT)}</TableCell>
                                   </TableRow>
-                                  {ops.map((op: any, i: number) => {
-                                    const qte = Number(op.quantite ?? 1);
-                                    const pu = Number(op.prix_unitaire ?? 0);
-                                    const total = Number(op.prix_total ?? op.montant_ht ?? qte * pu);
+                                  {ops.map((op, i) => {
+                                    const qte = readNumber(op.quantite, 1);
+                                    const pu = readNumber(op.prix_unitaire);
+                                    const totalStocke = readNumber(op.prix_total ?? op.montant_ht);
+                                    const total = totalStocke > 0 ? totalStocke : qte * pu;
                                     return (
-                                      <TableRow key={op.id ?? `${conteneur.id}-op-${i}`} className="hover:bg-muted/30">
-                                        <TableCell className="pl-8 text-sm text-muted-foreground">↳ {op.type_operation || op.type || 'Opération'}</TableCell>
-                                        <TableCell className="text-sm">{op.description || '—'}</TableCell>
+                                      <TableRow key={String(op.id ?? `${conteneur.id ?? conteneurIndex}-op-${i}`)} className="hover:bg-muted/30">
+                                        <TableCell className="pl-8 text-sm text-muted-foreground">↳ {readText(op, ["type_operation", "type"]) || "Opération"}</TableCell>
+                                        <TableCell className="text-sm">{readText(op, ["description"]) || "—"}</TableCell>
                                         <TableCell className="text-center text-sm">{qte}</TableCell>
                                         <TableCell className="text-right text-sm">{formatMontant(pu)}</TableCell>
                                         <TableCell className="text-right text-sm font-medium">{formatMontant(total)}</TableCell>
