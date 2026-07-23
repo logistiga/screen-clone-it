@@ -133,6 +133,8 @@ class FactureController extends Controller
             'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
+        $this->reparerLotsConventionnelsDepuisOrdre($facture);
+
         // Recalcul systématique des totaux pour garantir la cohérence
         try {
             $service = $this->factureFactory->getService(
@@ -290,6 +292,59 @@ class FactureController extends Controller
                 'solde_avoir' => $facture->montant_ttc ?? 0,
             ]);
         }
+    }
+
+    /**
+     * Repare les anciennes factures conventionnelles dont les lots n'ont pas reçu
+     * la désignation de l'OT au moment du transfert.
+     */
+    protected function reparerLotsConventionnelsDepuisOrdre(Facture $facture): void
+    {
+        if (!\App\Support\DocumentCategory::isConventionnel($facture->categorie) || empty($facture->ordre_id)) {
+            return;
+        }
+
+        $facture->loadMissing(['lots', 'ordreTravail.lots']);
+        $ordre = $facture->ordreTravail;
+        if (!$ordre || $ordre->lots->isEmpty()) {
+            return;
+        }
+
+        $hasMissingDesignation = $facture->lots->isEmpty() || $facture->lots->contains(function ($lot) {
+            $description = trim((string) ($lot->description ?? ''));
+            return $description === '' || preg_match('/^lot\s*\d+$/i', $description) === 1;
+        });
+
+        if (!$hasMissingDesignation) {
+            return;
+        }
+
+        foreach ($ordre->lots->values() as $index => $lotOrdre) {
+            $lotFacture = $facture->lots->values()->get($index);
+            $description = trim((string) ($lotOrdre->description ?? ''));
+            if ($description === '') {
+                continue;
+            }
+
+            $payload = [
+                'numero_lot' => $lotOrdre->numero_lot ?: 'LOT-' . ($index + 1),
+                'description' => $description,
+                'quantite' => $lotOrdre->quantite ?? 1,
+                'prix_unitaire' => $lotOrdre->prix_unitaire ?? 0,
+            ];
+
+            if ($lotFacture) {
+                $currentDescription = trim((string) ($lotFacture->description ?? ''));
+                if ($currentDescription === '' || preg_match('/^lot\s*\d+$/i', $currentDescription) === 1) {
+                    $lotFacture->update($payload);
+                }
+            } else {
+                $facture->lots()->create($payload);
+            }
+        }
+
+        $facture->unsetRelation('lots');
+        $facture->load('lots');
     }
 
     /**
