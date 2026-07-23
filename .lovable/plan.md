@@ -1,85 +1,44 @@
-## Lot L1.3 — Unification des pages Nouveau* / Modifier* Devis · Ordre · Facture
+## Objectif
 
-### État actuel (6 pages, 3 316 lignes)
+Quand un OT conventionnel est transféré en facture, la valeur de `lots_ordres.description` doit être copiée et affichée dans la facture :
+- page détail facture,
+- PDF facture,
+- factures déjà transférées si elles ont encore `Lot 1` ou une description vide.
 
-```text
-NouveauDevis.tsx        229
-ModifierDevis.tsx       255
-NouvelOrdre.tsx         557
-ModifierOrdre.tsx       558
-NouvelleFacture.tsx     823
-ModifierFacture.tsx     894
-```
+## Diagnostic confirmé
 
-Patterns dupliqués page-à-page (≈ 75 % de code commun entre `Nouveau*` et `Modifier*` de chaque document, et ≈ 40 % entre les 3 documents) :
+- La désignation OT est bien stockée dans `lots_ordres.description`.
+- La facture utilise aussi `lots_factures.description` pour afficher `designation` / `description`.
+- Le flux de conversion existe déjà, mais la réparation actuelle peut ne pas toucher tous les cas existants, notamment si la catégorie n’est pas normalisée comme attendu ou si les lots facture existent avec une valeur générique.
+- Je n’ai pas d’accès direct DB depuis le sandbox (`PGHOST` absent), donc la correction doit être robuste côté code sans requête manuelle en base.
 
-- chargement parallèle `clients / armateurs / transitaires / représentants` + `toArray`
-- hook formulaire (`useDevisForm` / `useOrdreForm` / `useFactureForm`)
-- init taxes recommandées
-- auto-save brouillon (création) / hydratation depuis API (édition)
-- pré-remplissage `prefill` via `sessionStorage` (Ordre & Facture)
-- header back + titre + badge statut (édition) + `AutoSaveIndicator` (création)
-- rendu `<XxxForm mode="create"|"edit">` ou stepper inline (Ordre / Facture)
-- submit → mutation → navigate + gestion erreurs Laravel `errors{}`
+## Plan de correction
 
-### Architecture cible
+1. **Sécuriser la conversion OT → Facture**
+   - Dans le service de conversion conventionnel, forcer chaque lot envoyé à la facture avec :
+     - `numero_lot`,
+     - `description = lots_ordres.description`,
+     - `designation = lots_ordres.description`,
+     - quantité, prix unitaire, prix total.
+   - Ne jamais laisser `numero_lot` remplacer la désignation.
 
-Un seul shell par document, qui couvre les deux modes via une prop `mode`. Les pages racine deviennent des shims de ~30 lignes.
+2. **Renforcer la réparation des factures déjà créées**
+   - Adapter `FactureMaintenanceService` pour réparer même si la catégorie stockée est `Lot`, `lots`, `Conventionnel`, etc.
+   - Faire correspondre les lots par `numero_lot` puis par position.
+   - Si `lots_factures.description` est vide ou générique (`Lot 1`, `LOT-1`, etc.), copier `lots_ordres.description`.
+   - Si aucun lot facture n’existe, créer les lots facture depuis l’OT lié.
 
-```text
-src/components/documents/pages/
-├── index.ts
-├── useDocumentPageData.ts        # fetch clients/armateurs/transitaires/representants + toArray + isLoading/error agrégés
-├── useDocumentPrefill.ts         # lecture sessionStorage "prefill_ordre" / "prefill_facture" (no-op pour devis)
-├── useDocumentHydration.ts       # hydratation API → api.setX (mode edit) + extraction initialChildData
-├── useDocumentAutoSave.ts        # wrap useAutoSave + save/restore typés par document (mode create)
-├── useDocumentSubmit.ts          # create vs update + toast erreurs Laravel + clear draft + navigate
-├── DocumentPageHeader.tsx        # back + titre + icône + badge statut (edit) + AutoSaveIndicator (create)
-├── DevisPageShell.tsx            # assemble les hooks + <DevisForm mode>
-├── OrdrePageShell.tsx            # idem + stepper Ordre + ConfirmationSaveModal
-└── FacturePageShell.tsx          # idem + spécificités facture
-```
+3. **Garantir le chargement API**
+   - Dans `FactureController@show`, charger `ordreTravail.lots` avant réparation, relire la facture après réparation, puis retourner les lots corrigés dans `FactureResource`.
 
-Les pages racine (`src/pages/NouveauDevis.tsx`, etc.) deviennent :
+4. **Renforcer l’affichage frontend**
+   - Dans `FactureItemsTables`, continuer le fallback depuis `ordre_travail.lots`, mais améliorer la correspondance des lots pour couvrir `LOT-1` / `Lot 1` / position.
+   - Dans `FacturePDF`, appliquer le même fallback pour que le PDF affiche la désignation OT même si les lots facture sont encore génériques.
 
-```tsx
-export default function NouveauDevisPage() {
-  return <DevisPageShell mode="create" />;
-}
-```
+5. **Vérification**
+   - Vérifier la syntaxe des fichiers modifiés.
+   - Vérifier que les fichiers restent sous la limite projet de 300 lignes autant que possible ; si `FacturePDF.tsx` doit être retouché, faire une modification minimale sans refonte large.
 
-### Compatibilité
+## Résultat attendu
 
-- Routes inchangées (`/devis/nouveau`, `/devis/:id/modifier`, etc.).
-- `useDevisForm` / `useOrdreForm` / `useFactureForm` réutilisés tels quels — pas de modification des hooks de formulaire ni des composants `*Form` shims (livrés en L1.1 / L1.2).
-- Aucune modification backend.
-- `AutoSaveIndicator`, `ConfirmationSaveModal`, `OrdreStepper`, validations Zod : réutilisés à l'identique.
-
-### Découpage en sous-lots
-
-Livraison **un document à la fois**, `tsgo --noEmit` après chaque :
-
-- **L1.3.a** Hooks + header partagés (`useDocumentPageData`, `useDocumentHydration`, `useDocumentAutoSave`, `useDocumentSubmit`, `DocumentPageHeader`). Aucun changement visible.
-- **L1.3.b** `DevisPageShell` + shims `NouveauDevis` / `ModifierDevis`. Gain ≈ 380 lignes (sur 484).
-- **L1.3.c** `OrdrePageShell` + shims `NouvelOrdre` / `ModifierOrdre`. Gain ≈ 950 lignes (sur 1 115). Inclut prefill conteneur + stepper + ConfirmationSaveModal.
-- **L1.3.d** `FacturePageShell` + shims `NouvelleFacture` / `ModifierFacture`. Gain ≈ 1 480 lignes (sur 1 717). Le plus complexe (prefill ordre→facture, gestion remise/taxes hydratées).
-
-Gain total estimé : **~ 2 800 lignes supprimées** (3 316 → ~ 510).
-
-### Risques
-
-- **Modes mixtes** : `Modifier*` n'a pas d'auto-save mais a hydratation API ; `Nouveau*` l'inverse. Le shell doit gérer les deux sans réintroduire les bugs (double init taxes, double hydratation, prefill qui écrase l'API).
-- **Facture conteneurs** : la pré-remplissage depuis ordre touche `conteneursData` complet (lots, prix, opérations) — à porter intégralement, sans simplifier.
-- **Ordre conteneurs (prefill `?prefill=conteneur`)** : 65 lignes spécifiques à conserver telles quelles dans `useDocumentPrefill`.
-- **Tests manuels obligatoires après chaque sous-lot** : créer + modifier 1 document de chaque catégorie (conteneurs / conventionnel / indépendant).
-
-### Validation
-
-- `tsgo --noEmit` après chaque sous-lot.
-- Build Vite final.
-- Smoke test : créer un devis indépendant → convertir en ordre (prefill) → convertir l'ordre en facture (prefill) → modifier la facture.
-
-### Question
-
-1. Je démarre directement par **L1.3.a + L1.3.b (Devis)** en une seule livraison (le plus petit, sert de référence pour valider l'archi) ?
-2. Ou je commence par L1.3.a seul (hooks + header) puis pause pour validation avant les shells ?
+Pour une facture transférée depuis un OT comme celui de l’image, la colonne **Désignation** affichera le texte de `lots_ordres.description` au lieu de `Lot 1` ou vide, et le PDF facture utilisera la même désignation.
