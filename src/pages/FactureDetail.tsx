@@ -101,6 +101,14 @@ export default function FactureDetailPage() {
   const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
   const client = facture.client;
 
+  // Fallback: si la facture n'a pas ses propres lignes/lots/conteneurs (conversion incomplète),
+  // afficher celles de l'OT d'origine pour montrer les Désignations
+  const ot: any = (facture as any).ordre_travail || (facture as any).ordreTravail;
+  const facLignes = (facture as any).lignes?.length ? (facture as any).lignes : (ot?.lignes ?? []);
+  const facLots = (facture as any).lots?.length ? (facture as any).lots : (ot?.lots ?? []);
+  const facConteneurs = (facture as any).conteneurs?.length ? (facture as any).conteneurs : (ot?.conteneurs ?? []);
+
+
   return (
     <MainLayout title={`Facture ${facture.numero}`}>
       <motion.div
