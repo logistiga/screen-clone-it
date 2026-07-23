@@ -12,6 +12,7 @@ use App\Models\Facture;
 use App\Models\Annulation;
 use App\Models\Audit;
 use App\Services\Facture\FactureServiceFactory;
+use App\Services\Facture\FactureMaintenanceService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class FactureController extends Controller
     use SecureQueryParameters;
 
     protected FactureServiceFactory $factureFactory;
+    protected FactureMaintenanceService $maintenanceService;
 
     /**
      * Colonnes autorisées pour le tri
@@ -38,15 +40,19 @@ class FactureController extends Controller
         'Brouillon', 'Envoyée', 'Payée', 'Partiellement payée', 'Annulée'
     ];
 
-    public function __construct(FactureServiceFactory $factureFactory)
+    public function __construct(
+        FactureServiceFactory $factureFactory,
+        FactureMaintenanceService $maintenanceService
+    )
     {
         $this->factureFactory = $factureFactory;
+        $this->maintenanceService = $maintenanceService;
     }
 
     public function index(Request $request): JsonResponse
     {
         // Auto-créer les annulations manquantes pour les factures annulées sans enregistrement
-        $this->synchroniserAnnulationsFactures();
+        $this->maintenanceService->synchroniserAnnulationsFactures();
 
         $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements', 'annulation']);
 
@@ -133,7 +139,7 @@ class FactureController extends Controller
             'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
-        $this->reparerLotsConventionnelsDepuisOrdre($facture);
+        $this->maintenanceService->reparerLotsConventionnelsDepuisOrdre($facture);
 
         // Recalcul systématique des totaux pour garantir la cohérence
         try {
@@ -261,90 +267,6 @@ class FactureController extends Controller
         $factures = $query->orderBy('date_echeance', 'asc')->get();
 
         return response()->json(FactureResource::collection($factures));
-    }
-
-    /**
-     * Synchronise les annulations manquantes pour les factures annulées
-     */
-    protected function synchroniserAnnulationsFactures(): void
-    {
-        $facturesAnnulees = Facture::where('statut', 'annulee')
-            ->whereNotExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('annulations')
-                    ->whereColumn('annulations.document_id', 'factures.id')
-                    ->where('annulations.type', 'facture');
-            })
-            ->get();
-
-        foreach ($facturesAnnulees as $facture) {
-            Annulation::create([
-                'numero' => Annulation::genererNumero(),
-                'type' => 'facture',
-                'document_id' => $facture->id,
-                'document_numero' => $facture->numero,
-                'client_id' => $facture->client_id,
-                'montant' => $facture->montant_ttc ?? 0,
-                'date' => $facture->updated_at ?? now(),
-                'motif' => 'Annulation enregistrée automatiquement',
-                'avoir_genere' => true,
-                'numero_avoir' => Annulation::genererNumeroAvoir(),
-                'solde_avoir' => $facture->montant_ttc ?? 0,
-            ]);
-        }
-    }
-
-    /**
-     * Repare les anciennes factures conventionnelles dont les lots n'ont pas reçu
-     * la désignation de l'OT au moment du transfert.
-     */
-    protected function reparerLotsConventionnelsDepuisOrdre(Facture $facture): void
-    {
-        if (!\App\Support\DocumentCategory::isConventionnel($facture->categorie) || empty($facture->ordre_id)) {
-            return;
-        }
-
-        $facture->loadMissing(['lots', 'ordreTravail.lots']);
-        $ordre = $facture->ordreTravail;
-        if (!$ordre || $ordre->lots->isEmpty()) {
-            return;
-        }
-
-        $hasMissingDesignation = $facture->lots->isEmpty() || $facture->lots->contains(function ($lot) {
-            $description = trim((string) ($lot->description ?? ''));
-            return $description === '' || preg_match('/^lot\s*\d+$/i', $description) === 1;
-        });
-
-        if (!$hasMissingDesignation) {
-            return;
-        }
-
-        foreach ($ordre->lots->values() as $index => $lotOrdre) {
-            $lotFacture = $facture->lots->values()->get($index);
-            $description = trim((string) ($lotOrdre->description ?? ''));
-            if ($description === '') {
-                continue;
-            }
-
-            $payload = [
-                'numero_lot' => $lotOrdre->numero_lot ?: 'LOT-' . ($index + 1),
-                'description' => $description,
-                'quantite' => $lotOrdre->quantite ?? 1,
-                'prix_unitaire' => $lotOrdre->prix_unitaire ?? 0,
-            ];
-
-            if ($lotFacture) {
-                $currentDescription = trim((string) ($lotFacture->description ?? ''));
-                if ($currentDescription === '' || preg_match('/^lot\s*\d+$/i', $currentDescription) === 1) {
-                    $lotFacture->update($payload);
-                }
-            } else {
-                $facture->lots()->create($payload);
-            }
-        }
-
-        $facture->unsetRelation('lots');
-        $facture->load('lots');
     }
 
     /**
