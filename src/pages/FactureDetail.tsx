@@ -148,6 +148,8 @@ export default function FactureDetailPage() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="space-y-6"
                 >
+                  {(() => { return null; })()}
+
                   {/* Infos client + récap */}
                   <div className="grid gap-6 md:grid-cols-2">
                     <FactureClientCard client={client} />
