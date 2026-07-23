@@ -308,7 +308,7 @@ export default function FactureDetailPage() {
                   )}
 
                   {/* Conteneurs */}
-                  {facture.conteneurs && facture.conteneurs.length > 0 && (
+                  {facConteneurs && facConteneurs.length > 0 && (
                     <Card className="overflow-hidden border-0 shadow-lg">
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
