@@ -80,14 +80,18 @@ class OrdreConventionnelService
         return [
             'lots' => $ordre->lots->map(function ($lot) {
                 $texte = trim((string) ($lot->description ?? ''));
+                $quantite = (float) ($lot->quantite ?? 1);
+                $prixUnitaire = (float) ($lot->prix_unitaire ?? 0);
+
                 return [
-                    'designation' => $texte,
-                    'description' => $texte,
                     'numero_lot' => $lot->numero_lot,
-                    'quantite' => $lot->quantite,
+                    'description' => $texte,
+                    'designation' => $texte,
+                    'quantite' => $quantite,
                     'poids' => $lot->poids,
                     'volume' => $lot->volume,
-                    'prix_unitaire' => $lot->prix_unitaire,
+                    'prix_unitaire' => $prixUnitaire,
+                    'prix_total' => $quantite * $prixUnitaire,
                 ];
             })->toArray(),
         ];
