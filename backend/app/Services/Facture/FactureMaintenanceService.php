@@ -92,6 +92,6 @@ class FactureMaintenanceService
     {
         $texte = trim((string) $description);
 
-        return $texte === '' || preg_match('/^lot\s*\d+$/i', $texte) === 1;
+        return $texte === '' || preg_match('/^lots?[\s_-]*\d+$/i', $texte) === 1;
     }
 }

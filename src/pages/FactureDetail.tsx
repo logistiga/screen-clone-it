@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState } from "react";
 import { roundMoney } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,27 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   AlertCircle,
   Receipt,
   Loader2,
   Clock,
-  FileText,
   Anchor,
   Hash,
   Ship,
-  Package,
   StickyNote,
 } from "lucide-react";
 import { useFactureById } from "@/hooks/use-commercial";
-import { formatMontant, formatDate } from "@/data/mockData";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailModal } from "@/components/EmailModal";
 import { 
@@ -37,6 +26,7 @@ import {
   FactureClientCard 
 } from "@/components/factures/shared";
 import { ExonerationStatusCard } from "@/components/shared/ExonerationStatusCard";
+import { FactureItemsTables } from "@/components/factures/FactureItemsTables";
 
 export default function FactureDetailPage() {
   const navigate = useNavigate();
@@ -100,14 +90,6 @@ export default function FactureDetailPage() {
 
   const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
   const client = facture.client;
-
-  // Fallback: si la facture n'a pas ses propres lignes/lots/conteneurs (conversion incomplète),
-  // afficher celles de l'OT d'origine pour montrer les Désignations
-  const ot: any = (facture as any).ordre_travail || (facture as any).ordreTravail;
-  const facLignes = (facture as any).lignes?.length ? (facture as any).lignes : (ot?.lignes ?? []);
-  const facLots = (facture as any).lots?.length ? (facture as any).lots : (ot?.lots ?? []);
-  const facConteneurs = (facture as any).conteneurs?.length ? (facture as any).conteneurs : (ot?.conteneurs ?? []);
-
 
   return (
     <MainLayout title={`Facture ${facture.numero}`}>
@@ -225,149 +207,7 @@ export default function FactureDetailPage() {
                     </Card>
                   )}
 
-                  {/* Lignes de la facture */}
-                  {facLignes && facLignes.length > 0 && (
-
-                    <Card className="overflow-hidden border-0 shadow-lg">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
-                          <div className="p-1.5 rounded-lg bg-purple-500/10">
-                            <FileText className="h-4 w-4 text-purple-600" />
-                          </div>
-                          Lignes de la facture
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead>Description</TableHead>
-                              <TableHead className="text-center">Quantité</TableHead>
-                              <TableHead className="text-right">Prix unitaire</TableHead>
-                              <TableHead className="text-right">Montant HT</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {facLignes.map((ligne: any) => (
-                              <TableRow key={ligne.id} className="hover:bg-muted/50">
-                                <TableCell>{ligne.description || ligne.type_operation}</TableCell>
-                                <TableCell className="text-center">{ligne.quantite}</TableCell>
-                                <TableCell className="text-right">{formatMontant(ligne.prix_unitaire)}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMontant(ligne.montant_ht)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Lots (Conventionnel) */}
-                  {facLots && facLots.length > 0 && (
-                    <Card className="overflow-hidden border-0 shadow-lg">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
-                          <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                            <Package className="h-4 w-4 text-emerald-600" />
-                          </div>
-                          Lots
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead>N° Lot</TableHead>
-                              <TableHead>Désignation</TableHead>
-                              <TableHead className="text-center">Quantité</TableHead>
-                              <TableHead className="text-right">Prix unitaire</TableHead>
-                              <TableHead className="text-right">Montant HT</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {facLots.map((lot: any, index: number) => {
-                              const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
-                              const designation = String(lot.designation || lot.description || '').trim() || '—';
-                              const qte = Number(lot.quantite ?? 1);
-                              const pu = Number(lot.prix_unitaire ?? 0);
-                              const montant = Number(lot.montant_ht ?? lot.prix_total ?? qte * pu);
-                              return (
-                                <TableRow key={lot.id ?? index} className="hover:bg-muted/50">
-                                  <TableCell className="font-mono font-medium">{numeroLot}</TableCell>
-                                  <TableCell>{designation}</TableCell>
-                                  <TableCell className="text-center">{qte}</TableCell>
-                                  <TableCell className="text-right">{formatMontant(pu)}</TableCell>
-                                  <TableCell className="text-right font-medium">{formatMontant(montant)}</TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Conteneurs */}
-                  {facConteneurs && facConteneurs.length > 0 && (
-                    <Card className="overflow-hidden border-0 shadow-lg">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
-                          <div className="p-1.5 rounded-lg bg-cyan-500/10">
-                            <Package className="h-4 w-4 text-cyan-600" />
-                          </div>
-                          Conteneurs
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead>Désignation</TableHead>
-                              <TableHead>Description</TableHead>
-                              <TableHead className="text-center">Qté</TableHead>
-                              <TableHead className="text-right">Prix unit.</TableHead>
-                              <TableHead className="text-right">Montant</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {facConteneurs.map((conteneur: any) => {
-                              const ops = conteneur.operations || [];
-                              const baseHT = Number(conteneur.prix_unitaire ?? 0);
-                              return (
-                                <Fragment key={conteneur.id}>
-                                  <TableRow className="bg-muted/20">
-                                    <TableCell className="font-mono font-medium">
-                                      {conteneur.numero}
-                                      {conteneur.taille && <span className="ml-2 text-xs text-muted-foreground">{conteneur.taille}'</span>}
-                                      {conteneur.type && <span className="ml-2 text-xs text-muted-foreground">{conteneur.type}</span>}
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground">{conteneur.description || '—'}</TableCell>
-                                    <TableCell className="text-center">1</TableCell>
-                                    <TableCell className="text-right">{formatMontant(baseHT)}</TableCell>
-                                    <TableCell className="text-right font-medium">{formatMontant(baseHT)}</TableCell>
-                                  </TableRow>
-                                  {ops.map((op: any, i: number) => {
-                                    const qte = Number(op.quantite ?? 1);
-                                    const pu = Number(op.prix_unitaire ?? 0);
-                                    const total = Number(op.prix_total ?? op.montant_ht ?? qte * pu);
-                                    return (
-                                      <TableRow key={op.id ?? `${conteneur.id}-op-${i}`} className="hover:bg-muted/30">
-                                        <TableCell className="pl-8 text-sm text-muted-foreground">↳ {op.type_operation || op.type || 'Opération'}</TableCell>
-                                        <TableCell className="text-sm">{op.description || '—'}</TableCell>
-                                        <TableCell className="text-center text-sm">{qte}</TableCell>
-                                        <TableCell className="text-right text-sm">{formatMontant(pu)}</TableCell>
-                                        <TableCell className="text-right text-sm font-medium">{formatMontant(total)}</TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                </Fragment>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <FactureItemsTables facture={facture} />
 
                   {/* Notes */}
                   {facture.notes && (
