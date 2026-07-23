@@ -101,6 +101,14 @@ export default function FactureDetailPage() {
   const resteAPayer = roundMoney((facture.montant_ttc || 0) - (facture.montant_paye || 0));
   const client = facture.client;
 
+  // Fallback: si la facture n'a pas ses propres lignes/lots/conteneurs (conversion incomplète),
+  // afficher celles de l'OT d'origine pour montrer les Désignations
+  const ot: any = (facture as any).ordre_travail || (facture as any).ordreTravail;
+  const facLignes = (facture as any).lignes?.length ? (facture as any).lignes : (ot?.lignes ?? []);
+  const facLots = (facture as any).lots?.length ? (facture as any).lots : (ot?.lots ?? []);
+  const facConteneurs = (facture as any).conteneurs?.length ? (facture as any).conteneurs : (ot?.conteneurs ?? []);
+
+
   return (
     <MainLayout title={`Facture ${facture.numero}`}>
       <motion.div
@@ -148,6 +156,8 @@ export default function FactureDetailPage() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="space-y-6"
                 >
+
+
                   {/* Infos client + récap */}
                   <div className="grid gap-6 md:grid-cols-2">
                     <FactureClientCard client={client} />
@@ -216,7 +226,8 @@ export default function FactureDetailPage() {
                   )}
 
                   {/* Lignes de la facture */}
-                  {facture.lignes && facture.lignes.length > 0 && (
+                  {facLignes && facLignes.length > 0 && (
+
                     <Card className="overflow-hidden border-0 shadow-lg">
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
@@ -237,7 +248,7 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.lignes.map((ligne: any) => (
+                            {facLignes.map((ligne: any) => (
                               <TableRow key={ligne.id} className="hover:bg-muted/50">
                                 <TableCell>{ligne.description || ligne.type_operation}</TableCell>
                                 <TableCell className="text-center">{ligne.quantite}</TableCell>
@@ -252,7 +263,7 @@ export default function FactureDetailPage() {
                   )}
 
                   {/* Lots (Conventionnel) */}
-                  {facture.lots && facture.lots.length > 0 && (
+                  {facLots && facLots.length > 0 && (
                     <Card className="overflow-hidden border-0 shadow-lg">
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
@@ -274,7 +285,7 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.lots.map((lot: any, index: number) => {
+                            {facLots.map((lot: any, index: number) => {
                               const numeroLot = lot.numero_lot || `Lot ${index + 1}`;
                               const designation = String(lot.designation || lot.description || '').trim() || '—';
                               const qte = Number(lot.quantite ?? 1);
@@ -297,7 +308,7 @@ export default function FactureDetailPage() {
                   )}
 
                   {/* Conteneurs */}
-                  {facture.conteneurs && facture.conteneurs.length > 0 && (
+                  {facConteneurs && facConteneurs.length > 0 && (
                     <Card className="overflow-hidden border-0 shadow-lg">
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
@@ -319,7 +330,7 @@ export default function FactureDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {facture.conteneurs.map((conteneur: any) => {
+                            {facConteneurs.map((conteneur: any) => {
                               const ops = conteneur.operations || [];
                               const baseHT = Number(conteneur.prix_unitaire ?? 0);
                               return (
