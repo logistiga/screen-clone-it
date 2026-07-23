@@ -117,4 +117,94 @@ class FactureResource extends JsonResource
             ] : null),
         ];
     }
+
+    /**
+     * Retourne les lots facture en injectant la désignation/prix depuis l'OT lié
+     * lorsque le lot facture est vide ou porte un libellé générique (« Lot 1 », etc.).
+     */
+    protected function buildLotsAvecFallbackOrdre(): array
+    {
+        if (!$this->relationLoaded('lots')) {
+            return [];
+        }
+
+        $ordreLots = collect();
+        if ($this->relationLoaded('ordreTravail') && $this->ordreTravail && $this->ordreTravail->relationLoaded('lots')) {
+            $ordreLots = $this->ordreTravail->lots;
+        }
+
+        $normalize = function (?string $numero): string {
+            $texte = strtolower(trim((string) $numero));
+            $texte = preg_replace('/[^a-z0-9]+/', '', $texte) ?? '';
+            return str_starts_with($texte, 'lot') ? substr($texte, 3) : $texte;
+        };
+
+        $estGenerique = function (?string $texte): bool {
+            $t = trim((string) $texte);
+            return $t === '' || preg_match('/^lots?[\s_-]*\d+$/i', $t) === 1;
+        };
+
+        $lots = $this->lots->values();
+        $result = [];
+        foreach ($lots as $index => $lot) {
+            $description = trim((string) ($lot->description ?? ''));
+            $source = null;
+            if ($ordreLots->isNotEmpty()) {
+                $numLot = $normalize($lot->numero_lot);
+                $source = $ordreLots->first(fn($ol) => $normalize($ol->numero_lot) === $numLot)
+                    ?? $ordreLots->values()->get($index);
+            }
+            if ($source && $estGenerique($description)) {
+                $srcTxt = trim((string) ($source->description ?? ''));
+                if ($srcTxt !== '') {
+                    $description = $srcTxt;
+                }
+            }
+
+            $qte = (float) ($lot->quantite ?? ($source->quantite ?? 1));
+            $pu = (float) ($lot->prix_unitaire ?? 0);
+            if ($pu <= 0 && $source) {
+                $pu = (float) ($source->prix_unitaire ?? 0);
+            }
+            $stocke = (float) ($lot->prix_total ?? 0);
+            $prixTotal = $stocke > 0 ? $stocke : $qte * $pu;
+
+            $result[] = [
+                'id' => $lot->id,
+                'numero_lot' => $lot->numero_lot,
+                'designation' => $description,
+                'description' => $description,
+                'quantite' => $qte,
+                'poids' => $lot->poids ?? null,
+                'volume' => $lot->volume ?? null,
+                'prix_unitaire' => round($pu, 2),
+                'prix_total' => round($prixTotal, 2),
+                'montant_ht' => round($prixTotal, 2),
+            ];
+        }
+
+        // Si la facture n'a aucun lot mais l'OT en a, on expose ceux de l'OT
+        if (empty($result) && $ordreLots->isNotEmpty()) {
+            foreach ($ordreLots as $ol) {
+                $qte = (float) ($ol->quantite ?? 1);
+                $pu = (float) ($ol->prix_unitaire ?? 0);
+                $prixTotal = (float) ($ol->prix_total ?? 0);
+                if ($prixTotal <= 0) $prixTotal = $qte * $pu;
+                $result[] = [
+                    'id' => null,
+                    'numero_lot' => $ol->numero_lot,
+                    'designation' => trim((string) ($ol->description ?? '')),
+                    'description' => trim((string) ($ol->description ?? '')),
+                    'quantite' => $qte,
+                    'poids' => $ol->poids ?? null,
+                    'volume' => $ol->volume ?? null,
+                    'prix_unitaire' => round($pu, 2),
+                    'prix_total' => round($prixTotal, 2),
+                    'montant_ht' => round($prixTotal, 2),
+                ];
+            }
+        }
+
+        return $result;
+    }
 }
