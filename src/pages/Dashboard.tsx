@@ -8,7 +8,7 @@ import {
   Users, FileText, ClipboardList, Receipt, Wallet, TrendingUp, TrendingDown,
   ArrowRight, Building2, CreditCard, Loader2, RefreshCw, Clock,
   CalendarDays, CalendarCheck, Calendar, CalendarRange, CalendarClock,
-  DollarSign, PiggyBank, AlertCircle, BarChart3
+  DollarSign, PiggyBank, AlertCircle, BarChart3, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { useDashboardStats, useDashboardGraphiques, useDashboardAlertes } from "@/hooks/use-dashboard";
