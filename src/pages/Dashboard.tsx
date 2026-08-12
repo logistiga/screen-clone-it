@@ -8,7 +8,7 @@ import {
   Users, FileText, ClipboardList, Receipt, Wallet, TrendingUp, TrendingDown,
   ArrowRight, Building2, CreditCard, Loader2, RefreshCw, Clock,
   CalendarDays, CalendarCheck, Calendar, CalendarRange, CalendarClock,
-  DollarSign, PiggyBank, AlertCircle, BarChart3
+  DollarSign, PiggyBank, AlertCircle, BarChart3, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { useDashboardStats, useDashboardGraphiques, useDashboardAlertes } from "@/hooks/use-dashboard";
@@ -18,7 +18,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from "rec
 import { Badge } from "@/components/ui/badge";
 import {
   format, startOfDay, endOfDay, startOfWeek, endOfWeek,
-  startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths
+  startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths,
+  addDays, addMonths, isAfter, startOfDay as sod
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -36,8 +37,8 @@ const periodOptions: { value: PeriodType; label: string; icon: typeof CalendarDa
   { value: "annee", label: "Année", icon: CalendarRange },
 ];
 
-function getDateRange(period: PeriodType): { dateDebut: string; dateFin: string; label: string } {
-  const now = new Date();
+function getDateRange(period: PeriodType, refDate: Date): { dateDebut: string; dateFin: string; label: string } {
+  const now = refDate;
   switch (period) {
     case "jour":
       return {
@@ -72,6 +73,16 @@ function getDateRange(period: PeriodType): { dateDebut: string; dateFin: string;
   }
 }
 
+function shiftDate(period: PeriodType, refDate: Date, direction: 1 | -1): Date {
+  switch (period) {
+    case "jour": return addDays(refDate, direction);
+    case "semaine": return addDays(refDate, direction * 7);
+    case "mois": return addMonths(refDate, direction);
+    case "semestre": return addMonths(refDate, direction * 6);
+    case "annee": return addMonths(refDate, direction * 12);
+  }
+}
+
 // === Animations ===
 const customEase: Easing = [0.25, 0.46, 0.45, 0.94];
 
@@ -97,15 +108,24 @@ const periodLabel = (period: PeriodType) => {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const currentYear = new Date().getFullYear();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("jour");
+  const [refDate, setRefDate] = useState<Date>(new Date());
 
   const { dateDebut, dateFin, label: dateLabel } = useMemo(
-    () => getDateRange(selectedPeriod), [selectedPeriod]
+    () => getDateRange(selectedPeriod, refDate), [selectedPeriod, refDate]
+  );
+
+  const canGoNext = useMemo(
+    () => !isAfter(sod(shiftDate(selectedPeriod, refDate, 1)), sod(new Date())),
+    [selectedPeriod, refDate]
+  );
+  const isCurrentPeriod = useMemo(
+    () => format(refDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd"),
+    [refDate]
   );
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats(dateDebut, dateFin);
-  const { data: graphiques, isLoading: graphiquesLoading } = useDashboardGraphiques(currentYear);
+  const { data: graphiques, isLoading: graphiquesLoading } = useDashboardGraphiques(refDate.getFullYear());
   const { data: alertes, isLoading: alertesLoading } = useDashboardAlertes();
 
   // Caisse en attente stats
@@ -160,27 +180,61 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          {/* Period tabs */}
-          <div className="flex bg-muted rounded-xl p-1 gap-0.5 w-fit">
-            {periodOptions.map((option) => {
-              const Icon = option.icon;
-              const isActive = selectedPeriod === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedPeriod(option.value)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                    isActive
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {option.label}
-                </button>
-              );
-            })}
+          {/* Period tabs + navigation */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-muted rounded-xl p-1 gap-0.5 w-fit">
+              {periodOptions.map((option) => {
+                const Icon = option.icon;
+                const isActive = selectedPeriod === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelectedPeriod(option.value)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                      isActive
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => setRefDate((d) => shiftDate(selectedPeriod, d, -1))}
+                aria-label="Période précédente"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-2 text-xs font-medium capitalize min-w-[120px] text-center">
+                {dateLabel}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                disabled={!canGoNext}
+                onClick={() => setRefDate((d) => shiftDate(selectedPeriod, d, 1))}
+                aria-label="Période suivante"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {!isCurrentPeriod && (
+              <Button variant="outline" size="sm" onClick={() => setRefDate(new Date())}>
+                Aujourd'hui
+              </Button>
+            )}
           </div>
+
         </motion.div>
 
         {/* ===== KPI CARDS ===== */}
