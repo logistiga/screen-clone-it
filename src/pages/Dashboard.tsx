@@ -108,15 +108,24 @@ const periodLabel = (period: PeriodType) => {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const currentYear = new Date().getFullYear();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("jour");
+  const [refDate, setRefDate] = useState<Date>(new Date());
 
   const { dateDebut, dateFin, label: dateLabel } = useMemo(
-    () => getDateRange(selectedPeriod), [selectedPeriod]
+    () => getDateRange(selectedPeriod, refDate), [selectedPeriod, refDate]
+  );
+
+  const canGoNext = useMemo(
+    () => !isAfter(sod(shiftDate(selectedPeriod, refDate, 1)), sod(new Date())),
+    [selectedPeriod, refDate]
+  );
+  const isCurrentPeriod = useMemo(
+    () => format(refDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd"),
+    [refDate]
   );
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats(dateDebut, dateFin);
-  const { data: graphiques, isLoading: graphiquesLoading } = useDashboardGraphiques(currentYear);
+  const { data: graphiques, isLoading: graphiquesLoading } = useDashboardGraphiques(refDate.getFullYear());
   const { data: alertes, isLoading: alertesLoading } = useDashboardAlertes();
 
   // Caisse en attente stats
