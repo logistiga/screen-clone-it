@@ -180,27 +180,61 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          {/* Period tabs */}
-          <div className="flex bg-muted rounded-xl p-1 gap-0.5 w-fit">
-            {periodOptions.map((option) => {
-              const Icon = option.icon;
-              const isActive = selectedPeriod === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedPeriod(option.value)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                    isActive
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {option.label}
-                </button>
-              );
-            })}
+          {/* Period tabs + navigation */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-muted rounded-xl p-1 gap-0.5 w-fit">
+              {periodOptions.map((option) => {
+                const Icon = option.icon;
+                const isActive = selectedPeriod === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelectedPeriod(option.value)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                      isActive
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => setRefDate((d) => shiftDate(selectedPeriod, d, -1))}
+                aria-label="Période précédente"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-2 text-xs font-medium capitalize min-w-[120px] text-center">
+                {dateLabel}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                disabled={!canGoNext}
+                onClick={() => setRefDate((d) => shiftDate(selectedPeriod, d, 1))}
+                aria-label="Période suivante"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {!isCurrentPeriod && (
+              <Button variant="outline" size="sm" onClick={() => setRefDate(new Date())}>
+                Aujourd'hui
+              </Button>
+            )}
           </div>
+
         </motion.div>
 
         {/* ===== KPI CARDS ===== */}
