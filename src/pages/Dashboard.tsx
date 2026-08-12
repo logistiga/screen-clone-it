@@ -18,7 +18,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from "rec
 import { Badge } from "@/components/ui/badge";
 import {
   format, startOfDay, endOfDay, startOfWeek, endOfWeek,
-  startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths
+  startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths,
+  addDays, addMonths, isAfter, startOfDay as sod
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
