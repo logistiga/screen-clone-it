@@ -36,8 +36,8 @@ const periodOptions: { value: PeriodType; label: string; icon: typeof CalendarDa
   { value: "annee", label: "Année", icon: CalendarRange },
 ];
 
-function getDateRange(period: PeriodType): { dateDebut: string; dateFin: string; label: string } {
-  const now = new Date();
+function getDateRange(period: PeriodType, refDate: Date): { dateDebut: string; dateFin: string; label: string } {
+  const now = refDate;
   switch (period) {
     case "jour":
       return {
@@ -69,6 +69,16 @@ function getDateRange(period: PeriodType): { dateDebut: string; dateFin: string;
         dateFin: format(endOfYear(now), "yyyy-MM-dd"),
         label: format(now, "yyyy"),
       };
+  }
+}
+
+function shiftDate(period: PeriodType, refDate: Date, direction: 1 | -1): Date {
+  switch (period) {
+    case "jour": return addDays(refDate, direction);
+    case "semaine": return addDays(refDate, direction * 7);
+    case "mois": return addMonths(refDate, direction);
+    case "semestre": return addMonths(refDate, direction * 6);
+    case "annee": return addMonths(refDate, direction * 12);
   }
 }
 
