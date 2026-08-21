@@ -132,16 +132,31 @@ export default function LigneModal({ open, onClose, onSubmit, initial }: LigneMo
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Point de départ *</Label>
-                  <Input value={ligne.pointDepart || POINT_DEPART_DEFAUT} onChange={(e) => setField("pointDepart", e.target.value)} className="h-11" />
-                  <p className="text-xs text-muted-foreground">Toutes les distances sont calculées au départ de Libreville.</p>
+                  <Input
+                    list="villes-gabon"
+                    value={ligne.pointDepart ?? ""}
+                    placeholder="Ex: Libreville, Makokou..."
+                    onChange={(e) => setField("pointDepart", e.target.value)}
+                    className="h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">Départ possible depuis n'importe quelle ville du Gabon.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Point d'arrivée *</Label>
-                  <Select value={ligne.pointArrivee || undefined} onValueChange={(v) => setField("pointArrivee", v)}>
-                    <SelectTrigger className="h-11"><SelectValue placeholder="Choisir une destination" /></SelectTrigger>
-                    <SelectContent>{DESTINATIONS_TRANSPORT.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Input
+                    list="villes-gabon"
+                    value={ligne.pointArrivee ?? ""}
+                    placeholder="Choisir ou saisir une destination"
+                    onChange={(e) => setField("pointArrivee", e.target.value)}
+                    className="h-11"
+                  />
                 </div>
+                <datalist id="villes-gabon">
+                  {[POINT_DEPART_DEFAUT, ...DESTINATIONS_TRANSPORT].map((d) => (
+                    <option key={d} value={d} />
+                  ))}
+                </datalist>
+
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
