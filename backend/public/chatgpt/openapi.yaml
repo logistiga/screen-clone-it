@@ -1,0 +1,144 @@
+openapi: 3.1.0
+info:
+  title: LogistiGA - API ChatGPT (lecture seule)
+  version: 1.0.0
+  description: >
+    Lecture des données de LogistiGA (clients, devis, ordres de travail, factures,
+    paiements, caisse, partenaires). Montants en FCFA (XAF), arrondis à l'entier.
+    Commencer par /schema pour connaître les ressources, champs et filtres autorisés.
+servers:
+  - url: https://facturation.logistiga.pro/backend/public/api/gpt
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string, example: INVALID_FIELD }
+            message: { type: string }
+    Success:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data: {}
+        meta: { type: object, additionalProperties: true }
+    Filter:
+      type: object
+      required: [field]
+      properties:
+        field: { type: string, example: client_id }
+        op:
+          type: string
+          enum: [eq, neq, gt, gte, lt, lte, like, in, between, "null", not_null]
+          default: eq
+        value: { description: "Valeur, liste pour in, [min,max] pour between" }
+    Aggregation:
+      type: object
+      required: [fn]
+      properties:
+        fn: { type: string, enum: [count, sum, avg, min, max] }
+        field: { type: string, default: id }
+  responses:
+    Err:
+      description: Erreur
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Ok:
+      description: Succès
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Success' }
+paths:
+  /schema:
+    get:
+      operationId: getSchema
+      summary: Ressources, champs, relations, filtres et agrégations disponibles
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '401': { $ref: '#/components/responses/Err' } }
+  /search:
+    get:
+      operationId: search
+      summary: Recherche universelle (numéro de facture, client, conteneur, BL, navire...)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 100 } }
+        - { name: resources, in: query, required: false, description: "Liste séparée par virgules", schema: { type: string, example: "clients,factures" } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '422': { $ref: '#/components/responses/Err' } }
+  /query:
+    post:
+      operationId: query
+      summary: Requête structurée (filtres, tri, pagination, agrégations côté serveur)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resource]
+              properties:
+                resource:
+                  type: string
+                  enum: [clients, factures, ordres, devis, paiements, caisse, notes_debut, conteneurs, annulations, banques, transitaires, representants, armateurs]
+                filters: { type: array, items: { $ref: '#/components/schemas/Filter' } }
+                fields: { type: array, items: { type: string } }
+                relations: { type: array, items: { type: string } }
+                sort: { type: array, items: { type: string }, description: "Ex. ['-date_creation']" }
+                limit: { type: integer, maximum: 200, default: 50 }
+                page: { type: integer, default: 1 }
+                aggregations: { type: array, items: { $ref: '#/components/schemas/Aggregation' } }
+                group_by: { type: array, items: { type: string } }
+                period: { type: string, enum: [day, month, year] }
+            example:
+              resource: factures
+              filters:
+                - { field: client_id, op: eq, value: 12 }
+                - { field: date_creation, op: between, value: ["2026-01-01", "2026-12-31"] }
+              aggregations: [{ fn: sum, field: montant_ttc }, { fn: count }]
+              period: month
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '422': { $ref: '#/components/responses/Err' } }
+  /resources/{resource}:
+    get:
+      operationId: listResource
+      summary: Liste simple d'une ressource
+      parameters:
+        - { name: resource, in: path, required: true, schema: { type: string } }
+        - { name: date_from, in: query, schema: { type: string, format: date } }
+        - { name: date_to, in: query, schema: { type: string, format: date } }
+        - { name: sort, in: query, schema: { type: string, example: "-date_creation" } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: page, in: query, schema: { type: integer } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '404': { $ref: '#/components/responses/Err' } }
+  /clients/{id}/summary:
+    get:
+      operationId: clientSummary
+      summary: Résumé d'activité d'un client (factures, impayés, paiements)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '404': { $ref: '#/components/responses/Err' } }
+  /factures/impayees:
+    get:
+      operationId: unpaidInvoices
+      summary: Factures non soldées (hors annulées), avec reste à payer total
+      parameters:
+        - { name: client_id, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: page, in: query, schema: { type: integer } }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /stats/chiffre-affaires:
+    get:
+      operationId: revenue
+      summary: Chiffre d'affaires facturé par période (hors annulées)
+      parameters:
+        - { name: date_from, in: query, schema: { type: string, format: date } }
+        - { name: date_to, in: query, schema: { type: string, format: date } }
+        - { name: period, in: query, schema: { type: string, enum: [day, month, year], default: month } }
+        - { name: client_id, in: query, schema: { type: integer } }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
