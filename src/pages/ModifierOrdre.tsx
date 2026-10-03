@@ -344,14 +344,6 @@ export default function ModifierOrdrePage() {
               </p>
             </div>
           </div>
-          {false && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button type="button" onClick={handleSubmit} disabled={updateOrdreMutation.isPending} className="gap-2 shadow-md">
-                {updateOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Enregistrer
-              </Button>
-            </motion.div>
-          )}
         </motion.div>
 
         <form
