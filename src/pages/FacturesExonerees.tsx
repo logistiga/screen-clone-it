@@ -55,7 +55,8 @@ export default function FacturesExonereesPage() {
   // Fetch all invoices and filter client-side for exempted ones
   const { data: facturesData, isLoading, error } = useFactures({
     page: 1,
-    per_page: 500, // Fetch more to filter
+    per_page: 100,
+    exonerees: true, // filtré par le serveur : toutes les factures exonérées
   });
 
   // Helper to detect exoneration from new taxes_selection OR legacy fields
