@@ -28,6 +28,8 @@ import { getCategoriesLabels, CategorieDocument } from "@/types/documents";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
 import TaxesSelector from "@/components/shared/TaxesSelector";
+import RemiseInput from "@/components/shared/RemiseInput";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
 import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 
 const toArray = (v: any): any[] =>
@@ -268,10 +270,6 @@ export default function ModifierOrdrePage() {
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (currentStep !== 4) {
-      toast.info("Cliquez sur « Suivant » pour aller au récapitulatif avant de valider.");
-      return;
-    }
     if (!api.clientId) { toast.error("Veuillez sélectionner un client"); return; }
 
     const apiPayload = api.toApiPayload(api.taxesSelectionData);
@@ -347,22 +345,7 @@ export default function ModifierOrdrePage() {
               </p>
             </div>
           </div>
-          {currentStep === 4 && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button type="button" onClick={handleSubmit} disabled={updateOrdreMutation.isPending} className="gap-2 shadow-md">
-                {updateOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Enregistrer
-              </Button>
-            </motion.div>
-          )}
         </motion.div>
-
-        <OrdreStepper
-          currentStep={currentStep}
-          categorie={api.categorie || undefined}
-          onStepClick={handleStepClick}
-          stepsValidation={stepsValidation}
-        />
 
         <form
           onSubmit={handleSubmit}
@@ -370,9 +353,9 @@ export default function ModifierOrdrePage() {
             if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "BUTTON") e.preventDefault();
           }}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {api.categorie && currentStep === 2 && (
+          <div className="max-w-4xl mx-auto">
+            <div className="space-y-6">
+              {api.categorie && (
                 <div className="flex items-center gap-3 animate-fade-in">
                   <Badge variant="secondary" className="py-2 px-4 text-sm flex items-center gap-2">
                     {categoriesLabels[api.categorie]?.icon}
@@ -382,7 +365,7 @@ export default function ModifierOrdrePage() {
                 </div>
               )}
 
-              {currentStep === 2 && (
+              {(
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <Card className="transition-all duration-300 hover:shadow-lg overflow-hidden">
                     <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
@@ -395,23 +378,19 @@ export default function ModifierOrdrePage() {
                     <CardContent className="pt-4">
                       <div className="max-w-md space-y-2">
                         <Label>Nom du client *</Label>
-                        <Select value={api.clientId} onValueChange={api.setClientId}>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Sélectionner un client" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {clients.map((c: any) => (
-                              <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <ClientCombobox
+                          clients={clients}
+                          value={api.clientId}
+                          onChange={api.setClientId}
+                          placeholder="Rechercher un client..."
+                        />
                       </div>
                     </CardContent>
                   </Card>
                 </motion.div>
               )}
 
-              {currentStep === 3 && (
+              {(
                 <AnimatePresence mode="wait">
                   {api.categorie === "conteneurs" && isInitialized && (
                     <motion.div key="conteneurs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
@@ -463,12 +442,20 @@ export default function ModifierOrdrePage() {
                 </AnimatePresence>
               )}
 
-              {currentStep === 4 && (
+              {(
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                   {api.montantHT > 0 && (
+                    <RemiseInput
+                      montantHT={api.montantHT}
+                      onChange={api.setRemiseData}
+                      initialType={api.remiseData.type}
+                      initialValeur={api.remiseData.valeur}
+                    />
+                  )}
+                  {api.montantHTApresRemise > 0 && (
                     <TaxesSelector
                       taxes={api.availableTaxes}
-                      montantHT={api.montantHT}
+                      montantHT={api.montantHTApresRemise}
                       onChange={api.handleTaxesChange}
                       value={api.taxesSelectionData}
                     />
@@ -481,6 +468,9 @@ export default function ModifierOrdrePage() {
                     tva={api.tva}
                     css={api.css}
                     montantTTC={api.montantTTC}
+                    remiseMontant={api.remiseData.montantCalcule}
+                    remiseType={api.remiseData.type}
+                    remiseValeur={api.remiseData.valeur}
                     selectedTaxCodes={api.taxesSelectionData.selectedTaxCodes}
                     {...api.toApiPayload(api.taxesSelectionData)}
                   />
@@ -488,46 +478,13 @@ export default function ModifierOrdrePage() {
               )}
 
               {/* Navigation */}
-              <div className="flex justify-between pt-4">
-                {currentStep > 2 ? (
-                  <Button type="button" variant="outline" onClick={handlePrevStep}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Précédent
-                  </Button>
-                ) : <div />}
-                {currentStep < 4 && (
-                  <Button type="button" onClick={handleNextStep} disabled={!api.canProceedToStep(currentStep + 1)}>
-                    Suivant
-                  </Button>
-                )}
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => navigate("/ordres")}>Annuler</Button>
+                <Button type="submit" disabled={updateOrdreMutation.isPending || !api.clientId} className="gap-2">
+                  {updateOrdreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Enregistrer les modifications
+                </Button>
               </div>
-            </div>
-
-            {/* Preview panel */}
-            <div className="lg:col-span-1">
-              <OrdrePreview
-                categorie={api.categorie}
-                client={selectedClient}
-                notes={api.notes}
-                montantHT={api.montantHT}
-                tva={api.tva}
-                css={api.css}
-                montantTTC={api.montantTTC}
-                numeroBL={
-                  api.categorie === "conteneurs"
-                    ? api.conteneursData?.numeroBL
-                    : api.categorie === "conventionnel"
-                    ? api.conventionnelData?.numeroBL
-                    : undefined
-                }
-                typeOperation={api.conteneursData?.typeOperation}
-                typeOperationIndep={api.independantData?.typeOperationIndep}
-                conteneurs={api.conteneursData?.conteneurs?.map((c: any) => ({ numero: c.numero, taille: c.taille }))}
-                lots={api.conventionnelData?.lots?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
-                prestations={api.independantData?.prestations?.map((p: any) => ({ description: p.description, quantite: p.quantite }))}
-                descriptionConventionnel={(api.conventionnelData as any)?.description}
-                selectedTaxCodes={api.taxesSelectionData?.selectedTaxCodes}
-              />
             </div>
           </div>
         </form>

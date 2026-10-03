@@ -41,6 +41,7 @@ import TaxesSelector, { TaxesSelectionData } from "@/components/shared/TaxesSele
 import { useDocumentTaxes, areTaxesSelectionDataEqual } from "@/hooks/useDocumentTaxes";
 import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 import RemiseInput, { RemiseData } from "@/components/shared/RemiseInput";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
 
 export default function ModifierFacturePage() {
   const navigate = useNavigate();
@@ -675,21 +676,8 @@ export default function ModifierFacturePage() {
               </p>
             </div>
           </div>
-          {currentStep === 4 && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button type="button" onClick={handleSubmit} disabled={updateFactureMutation.isPending} className="gap-2 shadow-md">
-                {updateFactureMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Enregistrer
-              </Button>
-            </motion.div>
-          )}
         </motion.div>
 
-        {/* Stepper supprimé : affichage sur une seule page */}
 
         <form 
           onSubmit={handleSubmit}
@@ -699,9 +687,8 @@ export default function ModifierFacturePage() {
             }
           }}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main form area */}
-            <div className="lg:col-span-2 space-y-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="space-y-6">
               {/* Catégorie badge (read-only) */}
               {categorie && (
                 <div className="flex items-center gap-3 animate-fade-in">
@@ -726,16 +713,7 @@ export default function ModifierFacturePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nom du client *</Label>
-                      <Select value={clientId} onValueChange={setClientId}>
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients.map((c) => (
-                            <SelectItem key={c.id} value={String(c.id)}>{c.nom}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ClientCombobox clients={clients} value={clientId} onChange={setClientId} placeholder="Rechercher un client..." />
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
@@ -847,29 +825,6 @@ export default function ModifierFacturePage() {
               </div>
             </div>
 
-            {/* Preview sidebar */}
-            <div className="hidden lg:block">
-              <FacturePreview
-                categorie={categorie}
-                client={selectedClient ? { id: selectedClient.id, nom: selectedClient.nom } : null}
-                montantHT={montantHT}
-                tva={tva}
-                css={css}
-                montantTTC={montantTTC}
-                numeroBL={conteneursData?.numeroBL || conventionnelData?.numeroBL || factureData?.numero_bl}
-                dateEcheance={dateEcheance}
-                typeOperation={conteneursData?.typeOperation || (factureData as any)?.type_operation}
-                typeOperationIndep={independantData?.typeOperationIndep || (factureData as any)?.type_operation_indep}
-                conteneurs={conteneursData?.conteneurs || factureData?.conteneurs?.map((c: any) => ({ numero: c.numero, taille: c.taille }))}
-                lots={conventionnelData?.lots?.map(l => ({ description: l.description || l.numeroLot, quantite: l.quantite })) || factureData?.lots?.map((l: any) => ({ description: l.designation, quantite: l.quantite }))}
-                prestations={independantData?.prestations?.map(p => ({ description: p.description, quantite: p.quantite })) || factureData?.lignes?.map((l: any) => ({ description: l.description, quantite: l.quantite }))}
-                notes={notes}
-                currentStep={currentStep}
-                selectedTaxCodes={taxesSelectionData.selectedTaxCodes}
-                tauxTva={taxRates.TVA}
-                tauxCss={taxRates.CSS}
-              />
-            </div>
           </div>
         </form>
 
