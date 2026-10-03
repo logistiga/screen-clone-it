@@ -40,7 +40,10 @@ class DecaissementGuard
             return;
         }
 
-        if ($banqueId) {
+        if (!$banqueId) {
+            throw new SoldeInsuffisantException('Choisissez la banque pour un paiement par chèque ou virement');
+        }
+        {
             $banque = Banque::whereKey($banqueId)->lockForUpdate()->first();
             if (!$banque) {
                 throw new SoldeInsuffisantException('Banque introuvable');
