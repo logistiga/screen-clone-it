@@ -28,6 +28,7 @@ import { getCategoriesLabels, CategorieDocument } from "@/types/documents";
 import { formatDate, getStatutLabel } from "@/data/mockData";
 import { toast } from "sonner";
 import TaxesSelector from "@/components/shared/TaxesSelector";
+import RemiseInput from "@/components/shared/RemiseInput";
 import { ClientCombobox } from "@/components/shared/ClientCombobox";
 import ConfirmationSaveModal from "@/components/shared/ConfirmationSaveModal";
 
@@ -443,6 +444,14 @@ export default function ModifierOrdrePage() {
 
               {(
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                  {api.montantHT > 0 && (
+                    <RemiseInput
+                      montantHT={api.montantHT}
+                      onChange={api.setRemiseData}
+                      initialType={api.remiseData.type}
+                      initialValeur={api.remiseData.valeur}
+                    />
+                  )}
                   {api.montantHTApresRemise > 0 && (
                     <TaxesSelector
                       taxes={api.availableTaxes}
