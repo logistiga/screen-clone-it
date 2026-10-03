@@ -25,7 +25,7 @@ class ChatGptAuth
             return $this->error('DISABLED', 'Intégration ChatGPT désactivée.', 503);
         }
 
-        $token = (string) $request->bearerToken();
+        $token = $this->extractToken($request);
         if ($token === '') {
             return $this->error('UNAUTHENTICATED', 'Token manquant.', 401);
         }
@@ -52,6 +52,22 @@ class ChatGptAuth
         $this->audit($request, $response, $tokenId, $start);
 
         return $response;
+    }
+
+    /** Certains hébergeurs Apache retirent le header Authorization : on lit aussi les variantes serveur. */
+    private function extractToken(Request $request): string
+    {
+        $token = (string) $request->bearerToken();
+        if ($token !== '') {
+            return $token;
+        }
+        foreach (['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'] as $key) {
+            $h = (string) $request->server($key, '');
+            if (stripos($h, 'Bearer ') === 0) {
+                return trim(substr($h, 7));
+            }
+        }
+        return trim((string) $request->header('X-Api-Key', ''));
     }
 
     /** Renvoie un identifiant non sensible (empreinte courte) du token reconnu. */
