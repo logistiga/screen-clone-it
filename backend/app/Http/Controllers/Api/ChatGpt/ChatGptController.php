@@ -123,15 +123,15 @@ class ChatGptController extends Controller
     public function unpaidInvoices(Request $request): JsonResponse
     {
         [$limit, $page] = $this->engine->paging($request->query());
-        $q = Facture::query()->with('client:id,nom')
-            ->select(['id', 'numero', 'client_id', 'date_creation', 'date_echeance', 'montant_ttc', 'montant_paye', 'statut'])
-            ->where('statut', '!=', 'annulee')->whereColumn('montant_paye', '<', 'montant_ttc');
+        $q = Facture::query()->where('statut', '!=', 'annulee')->whereColumn('montant_paye', '<', 'montant_ttc');
         if ($request->filled('client_id')) {
             $q->where('client_id', (int) $request->query('client_id'));
         }
         $total = (clone $q)->count();
         $reste = round((float) (clone $q)->toBase()->selectRaw('SUM(montant_ttc - montant_paye) as r')->value('r'));
-        $rows = $q->orderBy('date_echeance')->forPage($page, $limit)->get();
+        $rows = $q->with('client:id,nom')
+            ->select(['id', 'numero', 'client_id', 'date_creation', 'date_echeance', 'montant_ttc', 'montant_paye', 'statut'])
+            ->orderBy('date_echeance')->forPage($page, $limit)->get();
 
         return $this->ok($rows->toArray(), ['page' => $page, 'limit' => $limit, 'total' => $total, 'reste_a_payer_total' => $reste]);
     }
