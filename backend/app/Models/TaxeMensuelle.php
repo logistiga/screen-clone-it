@@ -138,6 +138,11 @@ class TaxeMensuelle extends Model
         $tauxTVA = (float) ($config['tva_taux'] ?? 18);
         $tauxCSS = (float) ($config['css_taux'] ?? 1);
 
+        // Garder le taux déjà appliqué au mois (ne pas réécrire l'historique avec le taux du jour)
+        $anciens = self::where('annee', $annee)->where('mois', $mois)->pluck('taux_applique', 'type_taxe');
+        $tauxTVA = (float) ($anciens['TVA'] ?? $tauxTVA);
+        $tauxCSS = (float) ($anciens['CSS'] ?? $tauxCSS);
+
         // Supprimer les agrégations non clôturées
         self::where('annee', $annee)
             ->where('mois', $mois)

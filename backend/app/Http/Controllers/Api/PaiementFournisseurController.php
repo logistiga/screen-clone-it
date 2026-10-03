@@ -231,6 +231,8 @@ class PaiementFournisseurController extends Controller
             $description = "Avance #{$numTranche} - {$pf->fournisseur} - Réf: {$pf->reference}";
             $refUnique = "PF-{$id}-T{$numTranche}";
 
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montant, $refUnique);
+
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
                 'categorie' => 'Paiement Fournisseur',

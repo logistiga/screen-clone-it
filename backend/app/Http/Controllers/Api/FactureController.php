@@ -88,6 +88,13 @@ class FactureController extends Controller
             $query->whereBetween('date_creation', [$dateRange['start'], $dateRange['end']]);
         }
 
+        if ($request->boolean('exonerees')) {
+            $query->where(function ($q) {
+                $q->where('exonere_tva', true)->orWhere('exonere_css', true)
+                  ->orWhere('taxes_selection', 'like', '%"has_exoneration":true%');
+            });
+        }
+
         if ($request->boolean('impayees')) {
             $query->whereIn('statut', ['Envoyée', 'Partiellement payée']);
         }

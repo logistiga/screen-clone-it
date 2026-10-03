@@ -58,8 +58,8 @@ class ExportCaisseGlobaleService
             $rows[] = ['=== DÉTAIL DES MOUVEMENTS ===', '', '', '', '', '', '', '', '', '', '', ''];
             
             foreach ($data['mouvements'] as $mouvement) {
-                $entree = $mouvement->type === 'entree' ? $mouvement->montant : 0;
-                $sortie = $mouvement->type === 'sortie' ? $mouvement->montant : 0;
+                $entree = strtolower((string) $mouvement->type) === 'entree' ? $mouvement->montant : 0;
+                $sortie = strtolower((string) $mouvement->type) === 'sortie' ? $mouvement->montant : 0;
                 $solde += ($entree - $sortie);
                 
                 $clientNom = $mouvement->client 
@@ -71,7 +71,7 @@ class ExportCaisseGlobaleService
                     $mouvement->created_at ? $mouvement->created_at->format('H:i') : '-',
                     $mouvement->source === 'caisse' ? 'Caisse' : 'Banque',
                     $mouvement->banque->nom ?? '-',
-                    $mouvement->type === 'entree' ? 'Entrée' : 'Sortie',
+                    strtolower((string) $mouvement->type) === 'entree' ? 'Entrée' : 'Sortie',
                     $mouvement->categorie ?? 'Paiement',
                     $mouvement->description ?? '-',
                     $clientNom,
@@ -128,7 +128,8 @@ class ExportCaisseGlobaleService
         if (!empty($filters['source']) && $filters['source'] !== 'all') $query->where('source', $filters['source']);
         if (!empty($filters['banque_id'])) $query->where('banque_id', $filters['banque_id']);
 
-        $mouvements = $query->orderBy('date', 'asc')->orderBy('created_at', 'asc')->get();
+        $mouvements = $query->orderBy('date', 'asc')->orderBy('created_at', 'asc')->get()
+            ->each(fn($m) => $m->type = strtolower((string) $m->type));
 
         $caisseEntrees = $mouvements->where('source', 'caisse')->where('type', 'entree')->sum('montant');
         $caisseSorties = $mouvements->where('source', 'caisse')->where('type', 'sortie')->sum('montant');
@@ -138,7 +139,7 @@ class ExportCaisseGlobaleService
         $banquesTotals = [];
         $mouvementsBanque = $mouvements->where('source', 'banque');
         foreach ($mouvementsBanque->groupBy('banque_id') as $banqueId => $mvts) {
-            $banque = Banque::find($banqueId);
+            $banque = Banque::withTrashed()->find($banqueId);
             if ($banque) {
                 $banquesTotals[] = [
                     'banque_id' => $banqueId,

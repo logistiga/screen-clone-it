@@ -175,7 +175,7 @@ class PrimeController extends Controller
 
         $stats = [
             'total_primes' => Prime::whereBetween('created_at', [$dateDebut, $dateFin])->sum('montant'),
-            'total_payees' => PaiementPrime::whereBetween('date_paiement', [$dateDebut, $dateFin])->sum('montant'),
+            'total_payees' => PaiementPrime::whereBetween('date', [$dateDebut, $dateFin])->sum('montant'),
             'en_attente' => Prime::where('statut', 'En attente')->sum('montant'),
             'par_representant' => Prime::whereBetween('created_at', [$dateDebut, $dateFin])
                 ->with('representant')

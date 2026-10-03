@@ -32,6 +32,12 @@ class MouvementCaisse extends Model
         'date' => 'date',
     ];
 
+    /** Type toujours écrit en minuscules ('entree' / 'sortie'). */
+    public function setTypeAttribute($value): void
+    {
+        $this->attributes['type'] = strtolower((string) $value);
+    }
+
     // Relations
     public function paiement()
     {
