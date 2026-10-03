@@ -13,7 +13,6 @@ import {
   ClientInfoCard,
   RecapitulatifCard,
   DevisStepper,
-  DevisPreview,
 } from "@/components/devis/shared";
 import {
   DevisConteneursForm,
