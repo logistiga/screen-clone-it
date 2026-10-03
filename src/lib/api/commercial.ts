@@ -882,6 +882,8 @@ export interface MouvementCaisseData {
   categorie: string;
   banque_id?: string;
   beneficiaire?: string;
+  /** AAAA-MM-JJ, 7 jours en arrière au maximum */
+  date?: string;
 }
 
 export interface MouvementCaisse {
