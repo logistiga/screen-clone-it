@@ -153,7 +153,7 @@ export const ordresApi = {
 
 // Factures API
 export const facturesApi = {
-  getAll: async (params?: { search?: string; statut?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number }) => {
+  getAll: async (params?: { search?: string; statut?: string; client_id?: string; date_debut?: string; date_fin?: string; page?: number; per_page?: number; exonerees?: boolean }) => {
     const response = await api.get<PaginatedResponse<Facture>>('/factures', { params });
     return response.data;
   },

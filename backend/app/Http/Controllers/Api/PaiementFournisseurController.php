@@ -231,6 +231,8 @@ class PaiementFournisseurController extends Controller
             $description = "Avance #{$numTranche} - {$pf->fournisseur} - Réf: {$pf->reference}";
             $refUnique = "PF-{$id}-T{$numTranche}";
 
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montant, $refUnique);
+
             $mouvement = MouvementCaisse::create([
                 'type' => 'Sortie',
                 'categorie' => 'Paiement Fournisseur',
@@ -255,6 +257,7 @@ class PaiementFournisseurController extends Controller
             Audit::log('create', 'avance_fournisseur', "Avance #{$numTranche}: {$montant} pour {$pf->fournisseur} (reste: {$nouveauReste})", $trancheId);
 
             DB::commit();
+            \App\Services\Caisse\DecaissementGuard::liberer();
 
             return response()->json([
                 'message' => 'Avance enregistrée avec succès',
@@ -265,8 +268,12 @@ class PaiementFournisseurController extends Controller
                 'est_solde' => $nouveauReste <= 0,
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
+            \App\Services\Caisse\DecaissementGuard::liberer();
+            if ($e instanceof \App\Services\Caisse\SoldeInsuffisantException) {
+                return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+            }
             return response()->json([
                 'message' => 'Erreur lors de l\'avance',
                 'error' => $e->getMessage(),

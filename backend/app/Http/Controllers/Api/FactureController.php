@@ -88,13 +88,20 @@ class FactureController extends Controller
             $query->whereBetween('date_creation', [$dateRange['start'], $dateRange['end']]);
         }
 
+        if ($request->boolean('exonerees')) {
+            $query->where(function ($q) {
+                $q->where('exonere_tva', true)->orWhere('exonere_css', true)
+                  ->orWhere('taxes_selection', 'like', '%"has_exoneration":true%');
+            });
+        }
+
         if ($request->boolean('impayees')) {
             $query->whereIn('statut', ['Envoyée', 'Partiellement payée']);
         }
 
         // Tri et pagination sécurisés
         $sort = $this->validateSortParameters($request, $this->allowedSortColumns);
-        $pagination = $this->validatePaginationParameters($request);
+        $pagination = $this->validatePaginationParameters($request, 15, $request->boolean('exonerees') ? 1000 : 100);
 
         $factures = $query->orderBy($sort['column'], $sort['direction'])
             ->paginate($pagination['per_page']);
