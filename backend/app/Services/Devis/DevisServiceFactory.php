@@ -172,6 +172,8 @@ class DevisServiceFactory
                 $this->independantService->creerLignes($devis, $lignes);
             }
 
+            // Oublier les anciennes lignes gardées en mémoire avant de recalculer
+            $devis->unsetRelations();
             $service->calculerTotaux($devis);
 
             Log::info('Devis modifié via Factory', [

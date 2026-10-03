@@ -100,7 +100,7 @@ export default function DevisDetailPage() {
     try {
       const result = await convertMutation.mutateAsync(id);
       // Rediriger vers l'ordre créé en mode édition pour compléter les données
-      const ordreId = result?.data?.id;
+      const ordreId = result?.ordre?.id ?? result?.data?.id;
       if (ordreId) {
         navigate(`/ordres/${ordreId}/modifier`);
       } else {

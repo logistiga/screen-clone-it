@@ -22,8 +22,8 @@ class DevisConversionController extends Controller
 {
     public function convertToOrdre(Devis $devis): JsonResponse
     {
-        if (strtolower($devis->statut) === 'converti') {
-            return response()->json(['message' => 'Ce devis a déjà été converti'], 422);
+        if ($bloque = $this->dejaTransforme($devis)) {
+            return $bloque;
         }
 
         try {
@@ -142,8 +142,8 @@ class DevisConversionController extends Controller
 
     public function convertToFacture(Devis $devis): JsonResponse
     {
-        if (strtolower($devis->statut) === 'facture') {
-            return response()->json(['message' => 'Ce devis a déjà été facturé'], 422);
+        if ($bloque = $this->dejaTransforme($devis)) {
+            return $bloque;
         }
 
         try {
@@ -291,6 +291,12 @@ class DevisConversionController extends Controller
                     'notes' => $devis->notes,
                 ]);
                 $newDevis->forceFill([
+                    'taxes_selection' => $devis->taxes_selection,
+                    'exonere_tva' => $devis->exonere_tva ?? false,
+                    'exonere_css' => $devis->exonere_css ?? false,
+                    'motif_exoneration' => $devis->motif_exoneration,
+                ]);
+                $newDevis->forceFill([
                     'numero' => Devis::genererNumero(),
                     'date_creation' => now()->toDateString(),
                     'date_validite' => now()->addDays(30)->toDateString(),
@@ -313,7 +319,10 @@ class DevisConversionController extends Controller
                     $newDevis->lots()->create($lot->only(['numero_lot', 'description', 'quantite', 'poids', 'volume', 'prix_unitaire']));
                 }
 
-                $newDevis->calculerTotaux();
+                // Même calcul que création/modification (arrondi FCFA entier, taxes choisies)
+                app(\App\Services\Devis\DevisServiceFactory::class)
+                    ->getService(DocumentCategory::normalize($newDevis->categorie))
+                    ->calculerTotaux($newDevis->fresh(['conteneurs.operations', 'lots', 'lignes']));
 
                 return $newDevis;
             });
@@ -329,5 +338,20 @@ class DevisConversionController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Un devis ne peut être transformé qu'une seule fois (OT OU facture).
+     */
+    private function dejaTransforme(Devis $devis): ?JsonResponse
+    {
+        if (in_array(strtolower((string) $devis->statut), ['converti', 'facture'], true)
+            || OrdreTravail::where('devis_id', $devis->id)->exists()
+            || \App\Models\Facture::where('devis_id', $devis->id)->exists()) {
+            return response()->json([
+                'message' => 'Ce devis a déjà été transformé en ordre de travail ou en facture',
+            ], 422);
+        }
+        return null;
     }
 }

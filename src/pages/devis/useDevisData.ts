@@ -46,11 +46,11 @@ export function useDevisData() {
         await deleteDevisMutation.mutateAsync(confirmAction.id);
       } else if (confirmAction.type === 'convertir') {
         const result = await convertToOrdreMutation.mutateAsync(confirmAction.id);
-        const ordreId = result?.data?.id;
+        const ordreId = result?.ordre?.id ?? result?.data?.id;
         navigate(ordreId ? `/ordres/${ordreId}/modifier` : "/ordres");
       } else if (confirmAction.type === 'facturer') {
         const result = await convertToFactureMutation.mutateAsync(confirmAction.id);
-        const factureId = result?.data?.id;
+        const factureId = result?.facture?.id ?? result?.data?.id;
         navigate(factureId ? `/factures/${factureId}` : "/factures");
       }
     } catch {

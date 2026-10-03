@@ -68,12 +68,12 @@ export const devisApi = {
   },
   
   convertToOrdre: async (id: string) => {
-    const response = await api.post<{ data: OrdreTravail; message: string }>(`/devis/${id}/convert-ordre`);
+    const response = await api.post<{ data?: OrdreTravail; ordre?: OrdreTravail; message: string }>(`/devis/${id}/convert-ordre`);
     return response.data;
   },
   
   convertToFacture: async (id: string) => {
-    const response = await api.post<{ data: Facture; message: string }>(`/devis/${id}/convert-facture`);
+    const response = await api.post<{ data?: Facture; facture?: Facture; message: string }>(`/devis/${id}/convert-facture`);
     return response.data;
   },
   
