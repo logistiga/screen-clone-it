@@ -10,11 +10,18 @@ servers:
   - url: https://facturation.logistiga.pro/backend/public/api/gpt
 security:
   - bearerAuth: []
+  - apiKeyHeader: []
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+      description: Token machine-to-machine (CHATGPT_API_TOKENS côté serveur). Aucun compte utilisateur.
+    apiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Repli si un proxy retire le header Authorization.
   schemas:
     Error:
       type: object
@@ -53,11 +60,16 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+          example: { success: false, error: { code: INVALID_FIELD, message: "Champ non autorisé pour cette ressource." } }
     Ok:
       description: Succès
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Success' }
+          example:
+            success: true
+            data: [{ statut: brouillon, count_id: 16, sum_montant_ttc: 95592846 }]
+            meta: { groups: 1, resource: devis }
 paths:
   /schema:
     get:
