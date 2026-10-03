@@ -162,6 +162,7 @@ class CaisseGaragePrimesController extends Controller
 
         try {
             DB::beginTransaction();
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montantDecaisse, $refUnique);
 
             $beneficiaire = $item->beneficiaire ?: 'Mécaniciens';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
@@ -194,6 +195,7 @@ class CaisseGaragePrimesController extends Controller
 
             Audit::log('create', 'decaissement_garage_prime', "Décaissement prime Garage: {$montantDecaisse} - {$beneficiaire}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
             DB::commit();
+            \App\Services\Caisse\DecaissementGuard::liberer();
 
             return response()->json([
                 'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
@@ -201,6 +203,10 @@ class CaisseGaragePrimesController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
+            \App\Services\Caisse\DecaissementGuard::liberer();
+            if ($e instanceof \App\Services\Caisse\SoldeInsuffisantException) {
+                return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+            }
             return response()->json(['message' => 'Erreur', 'error' => $e->getMessage()], 500);
         }
     }

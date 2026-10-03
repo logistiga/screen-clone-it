@@ -126,6 +126,7 @@ class CaisseEnAttenteActionsController extends Controller
             }
 
             DB::beginTransaction();
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montantDecaisse, $refUnique);
 
             $beneficiaire = $prime->beneficiaire ?? $prime->fournisseur_nom ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
@@ -154,6 +155,7 @@ class CaisseEnAttenteActionsController extends Controller
 
             Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime {$source}: {$montantDecaisse} - {$beneficiaire}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
             DB::commit();
+            \App\Services\Caisse\DecaissementGuard::liberer();
 
             return response()->json([
                 'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
@@ -162,6 +164,10 @@ class CaisseEnAttenteActionsController extends Controller
 
         } catch (\Throwable $e) {
             DB::rollBack();
+            \App\Services\Caisse\DecaissementGuard::liberer();
+            if ($e instanceof \App\Services\Caisse\SoldeInsuffisantException) {
+                return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+            }
             return response()->json(['message' => 'Erreur lors du décaissement', 'error' => $e->getMessage()], 500);
         }
     }

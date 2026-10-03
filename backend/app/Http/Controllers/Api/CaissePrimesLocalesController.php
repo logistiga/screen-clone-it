@@ -343,6 +343,7 @@ class CaissePrimesLocalesController extends Controller
             }
 
             DB::beginTransaction();
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montantDecaisse, $refUnique);
 
             $beneficiaire = $type === 'representant'
                 ? ($prime->representant ? "{$prime->representant->nom} {$prime->representant->prenom}" : 'N/A')
@@ -386,6 +387,7 @@ class CaissePrimesLocalesController extends Controller
             }
 
             DB::commit();
+            \App\Services\Caisse\DecaissementGuard::liberer();
 
             return response()->json([
                 'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
@@ -393,6 +395,10 @@ class CaissePrimesLocalesController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
+            \App\Services\Caisse\DecaissementGuard::liberer();
+            if ($e instanceof \App\Services\Caisse\SoldeInsuffisantException) {
+                return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+            }
             return response()->json(['message' => 'Erreur lors du décaissement', 'error' => $e->getMessage()], 500);
         }
     }

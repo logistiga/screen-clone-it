@@ -220,6 +220,7 @@ class CaisseCnvController extends Controller
             }
 
             DB::beginTransaction();
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montantDecaisse, $refUnique);
 
             $beneficiaire = $prime->beneficiaire ?? 'N/A';
             $type = $prime->type ?? 'CNV';
@@ -255,6 +256,7 @@ class CaisseCnvController extends Controller
             Audit::log('create', 'decaissement_caisse_attente', "Décaissement prime CNV: {$montantDecaisse} - {$beneficiaire}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
 
             DB::commit();
+            \App\Services\Caisse\DecaissementGuard::liberer();
 
             return response()->json([
                 'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
@@ -262,6 +264,10 @@ class CaisseCnvController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
+            \App\Services\Caisse\DecaissementGuard::liberer();
+            if ($e instanceof \App\Services\Caisse\SoldeInsuffisantException) {
+                return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+            }
             return response()->json([
                 'message' => 'Erreur lors du décaissement',
                 'error' => $e->getMessage(),

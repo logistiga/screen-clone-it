@@ -243,6 +243,7 @@ class CaisseHorslbvController extends Controller
             }
 
             DB::beginTransaction();
+            \App\Services\Caisse\DecaissementGuard::avant($request->mode_paiement, $request->banque_id ? (int) $request->banque_id : null, (float) $montantDecaisse, $refUnique);
 
             $beneficiaire = $fiche->numero_fiche ?? 'N/A';
             $isCaisse = in_array($request->mode_paiement, ['Espèces', 'Mobile Money']);
@@ -277,6 +278,7 @@ class CaisseHorslbvController extends Controller
             Audit::log('create', 'decaissement_caisse_attente', "Décaissement dépense HORSLBV: {$montantDecaisse} - {$fiche->numero_fiche}" . ($isPaiementPartiel ? ' (partiel)' : ''), $mouvement->id);
 
             DB::commit();
+            \App\Services\Caisse\DecaissementGuard::liberer();
 
             return response()->json([
                 'message' => $isPaiementPartiel ? 'Avance enregistrée avec succès' : 'Décaissement validé avec succès',
@@ -284,6 +286,10 @@ class CaisseHorslbvController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
+            \App\Services\Caisse\DecaissementGuard::liberer();
+            if ($e instanceof \App\Services\Caisse\SoldeInsuffisantException) {
+                return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+            }
             return response()->json([
                 'message' => 'Erreur lors du décaissement',
                 'error' => $e->getMessage(),
