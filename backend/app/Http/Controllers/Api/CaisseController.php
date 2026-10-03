@@ -34,7 +34,7 @@ class CaisseController extends Controller
     protected array $allowedTypes = ['Entrée', 'Sortie', 'entree', 'sortie'];
     protected array $allowedSources = ['caisse', 'banque'];
 
-    public function __construct(CaisseService $caisseService)
+    public function __construct(CaisseService $caisseService, private CaisseMouvementService $mouvementService)
     {
         $this->caisseService = $caisseService;
     }
