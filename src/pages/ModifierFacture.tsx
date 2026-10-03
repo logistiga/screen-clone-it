@@ -676,13 +676,8 @@ export default function ModifierFacturePage() {
               </p>
             </div>
           </div>
-                Enregistrer
-              </Button>
-            </motion.div>
-          )}
         </motion.div>
 
-        {/* Stepper supprimé : affichage sur une seule page */}
 
         <form 
           onSubmit={handleSubmit}
