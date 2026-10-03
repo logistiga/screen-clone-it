@@ -84,6 +84,7 @@ export function EntreeCaisseModal({
     setMontant(0);
     setDescription("");
     setSource("");
+    setDateMvt(todayIso());
   };
 
   return (

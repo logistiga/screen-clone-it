@@ -146,6 +146,7 @@ export function SortieCaisseModal({
     setReference("");
     setCategorie("");
     setBeneficiaire("");
+    setDateMvt(todayIso());
     if (!initialBanqueId) {
       setBanqueId("");
     }
