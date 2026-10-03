@@ -101,7 +101,7 @@ class FactureController extends Controller
 
         // Tri et pagination sécurisés
         $sort = $this->validateSortParameters($request, $this->allowedSortColumns);
-        $pagination = $this->validatePaginationParameters($request);
+        $pagination = $this->validatePaginationParameters($request, 15, $request->boolean('exonerees') ? 1000 : 100);
 
         $factures = $query->orderBy($sort['column'], $sort['direction'])
             ->paginate($pagination['per_page']);
