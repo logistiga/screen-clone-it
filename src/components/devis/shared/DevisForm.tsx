@@ -128,7 +128,7 @@ export default function DevisForm({
 
   // Visibility helpers
   const showStep = (step: number) => {
-    if (isEdit) return currentStep === step;
+    if (isEdit && step === 1) return false;
     if (isMobile) return currentStep === step;
     // desktop create: step 1 always; 2-4 once cat selected; 5 mobile-only
     if (step === 1) return true;
@@ -157,7 +157,7 @@ export default function DevisForm({
       )}
 
       {/* Étape 2: Client */}
-      {((!isEdit && showStep(2) && categorie) || (isEdit && currentStep === 2)) && (
+      {showStep(2) && categorie && (
         <div className="animate-fade-in space-y-4">
           {!isEdit && isMobile && categorie && (
             <div className="flex items-center gap-3">
@@ -185,7 +185,7 @@ export default function DevisForm({
       )}
 
       {/* Étape 3: Détails */}
-      {((!isEdit && showStep(3) && categorie) || (isEdit && currentStep === 3)) && (
+      {showStep(3) && categorie && (
         <div className="animate-fade-in">
           {categorie === "conteneurs" && (
             <DevisConteneursForm
@@ -249,7 +249,7 @@ export default function DevisForm({
       )}
 
       {/* Étape 4: Récapitulatif */}
-      {((!isEdit && showStep(4) && categorie) || (isEdit && currentStep === 4)) && (
+      {showStep(4) && categorie && (
         <div className="animate-fade-in space-y-6">
           <Card>
             <CardHeader>
@@ -300,7 +300,7 @@ export default function DevisForm({
       )}
 
       {/* Étape 5: Aperçu mobile (création) ou édition */}
-      {((!isEdit && isMobile && currentStep === 5 && categorie) || (isEdit && currentStep === 5)) && (
+      {isMobile && currentStep === 5 && categorie && (
         <div className="animate-fade-in">
           <Card className="border-primary/20">
             <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
@@ -337,7 +337,7 @@ export default function DevisForm({
       {(isEdit || categorie) && (
         <div className="flex justify-between gap-4 pb-6 animate-fade-in">
           <div>
-            {((isEdit && currentStep > 2) || (!isEdit && isMobile && currentStep > 1)) && (
+            {isMobile && currentStep > (isEdit ? 2 : 1) && (
               <Button type="button" variant="outline" onClick={handlePrevStep} className="gap-2">
                 <ChevronLeft className="h-4 w-4" />
                 Précédent
@@ -354,7 +354,7 @@ export default function DevisForm({
               Annuler
             </Button>
 
-            {((isEdit || isMobile) && currentStep < 5) ? (
+            {(isMobile && currentStep < 5) ? (
               <Button
                 type="button"
                 onClick={handleNextStep}
@@ -381,7 +381,7 @@ export default function DevisForm({
   );
 
   // Stepper rendering
-  const stepper = (isEdit || isMobile) ? (
+  const stepper = isMobile ? (
     <DevisStepper
       currentStep={currentStep}
       onStepClick={(step) => {
@@ -392,39 +392,7 @@ export default function DevisForm({
     />
   ) : null;
 
-  // Layout: edit = grid 3 cols with preview; create = max-w-4xl single column
-  if (isEdit) {
-    return (
-      <>
-        {stepper}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <div className="animate-fade-in">{formContent}</div>
-          </div>
-          <div className="lg:col-span-1">
-            <DevisPreview
-              categorie={categorie}
-              client={selectedClient}
-              dateValidite={dateValidite}
-              notes={notes}
-              conteneursData={conteneursData}
-              conventionnelData={conventionnelData}
-              independantData={independantData}
-              montantHT={montantHT}
-              tva={tva}
-              css={css}
-              montantTTC={montantTTC}
-              remiseData={remiseData}
-              armateurs={armateurs}
-              transitaires={transitaires}
-              representants={representants}
-            />
-          </div>
-        </div>
-      </>
-    );
-  }
-
+  // Même mise en page en création et en modification
   return (
     <>
       {stepper}
