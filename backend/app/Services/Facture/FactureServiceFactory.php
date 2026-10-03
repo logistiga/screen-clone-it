@@ -237,6 +237,12 @@ class FactureServiceFactory
             $ancienClientId = $facture->client_id;
             $categorie = DocumentCategory::normalize($data['categorie'] ?? $facture->categorie);
             $data['categorie'] = $categorie;
+
+            // Mapper bl_numero (API) -> numero_bl (colonne)
+            if (array_key_exists('bl_numero', $data) && !array_key_exists('numero_bl', $data)) {
+                $data['numero_bl'] = $data['bl_numero'];
+            }
+            unset($data['bl_numero'], $data['type_document']);
             $service = $this->getService($categorie);
 
             // Sauvegarder l'état avant modification pour recalcul des taxes
