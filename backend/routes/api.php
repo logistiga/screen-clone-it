@@ -54,6 +54,9 @@ Route::prefix('security')->group(function () {
         ->name('security.suspicious-login.status');
 });
 
+// Intégration ChatGPT (token dédié, lecture seule)
+require __DIR__.'/api_chatgpt.php';
+
 // ============================================
 // ROUTES PROTÉGÉES (auth:sanctum + user.active)
 // ============================================
