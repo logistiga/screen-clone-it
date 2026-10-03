@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DateMouvementField, todayIso } from "@/components/caisse/DateMouvementField";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export function SortieCaisseModal({
   const [reference, setReference] = useState("");
   const [categorie, setCategorie] = useState("");
   const [beneficiaire, setBeneficiaire] = useState("");
+  const [dateMvt, setDateMvt] = useState(todayIso());
 
   const { data: banques = [], isLoading: banquesLoading } = useBanques({ actif: true });
   const { data: categoriesData } = useCategoriesDepenses({ type: 'Sortie', actif: true });
@@ -120,6 +122,7 @@ export function SortieCaisseModal({
         categorie,
         banque_id: type === "banque" ? banqueId : undefined,
         beneficiaire: beneficiaire || undefined,
+        date: dateMvt,
       });
 
       const banque = type === "banque" ? selectedBanque : null;
@@ -143,6 +146,7 @@ export function SortieCaisseModal({
     setReference("");
     setCategorie("");
     setBeneficiaire("");
+    setDateMvt(todayIso());
     if (!initialBanqueId) {
       setBanqueId("");
     }
@@ -242,6 +246,8 @@ export function SortieCaisseModal({
               placeholder="0"
             />
           </div>
+
+          <DateMouvementField value={dateMvt} onChange={setDateMvt} />
 
           {/* Bénéficiaire */}
           <div className="space-y-2">

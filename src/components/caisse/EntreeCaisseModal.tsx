@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DateMouvementField, todayIso } from "./DateMouvementField";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export function EntreeCaisseModal({
   const [montant, setMontant] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [source, setSource] = useState("");
+  const [dateMvt, setDateMvt] = useState(todayIso());
 
   const createMouvement = useCreateMouvementCaisse();
 
@@ -62,6 +64,7 @@ export function EntreeCaisseModal({
         description,
         categorie: 'Entrée manuelle',
         beneficiaire: source || undefined,
+        date: dateMvt,
       });
 
       toast({
@@ -81,6 +84,7 @@ export function EntreeCaisseModal({
     setMontant(0);
     setDescription("");
     setSource("");
+    setDateMvt(todayIso());
   };
 
   return (
@@ -112,6 +116,8 @@ export function EntreeCaisseModal({
               placeholder="0"
             />
           </div>
+
+          <DateMouvementField value={dateMvt} onChange={setDateMvt} />
 
           {/* Source/Provenance */}
           <div className="space-y-2">

@@ -55,54 +55,6 @@ class CaisseService
     }
 
     /**
-     * Transférer entre caisse et banque
-     */
-    public function transferer(array $data): array
-    {
-        return DB::transaction(function () use ($data) {
-            $mouvements = [];
-
-            // Sortie de la source
-            $sortie = MouvementCaisse::create([
-                'type' => 'sortie',
-                'montant' => $data['montant'],
-                'date' => $data['date'],
-                'description' => 'Transfert vers ' . ($data['destination_banque_id'] ? 'banque' : 'caisse'),
-                'source' => $data['source_banque_id'] ? 'banque' : 'caisse',
-                'banque_id' => $data['source_banque_id'] ?? null,
-            ]);
-            $mouvements[] = $sortie;
-
-            // Entrée à la destination
-            $entree = MouvementCaisse::create([
-                'type' => 'entree',
-                'montant' => $data['montant'],
-                'date' => $data['date'],
-                'description' => 'Transfert depuis ' . ($data['source_banque_id'] ? 'banque' : 'caisse'),
-                'source' => $data['destination_banque_id'] ? 'banque' : 'caisse',
-                'banque_id' => $data['destination_banque_id'] ?? null,
-            ]);
-            $mouvements[] = $entree;
-
-            // Mettre à jour les soldes bancaires
-            if ($data['source_banque_id']) {
-                $this->mettreAJourSoldeBanque($data['source_banque_id'], $data['montant'], 'debit');
-            }
-            if ($data['destination_banque_id']) {
-                $this->mettreAJourSoldeBanque($data['destination_banque_id'], $data['montant'], 'credit');
-            }
-
-            Log::info('Transfert effectué', [
-                'montant' => $data['montant'],
-                'source_banque_id' => $data['source_banque_id'] ?? 'caisse',
-                'destination_banque_id' => $data['destination_banque_id'] ?? 'caisse',
-            ]);
-
-            return $mouvements;
-        });
-    }
-
-    /**
      * Obtenir le solde de la caisse
      */
     public function getSoldeCaisse(): float

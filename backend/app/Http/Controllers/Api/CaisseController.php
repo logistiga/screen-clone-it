@@ -9,6 +9,9 @@ use App\Http\Traits\SecureQueryParameters;
 use App\Models\MouvementCaisse;
 use App\Models\Audit;
 use App\Services\CaisseService;
+use App\Services\Caisse\CaisseMouvementService;
+use App\Services\Caisse\SoldeInsuffisantException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -31,7 +34,7 @@ class CaisseController extends Controller
     protected array $allowedTypes = ['Entrée', 'Sortie', 'entree', 'sortie'];
     protected array $allowedSources = ['caisse', 'banque'];
 
-    public function __construct(CaisseService $caisseService)
+    public function __construct(CaisseService $caisseService, private CaisseMouvementService $mouvementService)
     {
         $this->caisseService = $caisseService;
     }
@@ -83,57 +86,30 @@ class CaisseController extends Controller
 
     public function store(StoreMouvementCaisseRequest $request): JsonResponse
     {
+        $type = $request->type === 'Entrée' ? 'entree' : 'sortie';
+        $data = [
+            'montant' => $request->montant,
+            'date' => $request->input('date') ?: now()->toDateString(),
+            'description' => $request->description,
+            'categorie' => $request->categorie,
+            'source' => $request->source,
+            'banque_id' => $request->source === 'banque' ? $request->banque_id : null,
+            'beneficiaire' => $request->beneficiaire,
+        ];
+
         try {
-            // Vérifier le solde selon la source
-            if ($request->type === 'Sortie') {
-                if ($request->source === 'caisse') {
-                    $solde = $this->caisseService->getSoldeCaisse();
-                    if ($request->montant > $solde) {
-                        return response()->json([
-                            'message' => 'Solde caisse insuffisant',
-                            'solde_actuel' => $solde
-                        ], 422);
-                    }
-                } elseif ($request->source === 'banque' && $request->banque_id) {
-                    $banque = \App\Models\Banque::find($request->banque_id);
-                    if ($banque && $request->montant > $banque->solde) {
-                        return response()->json([
-                            'message' => 'Solde bancaire insuffisant',
-                            'solde_actuel' => $banque->solde
-                        ], 422);
-                    }
-                }
-            }
-
-            $data = [
-                'montant' => $request->montant,
-                'date' => now(),
-                'description' => $request->description,
-                'categorie' => $request->categorie,
-                'source' => $request->source,
-                'banque_id' => $request->source === 'banque' ? $request->banque_id : null,
-                'beneficiaire' => $request->beneficiaire,
-            ];
-
-            $mouvement = $request->type === 'Entrée' 
-                ? $this->caisseService->creerEntree($data)
-                : $this->caisseService->creerSortie($data);
-
-            Audit::log('create', 'caisse', "Mouvement {$request->source}: {$request->type} - {$request->montant}", $mouvement->id);
-
-            // Broadcaster l'event caisse
-            event(new \App\Events\CaisseMouvement(
-                $request->type === 'Entrée' ? 'entree' : 'sortie',
-                $request->montant,
-                $request->description ?? '',
-                $request->source ?? 'caisse'
-            ));
-
-            return response()->json(new MouvementCaisseResource($mouvement), 201);
-
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Erreur lors de la création', 'error' => $e->getMessage()], 500);
+            $mouvement = $this->mouvementService->creer($type, $data);
+        } catch (SoldeInsuffisantException $e) {
+            return response()->json(['message' => $e->getMessage(), 'solde_actuel' => $e->soldeActuel], $e->status);
+        } catch (\Throwable $e) {
+            Log::error('Caisse store', ['error' => $e->getMessage()]);
+            return response()->json(['message' => "Erreur lors de l'enregistrement du mouvement"], 422);
         }
+
+        Audit::log('create', 'caisse', "Mouvement {$request->source}: {$request->type} - {$request->montant}", $mouvement->id);
+        $this->diffuser($type, (float) $request->montant, (string) ($request->description ?? ''), (string) $request->source);
+
+        return response()->json(new MouvementCaisseResource($mouvement), 201);
     }
 
     public function show(MouvementCaisse $mouvement): JsonResponse
@@ -144,7 +120,6 @@ class CaisseController extends Controller
 
     public function update(Request $request, MouvementCaisse $mouvement): JsonResponse
     {
-        // Vérifier que ce n'est pas un mouvement lié à un paiement
         if ($mouvement->paiement_id) {
             return response()->json([
                 'message' => 'Ce mouvement est lié à un paiement et ne peut pas être modifié'
@@ -158,52 +133,18 @@ class CaisseController extends Controller
             'beneficiaire' => 'nullable|string|max:255',
         ]);
 
-        // Si le montant change sur une sortie, vérifier le solde
-        if (isset($validated['montant']) && $mouvement->type === 'sortie') {
-            $difference = $validated['montant'] - $mouvement->montant;
-            if ($difference > 0) {
-                if ($mouvement->source === 'caisse') {
-                    $solde = $this->caisseService->getSoldeCaisse();
-                    if ($difference > $solde) {
-                        return response()->json([
-                            'message' => 'Solde caisse insuffisant pour cette modification',
-                            'solde_actuel' => $solde
-                        ], 422);
-                    }
-                } elseif ($mouvement->source === 'banque' && $mouvement->banque_id) {
-                    $banque = \App\Models\Banque::find($mouvement->banque_id);
-                    if ($banque && $difference > $banque->solde) {
-                        return response()->json([
-                            'message' => 'Solde bancaire insuffisant pour cette modification',
-                            'solde_actuel' => $banque->solde
-                        ], 422);
-                    }
-                }
-            }
-        }
-
-        // Mettre à jour le solde bancaire si le montant change
-        $oldMontant = $mouvement->montant;
-        $mouvement->update($validated);
-
-        if (isset($validated['montant']) && $mouvement->banque_id) {
-            $difference = $validated['montant'] - $oldMontant;
-            $banque = \App\Models\Banque::find($mouvement->banque_id);
-            if ($banque) {
-                if ($mouvement->type === 'entree') {
-                    $banque->increment('solde', $difference);
-                } else {
-                    $banque->decrement('solde', $difference);
-                }
-            }
+        try {
+            $mouvement = $this->mouvementService->modifier($mouvement, $validated);
+        } catch (SoldeInsuffisantException $e) {
+            return response()->json(['message' => $e->getMessage() . ' pour cette modification', 'solde_actuel' => $e->soldeActuel], $e->status);
         }
 
         Audit::log('update', 'caisse', "Mouvement modifié: {$mouvement->type} - {$mouvement->montant}", $mouvement->id);
 
-        return response()->json(new MouvementCaisseResource($mouvement->fresh()));
+        return response()->json(new MouvementCaisseResource($mouvement));
     }
 
-    public function destroy(MouvementCaisse $mouvement): JsonResponse
+    public function destroy(Request $request, MouvementCaisse $mouvement): JsonResponse
     {
         if ($mouvement->paiement_id) {
             return response()->json([
@@ -211,23 +152,20 @@ class CaisseController extends Controller
             ], 422);
         }
 
-        // Restaurer le solde bancaire si applicable
-        if ($mouvement->banque_id) {
-            $banque = \App\Models\Banque::find($mouvement->banque_id);
-            if ($banque) {
-                if ($mouvement->type === 'entree') {
-                    $banque->decrement('solde', $mouvement->montant);
-                } else {
-                    $banque->increment('solde', $mouvement->montant);
-                }
-            }
-        }
-
-        Audit::log('delete', 'caisse', "Mouvement supprimé: {$mouvement->type} - {$mouvement->montant}", $mouvement->id);
-
-        $mouvement->delete();
+        Audit::log('delete', 'caisse', "Mouvement supprimé: {$mouvement->type} - {$mouvement->montant} ({$mouvement->description})", $mouvement->id);
+        $this->mouvementService->supprimer($mouvement, $request->user()?->id);
 
         return response()->json(['message' => 'Mouvement supprimé avec succès']);
+    }
+
+    /** La diffusion temps réel ne doit jamais faire échouer l'opération. */
+    private function diffuser(string $type, float $montant, string $description, string $source): void
+    {
+        try {
+            event(new \App\Events\CaisseMouvement($type, $montant, $description, $source));
+        } catch (\Throwable $e) {
+            Log::warning('Diffusion caisse impossible', ['error' => $e->getMessage()]);
+        }
     }
 
     public function solde(): JsonResponse

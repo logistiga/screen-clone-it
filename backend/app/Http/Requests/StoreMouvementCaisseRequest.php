@@ -21,6 +21,8 @@ class StoreMouvementCaisseRequest extends FormRequest
             'description' => 'required|string|max:500',
             'beneficiaire' => 'nullable|string|max:255',
             'banque_id' => 'nullable|exists:banques,id',
+            // Antidatage limité à 7 jours (la date réelle de saisie reste dans created_at)
+            'date' => 'nullable|date|before_or_equal:today|after_or_equal:' . now()->subDays(7)->toDateString(),
         ];
     }
 
@@ -33,6 +35,8 @@ class StoreMouvementCaisseRequest extends FormRequest
             'montant.required' => 'Le montant est obligatoire.',
             'montant.min' => 'Le montant doit être supérieur à 0.',
             'description.required' => 'La description est obligatoire.',
+            'date.before_or_equal' => 'La date ne peut pas être dans le futur.',
+            'date.after_or_equal' => 'La date ne peut pas remonter à plus de 7 jours.',
         ];
     }
 }
