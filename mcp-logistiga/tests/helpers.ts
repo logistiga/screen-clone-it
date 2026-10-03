@@ -77,6 +77,8 @@ export async function rpc(base: string, method: string, params: unknown = {}, he
 export async function callTool(base: string, name: string, args: unknown) {
   const r = await rpc(base, "tools/call", { name, arguments: args });
   const result = r.json?.result;
-  const payload = result?.content?.[0]?.text ? JSON.parse(result.content[0].text) : null;
+  const raw: string | undefined = result?.content?.[0]?.text;
+  let payload: any = null;
+  try { payload = raw ? JSON.parse(raw) : null; } catch { payload = { text: raw }; }
   return { ...r, result, payload, isError: Boolean(result?.isError) };
 }
