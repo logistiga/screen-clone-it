@@ -271,8 +271,9 @@ class PaiementService
             }
         }
         if ($doc) {
-            $reste = \App\Support\FactureStatut::resteAPayer((float) $doc->montant_paye, (float) $doc->montant_ttc);
-            if ($montant > $reste) {
+            $reste = round((float) ($doc->reste_a_payer
+                ?? \App\Support\FactureStatut::resteAPayer((float) $doc->montant_paye, (float) $doc->montant_ttc)));
+            if ($montant > $reste + 1) {
                 throw new \DomainException("Le montant ({$montant} FCFA) dépasse le reste à payer ({$reste} FCFA). L'excédent n'est pas accepté.");
             }
         }
