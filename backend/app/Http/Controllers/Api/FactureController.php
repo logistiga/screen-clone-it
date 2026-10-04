@@ -246,7 +246,7 @@ class FactureController extends Controller
                 'date_annulation' => now(),
             ]);
 
-            $facture->update(['statut' => 'Annulée']);
+            $facture->update(['statut' => 'annulee']);
 
             Audit::log('cancel', 'facture', "Facture annulée: {$facture->numero}", $facture->id);
 
