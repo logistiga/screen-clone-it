@@ -376,6 +376,13 @@ export function EmailModalWithTemplate({
       return;
     }
 
+    if (isSending) return;
+    if (documentType === 'devis' && !window.confirm(
+      `Envoyer le devis ${documentData.numero} à ${email} ?\n\nLe devis passera au statut « Envoyé ». Annuler : aucun email, aucun changement.`
+    )) {
+      return;
+    }
+
     setIsSending(true);
 
     try {
