@@ -74,6 +74,15 @@ class ClientController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
+
+            // Anti double-soumission : même nom créé il y a moins de 15 secondes → on renvoie l'existant
+            $recent = Client::where('nom', $data['nom'])
+                ->where('created_at', '>=', now()->subSeconds(15))
+                ->lockForUpdate()
+                ->first();
+            if ($recent) {
+                return response()->json(new ClientResource($recent->load('contacts')), 200);
+            }
             $contacts = $data['contacts'] ?? [];
             unset($data['contacts']);
 
