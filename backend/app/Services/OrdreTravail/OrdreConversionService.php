@@ -40,6 +40,15 @@ class OrdreConversionService
     public function convertirEnFacture(OrdreTravail $ordre): \App\Models\Facture
     {
         return DB::transaction(function () use ($ordre) {
+            // Verrou : empêche deux facturations simultanées du même OT
+            $ordre = OrdreTravail::whereKey($ordre->id)->lockForUpdate()->firstOrFail();
+            if ($ordre->statut === 'facture' || $ordre->facture()->exists()) {
+                throw new \DomainException('Cet ordre a déjà été facturé');
+            }
+            if ($ordre->statut === 'annule') {
+                throw new \DomainException('Impossible de facturer un ordre annulé');
+            }
+
             // IMPORTANT: Charger les relations AVANT la conversion
             $ordre->load(['conteneurs.operations', 'lots', 'lignes']);
 
