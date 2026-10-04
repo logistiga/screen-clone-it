@@ -81,7 +81,9 @@ export default function DevisPageShell({ mode }: Props) {
       api.setRemiseData({
         type: (devisData as any).remise_type,
         valeur: (devisData as any).remise_valeur || 0,
-        montantCalcule: (devisData as any).remise_montant || 0,
+        // Recalculé à partir du HT courant : évite un TTC négatif transitoire
+        // pendant que les lignes ne sont pas encore chargées.
+        montantCalcule: 0,
       });
     }
 
@@ -288,7 +290,7 @@ export default function DevisPageShell({ mode }: Props) {
     }
   };
 
-  const isLoading = refsLoading || (mode === "edit" && loadingDevis);
+  const isLoading = refsLoading || (mode === "edit" && (loadingDevis || (!!devisData && !isInitialized)));
 
   if (refsError) {
     return (
