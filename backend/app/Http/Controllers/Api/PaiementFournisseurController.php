@@ -44,9 +44,9 @@ class PaiementFournisseurController extends Controller
         }
 
         if ($statut === 'en_cours') {
-            $query->havingRaw('total_paye < pf.montant_total');
+            $query->whereRaw('COALESCE((SELECT SUM(tp.montant) FROM tranches_paiement_fournisseur tp WHERE tp.paiement_fournisseur_id = pf.id), 0) < pf.montant_total');
         } elseif ($statut === 'solde') {
-            $query->havingRaw('total_paye >= pf.montant_total');
+            $query->whereRaw('COALESCE((SELECT SUM(tp.montant) FROM tranches_paiement_fournisseur tp WHERE tp.paiement_fournisseur_id = pf.id), 0) >= pf.montant_total');
         }
 
         $results = $query->paginate($perPage);

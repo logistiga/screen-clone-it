@@ -16,7 +16,7 @@ final class FactureStatut
     public const ANNULEE = 'annulee';
 
     /** Variantes historiques acceptées en lecture uniquement. */
-    private const ALIAS_ANNULEE = ['annulee', 'Annulée', 'annulée'];
+    public const ALIAS_ANNULEE = ['annulee', 'Annulée', 'annulée'];
 
     public static function estAnnulee(?string $statut): bool
     {
