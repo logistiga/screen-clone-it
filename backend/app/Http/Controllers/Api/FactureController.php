@@ -146,31 +146,9 @@ class FactureController extends Controller
             'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
         ]);
 
-        $this->maintenanceService->reparerLotsConventionnelsDepuisOrdre($facture);
-        $facture->refresh()->load([
-            'client', 'transitaire', 'representant', 'armateur',
-            'ordreTravail.conteneurs.operations', 'ordreTravail.lots', 'ordreTravail.lignes',
-            'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
-        ]);
-
-        // Recalcul systématique des totaux pour garantir la cohérence
-        try {
-            $service = $this->factureFactory->getService(
-                \App\Support\DocumentCategory::normalize($facture->categorie)
-            );
-            $service->calculerTotaux($facture);
-            $facture->refresh()->load([
-                'client', 'transitaire', 'representant', 'armateur',
-                'ordreTravail.conteneurs.operations', 'ordreTravail.lots', 'ordreTravail.lignes',
-                'lignes', 'conteneurs.operations', 'lots', 'paiements', 'primes', 'createdBy'
-            ]);
-
-        } catch (\Throwable $e) {
-            \Log::warning('Recalcul auto facture (show) échoué', [
-                'facture_id' => $facture->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        // Consultation en lecture seule : une facture est un document figé.
+        // Aucun recalcul ni réparation n'est enregistré à l'ouverture
+        // (l'affichage des lots de l'OT d'origine est géré par FactureResource).
 
         return response()->json(
             new FactureResource($facture),
