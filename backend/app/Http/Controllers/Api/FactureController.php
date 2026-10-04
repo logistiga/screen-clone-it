@@ -182,8 +182,8 @@ class FactureController extends Controller
 
     public function update(UpdateFactureRequest $request, Facture $facture): JsonResponse
     {
-        if (in_array($facture->statut, ['payee', 'annulee', 'Annulée'], true)) {
-            return response()->json(['message' => 'Impossible de modifier cette facture'], 422);
+        if (\App\Support\FactureStatut::montantsFiges($facture->statut, (float) $facture->montant_paye)) {
+            return response()->json(['message' => 'Impossible de modifier une facture payée (même partiellement) ou annulée'], 422);
         }
 
         try {

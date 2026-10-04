@@ -194,8 +194,7 @@ class OrdreTravailController extends Controller
     {
         // Facture payée (même partiellement) : l'OT est figé pour ne pas modifier une facture encaissée
         $facture = $ordreTravail->facture()->first();
-        if ($facture && ((float) $facture->montant_paye > 0
-            || in_array($facture->statut, ['payee', 'partiellement_payee', 'annulee', 'Annulée'], true))) {
+        if ($facture && \App\Support\FactureStatut::montantsFiges($facture->statut, (float) $facture->montant_paye)) {
             return response()->json([
                 'message' => "Impossible de modifier cet ordre : sa facture {$facture->numero} est déjà payée ou annulée",
             ], 422);
