@@ -88,11 +88,9 @@ class DashboardController extends Controller
 
                     // Créances
                     'creances' => [
-                        'total_impaye' => Facture::whereNotIn('statut', ['payee', 'annulee'])
-                            ->selectRaw('SUM(montant_ttc - montant_paye) as total')
-                            ->value('total') ?? 0,
-                        'factures_en_retard' => Facture::whereNotIn('statut', ['payee', 'annulee'])
-                            ->where('date_echeance', '<', now())
+                        'total_impaye' => \App\Support\Creances::total(),
+                        'factures_en_retard' => \App\Support\Creances::query()
+                            ->where('date_echeance', '<', now()->startOfDay())
                             ->count(),
                     ],
 

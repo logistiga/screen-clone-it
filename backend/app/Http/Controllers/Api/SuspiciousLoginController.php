@@ -174,9 +174,7 @@ class SuspiciousLoginController extends Controller
         // Calculer les stats pour le frontend
         $stats = [
             'total' => SuspiciousLogin::count(),
-            'pending' => SuspiciousLogin::where('status', 'pending')
-                ->where('token_expires_at', '>', now())
-                ->count(),
+            'pending' => SuspiciousLogin::where('status', 'pending')->count(),
             'approved' => SuspiciousLogin::where('status', 'approved')->count(),
             'blocked' => SuspiciousLogin::where('status', 'blocked')->count(),
             'last_24h' => SuspiciousLogin::where('created_at', '>=', now()->subDay())->count(),
@@ -201,9 +199,7 @@ class SuspiciousLoginController extends Controller
     {
         $stats = [
             'total' => SuspiciousLogin::count(),
-            'pending' => SuspiciousLogin::where('status', 'pending')
-                ->where('token_expires_at', '>', now())
-                ->count(),
+            'pending' => SuspiciousLogin::where('status', 'pending')->count(),
             'approved' => SuspiciousLogin::where('status', 'approved')->count(),
             'blocked' => SuspiciousLogin::where('status', 'blocked')->count(),
             'last_24h' => SuspiciousLogin::where('created_at', '>=', now()->subDay())->count(),

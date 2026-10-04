@@ -24,7 +24,7 @@ class AlertGeneratorService
                 ->get();
 
             foreach ($facturesEnRetard as $facture) {
-                $joursRetard = Carbon::parse($facture->date_echeance)->diffInDays(now());
+                $joursRetard = \App\Support\Creances::joursRetard($facture->date_echeance);
                 $clientNom = $facture->client->nom ?? $facture->client->raison_sociale ?? 'Client inconnu';
                 $resteAPayer = $facture->reste_a_payer ?? ($facture->montant_ttc - ($facture->montant_paye ?? 0));
                 
@@ -66,7 +66,7 @@ class AlertGeneratorService
                 ->get();
 
             foreach ($echeancesProches as $echeance) {
-                $joursRestants = Carbon::parse($echeance->date_echeance)->diffInDays(now());
+                $joursRestants = (int) now()->startOfDay()->diffInDays(Carbon::parse($echeance->date_echeance)->startOfDay(), true);
                 $alerts[] = [
                     'id' => 'echeance_' . $echeance->id,
                     'type' => $joursRestants <= 3 ? 'warning' : 'info',
@@ -95,7 +95,7 @@ class AlertGeneratorService
                 ->get();
 
             foreach ($echeancesRetard as $echeance) {
-                $joursRetard = Carbon::parse($echeance->date_echeance)->diffInDays(now());
+                $joursRetard = \App\Support\Creances::joursRetard($echeance->date_echeance);
                 $alerts[] = [
                     'id' => 'echeance_retard_' . $echeance->id,
                     'type' => 'error',
@@ -130,7 +130,7 @@ class AlertGeneratorService
                 ->get();
 
             foreach ($devisExpirants as $devis) {
-                $joursRestants = Carbon::parse($devis->date_validite)->diffInDays(now());
+                $joursRestants = (int) now()->startOfDay()->diffInDays(Carbon::parse($devis->date_validite)->startOfDay(), true);
                 $clientNom = $devis->client->nom ?? $devis->client->raison_sociale ?? 'Client inconnu';
                 $alerts[] = [
                     'id' => 'devis_expire_' . $devis->id,

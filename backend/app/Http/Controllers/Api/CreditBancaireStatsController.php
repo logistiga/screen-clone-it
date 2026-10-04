@@ -106,7 +106,7 @@ class CreditBancaireStatsController extends Controller
                 'numero_echeance' => $e->numero,
                 'date_echeance' => $e->date_echeance?->toDateString(),
                 'montant' => round($e->montant_total ?? $e->montant ?? 0, 2),
-                'jours_retard' => now()->diffInDays($e->date_echeance),
+                'jours_retard' => \App\Support\Creances::joursRetard($e->date_echeance),
                 'statut' => 'En retard',
             ]);
         

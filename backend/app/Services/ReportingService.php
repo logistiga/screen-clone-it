@@ -52,13 +52,12 @@ class ReportingService
     // === Créances ===
     public function getCreances(): array
     {
-        $factures = Facture::with('client')
-            ->whereIn('statut', ['Envoyée', 'Partiellement payée', 'validee', 'partiellement_payee'])
+        $factures = \App\Support\Creances::query()->with('client')
             ->get()
             ->map(function ($facture) {
-                $paye = $facture->paiements()->sum('montant');
-                $resteAPayer = $facture->montant_ttc - $paye;
-                $joursRetard = ($facture->date_echeance && $facture->date_echeance < now()) ? now()->diffInDays($facture->date_echeance) : 0;
+                $paye = round((float) $facture->montant_paye);
+                $resteAPayer = round((float) $facture->montant_ttc - $paye);
+                $joursRetard = \App\Support\Creances::joursRetard($facture->date_echeance);
                 return [
                     'facture_id' => $facture->id, 'facture_numero' => $facture->numero,
                     'client_id' => $facture->client_id, 'client_nom' => $facture->client->nom ?? 'N/A',

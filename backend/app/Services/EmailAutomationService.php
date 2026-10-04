@@ -138,9 +138,7 @@ class EmailAutomationService
                 'montant_ht' => number_format($entity->montant_ht, 0, ',', ' ') . ' FCFA',
                 'montant_ttc' => number_format($entity->montant_ttc, 0, ',', ' ') . ' FCFA',
                 'date_echeance' => $entity->date_echeance?->format('d/m/Y'),
-                'jours_retard' => $entity->date_echeance && $entity->date_echeance->isPast() 
-                    ? $entity->date_echeance->diffInDays(now()) 
-                    : 0,
+                'jours_retard' => \App\Support\Creances::joursRetard($entity->date_echeance),
             ]);
         } elseif ($entity instanceof OrdreTravail) {
             $entity->loadMissing('client');

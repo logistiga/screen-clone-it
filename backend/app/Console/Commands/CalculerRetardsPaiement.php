@@ -22,7 +22,7 @@ class CalculerRetardsPaiement extends Command
 
         $count = 0;
         foreach ($facturesEnRetard as $facture) {
-            $joursRetard = now()->diffInDays($facture->date_echeance);
+            $joursRetard = \App\Support\Creances::joursRetard($facture->date_echeance);
             $facture->update(['jours_retard' => $joursRetard]);
             $count++;
         }
