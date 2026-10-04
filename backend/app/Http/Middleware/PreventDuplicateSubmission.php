@@ -18,7 +18,7 @@ class PreventDuplicateSubmission
     private const FENETRE_SECONDES = 8;
 
     /** Routes exclues (authentification, synchronisations techniques). */
-    private const EXCLUSIONS = ['api/login', 'api/logout', 'api/auth/*', 'api/sanctum/*', 'api/*sync*', 'api/gpt/*', 'api/ai/*'];
+    private const EXCLUSIONS = ['api/login', 'api/logout', 'api/auth/*', 'api/sanctum/*', 'api/*sync*', 'api/gpt/*', 'api/ai/*', 'api/*preview*', 'api/*test*', 'api/*refresh*', 'api/*toggle*', 'api/notifications/*', 'api/*/lire*', 'api/forgot-password', 'api/reset-password', 'api/lockout-status'];
 
     public function handle(Request $request, Closure $next): Response
     {
