@@ -73,6 +73,17 @@ export default function NouveauClientPage() {
       setNif(existingClient.nif || "");
       setNotes(existingClient.notes || "");
       setLimiteCredit(existingClient.limite_credit || 0);
+      const existingContacts = (existingClient as { contacts?: Array<{ id: number; nom?: string; fonction?: string; email?: string; telephone?: string }> }).contacts;
+      if (Array.isArray(existingContacts) && existingContacts.length > 0) {
+        setContacts(existingContacts.map((c) => ({
+          id: `db-${c.id}`,
+          nom: c.nom || "",
+          prenom: "",
+          email: c.email || "",
+          telephone: c.telephone || "",
+          fonction: c.fonction || "",
+        })));
+      }
     }
   }, [existingClient, isEditMode]);
 
@@ -111,6 +122,16 @@ export default function NouveauClientPage() {
       nif: nif || null,
       notes: notes || null,
       limite_credit: limiteCredit,
+      contacts: contacts
+        .filter((c) => (c.prenom + c.nom).trim() !== "")
+        .map((c, index) => ({
+          ...(c.id.startsWith("db-") ? { id: Number(c.id.slice(3)) } : {}),
+          nom: [c.prenom, c.nom].filter(Boolean).join(" ").trim(),
+          fonction: c.fonction || null,
+          email: c.email || null,
+          telephone: c.telephone || null,
+          est_principal: index === 0,
+        })),
     };
 
     try {
