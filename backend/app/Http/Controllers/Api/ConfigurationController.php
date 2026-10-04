@@ -105,6 +105,12 @@ class ConfigurationController extends Controller
     public function numerotation(): JsonResponse
     {
         $numerotation = Configuration::getValue('numerotation') ?? [];
+        // Lecture seule : on affiche le vrai prochain numéro (jamais inférieur au dernier document existant)
+        $reel = fn(string $model) => ((int) $model::whereYear('created_at', date('Y'))
+            ->selectRaw('MAX(CAST(RIGHT(numero, 4) AS UNSIGNED)) as m')->value('m')) + 1;
+        foreach (['devis' => \App\Models\Devis::class, 'ordre' => \App\Models\OrdreTravail::class, 'facture' => \App\Models\Facture::class] as $k => $m) {
+            $numerotation['prochain_numero_' . $k] = max((int) ($numerotation['prochain_numero_' . $k] ?? 1), $reel($m));
+        }
 
         return response()->json([
             'prefixe_devis' => $numerotation['prefixe_devis'] ?? 'DEV',
