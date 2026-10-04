@@ -245,4 +245,6 @@ api.interceptors.response.use(
   },
 );
 
+installMutationDedupe(api);
+
 export default api;
