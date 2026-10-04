@@ -63,13 +63,12 @@ const menuItems = {
     label: "Comptabilité",
     collapsible: true,
     items: [
-      { title: "Caisse", url: "/caisse", icon: Wallet },
+      { title: "Primes à décaisser", url: "/primes-decaissement", icon: Wallet },
       { title: "Caisse en attente", url: "/caisse-en-attente", icon: Clock },
-      { title: "Paiements fournisseurs", url: "/paiements-fournisseurs", icon: Receipt },
+      { title: "Caisse", url: "/caisse", icon: Wallet },
       { title: "Banque", url: "/banque", icon: Building2 },
       { title: "Caisse Globale", url: "/caisse-globale", icon: PiggyBank },
-      { title: "Primes à décaisser", url: "/primes-decaissement", icon: Wallet },
-      { title: "Taxes", url: "/taxes", icon: Percent },
+      { title: "Paiements fournisseurs", url: "/paiements-fournisseurs", icon: Receipt },
       { title: "Factures exonérées", url: "/factures-exonerees", icon: Percent },
     ]
   },
@@ -90,9 +89,10 @@ const menuItems = {
       { title: "Rôles", url: "/roles", icon: Shield },
       { title: "Traçabilité", url: "/tracabilite", icon: History },
       { title: "Emails", url: "/emails", icon: Mail },
+      { title: "Taxes", url: "/taxes", icon: Percent },
+      { title: "Numérotation", url: "/numerotation", icon: Hash },
       { title: "Banques", url: "/banques", icon: Building },
       { title: "Catégories dépenses", url: "/categories-depenses", icon: Tag },
-      { title: "Numérotation", url: "/numerotation", icon: Hash },
       { title: "Guide & Installation", url: "/guide", icon: BookOpen },
     ]
   },
