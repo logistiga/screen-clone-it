@@ -312,12 +312,7 @@ class FactureServiceFactory
     {
         $nouveauMontantPaye = $facture->montant_paye + $montant;
         
-        $statut = $facture->statut;
-        if ($nouveauMontantPaye >= $facture->montant_ttc) {
-            $statut = 'payee';
-        } elseif ($nouveauMontantPaye > 0) {
-            $statut = 'partiellement_payee';
-        }
+        $statut = \App\Support\FactureStatut::pourMontants((float) $nouveauMontantPaye, (float) $facture->montant_ttc, $facture->statut);
 
         $facture->update([
             'montant_paye' => $nouveauMontantPaye,
