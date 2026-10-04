@@ -197,7 +197,7 @@ class AnnulationAvoirController extends Controller
                 if ($montant > $reste + 1) {
                     throw new \DomainException("Le montant ({$montant} FCFA) dépasse le reste à payer ({$reste} FCFA).");
                 }
-                $facture ? $facture = $doc : $ordre = $doc;
+                if ($facture) { $facture = $doc; } else { $ordre = $doc; }
 
                 \App\Models\Paiement::create([
                     'facture_id' => $facture?->id,
