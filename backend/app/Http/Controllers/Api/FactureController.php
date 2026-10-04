@@ -238,6 +238,11 @@ class FactureController extends Controller
 
         try {
             DB::beginTransaction();
+            $facture = Facture::whereKey($facture->id)->lockForUpdate()->firstOrFail();
+            if (\App\Support\FactureStatut::estAnnulee($facture->statut)) {
+                DB::rollBack();
+                return response()->json(['message' => 'Cette facture est déjà annulée'], 422);
+            }
 
             Annulation::create([
                 'facture_id' => $facture->id,
