@@ -138,7 +138,15 @@ export default function NouveauClientPage() {
       if (isEditMode && id) {
         await updateClientMutation.mutateAsync({ id, data: clientData });
       } else {
-        await createClientMutation.mutateAsync(clientData);
+        try {
+          await createClientMutation.mutateAsync(clientData);
+        } catch (err) {
+          const res = (err as { response?: { status?: number; data?: { message?: string } } }).response;
+          if (res?.status !== 409) throw err;
+          // Doublon probable détecté par le serveur : création seulement après confirmation explicite
+          if (!window.confirm(`${res.data?.message ?? "Un client semblable existe déjà."}\n\nCréer quand même ce client ?`)) return;
+          await createClientMutation.mutateAsync({ ...clientData, confirmer_doublon: true } as typeof clientData);
+        }
       }
       navigate("/clients");
     } catch (error) {

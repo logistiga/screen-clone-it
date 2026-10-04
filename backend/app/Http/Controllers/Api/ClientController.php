@@ -83,8 +83,19 @@ class ClientController extends Controller
             if ($recent) {
                 return response()->json(new ClientResource($recent->load('contacts')), 200);
             }
+            // Détection de doublon (NIF, RCCM, email, téléphone, nom exact) : confirmation explicite requise
+            if (!$request->boolean('confirmer_doublon')) {
+                $doublon = \App\Services\ClientDoublonDetector::trouver($data);
+                if ($doublon) {
+                    return response()->json([
+                        'message' => "Client déjà existant : {$doublon['client']->nom} (même {$doublon['champ']}).",
+                        'code' => 'doublon_client',
+                        'client_existant' => ['id' => $doublon['client']->id, 'nom' => $doublon['client']->nom],
+                    ], 409);
+                }
+            }
             $contacts = $data['contacts'] ?? [];
-            unset($data['contacts']);
+            unset($data['contacts'], $data['confirmer_doublon']);
 
             $client = Client::create($data);
 
@@ -157,13 +168,11 @@ class ClientController extends Controller
     public function destroy(Client $client): JsonResponse
     {
         // Accepte tous les variants de statuts (majuscules, minuscules, snake_case)
-        $facturesImpayees = $client->factures()
-            ->whereNotIn('statut', ['Payée', 'payee', 'Annulée', 'annulee'])
-            ->count();
-        
-        if ($facturesImpayees > 0) {
+        // Historique comptable conservé : aucun client avec documents ou paiements ne peut être supprimé
+        if ($client->devis()->exists() || $client->ordresTravail()->exists()
+            || $client->factures()->exists() || $client->paiements()->exists()) {
             return response()->json([
-                'message' => 'Impossible de supprimer ce client car il a des factures impayées'
+                'message' => 'Impossible de supprimer ce client : il possède des devis, ordres, factures ou paiements.'
             ], 422);
         }
 
