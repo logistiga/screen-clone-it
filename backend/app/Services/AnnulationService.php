@@ -27,6 +27,11 @@ class AnnulationService
     public function annulerFacture(Facture $facture, string $motif, bool $genererAvoir = false): Annulation
     {
         return DB::transaction(function () use ($facture, $motif, $genererAvoir) {
+            // Verrou : une annulation ne peut être validée qu'une seule fois
+            $facture = Facture::whereKey($facture->id)->lockForUpdate()->firstOrFail();
+            if (\App\Support\FactureStatut::estAnnulee($facture->statut)) {
+                throw new \Exception('Cette facture est déjà annulée.');
+            }
             // Vérifier que la facture peut être annulée
             if ($facture->statut === 'annulee') {
                 throw new \Exception('Cette facture est déjà annulée.');
@@ -74,6 +79,7 @@ class AnnulationService
     public function annulerOrdre(OrdreTravail $ordre, string $motif): Annulation
     {
         return DB::transaction(function () use ($ordre, $motif) {
+            $ordre = OrdreTravail::whereKey($ordre->id)->lockForUpdate()->firstOrFail();
             // Vérifier que l'ordre peut être annulé
             if ($ordre->statut === 'annule') {
                 throw new \Exception('Cet ordre de travail est déjà annulé.');
@@ -129,6 +135,7 @@ class AnnulationService
     public function annulerDevis(Devis $devis, string $motif): Annulation
     {
         return DB::transaction(function () use ($devis, $motif) {
+            $devis = Devis::whereKey($devis->id)->lockForUpdate()->firstOrFail();
             // Vérifier que le devis peut être annulé
             if ($devis->statut === 'annule') {
                 throw new \Exception('Ce devis est déjà annulé.');

@@ -54,6 +54,7 @@ export function useCreateClient() {
       toast.success('Client créé avec succès');
     },
     onError: (error: any) => {
+      if (error.response?.status === 409) return; // doublon : confirmation gérée par l'écran
       toast.error(error.response?.data?.message || 'Erreur lors de la création du client');
     },
   });

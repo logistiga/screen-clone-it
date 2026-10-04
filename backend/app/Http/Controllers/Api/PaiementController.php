@@ -215,6 +215,8 @@ class PaiementController extends Controller
 
             return response()->json(new PaiementResource($paiement), 201);
 
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Erreur création paiement', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
@@ -239,6 +241,8 @@ class PaiementController extends Controller
 
             return response()->json(['message' => 'Paiement supprimé avec succès']);
 
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Erreur suppression paiement', ['message' => $e->getMessage()]);
             return response()->json([

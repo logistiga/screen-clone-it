@@ -72,22 +72,6 @@ class Facture extends Model
         static::creating(function ($facture) {
             $facture->token_verification = \Str::random(32);
         });
-
-        // Statut de paiement toujours cohérent avec montant payé / TTC
-        static::saving(function ($facture) {
-            if (in_array($facture->statut, ['brouillon', 'annulee', 'Annulée'], true)) {
-                return;
-            }
-            $paye = round((float) $facture->montant_paye);
-            $ttc = round((float) $facture->montant_ttc);
-            if ($ttc > 0 && $paye >= $ttc) {
-                $facture->statut = 'payee';
-            } elseif ($paye > 0) {
-                $facture->statut = 'partiellement_payee';
-            } elseif (in_array($facture->statut, ['payee', 'partiellement_payee', 'partielle'], true)) {
-                $facture->statut = 'emise';
-            }
-        });
     }
 
     // Relations
@@ -215,11 +199,7 @@ class Facture extends Model
     {
         $this->montant_paye += $montant;
         
-        if ($this->montant_paye >= $this->montant_ttc) {
-            $this->statut = 'payee';
-        } elseif ($this->montant_paye > 0) {
-            $this->statut = 'partielle';
-        }
+        $this->statut = \App\Support\FactureStatut::pourMontants((float) $this->montant_paye, (float) $this->montant_ttc, $this->statut);
         
         $this->save();
         

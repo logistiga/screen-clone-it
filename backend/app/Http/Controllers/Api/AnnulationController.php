@@ -28,7 +28,6 @@ class AnnulationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $this->synchroniserAnnulationsManquantes();
         $query = Annulation::with(['client']);
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -69,12 +68,7 @@ class AnnulationController extends Controller
 
     public function show(Annulation $annulation): JsonResponse
     {
-        if ($annulation->type === 'facture' && !$annulation->avoir_genere) {
-            DB::transaction(function () use ($annulation) {
-                $annulation->update(['avoir_genere' => true, 'numero_avoir' => Annulation::genererNumeroAvoir(), 'solde_avoir' => $annulation->montant]);
-            });
-            $annulation->refresh();
-        }
+        // Consultation en lecture seule : la génération d'avoir passe par POST generer-avoir
         $annulation->load(['client']);
         return response()->json(new AnnulationResource($annulation));
     }

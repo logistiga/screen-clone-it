@@ -30,6 +30,10 @@ class PaiementService
     public function creer(array $data): Paiement
     {
         return DB::transaction(function () use ($data) {
+            // Verrou + contrôle du reste à payer : aucun trop-perçu silencieux,
+            // même avec deux encaissements simultanés.
+            $this->verifierResteAPayer($data);
+
             // Créer le paiement
             $paiement = Paiement::create($data);
 
@@ -167,15 +171,17 @@ class PaiementService
     public function annuler(Paiement $paiement): void
     {
         DB::transaction(function () use ($paiement) {
+            // Verrou : un paiement déjà annulé ne peut pas l'être une deuxième fois
+            $paiement = Paiement::whereKey($paiement->id)->lockForUpdate()->first();
+            if (!$paiement) {
+                throw new \DomainException('Ce paiement a déjà été annulé.');
+            }
+
             // Inverser le paiement sur la facture
             if ($paiement->facture_id) {
-                $facture = $paiement->facture;
+                $facture = Facture::whereKey($paiement->facture_id)->lockForUpdate()->first();
                 $nouveauMontantPaye = max(0, $facture->montant_paye - $paiement->montant);
-                
-                $statut = 'validee';
-                if ($nouveauMontantPaye > 0) {
-                    $statut = 'partiellement_payee';
-                }
+                $statut = \App\Support\FactureStatut::pourMontants((float) $nouveauMontantPaye, (float) $facture->montant_ttc, $facture->statut);
 
                 $facture->update([
                     'montant_paye' => $nouveauMontantPaye,
@@ -241,6 +247,36 @@ class PaiementService
 
             Log::info('Paiement annulé', ['paiement_id' => $paiement->id]);
         });
+    }
+
+    /**
+     * Verrouille le document payé et refuse tout montant supérieur au reste.
+     */
+    protected function verifierResteAPayer(array $data): void
+    {
+        $montant = round((float) ($data['montant'] ?? 0));
+        if ($montant <= 0) {
+            throw new \DomainException('Le montant du paiement doit être positif.');
+        }
+        $doc = null;
+        if (!empty($data['facture_id'])) {
+            $doc = Facture::whereKey($data['facture_id'])->lockForUpdate()->firstOrFail();
+            if (\App\Support\FactureStatut::estAnnulee($doc->statut)) {
+                throw new \DomainException('Impossible de payer une facture annulée.');
+            }
+        } elseif (!empty($data['ordre_id'])) {
+            $doc = OrdreTravail::whereKey($data['ordre_id'])->lockForUpdate()->firstOrFail();
+            if ($doc->statut === 'annule') {
+                throw new \DomainException('Impossible de payer un ordre annulé.');
+            }
+        }
+        if ($doc) {
+            $reste = round((float) ($doc->reste_a_payer
+                ?? \App\Support\FactureStatut::resteAPayer((float) $doc->montant_paye, (float) $doc->montant_ttc)));
+            if ($montant > $reste + 1) {
+                throw new \DomainException("Le montant ({$montant} FCFA) dépasse le reste à payer ({$reste} FCFA). L'excédent n'est pas accepté.");
+            }
+        }
     }
 
     /**
