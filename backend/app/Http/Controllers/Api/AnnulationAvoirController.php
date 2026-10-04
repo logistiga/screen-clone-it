@@ -31,7 +31,11 @@ class AnnulationAvoirController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($annulation) {
+            DB::transaction(function () use (&$annulation) {
+                $annulation = Annulation::whereKey($annulation->id)->lockForUpdate()->firstOrFail();
+                if ($annulation->avoir_genere) {
+                    throw new \DomainException('Un avoir a déjà été généré pour cette annulation.');
+                }
                 $numeroAvoir = Annulation::genererNumeroAvoir();
                 $annulation->update([
                     'avoir_genere' => true,
@@ -78,7 +82,12 @@ class AnnulationAvoirController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($request, $annulation) {
+            DB::transaction(function () use ($request, &$annulation) {
+                $annulation = Annulation::with('client')->whereKey($annulation->id)->lockForUpdate()->firstOrFail();
+                $max = (float) ($annulation->montant_ttc ?? $annulation->montant ?? 0);
+                if (round((float) $request->montant) > round($max - (float) ($annulation->montant_rembourse ?? 0))) {
+                    throw new \DomainException('Le montant dépasse le solde restant à rembourser.');
+                }
                 $source = in_array($request->mode_paiement, ['virement', 'cheque']) ? 'banque' : 'caisse';
 
                 MouvementCaisse::create([
@@ -172,6 +181,24 @@ class AnnulationAvoirController extends Controller
                 : null;
 
             DB::transaction(function () use ($request, $annulation, $facture, $ordre) {
+                // Verrous : solde d'avoir et reste à payer relus sous verrou
+                $annulation = Annulation::whereKey($annulation->id)->lockForUpdate()->firstOrFail();
+                $montant = round((float) $request->montant);
+                if ($montant > round((float) $annulation->solde_avoir)) {
+                    throw new \DomainException("Le montant dépasse le solde de l'avoir disponible.");
+                }
+                $doc = $facture
+                    ? \App\Models\Facture::whereKey($facture->id)->lockForUpdate()->firstOrFail()
+                    : \App\Models\OrdreTravail::whereKey($ordre->id)->lockForUpdate()->firstOrFail();
+                if ($facture && \App\Support\FactureStatut::estAnnulee($doc->statut)) {
+                    throw new \DomainException('Impossible d\'utiliser un avoir sur une facture annulée.');
+                }
+                $reste = \App\Support\FactureStatut::resteAPayer((float) $doc->montant_paye, (float) $doc->montant_ttc);
+                if ($montant > $reste + 1) {
+                    throw new \DomainException("Le montant ({$montant} FCFA) dépasse le reste à payer ({$reste} FCFA).");
+                }
+                $facture ? $facture = $doc : $ordre = $doc;
+
                 \App\Models\Paiement::create([
                     'facture_id' => $facture?->id,
                     'ordre_id' => $ordre?->id,
@@ -184,19 +211,20 @@ class AnnulationAvoirController extends Controller
                 ]);
 
                 if ($facture) {
-                    $facture->increment('montant_paye', $request->montant);
-                    if ($facture->montant_paye >= $facture->montant_ttc) {
-                        $facture->update(['statut' => 'payee']);
-                    } else {
-                        $facture->update(['statut' => 'partielle']);
-                    }
+                    $paye = (float) $facture->montant_paye + $montant;
+                    $facture->update([
+                        'montant_paye' => $paye,
+                        'statut' => \App\Support\FactureStatut::pourMontants($paye, (float) $facture->montant_ttc, $facture->statut),
+                    ]);
                 }
 
                 if ($ordre) {
-                    $ordre->increment('montant_paye', $request->montant);
-                    if ($ordre->montant_paye >= $ordre->montant_ttc) {
-                        $ordre->update(['statut' => 'termine']);
+                    $paye = (float) $ordre->montant_paye + $montant;
+                    $maj = ['montant_paye' => $paye];
+                    if ($paye >= round((float) $ordre->montant_ttc) && $ordre->statut !== 'facture') {
+                        $maj['statut'] = 'termine';
                     }
+                    $ordre->update($maj);
                 }
 
                 $annulation->decrement('solde_avoir', $request->montant);
