@@ -180,21 +180,7 @@ class OrdreTravailController extends Controller
                 'createdBy',
             ]);
 
-            // Recalcul systématique des totaux pour garantir la cohérence
-            try {
-                $service = app(\App\Services\OrdreTravail\OrdreServiceFactory::class)
-                    ->getService($ordreTravail->categorie);
-                $service->calculerTotaux($ordreTravail);
-                $ordreTravail->refresh()->load([
-                    'conteneurs.operations', 'lots', 'lignes',
-                ]);
-            } catch (\Throwable $e) {
-                \Log::warning('Recalcul auto OT (show) échoué', [
-                    'ordre_id' => $ordreTravail->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
+            // Lecture seule : aucun recalcul/réenregistrement des totaux à l'ouverture
             return response()->json(new OrdreTravailResource($ordreTravail));
         } catch (\Throwable $e) {
             return response()->json([
@@ -206,7 +192,15 @@ class OrdreTravailController extends Controller
 
     public function update(UpdateOrdreTravailRequest $request, OrdreTravail $ordreTravail): JsonResponse
     {
-        // Permettre la modification même si facturé - la facture sera synchronisée automatiquement
+        // Facture payée (même partiellement) : l'OT est figé pour ne pas modifier une facture encaissée
+        $facture = $ordreTravail->facture()->first();
+        if ($facture && ((float) $facture->montant_paye > 0
+            || in_array($facture->statut, ['payee', 'partiellement_payee', 'annulee', 'Annulée'], true))) {
+            return response()->json([
+                'message' => "Impossible de modifier cet ordre : sa facture {$facture->numero} est déjà payée ou annulée",
+            ], 422);
+        }
+
         try {
             $ordreTravail = $this->ordreFactory->modifier($ordreTravail, $request->validated());
 
@@ -221,17 +215,22 @@ class OrdreTravailController extends Controller
 
     public function destroy(OrdreTravail $ordreTravail): JsonResponse
     {
-        if ($ordreTravail->statut === 'facture') {
+        if ($ordreTravail->statut === 'facture' || $ordreTravail->facture()->exists()) {
             return response()->json(['message' => 'Impossible de supprimer un ordre facturé'], 422);
+        }
+        if ($ordreTravail->paiements()->exists() || (float) $ordreTravail->montant_paye > 0) {
+            return response()->json(['message' => 'Impossible de supprimer un ordre qui a reçu des paiements'], 422);
         }
 
         Audit::log('delete', 'ordre', "Ordre supprimé: {$ordreTravail->numero}", $ordreTravail->id);
 
-        $ordreTravail->conteneurs()->each(fn($c) => $c->operations()->delete());
-        $ordreTravail->conteneurs()->delete();
-        $ordreTravail->lignes()->delete();
-        $ordreTravail->lots()->delete();
-        $ordreTravail->delete();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($ordreTravail) {
+            $ordreTravail->conteneurs()->each(fn($c) => $c->operations()->delete());
+            $ordreTravail->conteneurs()->delete();
+            $ordreTravail->lignes()->delete();
+            $ordreTravail->lots()->delete();
+            $ordreTravail->delete();
+        });
 
         return response()->json(['message' => 'Ordre de travail supprimé avec succès']);
     }
@@ -252,6 +251,8 @@ class OrdreTravailController extends Controller
                 'facture' => new FactureResource($facture)
             ]);
 
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Erreur lors de la conversion', 'error' => $e->getMessage()], 500);
         }
