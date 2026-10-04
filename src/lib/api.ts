@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getApiUrl, getBackendBaseUrl } from "@/lib/runtime-config";
+import { installMutationDedupe } from "@/lib/api-dedupe";
 
 // Configuration de l'API - Production: https://facturation.logistiga.com/backend/public/api
 const API_URL = getApiUrl();
