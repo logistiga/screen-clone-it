@@ -199,11 +199,7 @@ class Facture extends Model
     {
         $this->montant_paye += $montant;
         
-        if ($this->montant_paye >= $this->montant_ttc) {
-            $this->statut = 'payee';
-        } elseif ($this->montant_paye > 0) {
-            $this->statut = 'partielle';
-        }
+        $this->statut = \App\Support\FactureStatut::pourMontants((float) $this->montant_paye, (float) $this->montant_ttc, $this->statut);
         
         $this->save();
         
