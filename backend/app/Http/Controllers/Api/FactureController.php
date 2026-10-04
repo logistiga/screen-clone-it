@@ -182,7 +182,7 @@ class FactureController extends Controller
 
     public function update(UpdateFactureRequest $request, Facture $facture): JsonResponse
     {
-        if (in_array($facture->statut, ['payee', 'annulee'])) {
+        if (in_array($facture->statut, ['payee', 'annulee', 'Annulée'], true)) {
             return response()->json(['message' => 'Impossible de modifier cette facture'], 422);
         }
 
@@ -208,24 +208,31 @@ class FactureController extends Controller
 
     public function destroy(Facture $facture): JsonResponse
     {
-        if ($facture->paiements()->count() > 0) {
+        if ($facture->paiements()->count() > 0 || (float) $facture->montant_paye > 0) {
             return response()->json(['message' => 'Impossible de supprimer une facture avec des paiements'], 422);
         }
 
         Audit::log('delete', 'facture', "Facture supprimée: {$facture->numero}", $facture->id);
 
-        $facture->conteneurs()->each(fn($c) => $c->operations()->delete());
-        $facture->conteneurs()->delete();
-        $facture->lignes()->delete();
-        $facture->lots()->delete();
-        $facture->delete();
+        DB::transaction(function () use ($facture) {
+            $facture->conteneurs()->each(fn($c) => $c->operations()->delete());
+            $facture->conteneurs()->delete();
+            $facture->lignes()->delete();
+            $facture->lots()->delete();
+            $ordreId = $facture->ordre_id;
+            $facture->delete();
+            // L'OT redevient facturable s'il n'a plus aucune facture
+            if ($ordreId && !Facture::where('ordre_id', $ordreId)->exists()) {
+                \App\Models\OrdreTravail::whereKey($ordreId)->where('statut', 'facture')->update(['statut' => 'en_cours']);
+            }
+        });
 
         return response()->json(['message' => 'Facture supprimée avec succès']);
     }
 
     public function annuler(AnnulerFactureRequest $request, Facture $facture): JsonResponse
     {
-        if ($facture->statut === 'Annulée') {
+        if (in_array($facture->statut, ['annulee', 'Annulée'], true)) {
             return response()->json(['message' => 'Cette facture est déjà annulée'], 422);
         }
 
@@ -239,7 +246,7 @@ class FactureController extends Controller
                 'date_annulation' => now(),
             ]);
 
-            $facture->update(['statut' => 'Annulée']);
+            $facture->update(['statut' => 'annulee']);
 
             Audit::log('cancel', 'facture', "Facture annulée: {$facture->numero}", $facture->id);
 
