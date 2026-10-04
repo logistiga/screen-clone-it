@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Facture;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Définition unique des créances clients (Tableau de bord, Reporting, exports).
@@ -23,7 +24,7 @@ final class Creances
 
     public static function total(): float
     {
-        return round((float) self::query()->sum(\DB::raw('COALESCE(montant_ttc,0) - COALESCE(montant_paye,0)')));
+        return round((float) self::query()->sum(DB::raw('COALESCE(montant_ttc,0) - COALESCE(montant_paye,0)')));
     }
 
     /** Nombre entier de jours de retard (0 si non échue). */
