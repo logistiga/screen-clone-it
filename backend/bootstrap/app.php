@@ -63,6 +63,9 @@ return Application::configure(basePath: dirname(__DIR__))
             
             // 7. Tracking d'activité de session (idle timeout)
             \App\Http\Middleware\SessionActivityTracker::class,
+
+            // 8. Anti double soumission serveur (écritures identiques rapprochées)
+            \App\Http\Middleware\PreventDuplicateSubmission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
