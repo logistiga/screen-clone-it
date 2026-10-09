@@ -93,8 +93,10 @@ class AnnulationController extends Controller
             Audit::log('cancel', 'ordre', "Ordre annulé: {$ordreModel->numero}", $ordreModel->id);
             return response()->json(['message' => 'Ordre de travail annulé avec succès', 'annulation' => new AnnulationResource($annulation)]);
         } catch (\Illuminate\Database\QueryException $e) {
+            \Illuminate\Support\Facades\Log::warning('Annulation OT refusée (base)', ['ordre_id' => (int) $ordre, 'user_id' => $request->user()?->id, 'error' => $e->getMessage()]);
             return response()->json(['message' => 'Erreur base de données', 'error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Annulation OT refusée', ['ordre_id' => (int) $ordre, 'user_id' => $request->user()?->id, 'class' => get_class($e), 'error' => $e->getMessage(), 'at' => $e->getFile().':'.$e->getLine()]);
             return response()->json(['message' => $e->getMessage(), 'error' => $e->getMessage()], 422);
         }
     }
