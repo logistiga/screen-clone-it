@@ -23,7 +23,10 @@ export type ExportOptions = {
   dateFin: string;
   filtreStatut: ReleveStatut;
   format: ReleveFormat;
+  /** ordres = tous les OT (y compris transférés en facture) ; factures = factures seules. */
+  source?: ReleveSource;
 };
+export type ReleveSource = "tous" | "ordres" | "factures";
 
 export const money = (value: number) => `${Math.round(value || 0).toLocaleString("fr-FR")} FCFA`;
 export const dateFr = (value: string) => (value ? new Date(value).toLocaleDateString("fr-FR") : "-");
@@ -93,13 +96,16 @@ export async function fetchClientStatement(options: ExportOptions): Promise<Rele
   const params: Record<string, string> = options.client
     ? { client_id: String(options.client.id) }
     : { date_debut: shiftDate(options.dateDebut, -62), date_fin: shiftDate(options.dateFin, 1) };
+  const source = options.source || "tous";
   const [factures, ordres] = await Promise.all([
-    fetchAllPaginated<Facture>("/factures", params, 100),
-    fetchAllPaginated<OrdreTravail>("/ordres-travail", params, 100),
+    source === "ordres" ? Promise.resolve([] as Facture[]) : fetchAllPaginated<Facture>("/factures", params, 100),
+    source === "factures" ? Promise.resolve([] as OrdreTravail[]) : fetchAllPaginated<OrdreTravail>("/ordres-travail", params, 100),
   ]);
   return [
     ...factures.filter((f) => !estAnnule(f.statut)).map(normalizeFacture),
-    ...ordres.filter((o) => !isConvertedOrdre(o) && !estAnnule(o.statut)).map(normalizeOrdre),
+    ...ordres
+      .filter((o) => (source === "ordres" || !isConvertedOrdre(o)) && !estAnnule(o.statut))
+      .map(normalizeOrdre),
   ]
     .filter((doc) => keepByPeriod(doc, options.dateDebut, options.dateFin))
     .filter((doc) => keepByStatus(doc, options.filtreStatut))

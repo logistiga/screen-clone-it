@@ -22,17 +22,19 @@ import { Download, FileText, FileSpreadsheet, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAllClients } from "@/hooks/use-all-clients";
 import { downloadClientStatement } from "@/lib/export/releve-client";
+import type { ReleveSource } from "@/lib/export/releve-client-data";
 import type { Client } from "@/lib/api/commercial";
 
 interface ExportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  source?: ReleveSource;
 }
 
 type FormatExport = "pdf" | "excel";
 type FiltreStatut = "tous" | "paye" | "impaye";
 
-export function ExportModal({ open, onOpenChange }: ExportModalProps) {
+export function ExportModal({ open, onOpenChange, source = "tous" }: ExportModalProps) {
   const { toast } = useToast();
   const [clientId, setClientId] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -90,7 +92,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     const statutLabel = filtreStatut === "tous" ? "tous les documents" : filtreStatut === "paye" ? "les documents payés" : "les documents impayés";
     setIsExporting(true);
     try {
-      const count = await downloadClientStatement({ client, dateDebut, dateFin, filtreStatut, format });
+      const count = await downloadClientStatement({ client, dateDebut, dateFin, filtreStatut, format, source });
       toast({
         title: `Export ${format.toUpperCase()} téléchargé`,
         description: `Relevé de ${client ? client.nom : "tous les clients"} (${statutLabel}) : ${count} document(s).`,
