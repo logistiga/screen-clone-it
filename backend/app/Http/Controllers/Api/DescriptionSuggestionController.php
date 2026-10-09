@@ -50,7 +50,7 @@ class DescriptionSuggestionController extends Controller
 
         // Recherche dans les conteneurs
         if (in_array($type, ['conteneur', 'all'])) {
-            $conteneurDescriptions = DB::table('conteneur_ordres')
+            $conteneurDescriptions = DB::table('conteneurs_ordres')
                 ->whereNotNull('description')
                 ->where('description', '!=', '')
                 ->where('description', 'LIKE', "%{$query}%")
