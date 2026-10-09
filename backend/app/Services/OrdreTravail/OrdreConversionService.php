@@ -111,6 +111,8 @@ class OrdreConversionService
 
             $facture = $factureFactory->creer($factureData);
             $ordre->update(['statut' => 'facture']);
+            app(\App\Services\PaiementLienSync::class)->reprendrePaiementsOrdre($ordre, $facture);
+            $facture->refresh();
 
             Log::info('Ordre converti en facture OK', [
                 'ordre_id' => $ordre->id,

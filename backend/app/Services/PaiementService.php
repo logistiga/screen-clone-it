@@ -38,14 +38,17 @@ class PaiementService
             $paiement = Paiement::create($data);
 
             // Enregistrer le paiement sur la facture ou l'ordre
+            $lien = app(PaiementLienSync::class);
             if ($paiement->facture_id) {
                 $facture = Facture::find($paiement->facture_id);
                 $this->factureFactory->enregistrerPaiement($facture, $paiement->montant);
+                if (!$paiement->ordre_id) $lien->depuisFacture($facture, (float) $paiement->montant);
             }
             
             if ($paiement->ordre_id) {
                 $ordre = OrdreTravail::find($paiement->ordre_id);
                 $this->ordreFactory->enregistrerPaiement($ordre, $paiement->montant);
+                if (!$paiement->facture_id) $lien->depuisOrdre($ordre, (float) $paiement->montant);
             }
 
             // Enregistrer le paiement sur la note de début
@@ -189,6 +192,7 @@ class PaiementService
                 ]);
 
                 $this->factureFactory->mettreAJourSoldeClient($facture->client_id);
+                if (!$paiement->ordre_id) app(PaiementLienSync::class)->depuisFacture($facture, -(float) $paiement->montant);
             }
 
             // Inverser le paiement sur l'ordre
@@ -199,6 +203,7 @@ class PaiementService
                 $ordre->update([
                     'montant_paye' => $nouveauMontantPaye,
                 ]);
+                if (!$paiement->facture_id) app(PaiementLienSync::class)->depuisOrdre($ordre, -(float) $paiement->montant);
             }
 
             // Inverser le paiement sur la note de début
