@@ -76,8 +76,9 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       return;
     }
 
-    const client = selectedClient || clients.find((c) => String(c.id) === clientId);
-    if (!client) {
+    const tousClients = clientId === "__all__";
+    const client = tousClients ? null : selectedClient || clients.find((c) => String(c.id) === clientId) || null;
+    if (!tousClients && !client) {
       toast({
         title: "Erreur",
         description: "Client introuvable. Recherchez puis sélectionnez le client à nouveau.",
@@ -92,7 +93,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       const count = await downloadClientStatement({ client, dateDebut, dateFin, filtreStatut, format });
       toast({
         title: `Export ${format.toUpperCase()} téléchargé`,
-        description: `Relevé de ${client.nom} (${statutLabel}) : ${count} document(s).`,
+        description: `Relevé de ${client ? client.nom : "tous les clients"} (${statutLabel}) : ${count} document(s).`,
       });
       onOpenChange(false);
     } catch (error: any) {
@@ -116,7 +117,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
             Exporter un relevé client
           </DialogTitle>
           <DialogDescription>
-            Exporter les documents d'un client pour une période donnée
+            Exporter les documents d'un client, ou de tous les clients, pour une période donnée
           </DialogDescription>
         </DialogHeader>
 
@@ -132,12 +133,13 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
             />
             <Select value={clientId} onValueChange={(value) => {
               setClientId(value);
-              setSelectedClient(displayedClients.find((c) => String(c.id) === value) || null);
+              setSelectedClient(value === "__all__" ? null : displayedClients.find((c) => String(c.id) === value) || null);
             }}>
               <SelectTrigger>
                 <SelectValue placeholder={isLoadingClients || isFetchingClients ? "Chargement..." : "Sélectionner un client"} />
               </SelectTrigger>
               <SelectContent className="max-h-72">
+                <SelectItem value="__all__" className="font-semibold">Tous les clients</SelectItem>
                 {clients.length === 0 && !isLoadingClients && !isFetchingClients && (
                   <div className="px-3 py-2 text-sm text-muted-foreground">Aucun client</div>
                 )}
