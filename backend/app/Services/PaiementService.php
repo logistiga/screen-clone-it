@@ -192,6 +192,7 @@ class PaiementService
                 ]);
 
                 $this->factureFactory->mettreAJourSoldeClient($facture->client_id);
+                if (!$paiement->ordre_id) app(PaiementLienSync::class)->depuisFacture($facture, -(float) $paiement->montant);
             }
 
             // Inverser le paiement sur l'ordre
@@ -202,6 +203,7 @@ class PaiementService
                 $ordre->update([
                     'montant_paye' => $nouveauMontantPaye,
                 ]);
+                if (!$paiement->facture_id) app(PaiementLienSync::class)->depuisOrdre($ordre, -(float) $paiement->montant);
             }
 
             // Inverser le paiement sur la note de début
