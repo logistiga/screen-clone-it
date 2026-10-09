@@ -8,7 +8,9 @@ export type RowItem =
   | { kind: "group"; group: ClientGroup }
   | { kind: "subtotal"; group: ClientGroup };
 
-const titre = (o: ExportOptions) => (o.client ? "RELEVÉ CLIENT" : "RELEVÉ TOUS LES CLIENTS");
+const suffixe = (o: ExportOptions) =>
+  o.source === "ordres" ? " — ORDRES DE TRAVAIL" : o.source === "factures" ? " — FACTURES" : "";
+const titre = (o: ExportOptions) => (o.client ? "RELEVÉ CLIENT" : "RELEVÉ TOUS LES CLIENTS") + suffixe(o);
 const sujet = (o: ExportOptions) => (o.client ? safe(o.client.nom) : "Tous les clients");
 
 export function buildHeader(options: ExportOptions, isFirst: boolean) {
