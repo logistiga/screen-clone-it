@@ -95,7 +95,7 @@ export function FacturesModals({
       )}
 
       <PaiementGlobalModal open={paiementGlobalOpen} onOpenChange={onPaiementGlobalClose} />
-      <ExportModal open={exportOpen} onOpenChange={onExportClose} />
+      <ExportModal source="factures" open={exportOpen} onOpenChange={onExportClose} />
 
       {annulationPaiementModal && (
         <AnnulationPaiementModal

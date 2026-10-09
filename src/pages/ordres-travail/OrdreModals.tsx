@@ -94,7 +94,7 @@ export function OrdreModals({
       )}
 
       <PaiementGlobalOrdresModal open={paiementGlobalOpen} onOpenChange={onPaiementGlobalChange} />
-      <ExportModal open={exportOpen} onOpenChange={onExportChange} />
+      <ExportModal source="ordres" open={exportOpen} onOpenChange={onExportChange} />
 
       {emailModal && (
         <EmailModalWithTemplate
