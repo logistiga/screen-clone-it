@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import html2pdf from 'html2pdf.js';
 import { EmailModalWithTemplate } from './EmailModalWithTemplate';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
@@ -66,6 +65,7 @@ export function EmailModalWithPdfGenerator({
     if (!htmlContent || !contentRef.current) return null;
 
     try {
+      const { default: html2pdf } = await import("html2pdf.js");
       const blob = await html2pdf()
         .set({
           margin: 10,

@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { roundMoney } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import html2pdf from "html2pdf.js";
 import {
   Dialog,
   DialogContent,
@@ -127,6 +126,7 @@ export function ExportReleveModal({
     const fileName = `Releve_${client.nom.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
 
     try {
+      const { default: html2pdf } = await import("html2pdf.js");
       await html2pdf()
         .set({
           margin: 10,
