@@ -40,7 +40,7 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
 import { useClient, useDeleteClient } from "@/hooks/use-commercial";
 import { ClientDetailHeader, ExportReleveModal } from "@/components/clients";
-import loadingGif from "@/assets/loading-transition.gif";
+import loadingGif from "@/assets/loading-spinner.svg";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -74,7 +74,7 @@ export default function ClientDetailPage() {
               <motion.img 
                 src={loadingGif} 
                 alt="Chargement..." 
-                className="relative h-28 w-28 object-contain"
+                className="relative h-14 w-14 object-contain"
                 animate={{ scale: [1, 1.03, 1] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               />

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import loadingGif from "@/assets/loading-transition.gif";
+import loadingGif from "@/assets/loading-spinner.svg";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DocumentLoadingStateProps {
@@ -32,7 +32,7 @@ export const DocumentLoadingState = React.forwardRef<
           <motion.img
             src={loadingGif}
             alt="Chargement"
-            className="w-32 h-32 object-contain"
+            className="w-14 h-14 object-contain"
             animate={{ 
               y: [0, -5, 0],
             }}
