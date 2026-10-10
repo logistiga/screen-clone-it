@@ -112,7 +112,7 @@ class AutomationController extends Controller
 
     private function devisPayload(Devis $d): array
     {
-        $front = rtrim((string) config('app.frontend_url', env('FRONTEND_URL', 'https://facturation.logistiga.pro')), '/');
+        $front = rtrim((string) config('automation.frontend_url'), '/');
         return [
             'id' => $d->id,
             'numero' => $d->numero,
@@ -123,6 +123,7 @@ class AutomationController extends Controller
             'css' => round((float) $d->css),
             'montant_ttc' => round((float) $d->montant_ttc),
             'url_validation' => "{$front}/devis/{$d->id}",
+            'url_pdf' => "{$front}/devis/{$d->id}/pdf",
         ];
     }
 
