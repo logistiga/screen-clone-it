@@ -1,4 +1,6 @@
 import { useCallback, useRef } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface UsePdfDownloadOptions {
   filename: string;
@@ -50,7 +52,6 @@ export function usePdfDownload({ filename, cleanupDelayMs = 15000 }: UsePdfDownl
       }
       await new Promise((r) => setTimeout(r, 400));
 
-      const { default: jsPDF } = await import("jspdf");
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
       const pageWidthMm = 210;
       const pageHeightMm = 297;
@@ -66,7 +67,6 @@ export function usePdfDownload({ filename, cleanupDelayMs = 15000 }: UsePdfDownl
           continue;
         }
 
-        const { default: html2canvas } = await import("html2canvas");
         const canvas = await html2canvas(node, {
           scale: 3,
           useCORS: true,
