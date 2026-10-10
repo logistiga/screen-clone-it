@@ -123,6 +123,7 @@ class AutomationController extends Controller
             'css' => round((float) $d->css),
             'montant_ttc' => round((float) $d->montant_ttc),
             'url_validation' => "{$front}/devis/{$d->id}",
+            'url_pdf' => "{$front}/devis/{$d->id}/pdf",
         ];
     }
 

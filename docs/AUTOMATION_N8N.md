@@ -12,6 +12,6 @@ Format : `{success, data, meta}` ou `{success:false, error:{code,message,details
 | GET | /devis/{id} | devis:lire |
 | GET | /factures/impayees?client_id= | factures:lire |
 
-POST /devis : mêmes champs que la création de devis (client_id, type_document Conteneur|Lot|Independant, lignes/conteneurs/lots, prix fournis — jamais inventés). Statut forcé `brouillon`. Réponse : numero, totaux arrondis FCFA, `url_validation`. Même clé d'idempotence = même devis renvoyé (`meta.replay`).
+POST /devis : mêmes champs que la création de devis (client_id, type_document Conteneur|Lot|Independant, lignes/conteneurs/lots, prix fournis — jamais inventés). Statut forcé `brouillon`. Réponse : numero, totaux arrondis FCFA, `url_validation`, `url_pdf` (page PDF téléchargeable, connexion LogistiGA requise). Même clé d'idempotence = même devis renvoyé (`meta.replay`).
 Interdit : envoi client, conversion OT, facture, paiement, suppression.
 Rotation : modifier `AUTOMATION_API_KEYS` (`nom:cle:perm1|perm2`, plusieurs séparés par virgule) puis `php artisan config:cache`. Coupure : `AUTOMATION_API_ENABLED=false`.
