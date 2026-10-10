@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\Automation\AutomationController;
 use App\Http\Middleware\AutomationAuth;
-use App\Http\Middleware\PreventDuplicateSubmission;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,7 +14,7 @@ Route::prefix('automation')->group(function () {
     Route::get('clients/{id}/historique-prix', [AutomationController::class, 'historiquePrix'])
         ->whereNumber('id')->middleware("$a:clients:lire");
     Route::post('devis', [AutomationController::class, 'creerDevis'])
-        ->middleware(["$a:devis:creer", PreventDuplicateSubmission::class]);
+        ->middleware("$a:devis:creer");
     Route::get('devis/{id}', [AutomationController::class, 'devis'])->whereNumber('id')->middleware("$a:devis:lire");
     Route::get('factures/impayees', [AutomationController::class, 'facturesImpayees'])->middleware("$a:factures:lire");
 });
