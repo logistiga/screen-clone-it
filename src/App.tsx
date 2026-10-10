@@ -142,6 +142,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
+      // Listes filtrées (clé avec objet de paramètres) : garder l'ancienne liste
+      // pendant une nouvelle recherche pour ne pas démonter la barre de recherche.
+      placeholderData: (prev: unknown, prevQuery?: { queryKey: readonly unknown[] }) =>
+        prevQuery?.queryKey.some((k) => typeof k === "object" && k !== null) ? prev : undefined,
       gcTime: 1000 * 60 * 30, // 30 minutes (anciennement cacheTime)
       // IMPORTANT: éviter d'aggraver les rate-limits (429)
       retry: (failureCount, error: any) => {
