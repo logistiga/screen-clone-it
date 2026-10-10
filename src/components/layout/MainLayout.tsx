@@ -1,4 +1,5 @@
-import { ReactNode, forwardRef } from "react";
+import { ReactNode, forwardRef, useEffect } from "react";
+import { preloadAllPages } from "@/lib/preload-pages";
 import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
@@ -20,6 +21,7 @@ export const MainLayout = forwardRef<HTMLDivElement, MainLayoutProps>(
     const isMobile = useIsMobile();
     useAutoSync();
     useRealtimeNotifications();
+    useEffect(() => { preloadAllPages(); }, []);
 
     // Mobile layout: no sidebar, bottom nav
     if (isMobile) {
