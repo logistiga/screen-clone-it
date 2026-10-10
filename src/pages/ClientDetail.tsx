@@ -40,7 +40,7 @@ import { formatMontant, formatDate, getStatutLabel } from "@/data/mockData";
 import { getAvoirsClient, type Annulation } from "@/lib/api/annulations";
 import { useClient, useDeleteClient } from "@/hooks/use-commercial";
 import { ClientDetailHeader, ExportReleveModal } from "@/components/clients";
-import loadingGif from "@/assets/loading-transition.gif";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -69,16 +69,8 @@ export default function ClientDetailPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center gap-4"
           >
-            <div className="relative">
-              <div className="absolute inset-0 blur-xl bg-primary/20 rounded-full scale-125" />
-              <motion.img 
-                src={loadingGif} 
-                alt="Chargement..." 
-                className="relative h-28 w-28 object-contain"
-                animate={{ scale: [1, 1.03, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-            </div>
+            <LoadingSpinner />
+
             <p className="text-sm font-medium text-muted-foreground">
               Chargement du client...
             </p>

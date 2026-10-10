@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import loadingGif from "@/assets/loading-transition.gif";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DocumentLoadingStateProps {
@@ -29,19 +29,7 @@ export const DocumentLoadingState = React.forwardRef<
           transition={{ duration: 0.5 }}
           className="relative"
         >
-          <motion.img
-            src={loadingGif}
-            alt="Chargement"
-            className="w-32 h-32 object-contain"
-            animate={{ 
-              y: [0, -5, 0],
-            }}
-            transition={{ 
-              duration: 2, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
-            }}
-          />
+          <LoadingSpinner className="h-12 w-12" />
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 10 }}
