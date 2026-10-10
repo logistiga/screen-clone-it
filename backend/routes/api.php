@@ -56,6 +56,7 @@ Route::prefix('security')->group(function () {
 
 // Intégration ChatGPT (token dédié, lecture seule)
 require __DIR__.'/api_chatgpt.php';
+require __DIR__.'/api_automation.php';
 
 // ============================================
 // ROUTES PROTÉGÉES (auth:sanctum + user.active)
