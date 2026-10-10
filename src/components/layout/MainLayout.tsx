@@ -7,8 +7,6 @@ import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { PageTransition } from "./PageTransition";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useAutoSync } from "@/hooks/use-auto-sync";
-import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -18,8 +16,6 @@ interface MainLayoutProps {
 export const MainLayout = forwardRef<HTMLDivElement, MainLayoutProps>(
   function MainLayout({ children, title }, ref) {
     const isMobile = useIsMobile();
-    useAutoSync();
-    useRealtimeNotifications();
 
     // Mobile layout: no sidebar, bottom nav
     if (isMobile) {
