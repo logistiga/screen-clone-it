@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { ordresApi, facturesApi } from '@/lib/api/commercial';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ export function useOrdres(params?: { search?: string; statut?: string; categorie
   const query = useQuery({
     queryKey: ['ordres', params],
     queryFn: () => ordresApi.getAll(params),
+    placeholderData: keepPreviousData,
     retry: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { clientsApi, devisApi, Client, Devis } from '@/lib/api/commercial';
 import { toast } from 'sonner';
@@ -95,6 +95,7 @@ export function useDevis(params?: { search?: string; statut?: string; client_id?
   const query = useQuery({
     queryKey: ['devis', params],
     queryFn: () => devisApi.getAll(params),
+    placeholderData: keepPreviousData,
     retry: 0,
     refetchOnWindowFocus: false,
     staleTime: STALE_TIME,
