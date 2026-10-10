@@ -2,8 +2,6 @@ import { useState } from "react";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarIcon, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import {
   Dialog,
   DialogContent,
@@ -190,6 +188,7 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
       </tr>
     `).join('');
 
+    const { default: jsPDF } = await import("jspdf");
     const pdf = new jsPDF('p', 'mm', 'a4');
 
     for (let p = 0; p < pages.length; p++) {
@@ -297,6 +296,7 @@ export function ExportCaisseModal({ open, onOpenChange }: ExportCaisseModalProps
       document.body.appendChild(container);
 
       try {
+        const { default: html2canvas } = await import("html2canvas");
         const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
           scale: 2,
           useCORS: true,

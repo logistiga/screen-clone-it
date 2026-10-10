@@ -1,5 +1,3 @@
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import {
   type ExportOptions, type ReleveDoc,
   dateFr, fetchClientStatement, groupByClient, isPaid, money, reste, safe, statutLabel, totals,
@@ -38,6 +36,7 @@ function paginate(items: RowItem[]) {
 async function renderPagesToPdf(options: ExportOptions, docs: ReleveDoc[], filename: string) {
   const pages = paginate(buildItems(options, docs));
   const nbClients = groupByClient(docs).length;
+  const { default: jsPDF } = await import("jspdf");
   const pdf = new jsPDF("p", "mm", "a4");
 
   for (let p = 0; p < pages.length; p++) {
@@ -63,6 +62,7 @@ async function renderPagesToPdf(options: ExportOptions, docs: ReleveDoc[], filen
     Object.assign(container.style, { position: "absolute", left: "-9999px", top: "0", background: "#fff" });
     document.body.appendChild(container);
     try {
+      const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
         scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff",
       });

@@ -1,4 +1,3 @@
-import html2pdf from 'html2pdf.js';
 import type { StatsMensuelles, DetailCategorie } from '@/lib/api/previsions';
 
 const moisNoms = [
@@ -378,6 +377,7 @@ export async function exportPrevisionsPDF(stats: StatsMensuelles): Promise<void>
   };
 
   try {
+    const { default: html2pdf } = await import("html2pdf.js");
     await html2pdf().set(options).from(container).save();
   } finally {
     document.body.removeChild(container);

@@ -38,7 +38,6 @@ import {
 } from "lucide-react";
 import { AnimatedTableBody, AnimatedTableRow } from "@/components/ui/animated-table";
 import { toast } from "sonner";
-import html2pdf from "html2pdf.js";
 
 type DocumentType = "factures" | "ordres" | "all";
 
@@ -301,7 +300,7 @@ export function DocumentsTaxesList() {
     container.innerHTML = html;
     document.body.appendChild(container);
 
-    html2pdf()
+    import("html2pdf.js").then(({ default: html2pdf }) => html2pdf()
       .set({
         margin: 10,
         filename: `documents-taxes-${new Date().toISOString().split("T")[0]}.pdf`,
@@ -314,7 +313,7 @@ export function DocumentsTaxesList() {
       .then(() => {
         document.body.removeChild(container);
         toast.success("Export PDF téléchargé");
-      });
+      }));
   };
 
   if (isLoading) {
