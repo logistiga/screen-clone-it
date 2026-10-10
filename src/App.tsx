@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
+import { GlobalSync } from "@/components/layout/GlobalSync";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/pwa";
 import { Loader2 } from "lucide-react";
@@ -177,6 +178,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <TooltipProvider>
+            <GlobalSync />
             <Toaster />
             <Sonner />
             <PWAInstallPrompt />
