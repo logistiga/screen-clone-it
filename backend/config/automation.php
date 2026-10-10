@@ -25,4 +25,5 @@ return [
     'rate_limit_per_minute' => (int) env('AUTOMATION_API_RATE_LIMIT', 30),
     'idempotency_ttl_hours' => 24,
     'log_channel' => env('AUTOMATION_API_LOG_CHANNEL', 'daily'),
+    'frontend_url' => env('AUTOMATION_FRONTEND_URL', 'https://facturation.logistiga.pro'),
 ];
