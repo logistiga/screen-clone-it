@@ -20,3 +20,25 @@ Rotation : modifier `AUTOMATION_API_KEYS` (`nom:cle:perm1|perm2`, plusieurs sép
 | POST | /factures/{id}/lien-pdf | factures:lire |
 
 Dernière facture (hors annulées) : numero, dates, statut, montant_ttc, montant_paye, reste_du, `url_pdf` signé (24 h, sans connexion). Lecture seule.
+
+## Consultations supplémentaires pour Mora (lecture seule)
+
+Même clé `X-Automation-Key`, même enveloppe `{success, data, meta}`, montants FCFA entiers, `limit` défaut 20 / max 50 avec `meta.total`.
+Impayés, retards et relevés excluent les factures `payee`, annulées et `brouillon`.
+
+| Route | Permission | Paramètres |
+|---|---|---|
+| `GET /factures/{FAC-…}` | factures:lire | — (lignes, conteneurs, lots, reste_du, url_pdf) |
+| `GET /clients/{id}/factures` | factures:lire | statut, date_debut, date_fin, limit |
+| `GET /clients/{id}/releve` | factures:lire | date_debut, date_fin |
+| `GET /factures/en-retard` | factures:lire | client_id, limit (meta.total_reste_du) |
+| `GET /caisse/solde` | caisse:lire | — |
+| `GET /caisse/mouvements` | caisse:lire | date_debut, date_fin, type=entree\|sortie, limit |
+| `GET /dashboard/stats` | dashboard:lire | periode=jour\|semaine\|mois\|6mois\|annee |
+| `GET /ordres/{OT-…}` | ordres:lire | — |
+| `GET /clients/{id}/ordres` | ordres:lire | statut, limit |
+| `GET /devis/{DEV-…}` | devis:lire | — (lignes + url_pdf) |
+| `GET /clients/{id}/devis` | devis:lire | statut, limit |
+| `GET /clients/{id}` | clients:lire | — |
+
+Erreurs : 401 `UNAUTHENTICATED` (clé absente), 404 `NOT_FOUND`, 422 `VALIDATION` (période/dates invalides).
