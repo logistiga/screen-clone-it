@@ -17,4 +17,9 @@ Route::prefix('automation')->group(function () {
         ->middleware("$a:devis:creer");
     Route::get('devis/{id}', [AutomationController::class, 'devis'])->whereNumber('id')->middleware("$a:devis:lire");
     Route::get('factures/impayees', [AutomationController::class, 'facturesImpayees'])->middleware("$a:factures:lire");
+    Route::post('devis/{id}/lien-pdf', [\App\Http\Controllers\Api\Automation\AutomationPdfController::class, 'lien'])
+        ->whereNumber('id')->middleware("$a:devis:lire");
+    // Public mais protégé par signature temporaire (pas de clé, pas de session).
+    Route::get('devis/{id}/pdf', [\App\Http\Controllers\Api\Automation\AutomationPdfController::class, 'telecharger'])
+        ->whereNumber('id')->middleware('throttle:30,1')->name('automation.devis.pdf');
 });
