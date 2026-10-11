@@ -22,4 +22,10 @@ Route::prefix('automation')->group(function () {
     // Public mais protégé par signature temporaire (pas de clé, pas de session).
     Route::get('devis/{id}/pdf', [\App\Http\Controllers\Api\Automation\AutomationPdfController::class, 'telecharger'])
         ->whereNumber('id')->middleware('throttle:30,1')->name('automation.devis.pdf');
+
+    $fp = \App\Http\Controllers\Api\Automation\AutomationFacturePdfController::class;
+    Route::get('clients/{id}/derniere-facture', [$fp, 'derniere'])->whereNumber('id')->middleware("$a:factures:lire");
+    Route::post('factures/{id}/lien-pdf', [$fp, 'lien'])->whereNumber('id')->middleware("$a:factures:lire");
+    Route::get('factures/{id}/pdf', [$fp, 'telecharger'])
+        ->whereNumber('id')->middleware('throttle:30,1')->name('automation.factures.pdf');
 });
