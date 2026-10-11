@@ -3,7 +3,7 @@
 /*
 | Automatisation n8n / Mora — /api/automation/*
 | AUTOMATION_API_KEYS : "nom:cle:perm1|perm2,nom2:cle2:perm1" (jamais dans Git).
-| Permissions : clients:lire, devis:creer, devis:lire, factures:lire.
+| Permissions : clients:lire, devis:creer, devis:lire, factures:lire, ordres:lire, caisse:lire, dashboard:lire.
 | Aucune permission de suppression, annulation, paiement ou envoi n'existe.
 */
 

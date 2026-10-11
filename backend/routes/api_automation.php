@@ -28,4 +28,21 @@ Route::prefix('automation')->group(function () {
     Route::post('factures/{id}/lien-pdf', [$fp, 'lien'])->whereNumber('id')->middleware("$a:factures:lire");
     Route::get('factures/{id}/pdf', [$fp, 'telecharger'])
         ->whereNumber('id')->middleware('throttle:30,1')->name('automation.factures.pdf');
+
+    // Lecture seule supplémentaire pour Mora (aucune écriture).
+    $fc = \App\Http\Controllers\Api\Automation\AutomationFactureController::class;
+    $fi = \App\Http\Controllers\Api\Automation\AutomationFinanceController::class;
+    $dc = \App\Http\Controllers\Api\Automation\AutomationDocumentController::class;
+    Route::get('factures/en-retard', [$fc, 'enRetard'])->middleware("$a:factures:lire");
+    Route::get('factures/{numero}', [$fc, 'show'])->where('numero', 'FAC-[A-Za-z0-9\-]+')->middleware("$a:factures:lire");
+    Route::get('clients/{id}/factures', [$fc, 'parClient'])->whereNumber('id')->middleware("$a:factures:lire");
+    Route::get('clients/{id}/releve', [$fc, 'releve'])->whereNumber('id')->middleware("$a:factures:lire");
+    Route::get('caisse/solde', [$fi, 'solde'])->middleware("$a:caisse:lire");
+    Route::get('caisse/mouvements', [$fi, 'mouvements'])->middleware("$a:caisse:lire");
+    Route::get('dashboard/stats', [$fi, 'stats'])->middleware("$a:dashboard:lire");
+    Route::get('ordres/{numero}', [$dc, 'ordre'])->where('numero', 'OT-[A-Za-z0-9\-]+')->middleware("$a:ordres:lire");
+    Route::get('clients/{id}/ordres', [$dc, 'ordresClient'])->whereNumber('id')->middleware("$a:ordres:lire");
+    Route::get('devis/{numero}', [$dc, 'devis'])->where('numero', 'DEV-[A-Za-z0-9\-]+')->middleware("$a:devis:lire");
+    Route::get('clients/{id}/devis', [$dc, 'devisClient'])->whereNumber('id')->middleware("$a:devis:lire");
+    Route::get('clients/{id}', [$dc, 'client'])->whereNumber('id')->middleware("$a:clients:lire");
 });
