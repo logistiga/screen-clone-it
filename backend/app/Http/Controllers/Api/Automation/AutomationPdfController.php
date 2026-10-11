@@ -39,7 +39,7 @@ class AutomationPdfController extends Controller
         if (!$request->hasValidSignature()) {
             return response()->json(['success' => false, 'error' => ['code' => 'LIEN_INVALIDE', 'message' => 'Lien invalide ou expiré.']], 403);
         }
-        $devis = Devis::with(['client', 'lignes', 'conteneurs.operations', 'lots'])->find($id);
+        $devis = Devis::with(['client', 'lignes', 'conteneurs.operations', 'lots', 'armateur', 'transitaire', 'representant'])->find($id);
         if (!$devis) {
             abort(404);
         }
