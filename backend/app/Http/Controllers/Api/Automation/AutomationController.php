@@ -43,7 +43,8 @@ class AutomationController extends Controller
         }
         $devis = Devis::where('client_id', $id)->latest('id')->limit(10)
             ->with(['lignes:id,devis_id,type_operation,description,lieu_depart,lieu_arrivee,quantite,prix_unitaire',
-                'conteneurs:id,devis_id,numero,type,taille,prix_unitaire'])
+                'conteneurs:id,devis_id,numero,taille,description,prix_unitaire',
+                'lots:id,devis_id,numero_lot,description,quantite,prix_unitaire,prix_total'])
             ->get(['id', 'numero', 'categorie', 'date_creation', 'statut', 'montant_ht', 'montant_ttc']);
 
         return $this->ok($devis->toArray());
@@ -100,14 +101,21 @@ class AutomationController extends Controller
 
     public function facturesImpayees(Request $request): JsonResponse
     {
-        $q = Facture::query()->where('statut', '!=', 'annulee')->whereColumn('montant_paye', '<', 'montant_ttc');
+        $exclus = array_merge(\App\Support\FactureStatut::ALIAS_ANNULEE, [\App\Support\FactureStatut::PAYEE, 'Payée', 'payée']);
+        $q = Facture::query()->whereNotIn('statut', $exclus)->whereColumn('montant_paye', '<', 'montant_ttc');
         if ($request->filled('client_id')) {
             $q->where('client_id', (int) $request->query('client_id'));
         }
         $rows = $q->with('client:id,nom')->orderBy('date_echeance')->limit(50)
             ->get(['id', 'numero', 'client_id', 'date_creation', 'date_echeance', 'montant_ttc', 'montant_paye', 'statut']);
 
-        return $this->ok($rows->toArray());
+        $data = $rows->map(function ($f) {
+            $arr = $f->toArray();
+            $arr['reste_du'] = max(0, (int) round((float) $f->montant_ttc - (float) $f->montant_paye));
+            return $arr;
+        })->values()->all();
+
+        return $this->ok($data);
     }
 
     private function devisPayload(Devis $d): array
