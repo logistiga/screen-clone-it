@@ -20,7 +20,6 @@
     $sens = $tableau['type'] === 'conteneurs' && $typeOp ? (stripos($typeOp, 'import') !== false ? 'IMPORT' : (stripos($typeOp, 'export') !== false ? 'EXPORT' : null)) : null;
 @endphp
 <style>
-    @page { margin: 10mm 10mm 30mm 10mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'DejaVu Sans', sans-serif; font-size: 9px; color: #1f2937; line-height: 1.35; }
     .p { color: #dc2626; }

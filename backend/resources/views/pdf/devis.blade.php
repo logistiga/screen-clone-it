@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Devis {{ $devis->numero }}</title></head>
+<head><meta charset="UTF-8"><style>@page { margin: 10mm 10mm 30mm 10mm; }</style><title>Devis {{ $devis->numero }}</title></head>
 <body>
 @include('pdf.partials.document-officiel', [
     'doc' => $devis,

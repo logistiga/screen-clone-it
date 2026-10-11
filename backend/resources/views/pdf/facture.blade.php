@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Facture {{ $facture->numero }}</title></head>
+<head><meta charset="UTF-8"><style>@page { margin: 10mm 10mm 30mm 10mm; }</style><title>Facture {{ $facture->numero }}</title></head>
 <body>
 @php
     $ordreLie = $facture->relationLoaded('ordreTravail') ? $facture->ordreTravail : ($facture->ordreTravail ?? null);
