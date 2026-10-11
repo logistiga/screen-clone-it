@@ -44,7 +44,7 @@
     .recap td { padding: 4px 8px; border-bottom: 1px solid #e5e7eb; }
     .recap .h td { background: #fef2f2; color: #dc2626; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
     .recap .ttc td { background: #dc2626; color: #fff; font-weight: bold; padding: 6px 8px; }
-    .footer { position: fixed; bottom: -22mm; left: 0; right: 0; border-top: 1px solid #e5e7eb; padding-top: 5px; text-align: center; font-size: 7.5px; color: #6b7280; }
+    .footer { position: fixed; bottom: -22mm; height: 18mm; left: 0; right: 0; border-top: 1px solid #e5e7eb; padding-top: 5px; text-align: center; font-size: 7.5px; color: #6b7280; }
     .footer .s { font-weight: bold; color: #1f2937; font-size: 8px; }
     .watermark { position: fixed; top: 110mm; left: 30mm; font-size: 70px; color: rgba(220,38,38,0.15); transform: rotate(-30deg); border: 5px solid rgba(220,38,38,0.15); padding: 8px 24px; font-weight: bold; }
 </style>
