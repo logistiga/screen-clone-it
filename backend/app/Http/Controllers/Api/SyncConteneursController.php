@@ -24,7 +24,10 @@ class SyncConteneursController extends Controller
                 return response()->json(['success' => false, 'message' => 'Impossible de se connecter à la base OPS', 'debug' => ['error' => $e->getMessage()]], 503);
             }
 
-            $result = $this->executeSyncConteneurs();
+            $result = \App\Support\SyncConteneursLock::executer(fn () => $this->executeSyncConteneurs());
+            if ($result === null) {
+                return response()->json(['success' => false, 'code' => 'sync_en_cours', 'message' => 'Une synchronisation des conteneurs est déjà en cours. Réessayez dans un instant.'], 409);
+            }
 
             // Broadcaster l'event si des conteneurs ont été importés
             if ($result['conteneurs_importes'] > 0) {
