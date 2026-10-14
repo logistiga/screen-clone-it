@@ -273,57 +273,15 @@ class SyncFromOps extends Command
             ->whereIn('sc.statut', ['en_cours', 'livre', 'retourne'])
             ->get();
 
-        $bar = $this->output->createProgressBar($opsConteneurs->count());
-        $bar->start();
-
-        foreach ($opsConteneurs as $opsConteneur) {
-            if ($this->option('dry-run')) {
-                $this->line("   [DRY-RUN] Conteneur: {$opsConteneur->numero_conteneur} - BL: {$opsConteneur->numero_bl}");
-                $bar->advance();
-                continue;
-            }
-
-            $existing = ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->first();
-
-            ConteneurTraite::updateOrCreate([
-                'sortie_id_externe' => $opsConteneur->sortie_id_externe,
-            ], [
-                'numero_conteneur' => $opsConteneur->numero_conteneur,
-                'numero_bl' => $opsConteneur->numero_bl,
-                'type_conteneur' => $opsConteneur->type_conteneur,
-                'armateur_code' => $opsConteneur->code_armateur,
-                'armateur_nom' => $opsConteneur->armateur_nom,
-                'client_nom' => $opsConteneur->nom_client,
-                'client_adresse' => $opsConteneur->adresse_livraison,
-                'transitaire_nom' => $opsConteneur->nom_transitaire,
-                'date_sortie' => $opsConteneur->date_sortie,
-                'date_retour' => $opsConteneur->date_retour,
-                'camion_id_externe' => $opsConteneur->camion_id,
-                'remorque_id_externe' => $opsConteneur->remorque_id,
-                'prime_chauffeur' => $opsConteneur->prime_chauffeur,
-                'destination_type' => $opsConteneur->type_detention,
-                'destination_adresse' => $opsConteneur->destination,
-                'statut_ops' => $opsConteneur->statut_ops,
-                'statut' => $existing?->statut ?? 'en_attente',
-                'ordre_travail_id' => $existing?->ordre_travail_id,
-                'source_system' => 'logistiga_ops',
-                'synced_at' => now(),
-            ]);
-
-            // Enrichir les types de conteneurs par armateur
-            if (!empty($opsConteneur->type_conteneur) && !empty($opsConteneur->code_armateur)) {
-                $armateur = Armateur::where('code', $opsConteneur->code_armateur)->first();
-                if ($armateur && !empty($opsConteneur->type_conteneur)) {
-                    $armateur->update(['type_conteneur' => $opsConteneur->type_conteneur]);
-                }
-            }
-
-            $existing ? $this->conteneursSkipped++ : $this->conteneursImported++;
-            $bar->advance();
+        if ($this->option('dry-run')) {
+            foreach ($opsConteneurs as $o) { $this->line("   [DRY-RUN] Conteneur: {$o->numero_conteneur} - BL: {$o->numero_bl}"); }
+            return;
         }
 
-        $bar->finish();
-        $this->newLine();
+        $r = app(\App\Services\Ops\ConteneursSyncService::class)->synchroniser();
+        $this->conteneursImported += $r['importes'];
+        $this->conteneursSkipped += $r['inchanges'] + $r['mis_a_jour'];
+        $this->info("   {$r['importes']} nouveaux, {$r['mis_a_jour']} mis à jour, {$r['inchanges']} inchangés" . ($r['incremental'] ? ' (incrémental)' : ''));
     }
 
     /**
