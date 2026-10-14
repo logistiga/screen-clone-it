@@ -5,151 +5,109 @@ import { syncArmateursOps, syncConteneursOps, type SyncResult } from '@/services
 import { toast } from 'sonner';
 import { useNotificationStore } from '@/stores/notificationStore';
 
-const SYNC_INTERVAL_MS = 60 * 1000; // 1 minute
-const INITIAL_DELAY_MS = 10_000; // 10s après chargement
+const CONTENEURS_INTERVAL_MS = 5 * 60 * 1000; // 5 min
+const ARMATEURS_INTERVAL_MS = 60 * 60 * 1000; // 1 h
+const TICK_MS = 60 * 1000;
+const INITIAL_DELAY_MS = 15_000;
+const LS_CONTENEURS = 'autosync:last-conteneurs';
+const LS_ARMATEURS = 'autosync:last-armateurs';
 
+type SyncOutcome = { data: SyncResult | null; stop: boolean };
 
-// Demander la permission pour les notifications browser
+function getStatus(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } })?.response?.status;
+}
+
+/** Partagé entre onglets : un seul onglet lance la synchro pendant l'intervalle. */
+function isDue(key: string, interval: number): boolean {
+  const last = Number(localStorage.getItem(key) ?? 0);
+  return Date.now() - last >= interval;
+}
+
+async function callSync(fn: () => Promise<SyncResult>, key: string): Promise<SyncOutcome> {
+  localStorage.setItem(key, String(Date.now()));
+  try {
+    return { data: await fn(), stop: false };
+  } catch (error) {
+    const status = getStatus(error);
+    // 401/403 : session expirée ou droits absents → on arrête l'auto-sync
+    // 409 (synchro déjà en cours) / 429 (limite) : on ignore silencieusement
+    return { data: null, stop: status === 401 || status === 403 };
+  }
+}
+
 function requestNotificationPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
 }
 
-// Envoyer une notification browser native
 function sendBrowserNotification(title: string, body: string) {
   if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification(title, { body, icon: '/favicon.ico', tag: `sync-${Date.now()}` });
-    } catch {
-      // Silencieux
-    }
-  }
-}
-
-async function syncArmateurs(): Promise<SyncResult | null> {
-  try {
-    return await syncArmateursOps();
-  } catch (error: any) {
-    console.error('[AutoSync] Échec sync armateurs:', error?.response?.status);
-    return null;
-  }
-}
-
-async function syncConteneurs(): Promise<SyncResult | null> {
-  try {
-    return await syncConteneursOps();
-  } catch (error: any) {
-    console.error('[AutoSync] Échec sync conteneurs:', error?.response?.status);
-    return null;
+    try { new Notification(title, { body, icon: '/favicon.ico', tag: `sync-${Date.now()}` }); } catch { /* silencieux */ }
   }
 }
 
 /**
- * Hook global : polling court (1 min) pour sync OPS + rafraîchissement automatique des données.
- * Les notifications sont poussées dans le store global (NotificationBell).
- * Les caches React Query sont invalidés automatiquement après chaque sync réussie.
+ * Synchro OPS en arrière-plan, économe : conteneurs toutes les 5 min, armateurs toutes les heures,
+ * un seul onglet à la fois, rien si l'onglet est masqué, arrêt définitif sur 401/403.
  */
 export function useAutoSync() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isSyncingRef = useRef(false);
+  const busyRef = useRef(false);
+  const stoppedRef = useRef(false);
   const addNotification = useNotificationStore(s => s.addNotification);
 
   const runSync = useCallback(async () => {
-    if (isSyncingRef.current || !isAuthenticated) return;
-    isSyncingRef.current = true;
-
+    if (busyRef.current || stoppedRef.current || !isAuthenticated || document.hidden) return;
+    busyRef.current = true;
     try {
-      const [armateursResult, conteneursResult] = await Promise.allSettled([
-        syncArmateurs(),
-        syncConteneurs(),
-      ]);
-
-      const arm = armateursResult.status === 'fulfilled' ? armateursResult.value : null;
-      const cnt = conteneursResult.status === 'fulfilled' ? conteneursResult.value : null;
-
       let hasChanges = false;
 
-      // Nouveaux armateurs
-      const newArm = arm?.created ?? arm?.nouveaux ?? 0;
-      if (newArm > 0) {
-        hasChanges = true;
-        const msg = `${newArm} nouvel${newArm > 1 ? 'les' : ''} armateur${newArm > 1 ? 's' : ''} synchronisé${newArm > 1 ? 's' : ''} depuis OPS`;
-        addNotification('armateur.synced', msg, { count: newArm });
-        toast.success('🚢 Nouveaux armateurs', { description: msg, duration: 6000 });
-        sendBrowserNotification('🚢 Nouveaux armateurs détectés', msg);
+      if (isDue(LS_ARMATEURS, ARMATEURS_INTERVAL_MS)) {
+        const arm = await callSync(syncArmateursOps, LS_ARMATEURS);
+        if (arm.stop) { stoppedRef.current = true; return; }
+        const newArm = arm.data?.created ?? arm.data?.nouveaux ?? 0;
+        if (newArm > 0) {
+          hasChanges = true;
+          const msg = `${newArm} nouvel${newArm > 1 ? 'les' : ''} armateur${newArm > 1 ? 's' : ''} synchronisé${newArm > 1 ? 's' : ''} depuis OPS`;
+          addNotification('armateur.synced', msg, { count: newArm });
+          toast.success('🚢 Nouveaux armateurs', { description: msg, duration: 6000 });
+          sendBrowserNotification('🚢 Nouveaux armateurs détectés', msg);
+        }
       }
 
-      // Nouveaux conteneurs
-      const newCnt = cnt?.created ?? cnt?.nouveaux ?? 0;
-      if (newCnt > 0) {
-        hasChanges = true;
-        const msg = `${newCnt} nouveau${newCnt > 1 ? 'x' : ''} conteneur${newCnt > 1 ? 's' : ''} importé${newCnt > 1 ? 's' : ''} depuis OPS`;
-        addNotification('conteneur.synced', msg, { count: newCnt });
-        toast.success('📦 Nouveaux conteneurs', { description: msg, duration: 6000 });
-        sendBrowserNotification('📦 Nouveaux conteneurs détectés', msg);
+      if (isDue(LS_CONTENEURS, CONTENEURS_INTERVAL_MS)) {
+        const cnt = await callSync(syncConteneursOps, LS_CONTENEURS);
+        if (cnt.stop) { stoppedRef.current = true; return; }
+        const d = cnt.data as (SyncResult & { data?: { conteneurs_importes?: number; conteneurs_mis_a_jour?: number } }) | null;
+        const newCnt = d?.data?.conteneurs_importes ?? d?.created ?? d?.nouveaux ?? 0;
+        const updCnt = d?.data?.conteneurs_mis_a_jour ?? 0;
+        if (newCnt > 0) {
+          const msg = `${newCnt} nouveau${newCnt > 1 ? 'x' : ''} conteneur${newCnt > 1 ? 's' : ''} importé${newCnt > 1 ? 's' : ''} depuis OPS`;
+          addNotification('conteneur.synced', msg, { count: newCnt });
+          toast.success('📦 Nouveaux conteneurs', { description: msg, duration: 6000 });
+          sendBrowserNotification('📦 Nouveaux conteneurs détectés', msg);
+        }
+        if (newCnt > 0 || updCnt > 0) hasChanges = true;
       }
 
-      // Mises à jour
-      const updArm = arm?.updated ?? arm?.mis_a_jour ?? 0;
-      const updCnt = cnt?.updated ?? cnt?.mis_a_jour ?? 0;
-      if (updArm > 0 || updCnt > 0) {
-        hasChanges = true;
-        const parts = [];
-        if (updArm > 0) parts.push(`${updArm} armateur${updArm > 1 ? 's' : ''}`);
-        if (updCnt > 0) parts.push(`${updCnt} conteneur${updCnt > 1 ? 's' : ''}`);
-        addNotification('conteneur.synced', `Mis à jour : ${parts.join(', ')}`, { updArm, updCnt });
-      }
-
-      // Auto-refresh des données affichées si des changements sont détectés
       if (hasChanges) {
-        queryClient.invalidateQueries({ queryKey: ['conteneurs-traites'] });
-        queryClient.invalidateQueries({ queryKey: ['conteneurs-traites-stats'] });
-        queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies'] });
-        queryClient.invalidateQueries({ queryKey: ['conteneurs-anomalies-stats'] });
-        queryClient.invalidateQueries({ queryKey: ['armateurs'] });
-        queryClient.invalidateQueries({ queryKey: ['ordres'] });
-        queryClient.invalidateQueries({ queryKey: ['factures'] });
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      }
-
-      // Erreurs de sync → notification d'erreur
-      if (armateursResult.status === 'rejected') {
-        addNotification('sync.error', 'Échec sync armateurs OPS');
-      }
-      if (conteneursResult.status === 'rejected') {
-        addNotification('sync.error', 'Échec sync conteneurs OPS');
+        ['conteneurs-traites', 'conteneurs-traites-stats', 'conteneurs-anomalies', 'conteneurs-anomalies-stats', 'armateurs']
+          .forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
       }
     } finally {
-      isSyncingRef.current = false;
+      busyRef.current = false;
     }
   }, [isAuthenticated, queryClient, addNotification]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
+    if (!isAuthenticated) return;
+    stoppedRef.current = false;
     requestNotificationPermission();
-
-    // Première sync après 10s
-    const initialTimeout = setTimeout(runSync, INITIAL_DELAY_MS);
-
-    // Puis toutes les 1 minute
-    intervalRef.current = setInterval(runSync, SYNC_INTERVAL_MS);
-
-    return () => {
-      clearTimeout(initialTimeout);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    const t = setTimeout(runSync, INITIAL_DELAY_MS);
+    const i = setInterval(runSync, TICK_MS);
+    return () => { clearTimeout(t); clearInterval(i); };
   }, [isAuthenticated, runSync]);
 }
