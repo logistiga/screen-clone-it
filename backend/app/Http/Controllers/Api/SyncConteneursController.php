@@ -44,91 +44,17 @@ class SyncConteneursController extends Controller
 
     private function executeSyncConteneurs(): array
     {
-        $imported = 0;
-        $skipped = 0;
-        $errors = [];
-
-        // Vérifier si table camions existe et a colonne parc/numero_parc
-        $camionsSchema = \Illuminate\Support\Facades\Schema::connection('ops');
-        $hasCamionsTable = $camionsSchema->hasTable('camions');
-        $camionParcCol = null;
-        if ($hasCamionsTable) {
-            foreach (['parc', 'numero_parc', 'numero', 'plaque', 'immatriculation'] as $col) {
-                if ($camionsSchema->hasColumn('camions', $col)) { $camionParcCol = $col; break; }
-            }
-        }
-
-        $query = DB::connection('ops')
-            ->table('sortie_conteneurs as sc')
-            ->leftJoin('clients as c', 'sc.client_id', '=', 'c.id')
-            ->leftJoin('armateurs as a', 'sc.armateur_id', '=', 'a.id')
-            ->leftJoin('transitaires as t', 'sc.transitaire_id', '=', 't.id');
-
-        $select = [
-            'sc.id as sortie_id_externe', 'sc.numero_conteneur', 'sc.numero_bl', 'sc.type_conteneur',
-            'c.nom as nom_client', 'a.code as code_armateur', 'a.nom as armateur_nom', 't.nom as nom_transitaire',
-            'sc.camion_id', 'sc.remorque_id', 'sc.date_sortie', 'sc.date_retour', 'sc.prime_chauffeur',
-            'sc.adresse_livraison', 'sc.destination', 'sc.type_transport', 'sc.type_detention', 'sc.jours_gratuits',
-            'sc.statut as statut_ops',
-        ];
-
-        if ($hasCamionsTable && $camionParcCol) {
-            $query->leftJoin('camions as cam', 'sc.camion_id', '=', 'cam.id');
-            $select[] = "cam.{$camionParcCol} as camion_parc";
-        }
-
-        $opsConteneurs = $query->select($select)->get();
-
-        foreach ($opsConteneurs as $opsConteneur) {
-            try {
-                $existing = \App\Models\ConteneurTraite::where('sortie_id_externe', $opsConteneur->sortie_id_externe)->first();
-
-                \App\Models\ConteneurTraite::updateOrCreate([
-                    'sortie_id_externe' => $opsConteneur->sortie_id_externe,
-                ], [
-                    'numero_conteneur' => $opsConteneur->numero_conteneur,
-                    'numero_bl' => $opsConteneur->numero_bl,
-                    'type_conteneur' => $opsConteneur->type_conteneur,
-                    'armateur_code' => $opsConteneur->code_armateur,
-                    'armateur_nom' => $opsConteneur->armateur_nom,
-                    'client_nom' => $opsConteneur->nom_client,
-                    'client_adresse' => $opsConteneur->adresse_livraison,
-                    'transitaire_nom' => $opsConteneur->nom_transitaire,
-                    'date_sortie' => $opsConteneur->date_sortie,
-                    'date_retour' => $opsConteneur->date_retour,
-                    'camion_id_externe' => $opsConteneur->camion_id,
-                    'camion_plaque' => $opsConteneur->camion_parc ?? null,
-                    'remorque_id_externe' => $opsConteneur->remorque_id,
-                    'prime_chauffeur' => $opsConteneur->prime_chauffeur,
-                    'destination_type' => $opsConteneur->destination,
-                    'destination_adresse' => $opsConteneur->adresse_livraison,
-                    'type_transport' => $opsConteneur->type_transport ?? null,
-                    'statut_ops' => $opsConteneur->statut_ops,
-                    'statut' => $existing?->statut ?? 'en_attente',
-                    'ordre_travail_id' => $existing?->ordre_travail_id,
-                    'source_system' => 'logistiga_ops',
-                    'synced_at' => now(),
-                ]);
-
-                if (!empty($opsConteneur->type_conteneur) && !empty($opsConteneur->code_armateur)) {
-                    $armateur = \App\Models\Armateur::where('code', $opsConteneur->code_armateur)->first();
-                    if ($armateur) { $armateur->update(['type_conteneur' => $opsConteneur->type_conteneur]); }
-                }
-
-                $existing ? $skipped++ : $imported++;
-            } catch (\Exception $e) {
-                $errors[] = "Conteneur {$opsConteneur->numero_conteneur}: {$e->getMessage()}";
-            }
-        }
-
+        $s = app(\App\Services\Ops\ConteneursSyncService::class)->synchroniser((bool) request()->boolean('complet'));
         $autoIgnored = $this->autoIgnorerConteneursExistants();
 
         return [
-            'conteneurs_trouves_ops' => $opsConteneurs->count(),
-            'conteneurs_importes' => $imported,
-            'conteneurs_ignores' => $skipped,
+            'conteneurs_trouves_ops' => $s['trouves'],
+            'conteneurs_importes' => $s['importes'],
+            'conteneurs_mis_a_jour' => $s['mis_a_jour'],
+            'conteneurs_ignores' => $s['inchanges'],
+            'incremental' => $s['incremental'],
             'auto_ignored' => $autoIgnored,
-            'erreurs' => $errors,
+            'erreurs' => $s['erreurs'],
         ];
     }
 
