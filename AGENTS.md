@@ -7,3 +7,4 @@
 - `PreventDuplicateSubmission` middleware rejects identical write requests within a few seconds server-side — complements the frontend dedupe.
 - DB-touching tests run only on a dedicated test database (`TestCase::exigerBaseDeTest`) — never against production.
 - n8n/Mora automation lives under `/api/automation/*` (keys in server `.env` `AUTOMATION_API_KEYS`, per-route permissions via `AutomationAuth`) — its only write is a draft quote with mandatory `X-Idempotency-Key`; never send, convert, invoice, pay or delete, so a human always validates.
+- OPS container sync runs only through `App\Services\Ops\ConteneursSyncService` under the global `SyncConteneursLock` (MySQL GET_LOCK), incremental and write-on-change, with sync routes throttled (`ops-sync`) — protects the shared production database from overload.
