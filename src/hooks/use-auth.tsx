@@ -4,7 +4,6 @@ import {
   loginRequest,
   logoutRequest,
   refreshTokenRequest,
-  syncArmateursOps,
   getAuthToken,
   setAuthToken,
   removeAuthToken,
