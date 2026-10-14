@@ -50,6 +50,17 @@ class SyncFromOps extends Command
             return $this->testConnection();
         }
 
+        $code = \App\Support\SyncConteneursLock::executer(fn () => $this->executerSynchro());
+        if ($code === null) {
+            $this->warn('⏳ Une synchronisation est déjà en cours, abandon.');
+            return Command::SUCCESS;
+        }
+        return $code;
+    }
+
+    private function executerSynchro(): int
+    {
+
         $this->info('🔄 Synchronisation OPS → FAC');
         $this->newLine();
 
