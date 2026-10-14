@@ -241,40 +241,9 @@ class SyncFromOps extends Command
     {
         $this->info('🚢 Synchronisation des conteneurs traités...');
 
-        // Lecture depuis sortie_conteneurs (base logiwkuh_tc)
-        // Jointures pour résoudre les FK client_id, armateur_id, transitaire_id
-        $opsConteneurs = DB::connection('ops')
-            ->table('sortie_conteneurs as sc')
-            ->leftJoin('clients as c', 'sc.client_id', '=', 'c.id')
-            ->leftJoin('armateurs as a', 'sc.armateur_id', '=', 'a.id')
-            ->leftJoin('transitaires as t', 'sc.transitaire_id', '=', 't.id')
-            ->select([
-                'sc.id as sortie_id_externe',
-                'sc.numero_conteneur',
-                'sc.numero_bl',
-                'sc.type_conteneur',
-                'c.nom as nom_client',
-                'a.code as code_armateur',
-                'a.nom as armateur_nom',
-                't.nom as nom_transitaire',
-                'sc.camion_id',
-                'sc.remorque_id',
-                'sc.date_sortie',
-                'sc.date_retour',
-                'sc.prime_chauffeur',
-                'sc.adresse_livraison',
-                'sc.destination',
-                'sc.type_transport',
-                'sc.type_detention',
-                'sc.jours_gratuits',
-                'sc.statut as statut_ops',
-            ])
-            // Ne synchroniser que les conteneurs actifs
-            ->whereIn('sc.statut', ['en_cours', 'livre', 'retourne'])
-            ->get();
-
         if ($this->option('dry-run')) {
-            foreach ($opsConteneurs as $o) { $this->line("   [DRY-RUN] Conteneur: {$o->numero_conteneur} - BL: {$o->numero_bl}"); }
+            $n = DB::connection('ops')->table('sortie_conteneurs')->count();
+            $this->line("   [DRY-RUN] {$n} sortie(s) de conteneurs dans OPS, aucune écriture.");
             return;
         }
 

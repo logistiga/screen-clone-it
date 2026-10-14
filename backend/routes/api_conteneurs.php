@@ -44,7 +44,7 @@ Route::prefix('conteneurs-anomalies')->middleware('audit')->group(function () {
 // ============================================
 // SYNC DIAGNOSTIC (OPS)
 // ============================================
-Route::prefix('sync-diagnostic')->middleware('audit')->group(function () {
+Route::prefix('sync-diagnostic')->middleware(['audit', 'throttle:ops-sync'])->group(function () {
     Route::get('health-ops', [SyncDiagnosticController::class, 'healthOps'])
         ->middleware('permission:configuration.voir');
     Route::post('sync-conteneurs', [SyncDiagnosticController::class, 'syncConteneurs'])

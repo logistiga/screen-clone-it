@@ -299,10 +299,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userData);
         updateLastActivity();
 
-        // Synchroniser les armateurs depuis OPS en arrière-plan (fire & forget)
-        syncArmateursOps().catch(() => {
-          // Silencieux - ne pas bloquer la connexion si la sync échoue
-        });
+        // La synchro OPS est gérée uniquement par GlobalSync (pas d'appel à la connexion)
+
+
 
         // Si connexion suspecte, retourner les infos pour redirection
         if (securityInfo?.suspicious && suspiciousLoginId) {

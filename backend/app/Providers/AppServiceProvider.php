@@ -144,6 +144,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Synchronisations OPS : protège la base partagée contre les appels en rafale
+        RateLimiter::for('ops-sync', function (Request $request) {
+            return Limit::perMinute(2)->by(($request->user()?->id ?: $request->ip()) . '|' . $request->path());
+        });
+
         // 2. Login - STRICT (5/min par email+IP) - Protection brute force
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)
