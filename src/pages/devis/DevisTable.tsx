@@ -1,3 +1,4 @@
+import { useHasPermission } from "@/components/auth/PermissionGate";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,8 @@ export function DevisTable({
   onConfirmAction, onWhatsApp, onEmail,
 }: DevisTableProps) {
   const navigate = useNavigate();
+  const canAnnuler = useHasPermission("devis.annuler");
+  const canSupprimer = useHasPermission("devis.supprimer");
 
   return (
     <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
@@ -112,7 +115,7 @@ export function DevisTable({
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" title="Voir" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => navigate(`/devis/${d.id}`)}><Eye className="h-4 w-4" /></Button>
-                    {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
+                    {canAnnuler && d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
                       <Button variant="ghost" size="icon" title="Modifier" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => navigate(`/devis/${d.id}/modifier`)}><Edit className="h-4 w-4" /></Button>
                     )}
                     <Button variant="ghost" size="icon" title="PDF" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-muted" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}><FileText className="h-4 w-4" /></Button>
@@ -130,7 +133,7 @@ export function DevisTable({
                     {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
                       <Button variant="ghost" size="icon" title="Annuler" className="h-8 w-8 text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10" onClick={() => onConfirmAction('annuler', d.id, d.numero)}><Ban className="h-4 w-4" /></Button>
                     )}
-                    <Button variant="ghost" size="icon" title="Supprimer" className="h-8 w-8 text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10" onClick={() => onConfirmAction('supprimer', d.id, d.numero)}><Trash2 className="h-4 w-4" /></Button>
+                    {canSupprimer && <Button variant="ghost" size="icon" title="Supprimer" className="h-8 w-8 text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10" onClick={() => onConfirmAction('supprimer', d.id, d.numero)}><Trash2 className="h-4 w-4" /></Button>}
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,3 +1,4 @@
+import { useHasPermission } from "@/components/auth/PermissionGate";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +74,8 @@ export function OrdreHeader({
   onRefresh,
 }: OrdreHeaderProps) {
   const navigate = useNavigate();
+  const canAnnuler = useHasPermission("ordres.annuler");
+  const canSupprimer = useHasPermission("ordres.supprimer");
   const statutConfig = getStatutConfig(ordre.statut);
   const { downloadPdf } = usePdfDownload({ filename: `ordre-${ordre.numero}.pdf` });
   const deleteOrdreMutation = useDeleteOrdre();
@@ -345,6 +348,7 @@ L'équipe LOGISTIGA`;
                   </Button>
                 )}
                 
+                {canAnnuler && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -354,6 +358,7 @@ L'équipe LOGISTIGA`;
                   <Ban className="h-3.5 w-3.5" />
                   Annuler
                 </Button>
+                )}
                 
                 <Button
                   size="sm"
@@ -371,7 +376,7 @@ L'équipe LOGISTIGA`;
               </>
             )}
             
-            {ordre.statut !== 'facture' && (
+            {canSupprimer && ordre.statut !== 'facture' && (
               <Button
                 variant="outline"
                 size="sm"

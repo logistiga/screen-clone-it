@@ -72,7 +72,7 @@ Route::prefix('factures')->middleware('audit')->group(function () {
     Route::delete('{facture}', [FactureController::class, 'destroy'])
         ->middleware('permission:factures.supprimer');
     Route::post('{facture}/annuler', [FactureController::class, 'annuler'])
-        ->middleware('permission:factures.modifier');
+        ->middleware('permission:factures.annuler');
     Route::post('{facture}/duplicate', [FactureController::class, 'duplicate'])
         ->middleware('permission:factures.creer');
 });

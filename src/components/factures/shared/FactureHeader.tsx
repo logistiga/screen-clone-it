@@ -1,3 +1,4 @@
+import { useHasPermission } from "@/components/auth/PermissionGate";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -96,6 +97,8 @@ export function FactureHeader({
   onDeleteClick,
 }: FactureHeaderProps) {
   const navigate = useNavigate();
+  const canAnnuler = useHasPermission("factures.annuler");
+  const canSupprimer = useHasPermission("factures.supprimer");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const client = facture.client;
@@ -277,7 +280,7 @@ L'équipe LOGISTIGA`;
                   </Button>
                 )}
                 
-                {onAnnulerClick && (
+                {canAnnuler && onAnnulerClick && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -303,7 +306,7 @@ L'équipe LOGISTIGA`;
               </Button>
             )}
             
-            {onDeleteClick && facture.statut !== 'payee' && (
+            {canSupprimer && onDeleteClick && facture.statut !== 'payee' && (
               <Button
                 variant="outline"
                 size="sm"

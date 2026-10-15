@@ -1,3 +1,4 @@
+import { useHasPermission } from "@/components/auth/PermissionGate";
 import { useNavigate } from "react-router-dom";
 import { roundMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ export function OrdreTableRow({
   onAnnulationPaiement, onAnnulation, onEmail, onWhatsApp,
 }: OrdreTableRowProps) {
   const navigate = useNavigate();
+  const canAnnuler = useHasPermission("ordres.annuler");
+  const canSupprimer = useHasPermission("ordres.supprimer");
   const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
 
   return (
@@ -126,14 +129,16 @@ export function OrdreTableRow({
           <Button variant="ghost" size="icon" title="WhatsApp" className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10" onClick={() => onWhatsApp(ordre)}>
             <MessageCircle className="h-4 w-4" />
           </Button>
-          {ordre.statut !== "annule" && ordre.statut !== "facture" && (
+          {canAnnuler && ordre.statut !== "annule" && ordre.statut !== "facture" && (
             <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10" onClick={() => onAnnulation({ id: Number(ordre.id), numero: ordre.numero })}>
               <Ban className="h-4 w-4" />
             </Button>
           )}
+          {canSupprimer && (
           <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10" onClick={() => onConfirmAction({ type: "supprimer", id: ordre.id, numero: ordre.numero })}>
             <Trash2 className="h-4 w-4" />
           </Button>
+          )}
         </div>
       </TableCell>
     </AnimatedTableRow>

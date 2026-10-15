@@ -1,3 +1,4 @@
+import { useHasPermission } from "@/components/auth/PermissionGate";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { roundMoney } from "@/lib/utils";
@@ -58,6 +59,8 @@ export function FacturesTable({
   onDelete, onEmail, onPaiement, onAnnulation, onAnnulationPaiement,
 }: FacturesTableProps) {
   const navigate = useNavigate();
+  const canAnnuler = useHasPermission("factures.annuler");
+  const canSupprimer = useHasPermission("factures.supprimer");
 
   return (
     <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
@@ -121,13 +124,13 @@ export function FacturesTable({
                         onClick={() => window.open(`/factures/${facture.id}/pdf`, '_blank')}>
                         <Download className="h-4 w-4 text-emerald-600" />
                       </Button>
-                      {facture.statut !== 'annulee' && (
+                      {canAnnuler && facture.statut !== 'annulee' && (
                         <Button variant="ghost" size="icon" title="Annuler" className="text-orange-600 transition-all duration-200 hover:scale-110 hover:bg-orange-500/10"
                           onClick={() => onAnnulation({ id: facture.id, numero: facture.numero, montantTTC: facture.montant_ttc || 0, montantPaye: facture.montant_paye || 0, clientNom: facture.client?.nom || "" })}>
                           <Ban className="h-4 w-4" />
                         </Button>
                       )}
-                      {facture.statut !== 'annulee' && (
+                      {canSupprimer && facture.statut !== 'annulee' && (
                         <Button variant="ghost" size="icon" title="Supprimer" className="text-destructive transition-all duration-200 hover:scale-110 hover:bg-red-500/10" onClick={() => onDelete({ id: facture.id, numero: facture.numero })}><Trash2 className="h-4 w-4" /></Button>
                       )}
                       {facture.statut === 'annulee' && (
