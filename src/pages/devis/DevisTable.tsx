@@ -76,6 +76,9 @@ export function DevisTable({
   onConfirmAction, onWhatsApp, onEmail,
 }: DevisTableProps) {
   const navigate = useNavigate();
+  const canModifier = useHasPermission("devis.modifier");
+  const canCreerOT = useHasPermission("ordres.creer");
+  const canCreerFac = useHasPermission("factures.creer");
   const canAnnuler = useHasPermission("devis.annuler");
   const canSupprimer = useHasPermission("devis.supprimer");
 
@@ -116,18 +119,18 @@ export function DevisTable({
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" title="Voir" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => navigate(`/devis/${d.id}`)}><Eye className="h-4 w-4" /></Button>
                     {canAnnuler && d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (
-                      <Button variant="ghost" size="icon" title="Modifier" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => navigate(`/devis/${d.id}/modifier`)}><Edit className="h-4 w-4" /></Button>
+                      {canModifier && <Button variant="ghost" size="icon" title="Modifier" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => navigate(`/devis/${d.id}/modifier`)}><Edit className="h-4 w-4" /></Button>}
                     )}
                     <Button variant="ghost" size="icon" title="PDF" className="h-8 w-8 transition-all duration-200 hover:scale-110 hover:bg-muted" onClick={() => window.open(`/devis/${d.id}/pdf`, '_blank')}><FileText className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Email" className="h-8 w-8 text-blue-600 transition-all duration-200 hover:scale-110 hover:bg-blue-500/10" onClick={() => onEmail(d)}><Mail className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="WhatsApp" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10" onClick={() => onWhatsApp(d)}><MessageCircle className="h-4 w-4" /></Button>
-                    {(d.statut === 'brouillon' || d.statut === 'envoye') && (
+                    {canModifier && (d.statut === 'brouillon' || d.statut === 'envoye') && (
                       <Button variant="ghost" size="icon" title="Valider" className="h-8 w-8 text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10" onClick={() => onConfirmAction('valider', d.id, d.numero)}><Check className="h-4 w-4" /></Button>
                     )}
                     {d.statut === 'accepte' && (
                       <>
-                        <Button variant="ghost" size="icon" title="Convertir en ordre" className="h-8 w-8 text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => onConfirmAction('convertir', d.id, d.numero)}><ArrowRight className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" title="Facturer directement" className="h-8 w-8 text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10" onClick={() => onConfirmAction('facturer', d.id, d.numero)}><FileCheck className="h-4 w-4" /></Button>
+                        {canCreerOT && <Button variant="ghost" size="icon" title="Convertir en ordre" className="h-8 w-8 text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => onConfirmAction('convertir', d.id, d.numero)}><ArrowRight className="h-4 w-4" /></Button>}
+                        {canCreerFac && <Button variant="ghost" size="icon" title="Facturer directement" className="h-8 w-8 text-green-600 transition-all duration-200 hover:scale-110 hover:bg-green-500/10" onClick={() => onConfirmAction('facturer', d.id, d.numero)}><FileCheck className="h-4 w-4" /></Button>}
                       </>
                     )}
                     {d.statut !== 'refuse' && d.statut !== 'expire' && d.statut !== 'accepte' && (

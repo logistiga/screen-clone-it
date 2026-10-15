@@ -28,6 +28,9 @@ export function OrdreTableRow({
   onAnnulationPaiement, onAnnulation, onEmail, onWhatsApp,
 }: OrdreTableRowProps) {
   const navigate = useNavigate();
+  const canModifier = useHasPermission("ordres.modifier");
+  const canFacturer = useHasPermission("factures.creer");
+  const canPayer = useHasPermission("paiements.creer");
   const canAnnuler = useHasPermission("ordres.annuler");
   const canSupprimer = useHasPermission("ordres.supprimer");
   const resteAPayer = roundMoney((ordre.montant_ttc || 0) - (ordre.montant_paye || 0));
@@ -93,17 +96,17 @@ export function OrdreTableRow({
           <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/ordres/${ordre.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10">
             <Eye className="h-4 w-4" />
           </Button>
-          {ordre.statut !== "annule" && (
+          {canModifier && ordre.statut !== "annule" && (
             <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/ordres/${ordre.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10">
               <Edit className="h-4 w-4" />
             </Button>
           )}
-          {ordre.statut !== "facture" && ordre.statut !== "annule" && (
+          {canFacturer && ordre.statut !== "facture" && ordre.statut !== "annule" && (
             <Button variant="ghost" size="icon" title="Convertir en facture" className="text-primary transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => onConfirmAction({ type: "facturer", id: ordre.id, numero: ordre.numero })}>
               <ArrowRight className="h-4 w-4" />
             </Button>
           )}
-          {ordre.statut !== "facture" && ordre.statut !== "annule" && resteAPayer > 0 && (
+          {canPayer && ordre.statut !== "facture" && ordre.statut !== "annule" && resteAPayer > 0 && (
             <Button variant="ghost" size="icon" title="Paiement" className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
               onClick={() => onPaiement({
                 id: ordre.id, numero: ordre.numero, montantRestant: resteAPayer,
