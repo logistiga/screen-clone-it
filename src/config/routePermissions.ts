@@ -49,16 +49,16 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/annulations/:id/avoir', permission: 'factures.voir' },
 
   // === Notes de débit ===
-  { path: '/notes-debut', permission: 'notes.voir' },
-  { path: '/notes-debut/nouvelle', permission: 'notes.creer' },
-  { path: '/notes-debut/ouverture-port', permission: 'notes.creer' },
+  { path: '/notes-debut', permission: 'notes_debit.voir' },
+  { path: '/notes-debut/nouvelle', permission: 'notes_debit.creer' },
+  { path: '/notes-debut/ouverture-port', permission: 'notes_debit.creer' },
   { path: '/detentions-en-attente', permission: 'ordres.voir' },
-  { path: '/notes-debut/detention', permission: 'notes.creer' },
-  { path: '/notes-debut/reparation', permission: 'notes.creer' },
-  { path: '/notes-debut/relache', permission: 'notes.creer' },
-  { path: '/notes-debut/:id', permission: 'notes.voir' },
-  { path: '/notes-debut/:id/pdf', permission: 'notes.voir' },
-  { path: '/notes-debut/:id/modifier', permission: 'notes.modifier' },
+  { path: '/notes-debut/detention', permission: 'notes_debit.creer' },
+  { path: '/notes-debut/reparation', permission: 'notes_debit.creer' },
+  { path: '/notes-debut/relache', permission: 'notes_debit.creer' },
+  { path: '/notes-debut/:id', permission: 'notes_debit.voir' },
+  { path: '/notes-debut/:id/pdf', permission: 'notes_debit.voir' },
+  { path: '/notes-debut/:id/modifier', permission: 'notes_debit.modifier' },
 
   // === Finance ===
   { path: '/caisse', permission: 'caisse.voir' },

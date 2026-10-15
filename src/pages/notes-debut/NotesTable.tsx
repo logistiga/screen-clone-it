@@ -1,3 +1,4 @@
+import { useHasPermission } from "@/components/auth/PermissionGate";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +39,9 @@ export function NotesTable({
   onSelectAll, onSelectOne, onClearFilters, onEmail, onPaiement, onDelete,
 }: NotesTableProps) {
   const navigate = useNavigate();
+  const canModifier = useHasPermission("notes_debit.modifier");
+  const canSupprimer = useHasPermission("notes_debit.supprimer");
+  const canPayer = useHasPermission("paiements.creer");
 
   return (
     <Card className="border-border/50 overflow-hidden">
@@ -101,7 +105,7 @@ export function NotesTable({
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Voir" onClick={() => navigate(`/notes-debut/${note.id}`)}><Eye className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier" onClick={() => navigate(`/notes-debut/${note.id}/modifier`)}><Edit className="h-4 w-4" /></Button>
+                          {canModifier && <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier" onClick={() => navigate(`/notes-debut/${note.id}/modifier`)}><Edit className="h-4 w-4" /></Button>}
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="PDF" onClick={async (e) => {
                             e.stopPropagation();
                             try {
@@ -121,11 +125,11 @@ export function NotesTable({
                             } catch (err: any) { toast.error(err.response?.data?.message || "Erreur téléchargement PDF"); }
                           }}><Download className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Email" onClick={() => onEmail(note)}><Mail className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon"
+                          {canPayer && <Button variant="ghost" size="icon"
                             className={`h-8 w-8 ${remaining > 0 ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : ''}`}
                             title={remaining > 0 ? "Enregistrer un paiement" : "Entièrement payé"}
-                            disabled={remaining <= 0} onClick={() => onPaiement(note)}><CreditCard className="h-4 w-4" /></Button>
-                          {paid === 0 && advance === 0 && (
+                            disabled={remaining <= 0} onClick={() => onPaiement(note)}><CreditCard className="h-4 w-4" /></Button>}
+                          {canSupprimer && paid === 0 && advance === 0 && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Supprimer" onClick={() => onDelete(note)}><Trash2 className="h-4 w-4" /></Button>
                           )}
                         </div>

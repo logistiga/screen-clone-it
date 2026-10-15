@@ -12,26 +12,26 @@ class RepresentantPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('partenaires.voir');
+        return $user->hasPermissionTo('representants.voir');
     }
 
     public function view(User $user, Representant $representant): bool
     {
-        return $user->hasPermissionTo('partenaires.voir');
+        return $user->hasPermissionTo('representants.voir');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('partenaires.creer');
+        return $user->hasPermissionTo('representants.creer');
     }
 
     public function update(User $user, Representant $representant): bool
     {
-        return $user->hasPermissionTo('partenaires.modifier');
+        return $user->hasPermissionTo('representants.modifier');
     }
 
     public function delete(User $user, Representant $representant): bool
     {
-        return $user->hasPermissionTo('partenaires.supprimer');
+        return $user->hasPermissionTo('representants.supprimer');
     }
 }

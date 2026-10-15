@@ -59,6 +59,8 @@ export function FacturesTable({
   onDelete, onEmail, onPaiement, onAnnulation, onAnnulationPaiement,
 }: FacturesTableProps) {
   const navigate = useNavigate();
+  const canModifier = useHasPermission("factures.modifier");
+  const canPayer = useHasPermission("paiements.creer");
   const canAnnuler = useHasPermission("factures.annuler");
   const canSupprimer = useHasPermission("factures.supprimer");
 
@@ -102,10 +104,10 @@ export function FacturesTable({
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" title="Voir" onClick={() => navigate(`/factures/${facture.id}`)} className="transition-all duration-200 hover:scale-110 hover:bg-primary/10"><Eye className="h-4 w-4" /></Button>
-                      {facture.statut !== 'payee' && facture.statut !== 'annulee' && (
+                      {canModifier && facture.statut !== 'payee' && facture.statut !== 'annulee' && (
                         <Button variant="ghost" size="icon" title="Modifier" onClick={() => navigate(`/factures/${facture.id}/modifier`)} className="transition-all duration-200 hover:scale-110 hover:bg-blue-500/10"><Edit className="h-4 w-4" /></Button>
                       )}
-                      {facture.statut !== 'payee' && facture.statut !== 'annulee' && resteAPayer > 0 && (
+                      {canPayer && facture.statut !== 'payee' && facture.statut !== 'annulee' && resteAPayer > 0 && (
                         <Button variant="ghost" size="icon" title="Paiement" className="text-emerald-600 transition-all duration-200 hover:scale-110 hover:bg-emerald-500/10"
                           onClick={() => onPaiement({
                             id: facture.id, numero: facture.numero, montantRestant: resteAPayer,
