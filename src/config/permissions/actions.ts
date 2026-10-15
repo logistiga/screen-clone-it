@@ -30,6 +30,7 @@ export const SPECIFIC_ACTIONS = {
   assignRole: { key: 'assigner_role', label: 'Assigner rôle', description: 'Assigner un rôle à un utilisateur' },
   convert: { key: 'convertir', label: 'Convertir', description: 'Convertir en autre document' },
   payment: { key: 'paiement', label: 'Paiement', description: 'Enregistrer un paiement' },
+  pay: { key: 'payer', label: 'Payer', description: 'Décaisser / payer' },
   download: { key: 'telecharger', label: 'Télécharger', description: 'Télécharger le document' },
 } as const;
 

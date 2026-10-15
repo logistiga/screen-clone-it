@@ -187,7 +187,7 @@ return [
             'description' => 'Gestion des taxes TVA et CSS',
             'category' => 'finance',
             'global_actions' => ['voir', 'modifier'],
-            'specific_actions' => ['exporter', 'cloturer'],
+            'specific_actions' => ['exporter', 'cloturer', 'payer'],
         ],
 
         // === STOCK & PRODUITS ===
