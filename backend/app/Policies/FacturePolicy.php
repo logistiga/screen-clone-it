@@ -37,6 +37,6 @@ class FacturePolicy
 
     public function annuler(User $user, Facture $facture): bool
     {
-        return $user->hasPermissionTo('factures.modifier');
+        return $user->hasPermissionTo('factures.annuler');
     }
 }
