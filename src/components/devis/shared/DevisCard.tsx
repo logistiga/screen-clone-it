@@ -36,6 +36,7 @@ const categorieConfig: Record<string, { label: string; icon: React.ReactNode; cl
 export function DevisCard({ devis, onAction, onWhatsApp, onEmail }: DevisCardProps) {
   const navigate = useNavigate();
   const canAnnuler = useHasPermission("devis.annuler");
+  const canModifier = useHasPermission("devis.modifier");
   const canSupprimer = useHasPermission("devis.supprimer");
   const statut = statutConfig[devis.statut] || statutConfig.brouillon;
   const categorie = categorieConfig[devis.type_document] || categorieConfig.Conteneur;
@@ -162,7 +163,7 @@ export function DevisCard({ devis, onAction, onWhatsApp, onEmail }: DevisCardPro
             >
               <Eye className="h-4 w-4" />
             </Button>
-            {canAnnuler && devis.statut !== 'refuse' && devis.statut !== 'expire' && devis.statut !== 'accepte' && (
+            {canModifier && devis.statut !== 'refuse' && devis.statut !== 'expire' && devis.statut !== 'accepte' && (
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -233,7 +234,7 @@ export function DevisCard({ devis, onAction, onWhatsApp, onEmail }: DevisCardPro
                 </Button>
               </>
             )}
-            {devis.statut !== 'refuse' && devis.statut !== 'expire' && devis.statut !== 'accepte' && (
+            {canAnnuler && devis.statut !== 'refuse' && devis.statut !== 'expire' && devis.statut !== 'accepte' && (
               <Button 
                 variant="ghost" 
                 size="sm" 
