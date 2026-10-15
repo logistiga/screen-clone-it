@@ -214,7 +214,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const timeSinceLastActivity = Date.now() - lastActivityRef.current;
         
         // Si plus de 5 minutes d'inactivité, rafraîchir
-        if (timeSinceLastActivity > 5 * 60 * 1000) {
+        if (timeSinceLastActivity > 60 * 1000) {
           console.log('[Auth] Onglet redevenu visible, vérification de la session');
           await refreshSession();
         }
