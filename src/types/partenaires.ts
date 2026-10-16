@@ -90,6 +90,7 @@ export interface Transitaire extends PartenaireBase {
   contact_principal?: string;
   primes_dues?: number;
   primes_payees?: number;
+  solde_ot_du?: number;
   primes?: Prime[];
   paiements_primes?: PaiementPrime[];
   ordres_travail?: OrdreTravail[];

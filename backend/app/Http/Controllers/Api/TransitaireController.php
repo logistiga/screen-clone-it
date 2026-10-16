@@ -35,7 +35,8 @@ class TransitaireController extends Controller
                 ->withCount(['devis', 'ordresTravail', 'factures'])
                 ->select('transitaires.*')
                 ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ({$statutsDus})) as primes_dues")
-                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ({$statutsPayes})) as primes_payees");
+                ->selectRaw("(SELECT COALESCE(SUM(montant), 0) FROM primes WHERE primes.transitaire_id = transitaires.id AND primes.deleted_at IS NULL AND statut IN ({$statutsPayes})) as primes_payees")
+                ->selectRaw("(SELECT COALESCE(SUM(GREATEST(COALESCE(o.montant_ttc,0) - COALESCE(o.montant_paye,0), 0)), 0) FROM ordres_travail o WHERE o.transitaire_id = transitaires.id AND o.deleted_at IS NULL AND o.statut NOT IN ('annule','annulé','Annulé')) as solde_ot_du");
 
             // Recherche sécurisée
             $search = $this->validateSearchParameter($request);
@@ -108,6 +109,7 @@ class TransitaireController extends Controller
         $transitaire->loadSum('ordresTravail as montant_ordres', 'montant_ttc');
         $transitaire->loadSum('factures as montant_factures', 'montant_ttc');
         $transitaire->loadSum('devis as montant_devis', 'montant_ttc');
+        $transitaire->solde_ot_du = (float) \DB::selectOne("SELECT (SELECT COALESCE(SUM(GREATEST(COALESCE(o.montant_ttc,0) - COALESCE(o.montant_paye,0), 0)), 0) FROM ordres_travail o WHERE o.transitaire_id = ? AND o.deleted_at IS NULL AND o.statut NOT IN ('annule','annulé','Annulé')) as v", [$transitaire->id])->v;
 
         $transitaire->load([
             'devis' => fn($q) => $q->with('client:id,nom')->orderBy('created_at', 'desc')->limit(50),

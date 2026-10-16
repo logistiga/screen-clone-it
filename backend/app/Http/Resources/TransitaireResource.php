@@ -46,6 +46,8 @@ class TransitaireResource extends JsonResource
             // Stats primes (SQL ou mémoire) avec round() pour cohérence
             'primes_dues' => round($primesDues, 2),
             'primes_payees' => round($primesPayees, 2),
+            // Solde dû des OT non payés liés au transitaire
+            'solde_ot_du' => round((float) ($this->solde_ot_du ?? 0)),
             
             // Relations
             'devis' => DevisResource::collection($this->whenLoaded('devis')),
