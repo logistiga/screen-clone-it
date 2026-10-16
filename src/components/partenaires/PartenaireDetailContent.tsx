@@ -296,7 +296,9 @@ export function PartenaireDetailContent({
                 <DetailStatCard
                   title="Total Ordres"
                   value={totalOrdres}
-                  subtitle={formatMontant(montantTotalOrdres)}
+                  subtitle={type === 'transitaire'
+                    ? `${formatMontant(montantTotalOrdres)} · Solde dû : ${formatMontant(Number((partenaire as Transitaire | null)?.solde_ot_du ?? 0))}`
+                    : formatMontant(montantTotalOrdres)}
                   icon={ClipboardList}
                   variant="primary"
                 />

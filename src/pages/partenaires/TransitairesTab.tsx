@@ -49,7 +49,7 @@ export function TransitairesTab({
           <>
             <StatCard title="Total Transitaires" value={transitaires.length} icon={Users} variant="primary" />
             <StatCard title="Actifs" value={transitairesActifs} icon={UserCheck} variant="success" />
-            <StatCard title="Inactifs" value={transitaires.length - transitairesActifs} icon={UserX} variant="muted" />
+            <StatCard title="Solde OT dû" value={formatMontant(transitaires.reduce((a, t) => a + Number(t.solde_ot_du || 0), 0))} icon={Banknote} variant="muted" />
             <StatCard title="Primes à payer" value={formatMontant(primesTransitaires)} icon={Banknote} variant="warning" />
           </>
         )}
@@ -68,16 +68,16 @@ export function TransitairesTab({
           <CardContent className="p-0">
             {isLoading ? (
               <Table>
-                <TableHeader><TableRow className="bg-muted/50"><TableHead>Nom</TableHead><TableHead className="text-right">Primes à payer</TableHead><TableHead>Statut</TableHead><TableHead className="w-32">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow className="bg-muted/50"><TableHead>Nom</TableHead><TableHead className="text-right">Solde OT dû</TableHead><TableHead className="text-right">Primes à payer</TableHead><TableHead>Statut</TableHead><TableHead className="w-32">Actions</TableHead></TableRow></TableHeader>
                 <TableBody><PartenaireTableSkeleton rows={5} /></TableBody>
               </Table>
             ) : (
               <>
                 <Table>
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>Nom</TableHead><TableHead className="text-right">Primes à payer</TableHead><TableHead>Statut</TableHead><TableHead className="w-32">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow className="bg-muted/50"><TableHead>Nom</TableHead><TableHead className="text-right">Solde OT dû</TableHead><TableHead className="text-right">Primes à payer</TableHead><TableHead>Statut</TableHead><TableHead className="w-32">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {paginatedTransitaires.length === 0 ? (
-                      <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground"><Truck className="h-12 w-12 mx-auto mb-3 opacity-20" /><p>Aucun transitaire trouvé</p></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground"><Truck className="h-12 w-12 mx-auto mb-3 opacity-20" /><p>Aucun transitaire trouvé</p></TableCell></TableRow>
                     ) : (
                       paginatedTransitaires.map((t) => {
                         const primes = t.primes_dues || 0;
@@ -88,6 +88,9 @@ export function TransitairesTab({
                                 <PartenaireAvatar nom={t.nom} />
                                 <span className="font-medium text-foreground group-hover:text-primary transition-colors">{t.nom}</span>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {Number(t.solde_ot_du || 0) > 0 ? <span className="font-semibold text-destructive">{formatMontant(Number(t.solde_ot_du))}</span> : <span className="text-muted-foreground">-</span>}
                             </TableCell>
                             <TableCell className="text-right">
                               {primes > 0 ? <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 font-semibold text-amber-600 dark:text-amber-400">{formatMontant(primes)}</span> : <span className="text-muted-foreground">-</span>}
