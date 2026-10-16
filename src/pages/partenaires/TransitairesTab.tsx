@@ -49,7 +49,7 @@ export function TransitairesTab({
           <>
             <StatCard title="Total Transitaires" value={transitaires.length} icon={Users} variant="primary" />
             <StatCard title="Actifs" value={transitairesActifs} icon={UserCheck} variant="success" />
-            <StatCard title="Solde OT dû" value={formatMontant(transitaires.reduce((a, t) => a + Number(t.solde_ot_du || 0), 0))} icon={UserX} variant="muted" />
+            <StatCard title="Solde OT dû" value={formatMontant(transitaires.reduce((a, t) => a + Number(t.solde_ot_du || 0), 0))} icon={Banknote} variant="muted" />
             <StatCard title="Primes à payer" value={formatMontant(primesTransitaires)} icon={Banknote} variant="warning" />
           </>
         )}
