@@ -167,6 +167,7 @@ export interface Armateur {
 }
 
 export interface Transitaire {
+  solde_ot_du?: number;
   id: string;
   nom: string;
   email?: string;
