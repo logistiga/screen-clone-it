@@ -110,7 +110,7 @@ export default function DevisPDFPage() {
         } else {
           lignes.push({
             id: c.id,
-            description: `Conteneur ${c.numero || ''} ${c.taille}'${c.description ? ` — ${c.description}` : ''}`,
+            description: `Conteneur ${c.numero || ''} ${c.taille}'${c.description ? `\n${c.description}` : ''}`,
             quantite: 1,
             prixUnitaire: c.prix_unitaire || 0,
             montantHT: c.prix_unitaire || 0,
@@ -206,7 +206,7 @@ export default function DevisPDFPage() {
                 ) : rows.map((ligne: any, index: number) => (
                   <tr key={ligne.id ?? index} className={index % 2 === 0 ? "bg-muted/20" : ""}>
                     <td className="py-1.5 px-2 border-r border-b align-middle">{startIndex + index + 1}</td>
-                    <td className="py-1.5 px-2 border-r border-b align-middle">{ligne.description}</td>
+                    <td className="py-1.5 px-2 border-r border-b align-middle whitespace-pre-line">{ligne.description}</td>
                     <td className="text-center py-1.5 px-2 border-r border-b align-middle">{ligne.quantite}</td>
                     <td className="text-right py-1.5 px-2 border-r border-b align-middle">{formatMontant(ligne.prixUnitaire)}</td>
                     <td className="text-right py-1.5 px-2 font-medium border-b align-middle">{formatMontant(ligne.montantHT)}</td>
