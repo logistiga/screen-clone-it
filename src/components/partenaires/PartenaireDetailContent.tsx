@@ -123,19 +123,23 @@ export function PartenaireDetailContent({
   const isPrimeAValider = (prime: Prime) => !isPrimePayee(prime.statut) && !isPrimeValidee(prime.statut);
   
   // Calculs
-  const totalOrdres = ordres.length;
-  const totalFactures = factures.length;
-  const totalDevis = devisList.length;
-  const montantTotalOrdres = ordres.reduce((sum, o) => sum + (o.montant_ttc || 0), 0);
+  // Compteurs/montants serveur (tous les documents), sinon repli sur les listes chargées
+  const counts = (partenaire as { counts?: { ordres?: number; factures?: number; devis?: number } } | null)?.counts;
+  const totaux = (partenaire as { totaux?: { ordres?: number; factures?: number; devis?: number } } | null)?.totaux;
+  const totalOrdres = counts?.ordres ?? ordres.length;
+  const totalFactures = counts?.factures ?? factures.length;
+  const totalDevis = counts?.devis ?? devisList.length;
+  const montantTotalOrdres = totaux?.ordres ?? ordres.reduce((sum, o) => sum + (Number(o.montant_ttc) || 0), 0);
+  const montantTotalFactures = totaux?.factures ?? factures.reduce((s, f) => s + (Number(f.montant_ttc) || 0), 0);
 
-  // Primes calculs
+  // Primes : dû = reste à payer de toutes les primes non payées (aligné sur le serveur)
   const primesDues = primes
-    .filter(isPrimeAValider)
-    .reduce((sum, p) => sum + (p.reste_a_payer ?? p.montant ?? 0), 0);
+    .filter(p => !isPrimePayee(p.statut))
+    .reduce((sum, p) => sum + Number(p.reste_a_payer ?? p.montant ?? 0), 0);
   
   const primesPayees = primes
     .filter(p => isPrimePayee(p.statut))
-    .reduce((sum, p) => sum + (p.montant || 0), 0);
+    .reduce((sum, p) => sum + Number(p.montant || 0), 0);
 
   const primesDuesList = primes.filter(p => !isPrimePayee(p.statut));
 

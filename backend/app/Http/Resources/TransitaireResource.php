@@ -37,6 +37,11 @@ class TransitaireResource extends JsonResource
                 'ordres' => $this->ordres_travail_count ?? 0,
                 'factures' => $this->factures_count ?? 0,
             ]),
+            'totaux' => $this->when($this->montant_ordres !== null || $this->montant_factures !== null, fn () => [
+                'ordres' => round((float) ($this->montant_ordres ?? 0)),
+                'factures' => round((float) ($this->montant_factures ?? 0)),
+                'devis' => round((float) ($this->montant_devis ?? 0)),
+            ]),
             
             // Stats primes (SQL ou mémoire) avec round() pour cohérence
             'primes_dues' => round($primesDues, 2),

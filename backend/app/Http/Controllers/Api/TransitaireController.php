@@ -103,10 +103,16 @@ class TransitaireController extends Controller
 
     public function show(Transitaire $transitaire): JsonResponse
     {
+        // Compteurs et montants calculés sur TOUS les documents (les listes restent bornées)
+        $transitaire->loadCount(['devis', 'ordresTravail', 'factures']);
+        $transitaire->loadSum('ordresTravail as montant_ordres', 'montant_ttc');
+        $transitaire->loadSum('factures as montant_factures', 'montant_ttc');
+        $transitaire->loadSum('devis as montant_devis', 'montant_ttc');
+
         $transitaire->load([
-            'devis' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
-            'ordresTravail' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
-            'factures' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
+            'devis' => fn($q) => $q->with('client:id,nom')->orderBy('created_at', 'desc')->limit(50),
+            'ordresTravail' => fn($q) => $q->with('client:id,nom')->orderBy('created_at', 'desc')->limit(50),
+            'factures' => fn($q) => $q->with('client:id,nom')->orderBy('created_at', 'desc')->limit(50),
             'primes' => fn($q) => $q->orderBy('created_at', 'desc'),
             'primes.paiements',
             'primes.ordre',
