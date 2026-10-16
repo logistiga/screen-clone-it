@@ -110,7 +110,7 @@ export default function DevisPDFPage() {
         } else {
           lignes.push({
             id: c.id,
-            description: `Conteneur ${c.numero || ''} ${c.taille}'`,
+            description: `Conteneur ${c.numero || ''} ${c.taille}'${c.description ? ` — ${c.description}` : ''}`,
             quantite: 1,
             prixUnitaire: c.prix_unitaire || 0,
             montantHT: c.prix_unitaire || 0,
