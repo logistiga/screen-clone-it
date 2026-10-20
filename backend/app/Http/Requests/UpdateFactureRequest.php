@@ -19,7 +19,7 @@ class UpdateFactureRequest extends FormRequest
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
             'type_operation' => 'nullable|string|max:100',
-            'type_operation_indep' => 'nullable|string|in:transport,manutention,stockage,location,double_relevage',
+            'type_operation_indep' => 'nullable|string|in:transport,manutention,stockage,location,double_relevage,autre',
             'type_marchandise' => 'nullable|in:conteneur,materiel,marchandise_generale,engin,autre',
             'description_generale' => 'nullable|string|max:2000',
             'observation_interne' => 'nullable|string|max:2000',
@@ -107,6 +107,7 @@ class UpdateFactureRequest extends FormRequest
         return [
             'client_id.exists' => 'Le client sélectionné n\'existe pas.',
             'type_document.in' => 'Le type de document doit être Conteneur, Lot ou Independant.',
+            'type_operation_indep.in' => 'Le type d’opération doit être Transport, Location, Manutention, Autre, Double relevage ou Stockage.',
             'statut.in' => 'Le statut sélectionné n\'est pas valide.',
         ];
     }

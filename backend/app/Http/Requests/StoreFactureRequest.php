@@ -24,7 +24,7 @@ class StoreFactureRequest extends FormRequest
             // Type de document - Enum strict
             'type_document' => ['required', 'string', 'in:Conteneur,Lot,Independant'],
             'type_operation' => ['nullable', 'string', 'max:100'],
-            'type_operation_indep' => ['nullable', 'string', 'in:transport,manutention,stockage,location,double_relevage'],
+            'type_operation_indep' => ['nullable', 'string', 'in:transport,manutention,stockage,location,double_relevage,autre'],
             'type_marchandise' => ['nullable', 'in:conteneur,materiel,marchandise_generale,engin,autre'],
             'description_generale' => ['nullable', 'string', 'max:2000'],
             'observation_interne' => ['nullable', 'string', 'max:2000'],
@@ -135,6 +135,7 @@ class StoreFactureRequest extends FormRequest
             'client_id.integer' => 'L\'identifiant client doit être un nombre.',
             'type_document.required' => 'Le type de document est obligatoire.',
             'type_document.in' => 'Le type de document doit être Conteneur, Lot ou Independant.',
+            'type_operation_indep.in' => 'Le type d’opération doit être Transport, Location, Manutention, Autre, Double relevage ou Stockage.',
             'date_echeance.after_or_equal' => 'La date d\'échéance doit être aujourd\'hui ou ultérieure.',
             'date_echeance.date_format' => 'La date d\'échéance doit être au format AAAA-MM-JJ.',
             'bl_numero.regex' => 'Le numéro BL contient des caractères invalides.',
