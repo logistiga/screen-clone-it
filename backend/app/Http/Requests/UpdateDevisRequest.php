@@ -23,7 +23,7 @@ class UpdateDevisRequest extends FormRequest
             // Type de document
             'type_document' => 'sometimes|in:Conteneur,Lot,Independant',
             'type_operation' => 'nullable|string|in:import,export',
-            'type_operation_indep' => 'nullable|string|in:location,transport,manutention,double_relevage,stockage',
+            'type_operation_indep' => 'nullable|string|in:location,transport,manutention,double_relevage,stockage,autre',
             'type_marchandise' => 'nullable|in:conteneur,materiel,marchandise_generale,engin,autre',
             'description_generale' => 'nullable|string|max:2000',
             'observation_interne' => 'nullable|string|max:2000',
@@ -100,6 +100,7 @@ class UpdateDevisRequest extends FormRequest
         return [
             'client_id.exists' => 'Le client sélectionné n\'existe pas.',
             'type_document.in' => 'Le type de document doit être Conteneur, Lot ou Independant.',
+            'type_operation_indep.in' => 'Le type d’opération doit être Transport, Location, Manutention, Autre, Double relevage ou Stockage.',
             'statut.in' => 'Le statut sélectionné n\'est pas valide.',
         ];
     }
