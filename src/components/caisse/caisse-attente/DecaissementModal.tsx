@@ -17,6 +17,9 @@ import { formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
 import { fetchCategoriesDepenses, decaisserPrime, type CaisseSourceKey } from "@/services/api";
 import { PrimeEnAttente } from "./types";
+import { ExpenseBankField } from "../ExpenseBankField";
+import { expenseBankId, requiresExpenseBank } from "@/services/api/expense-payment";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface DecaissementModalProps {
   open: boolean;
@@ -27,27 +30,28 @@ interface DecaissementModalProps {
 export function DecaissementModal({ open, onOpenChange, prime }: DecaissementModalProps) {
   const queryClient = useQueryClient();
   const [modePaiement, setModePaiement] = useState("Espèces");
+  const [banqueId, setBanqueId] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [categorie, setCategorie] = useState("");
   const [montantDecaisse, setMontantDecaisse] = useState("");
   const [paiementPartiel, setPaiementPartiel] = useState(false);
 
-  // Charger les catégories de dépenses
   const { data: categoriesData } = useQuery({
     queryKey: ['categories-depenses', { type: 'Sortie', actif: true }],
-    queryFn: () => fetchCategoriesDepenses<any>({ type: 'Sortie', actif: true }),
+    queryFn: () => fetchCategoriesDepenses<{ data: { id: string | number; nom: string }[] }>({ type: 'Sortie', actif: true }),
     enabled: open,
   });
 
   const categories = categoriesData?.data || [];
 
-  // Pré-remplir quand la prime change
   useEffect(() => {
     if (prime && open) {
+      setModePaiement("Espèces");
+      setBanqueId("");
+      setReference("");
       setMontantDecaisse(String(prime.montant));
       setPaiementPartiel(false);
-      // Pré-remplir catégorie selon la source
       const defaultCat = prime.source === 'GARAGE' ? 'Achats Garage' :
         prime.source === 'GARAGE_PRIME' ? 'Primes Garage' :
         prime.source === 'HORSLBV' ? 'Primes Hors Libreville' :
@@ -55,7 +59,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
         prime.source === 'PRIME_REP' ? 'Prime représentant' :
         prime.source === 'PRIME_TRANS' ? 'Prime transitaire' : 'Primes OPS';
       setCategorie(defaultCat);
-      // Pré-remplir notes
       const autoNotes = [
         prime.type && `Type: ${prime.type}`,
         prime.numero_paiement && `N°: ${prime.numero_paiement}`,
@@ -71,6 +74,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       const montant = paiementPartiel ? parseFloat(montantDecaisse) : prime?.montant;
       return decaisserPrime(source as CaisseSourceKey, primeId, {
         mode_paiement: modePaiement,
+        banque_id: expenseBankId(modePaiement, banqueId),
         reference,
         notes,
         source,
@@ -96,17 +100,20 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      queryClient.invalidateQueries({ queryKey: ['mouvements-bancaires'] });
       queryClient.invalidateQueries({ queryKey: ['paiements-fournisseurs'] });
       onOpenChange(false);
       resetForm();
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erreur lors du décaissement");
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, "Erreur lors du décaissement"));
     },
   });
 
   const resetForm = () => {
     setModePaiement("Espèces");
+    setBanqueId("");
     setReference("");
     setNotes("");
     setCategorie("");
@@ -116,6 +123,10 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
   const handleConfirm = () => {
     if (!prime) return;
+    if (requiresExpenseBank(modePaiement) && !expenseBankId(modePaiement, banqueId)) {
+      toast.error("Veuillez sélectionner une banque.");
+      return;
+    }
     const montant = parseFloat(montantDecaisse);
     if (isNaN(montant) || montant <= 0) {
       toast.error("Montant invalide");
@@ -153,7 +164,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
         {prime && (
           <div className="space-y-4 py-2">
-            {/* Résumé de l'opération */}
             <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Source:</span>
@@ -181,7 +191,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               )}
             </div>
 
-            {/* Paiement partiel toggle */}
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <Label className="text-sm font-medium">Paiement partiel (avance)</Label>
@@ -190,7 +199,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               <Switch checked={paiementPartiel} onCheckedChange={setPaiementPartiel} />
             </div>
 
-            {/* Montant à décaisser */}
             <div className="space-y-2">
               <Label>Montant à décaisser *</Label>
               <Input
@@ -210,13 +218,11 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               )}
             </div>
 
-            {/* Catégorie */}
             <div className="space-y-2">
               <Label>Catégorie de dépense *</Label>
               <Select value={categorie} onValueChange={setCategorie}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger>
                 <SelectContent>
-                  {/* Catégories par défaut */}
                   <SelectItem value="Primes OPS">Primes OPS</SelectItem>
                   <SelectItem value="Primes Conventionnel">Primes Conventionnel</SelectItem>
                   <SelectItem value="Primes Hors Libreville">Primes Hors Libreville</SelectItem>
@@ -224,10 +230,9 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
                   <SelectItem value="Primes Garage">Primes Garage</SelectItem>
                   <SelectItem value="Prime représentant">Prime représentant</SelectItem>
                   <SelectItem value="Prime transitaire">Prime transitaire</SelectItem>
-                  {/* Catégories personnalisées */}
                   {categories
-                    .filter((c: any) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage', 'Primes Garage', 'Prime représentant', 'Prime transitaire'].includes(c.nom))
-                    .map((c: any) => (
+                    .filter((c) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage', 'Primes Garage', 'Prime représentant', 'Prime transitaire'].includes(c.nom))
+                    .map((c) => (
                       <SelectItem key={c.id} value={c.nom}>{c.nom}</SelectItem>
                     ))
                   }
@@ -235,7 +240,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               </Select>
             </div>
 
-            {/* Mode de paiement */}
             <div className="space-y-2">
               <Label>Mode de paiement *</Label>
               <Select value={modePaiement} onValueChange={setModePaiement}>
@@ -249,7 +253,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               </Select>
             </div>
 
-            {/* Référence */}
+            {requiresExpenseBank(modePaiement) && <ExpenseBankField value={banqueId} onChange={setBanqueId} disabled={mutation.isPending} />}
             <div className="space-y-2">
               <Label>Référence (optionnel)</Label>
               <Input
@@ -259,7 +263,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               />
             </div>
 
-            {/* Notes */}
             <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea
@@ -278,7 +281,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={mutation.isPending || !categorie || montantNum <= 0}
+            disabled={mutation.isPending || !categorie || montantNum <= 0 || (requiresExpenseBank(modePaiement) && !expenseBankId(modePaiement, banqueId))}
             className="gap-2"
           >
             {mutation.isPending ? (
