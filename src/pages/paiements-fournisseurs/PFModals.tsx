@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ExpenseBankField } from "@/components/caisse/ExpenseBankField";
+import { expenseBankId, requiresExpenseBank } from "@/services/api/expense-payment";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +39,7 @@ export function CreateFactureModal({ open, onOpenChange }: { open: boolean; onOp
       onOpenChange(false);
       setForm({ fournisseur: '', reference: '', description: '', montant_total: '', date_facture: new Date().toISOString().split('T')[0] });
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || "Erreur"),
+    onError: (e: unknown) => toast.error(getApiErrorMessage(e)),
   });
 
   return (
@@ -88,15 +91,22 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
   const queryClient = useQueryClient();
   const [montant, setMontant] = useState("");
   const [modePaiement, setModePaiement] = useState("Espèces");
+  const [banqueId, setBanqueId] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  useEffect(() => {
+    if (open) {
+      setMontant(""); setModePaiement("Espèces"); setBanqueId(""); setReference(""); setNotes("");
+    }
+  }, [open, pf?.id]);
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!pf) return Promise.resolve(null);
-      return avancerPaiementFournisseur<any>(pf.id, {
+      return avancerPaiementFournisseur<{ reste: number }>(pf.id, {
         montant: parseFloat(montant),
         mode_paiement: modePaiement,
+        banque_id: expenseBankId(modePaiement, banqueId),
         reference,
         notes,
       });
@@ -107,10 +117,12 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
       queryClient.invalidateQueries({ queryKey: ['paiements-fournisseurs-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      queryClient.invalidateQueries({ queryKey: ['mouvements-bancaires'] });
       onOpenChange(false);
       setMontant(""); setReference(""); setNotes("");
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || "Erreur"),
+    onError: (e: unknown) => toast.error(getApiErrorMessage(e)),
   });
 
   if (!pf) return null;
@@ -172,6 +184,7 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
             </Select>
           </div>
 
+          {requiresExpenseBank(modePaiement) && <ExpenseBankField value={banqueId} onChange={setBanqueId} disabled={mutation.isPending} />}
           <div className="space-y-2">
             <Label>Référence (optionnel)</Label>
             <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="N° chèque, virement..." />
@@ -184,7 +197,7 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || montantNum <= 0 || montantNum > pf.reste} className="gap-2">
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || montantNum <= 0 || montantNum > pf.reste || (requiresExpenseBank(modePaiement) && !expenseBankId(modePaiement, banqueId))} className="gap-2">
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="h-4 w-4" />}
             Avancer {montantNum > 0 ? formatMontant(montantNum) : ''}
           </Button>
@@ -198,7 +211,7 @@ export function AvanceModal({ open, onOpenChange, pf }: { open: boolean; onOpenC
 export function DetailModal({ open, onOpenChange, pf }: { open: boolean; onOpenChange: (v: boolean) => void; pf: PaiementFournisseur | null }) {
   const { data: detail, isLoading } = useQuery({
     queryKey: ['paiement-fournisseur-detail', pf?.id],
-    queryFn: () => (pf ? fetchPaiementFournisseurDetail<any>(pf.id) : Promise.resolve(null)),
+    queryFn: () => (pf ? fetchPaiementFournisseurDetail<PaiementFournisseur & { tranches: Tranche[] }>(pf.id) : Promise.resolve(null)),
     enabled: open && !!pf,
   });
 

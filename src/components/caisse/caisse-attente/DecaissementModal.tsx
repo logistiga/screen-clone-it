@@ -17,6 +17,9 @@ import { formatMontant } from "@/data/mockData";
 import { toast } from "sonner";
 import { fetchCategoriesDepenses, decaisserPrime, type CaisseSourceKey } from "@/services/api";
 import { PrimeEnAttente } from "./types";
+import { ExpenseBankField } from "../ExpenseBankField";
+import { expenseBankId, requiresExpenseBank } from "@/services/api/expense-payment";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface DecaissementModalProps {
   open: boolean;
@@ -27,6 +30,7 @@ interface DecaissementModalProps {
 export function DecaissementModal({ open, onOpenChange, prime }: DecaissementModalProps) {
   const queryClient = useQueryClient();
   const [modePaiement, setModePaiement] = useState("Espèces");
+  const [banqueId, setBanqueId] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [categorie, setCategorie] = useState("");
@@ -36,7 +40,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   // Charger les catégories de dépenses
   const { data: categoriesData } = useQuery({
     queryKey: ['categories-depenses', { type: 'Sortie', actif: true }],
-    queryFn: () => fetchCategoriesDepenses<any>({ type: 'Sortie', actif: true }),
+    queryFn: () => fetchCategoriesDepenses<{ data: { id: string | number; nom: string }[] }>({ type: 'Sortie', actif: true }),
     enabled: open,
   });
 
@@ -45,6 +49,9 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   // Pré-remplir quand la prime change
   useEffect(() => {
     if (prime && open) {
+      setModePaiement("Espèces");
+      setBanqueId("");
+      setReference("");
       setMontantDecaisse(String(prime.montant));
       setPaiementPartiel(false);
       // Pré-remplir catégorie selon la source
@@ -71,6 +78,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       const montant = paiementPartiel ? parseFloat(montantDecaisse) : prime?.montant;
       return decaisserPrime(source as CaisseSourceKey, primeId, {
         mode_paiement: modePaiement,
+        banque_id: expenseBankId(modePaiement, banqueId),
         reference,
         notes,
         source,
@@ -96,17 +104,20 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       queryClient.invalidateQueries({ queryKey: ['caisse-primes-trans-stats'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-mouvements'] });
       queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      queryClient.invalidateQueries({ queryKey: ['banques'] });
+      queryClient.invalidateQueries({ queryKey: ['mouvements-bancaires'] });
       queryClient.invalidateQueries({ queryKey: ['paiements-fournisseurs'] });
       onOpenChange(false);
       resetForm();
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erreur lors du décaissement");
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, "Erreur lors du décaissement"));
     },
   });
 
   const resetForm = () => {
     setModePaiement("Espèces");
+    setBanqueId("");
     setReference("");
     setNotes("");
     setCategorie("");
@@ -116,6 +127,10 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
   const handleConfirm = () => {
     if (!prime) return;
+    if (requiresExpenseBank(modePaiement) && !expenseBankId(modePaiement, banqueId)) {
+      toast.error("Veuillez sélectionner une banque.");
+      return;
+    }
     const montant = parseFloat(montantDecaisse);
     if (isNaN(montant) || montant <= 0) {
       toast.error("Montant invalide");
@@ -226,8 +241,8 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
                   <SelectItem value="Prime transitaire">Prime transitaire</SelectItem>
                   {/* Catégories personnalisées */}
                   {categories
-                    .filter((c: any) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage', 'Primes Garage', 'Prime représentant', 'Prime transitaire'].includes(c.nom))
-                    .map((c: any) => (
+                    .filter((c) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage', 'Primes Garage', 'Prime représentant', 'Prime transitaire'].includes(c.nom))
+                    .map((c) => (
                       <SelectItem key={c.id} value={c.nom}>{c.nom}</SelectItem>
                     ))
                   }
@@ -249,6 +264,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               </Select>
             </div>
 
+            {requiresExpenseBank(modePaiement) && <ExpenseBankField value={banqueId} onChange={setBanqueId} disabled={mutation.isPending} />}
             {/* Référence */}
             <div className="space-y-2">
               <Label>Référence (optionnel)</Label>
@@ -278,7 +294,7 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={mutation.isPending || !categorie || montantNum <= 0}
+            disabled={mutation.isPending || !categorie || montantNum <= 0 || (requiresExpenseBank(modePaiement) && !expenseBankId(modePaiement, banqueId))}
             className="gap-2"
           >
             {mutation.isPending ? (
