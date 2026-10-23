@@ -37,7 +37,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
   const [montantDecaisse, setMontantDecaisse] = useState("");
   const [paiementPartiel, setPaiementPartiel] = useState(false);
 
-  // Charger les catégories de dépenses
   const { data: categoriesData } = useQuery({
     queryKey: ['categories-depenses', { type: 'Sortie', actif: true }],
     queryFn: () => fetchCategoriesDepenses<{ data: { id: string | number; nom: string }[] }>({ type: 'Sortie', actif: true }),
@@ -46,7 +45,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
   const categories = categoriesData?.data || [];
 
-  // Pré-remplir quand la prime change
   useEffect(() => {
     if (prime && open) {
       setModePaiement("Espèces");
@@ -54,7 +52,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
       setReference("");
       setMontantDecaisse(String(prime.montant));
       setPaiementPartiel(false);
-      // Pré-remplir catégorie selon la source
       const defaultCat = prime.source === 'GARAGE' ? 'Achats Garage' :
         prime.source === 'GARAGE_PRIME' ? 'Primes Garage' :
         prime.source === 'HORSLBV' ? 'Primes Hors Libreville' :
@@ -62,7 +59,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
         prime.source === 'PRIME_REP' ? 'Prime représentant' :
         prime.source === 'PRIME_TRANS' ? 'Prime transitaire' : 'Primes OPS';
       setCategorie(defaultCat);
-      // Pré-remplir notes
       const autoNotes = [
         prime.type && `Type: ${prime.type}`,
         prime.numero_paiement && `N°: ${prime.numero_paiement}`,
@@ -168,7 +164,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
 
         {prime && (
           <div className="space-y-4 py-2">
-            {/* Résumé de l'opération */}
             <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Source:</span>
@@ -196,7 +191,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               )}
             </div>
 
-            {/* Paiement partiel toggle */}
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <Label className="text-sm font-medium">Paiement partiel (avance)</Label>
@@ -205,7 +199,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               <Switch checked={paiementPartiel} onCheckedChange={setPaiementPartiel} />
             </div>
 
-            {/* Montant à décaisser */}
             <div className="space-y-2">
               <Label>Montant à décaisser *</Label>
               <Input
@@ -225,13 +218,11 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               )}
             </div>
 
-            {/* Catégorie */}
             <div className="space-y-2">
               <Label>Catégorie de dépense *</Label>
               <Select value={categorie} onValueChange={setCategorie}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger>
                 <SelectContent>
-                  {/* Catégories par défaut */}
                   <SelectItem value="Primes OPS">Primes OPS</SelectItem>
                   <SelectItem value="Primes Conventionnel">Primes Conventionnel</SelectItem>
                   <SelectItem value="Primes Hors Libreville">Primes Hors Libreville</SelectItem>
@@ -239,7 +230,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
                   <SelectItem value="Primes Garage">Primes Garage</SelectItem>
                   <SelectItem value="Prime représentant">Prime représentant</SelectItem>
                   <SelectItem value="Prime transitaire">Prime transitaire</SelectItem>
-                  {/* Catégories personnalisées */}
                   {categories
                     .filter((c) => !['Primes OPS', 'Primes Conventionnel', 'Primes Hors Libreville', 'Achats Garage', 'Primes Garage', 'Prime représentant', 'Prime transitaire'].includes(c.nom))
                     .map((c) => (
@@ -250,7 +240,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               </Select>
             </div>
 
-            {/* Mode de paiement */}
             <div className="space-y-2">
               <Label>Mode de paiement *</Label>
               <Select value={modePaiement} onValueChange={setModePaiement}>
@@ -265,7 +254,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
             </div>
 
             {requiresExpenseBank(modePaiement) && <ExpenseBankField value={banqueId} onChange={setBanqueId} disabled={mutation.isPending} />}
-            {/* Référence */}
             <div className="space-y-2">
               <Label>Référence (optionnel)</Label>
               <Input
@@ -275,7 +263,6 @@ export function DecaissementModal({ open, onOpenChange, prime }: DecaissementMod
               />
             </div>
 
-            {/* Notes */}
             <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea
