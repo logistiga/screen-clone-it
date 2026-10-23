@@ -11,6 +11,7 @@ export interface CreatePaiementFournisseurPayload {
 export interface AvancePaiementFournisseurPayload {
   montant: number;
   mode_paiement: string;
+  banque_id?: number;
   reference?: string;
   notes?: string;
 }
