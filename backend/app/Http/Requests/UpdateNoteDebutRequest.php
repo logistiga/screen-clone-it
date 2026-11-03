@@ -14,7 +14,7 @@ class UpdateNoteDebutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'sometimes|in:Detention,Ouverture Port,Reparation,Relache',
+            'type' => 'sometimes|in:Detention,Ouverture Port,Reparation,Relache,Divers',
             'client_id' => 'sometimes|required|exists:clients,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
             'armateur_id' => 'nullable|exists:armateurs,id',

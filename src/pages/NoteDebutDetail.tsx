@@ -16,7 +16,7 @@ import {
   FileText,
   User,
   Receipt,
-  PackageOpen,
+  PackageOpen, Receipt,
   Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -92,6 +92,8 @@ const typeConfig: Record<string, { label: string; icon: typeof Anchor; color: st
     icon: PackageOpen,
     color: "bg-purple-100 text-purple-700 border-purple-200",
   },
+  divers: { label: "Divers", icon: Receipt, color: "bg-primary/10 text-primary border-primary/20" },
+  Divers: { label: "Divers", icon: Receipt, color: "bg-primary/10 text-primary border-primary/20" },
 };
 
 const statusConfig: Record<string, { label: string; class: string }> = {

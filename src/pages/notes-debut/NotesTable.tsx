@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AnimatedTableRow, AnimatedTableBody } from "@/components/ui/animated-table";
-import { Eye, Edit, Download, Mail, CreditCard, Trash2, FileText, Anchor, Container, Wrench, PackageOpen } from "lucide-react";
+import { Eye, Edit, Download, Mail, CreditCard, Trash2, FileText, Anchor, Container, Wrench, PackageOpen, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { downloadNoteDebitPdf } from "@/services/api";
 import { formatMontant, formatDate } from "@/data/mockData";
@@ -18,6 +18,7 @@ const typeIcons: Record<string, any> = {
   detention: Container, Detention: Container,
   reparation: Wrench, Reparation: Wrench,
   relache: PackageOpen, Relache: PackageOpen,
+  divers: Receipt, Divers: Receipt,
 };
 
 interface NotesTableProps {

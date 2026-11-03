@@ -19,6 +19,7 @@ class NoteDebut extends Model
     const TYPE_OUVERTURE_PORT = 'ouverture_port';
     const TYPE_REPARATION = 'reparation';
     const TYPE_RELACHE = 'relache';
+    const TYPE_DIVERS = 'divers';
 
     // Préfixes par type
     const PREFIXES = [
@@ -26,6 +27,7 @@ class NoteDebut extends Model
         self::TYPE_OUVERTURE_PORT => 'NOP',
         self::TYPE_REPARATION => 'NR',
         self::TYPE_RELACHE => 'NRL',
+        self::TYPE_DIVERS => 'NDV',
     ];
 
     protected $fillable = [
@@ -325,10 +327,12 @@ class NoteDebut extends Model
             'Ouverture Port' => self::TYPE_OUVERTURE_PORT,
             'Reparation' => self::TYPE_REPARATION,
             'Relache' => self::TYPE_RELACHE,
+            'Divers' => self::TYPE_DIVERS,
             'detention' => self::TYPE_DETENTION,
             'ouverture_port' => self::TYPE_OUVERTURE_PORT,
             'reparation' => self::TYPE_REPARATION,
             'relache' => self::TYPE_RELACHE,
+            'divers' => self::TYPE_DIVERS,
         ];
 
         return $mapping[$type] ?? self::TYPE_DETENTION;

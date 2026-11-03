@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Anchor, Container, Wrench, PackageOpen } from "lucide-react";
+import { ArrowLeft, Anchor, Container, Wrench, PackageOpen, Receipt } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,12 @@ const typeConfig = {
     icon: PackageOpen,
     color: "bg-purple-100 text-purple-700 border-purple-200",
     route: "/notes-debut/relache",
+  },
+  divers: {
+    label: "Divers (frais de route)",
+    icon: Receipt,
+    color: "bg-primary/10 text-primary border-primary/20",
+    route: "/notes-debut/divers",
   },
 };
 

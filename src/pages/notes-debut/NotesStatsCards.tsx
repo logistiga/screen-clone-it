@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Anchor, Container, Wrench, PackageOpen, FileText, Calculator, CreditCard, Clock } from "lucide-react";
+import { Anchor, Container, Wrench, PackageOpen, Receipt, FileText, Calculator, CreditCard, Clock } from "lucide-react";
 import { formatMontant } from "@/data/mockData";
 import { DocumentStatCard } from "@/components/shared/documents";
 import { getNoteAmount, getNotePaid, getNoteAdvance, getNoteRemaining } from "./useNotesDebutData";
@@ -10,6 +10,7 @@ const typeIcons: Record<string, any> = {
   detention: Container,
   reparation: Wrench,
   relache: PackageOpen,
+  divers: Receipt,
 };
 
 const typeLabels: Record<string, string> = {
@@ -17,6 +18,7 @@ const typeLabels: Record<string, string> = {
   detention: "Détention",
   reparation: "Réparation conteneur",
   relache: "Relâche",
+  divers: "Divers",
 };
 
 const typeColors: Record<string, string> = {
@@ -24,6 +26,7 @@ const typeColors: Record<string, string> = {
   detention: "bg-warning/10 text-warning border-warning/20",
   reparation: "bg-success/10 text-success border-success/20",
   relache: "bg-accent text-accent-foreground border-accent",
+  divers: "bg-primary/10 text-primary border-primary/20",
 };
 
 interface NotesStatsCardsProps {
@@ -41,8 +44,8 @@ export function NotesStatsCards({ notes, totalNotes, totalMontant, meta, pageSiz
   return (
     <>
       {/* Récap par type */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {(['ouverture_port', 'detention', 'reparation', 'relache'] as const).map((type, i) => {
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {(['ouverture_port', 'detention', 'reparation', 'relache', 'divers'] as const).map((type, i) => {
           const TypeIcon = typeIcons[type] || FileText;
           const label = typeLabels[type] || type;
           const color = typeColors[type] || '';

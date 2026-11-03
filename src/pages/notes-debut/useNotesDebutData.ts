@@ -16,6 +16,8 @@ export const typeConfig: Record<string, { label: string; icon: any; color: strin
   Reparation: { label: "Réparation conteneur", icon: null, color: "bg-success/10 text-success border-success/20" },
   relache: { label: "Relâche", icon: null, color: "bg-accent text-accent-foreground border-accent" },
   Relache: { label: "Relâche", icon: null, color: "bg-accent text-accent-foreground border-accent" },
+  divers: { label: "Divers", icon: null, color: "bg-primary/10 text-primary border-primary/20" },
+  Divers: { label: "Divers", icon: null, color: "bg-primary/10 text-primary border-primary/20" },
 };
 
 export const statusConfig: Record<string, { label: string; class: string }> = {
@@ -38,6 +40,7 @@ export const typeFilterOptions = [
   { value: "detention", label: "Détention" },
   { value: "reparation", label: "Réparation conteneur" },
   { value: "relache", label: "Relâche" },
+  { value: "divers", label: "Divers" },
 ];
 
 // Note amount helpers
