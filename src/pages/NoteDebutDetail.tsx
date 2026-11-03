@@ -48,7 +48,8 @@ export default function NoteDebutDetail() {
   const { data: note, isLoading, error } = useNoteDebut(id);
   
   // Fetch payments for this note
-  const { data: paiementsData } = usePaiements({ ...{ note_debut_id: id } });
+  const paymentFilters: Parameters<typeof usePaiements>[0] & { note_debut_id?: string } = { note_debut_id: id };
+  const { data: paiementsData } = usePaiements(paymentFilters);
   const paiements = paiementsData?.data || [];
 
   const deleteMutation = useDeleteNoteDebut();
