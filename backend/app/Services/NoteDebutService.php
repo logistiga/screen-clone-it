@@ -84,6 +84,8 @@ class NoteDebutService
                 'date_fin' => $ligneData['date_fin'] ?? null,
                 'tarif_journalier' => $ligneData['tarif_journalier'] ?? 0,
                 'observations' => $ligneData['observations'] ?? null,
+                'designation' => $ligneData['designation'] ?? null,
+                'reference_justificatif' => $ligneData['reference_justificatif'] ?? null,
             ]);
             
             // Calculer nombre de jours et montant
@@ -159,6 +161,8 @@ class NoteDebutService
                         'date_fin' => $ligneData['date_fin'] ?? null,
                         'tarif_journalier' => $ligneData['tarif_journalier'] ?? 0,
                         'observations' => $ligneData['observations'] ?? null,
+                'designation' => $ligneData['designation'] ?? null,
+                'reference_justificatif' => $ligneData['reference_justificatif'] ?? null,
                     ]);
                     $ligne->calculerTotaux();
                     $lignesAGarder[] = $ligne->id;
@@ -174,6 +178,8 @@ class NoteDebutService
                     'date_fin' => $ligneData['date_fin'] ?? null,
                     'tarif_journalier' => $ligneData['tarif_journalier'] ?? 0,
                     'observations' => $ligneData['observations'] ?? null,
+                'designation' => $ligneData['designation'] ?? null,
+                'reference_justificatif' => $ligneData['reference_justificatif'] ?? null,
                 ]);
                 $ligne->calculerTotaux();
                 $lignesAGarder[] = $ligne->id;

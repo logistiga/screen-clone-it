@@ -65,7 +65,8 @@ export default function NouvelleNoteDivers() {
         date_debut: today,
         date_fin: today,
         lignes: valides.map((l) => ({
-          conteneur_numero: l.reference.trim() || undefined,
+          designation: l.designation.trim(),
+          reference_justificatif: l.reference.trim() || undefined,
           date_debut: today,
           date_fin: today,
           tarif_journalier: Math.round(l.montant),
