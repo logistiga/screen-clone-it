@@ -1,5 +1,5 @@
 # Correction description des notes de débit
 
 - [x] Afficher les désignations des frais sur la fiche et le PDF, sans modifier les données.
-- [ ] Vérifier le rendu et les contrôles disponibles.
-- [ ] Déployer la correction avec sauvegarde si les accès existants le permettent.
+- [x] Vérifier le rendu simulé sur ordinateur et téléphone ; compilation sans erreur.
+- [ ] Vérifier une note réelle et son PDF : session de production et environnement PHP indisponibles ici.
