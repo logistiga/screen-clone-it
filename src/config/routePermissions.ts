@@ -56,6 +56,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/notes-debut/detention', permission: 'notes_debit.creer' },
   { path: '/notes-debut/reparation', permission: 'notes_debit.creer' },
   { path: '/notes-debut/relache', permission: 'notes_debit.creer' },
+  { path: '/notes-debut/divers', permission: 'notes_debit.creer' },
   { path: '/notes-debut/:id', permission: 'notes_debit.voir' },
   { path: '/notes-debut/:id/pdf', permission: 'notes_debit.voir' },
   { path: '/notes-debut/:id/modifier', permission: 'notes_debit.modifier' },

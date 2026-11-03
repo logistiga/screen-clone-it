@@ -98,6 +98,7 @@ const NouvelleNoteOuverturePortPage = lazy(() => import("./pages/NouvelleNoteOuv
 const NouvelleNoteDetentionPage = lazy(() => import("./pages/NouvelleNoteDetention"));
 const NouvelleNoteReparationPage = lazy(() => import("./pages/NouvelleNoteReparation"));
 const NouvelleNoteRelachePage = lazy(() => import("./pages/NouvelleNoteRelache"));
+const NouvelleNoteDiversPage = lazy(() => import("./pages/NouvelleNoteDivers"));
 const NoteDebutDetailPage = lazy(() => import("./pages/NoteDebutDetail"));
 const NoteDebutPDFPage = lazy(() => import("./pages/NoteDebutPDF"));
 const ModifierNoteDebutPage = lazy(() => import("./pages/ModifierNoteDebut"));
@@ -238,6 +239,7 @@ const App = () => (
                 <Route path="/notes-debut/detention" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteDetentionPage /></ProtectedRoute>} />
                 <Route path="/notes-debut/reparation" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteReparationPage /></ProtectedRoute>} />
                 <Route path="/notes-debut/relache" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteRelachePage /></ProtectedRoute>} />
+                <Route path="/notes-debut/divers" element={<ProtectedRoute requiredPermission={P.notes.create}><NouvelleNoteDiversPage /></ProtectedRoute>} />
                 <Route path="/notes-debut/:id" element={<ProtectedRoute requiredPermission={P.notes.view}><NoteDebutDetailPage /></ProtectedRoute>} />
                 <Route path="/notes-debut/:id/pdf" element={<ProtectedRoute requiredPermission={P.notes.view}><NoteDebutPDFPage /></ProtectedRoute>} />
                 <Route path="/notes-debut/:id/modifier" element={<ProtectedRoute requiredPermission={P.notes.edit}><ModifierNoteDebutPage /></ProtectedRoute>} />

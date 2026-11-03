@@ -339,6 +339,18 @@ class NoteDebutController extends Controller
                 'couleur' => '#059669',
                 'badge_bg' => '#d1fae5',
             ],
+            'divers' => [
+                'titre' => 'Note de Débit Divers',
+                'label' => 'Divers',
+                'couleur' => '#475569',
+                'badge_bg' => '#e2e8f0',
+            ],
+            'Divers' => [
+                'titre' => 'Note de Débit Divers',
+                'label' => 'Divers',
+                'couleur' => '#475569',
+                'badge_bg' => '#e2e8f0',
+            ],
         ];
 
         return $configs[$type] ?? [

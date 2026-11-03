@@ -14,7 +14,7 @@ class StoreNoteDebutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'required|in:Detention,Ouverture Port,Reparation,Relache',
+            'type' => 'required|in:Detention,Ouverture Port,Reparation,Relache,Divers',
             'client_id' => 'required|exists:clients,id',
             'ordre_id' => 'nullable|exists:ordres_travail,id',
             'transitaire_id' => 'nullable|exists:transitaires,id',
@@ -50,7 +50,7 @@ class StoreNoteDebutRequest extends FormRequest
     {
         return [
             'type.required' => 'Le type de note est obligatoire.',
-            'type.in' => 'Le type doit être Detention, Ouverture Port, Reparation ou Relache.',
+            'type.in' => 'Le type doit être Detention, Ouverture Port, Reparation, Relache ou Divers.',
             'client_id.required' => 'Le client est obligatoire.',
             'client_id.exists' => 'Le client sélectionné n\'existe pas.',
             'date_fin.after_or_equal' => 'La date de fin doit être postérieure ou égale à la date de début.',

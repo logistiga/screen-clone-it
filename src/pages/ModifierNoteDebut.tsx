@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Save, Anchor, Container, Wrench, PackageOpen, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Anchor, Container, Wrench, PackageOpen, Receipt, Loader2, Plus, Trash2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ const typeConfig: Record<string, { label: string; icon: typeof Anchor }> = {
   Reparation: { label: "Réparation conteneur", icon: Wrench },
   relache: { label: "Relâche", icon: PackageOpen },
   Relache: { label: "Relâche", icon: PackageOpen },
+  divers: { label: "Divers", icon: Receipt },
+  Divers: { label: "Divers", icon: Receipt },
 };
 
 const normalizeType = (type: string): string => {
@@ -35,6 +37,7 @@ const normalizeType = (type: string): string => {
     'detention': 'Detention',
     'reparation': 'Reparation',
     'relache': 'Relache',
+    'divers': 'Divers',
   };
   return mapping[type] || type;
 };
