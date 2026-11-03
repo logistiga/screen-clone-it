@@ -16,7 +16,7 @@ import {
   FileText,
   User,
   Receipt,
-  PackageOpen, Receipt,
+  PackageOpen,
   Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
