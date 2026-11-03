@@ -42,6 +42,8 @@ class UpdateNoteDebutRequest extends FormRequest
             'lignes.*.date_fin' => 'required_with:lignes|date|after_or_equal:lignes.*.date_debut',
             'lignes.*.tarif_journalier' => 'required_with:lignes|numeric|min:0',
             'lignes.*.observations' => 'nullable|string|max:500',
+            'lignes.*.designation' => 'nullable|string|max:255',
+            'lignes.*.reference_justificatif' => 'nullable|string|max:100',
         ];
     }
 

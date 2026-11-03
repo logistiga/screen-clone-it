@@ -28,6 +28,8 @@ class LigneNoteDebutResource extends JsonResource
             'montant_ht' => round($this->montant_ht ?? 0, 2),
             
             'observations' => $this->observations,
+            'designation' => $this->designation,
+            'reference_justificatif' => $this->reference_justificatif,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

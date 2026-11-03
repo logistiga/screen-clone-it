@@ -13,6 +13,8 @@ export interface LigneNoteDebut {
   tarif_journalier?: number;
   montant_ht?: number;
   observations?: string;
+  designation?: string;
+  reference_justificatif?: string;
   created_at?: string;
 }
 
@@ -106,6 +108,8 @@ export interface CreateNoteDebutPayload {
     date_fin: string;
     tarif_journalier: number;
     observations?: string;
+    designation?: string;
+    reference_justificatif?: string;
   }[];
 }
 

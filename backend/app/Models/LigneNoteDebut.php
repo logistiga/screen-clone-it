@@ -22,6 +22,8 @@ class LigneNoteDebut extends Model
         'tarif_journalier',
         'montant_ht',
         'observations',
+        'designation',
+        'reference_justificatif',
     ];
 
     protected $casts = [
