@@ -8,12 +8,6 @@ import {
   Mail,
   CreditCard,
   Trash2,
-  Anchor,
-  Container,
-  Wrench,
-  FileText,
-  Receipt,
-  PackageOpen,
   Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -32,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 import { downloadNoteDebitPdf } from "@/services/api";
+import { typeConfig, statusConfig, defaultTypeInfo } from "@/components/notes/note-debut-config";
 import { NoteDebutContent } from "@/components/notes/NoteDebutContent";
 import { PaiementModal } from "@/components/PaiementModal";
 import { EmailNoteModal } from "@/components/notes/EmailNoteModal";
@@ -40,66 +35,6 @@ import { usePaiements } from "@/hooks/use-commercial";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-
-const typeConfig: Record<string, { label: string; icon: typeof Anchor; color: string }> = {
-  ouverture_port: {
-    label: "Ouverture de port",
-    icon: Anchor,
-    color: "bg-blue-100 text-blue-700 border-blue-200",
-  },
-  "Ouverture Port": {
-    label: "Ouverture de port",
-    icon: Anchor,
-    color: "bg-blue-100 text-blue-700 border-blue-200",
-  },
-  detention: {
-    label: "Détention",
-    icon: Container,
-    color: "bg-amber-100 text-amber-700 border-amber-200",
-  },
-  Detention: {
-    label: "Détention",
-    icon: Container,
-    color: "bg-amber-100 text-amber-700 border-amber-200",
-  },
-  reparation: {
-    label: "Réparation conteneur",
-    icon: Wrench,
-    color: "bg-green-100 text-green-700 border-green-200",
-  },
-  Reparation: {
-    label: "Réparation conteneur",
-    icon: Wrench,
-    color: "bg-green-100 text-green-700 border-green-200",
-  },
-  relache: {
-    label: "Relâche",
-    icon: PackageOpen,
-    color: "bg-purple-100 text-purple-700 border-purple-200",
-  },
-  Relache: {
-    label: "Relâche",
-    icon: PackageOpen,
-    color: "bg-purple-100 text-purple-700 border-purple-200",
-  },
-  divers: { label: "Divers", icon: Receipt, color: "bg-primary/10 text-primary border-primary/20" },
-  Divers: { label: "Divers", icon: Receipt, color: "bg-primary/10 text-primary border-primary/20" },
-};
-
-const statusConfig: Record<string, { label: string; class: string }> = {
-  brouillon: { label: "Brouillon", class: "bg-muted text-muted-foreground" },
-  en_attente: { label: "En attente", class: "bg-warning/20 text-warning" },
-  facturee: { label: "Facturée", class: "bg-primary/20 text-primary" },
-  payee: { label: "Payée", class: "bg-success/20 text-success" },
-  annulee: { label: "Annulée", class: "bg-muted text-muted-foreground" },
-  partielle: { label: "Partielle", class: "bg-cyan-500/20 text-cyan-600" },
-};
-
-const defaultTypeInfo = {
-  label: "Note",
-  icon: FileText,
-  color: "bg-gray-100 text-gray-700 border-gray-200",
-};
 
 export default function NoteDebutDetail() {
   const { id } = useParams();
@@ -113,7 +48,7 @@ export default function NoteDebutDetail() {
   const { data: note, isLoading, error } = useNoteDebut(id);
   
   // Fetch payments for this note
-  const { data: paiementsData } = usePaiements({ per_page: 100, ...{ note_debut_id: id } });
+  const { data: paiementsData } = usePaiements({ ...{ note_debut_id: id } });
   const paiements = paiementsData?.data || [];
 
   const deleteMutation = useDeleteNoteDebut();
