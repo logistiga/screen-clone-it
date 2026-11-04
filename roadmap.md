@@ -1,9 +1,10 @@
 # Correction description des notes de débit
 
 ## Actualisation des totaux de caisse
-- [ ] Identifier pourquoi les entrées, décaissements et paiements ne mettent pas à jour les soldes affichés.
-- [ ] Corriger les parcours concernés sans modifier les anciennes données.
-- [ ] Ajouter et exécuter des tests de régression ; vérifier les parcours disponibles.
+- [x] Identifier les clés d’actualisation incohérentes entre les écrans de caisse et les opérations de paiement.
+- [x] Rafraîchir les soldes après les opérations financières réussies et charger toutes les pages des totaux mensuels, sans modifier les anciennes données.
+- [x] Tests de régression et parcours simulé entrée/sortie vérifiés ; aucune erreur JavaScript, compilation OK.
+- [ ] Vérification des opérations réelles : session de production indisponible ; aucun paiement réel effectué et correction non déployée.
 
 ## Date d’arrivée des conteneurs
 - [x] Ajouter une colonne affichant la date et l’heure de première présence dans l’application, depuis `created_at`, sans modifier les données.
