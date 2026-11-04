@@ -7,4 +7,5 @@
 ## Filtres catégorie OT et factures
 - [x] Corriger la transmission et l'application des catégories, sans modifier les données.
 - [x] Tester les trois catégories et le retour à la première page : six parcours navigateur simulés, quatre tests PHP réussis.
-- [ ] Vérifier les filtres sur les données réelles après déploiement : accès à la session et au serveur de production indisponible ici.
+- [x] Déployer les filtres OT et factures en production avec sauvegarde ; fichiers vérifiés, site et nouveaux assets HTTP 200.
+- [ ] Vérifier les filtres sur les données réelles : session utilisateur de production indisponible ; écran de connexion vérifié sans erreur.
