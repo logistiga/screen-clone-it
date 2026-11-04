@@ -3,6 +3,7 @@
 ## Date d’arrivée des conteneurs
 - [x] Ajouter une colonne affichant la date et l’heure de première présence dans l’application, depuis `created_at`, sans modifier les données.
 - [x] Vérifier l’affichage simulé sur ordinateur et téléphone ; date absente affichée « — », compilation OK.
+- [x] Déployer la colonne en production avec sauvegarde ; index et fichier conteneurs vérifiés par SHA-256, HTTP 200.
 
 - [x] Afficher les désignations des frais sur la fiche et le PDF, sans modifier les données.
 - [x] Vérifier le rendu simulé sur ordinateur et téléphone ; compilation sans erreur.
