@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Package, Clock, CheckCircle2, FileText, Ship, PlusCircle, Link as LinkIcon, XCircle, ArrowRight } from "lucide-react";
-import { format } from "date-fns";
+import { Package, Clock, CheckCircle2, FileText, PlusCircle, Link as LinkIcon, XCircle, ArrowRight } from "lucide-react";
+import { format, isValid, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ConteneurTraite, getAdresseLivraisonLabel } from "@/lib/api/conteneurs-traites";
 
@@ -50,6 +50,7 @@ export function ConteneursTable({ conteneurs, navigate, handleCreerOrdre, handle
                   <TableHead>Conteneur</TableHead><TableHead>Type</TableHead><TableHead>N° BL</TableHead>
                   <TableHead>Client</TableHead><TableHead>Adresse</TableHead><TableHead>Transitaire</TableHead>
                   <TableHead>Camion</TableHead>
+                  <TableHead className="whitespace-nowrap">Date d’arrivée</TableHead>
                   <TableHead>Statut</TableHead><TableHead className="w-48">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -63,6 +64,16 @@ export function ConteneursTable({ conteneurs, navigate, handleCreerOrdre, handle
                     <TableCell className="max-w-[220px] truncate">{getAdresseLivraisonLabel(conteneur)}</TableCell>
                     <TableCell className="max-w-[120px] truncate">{conteneur.transitaire_nom || "-"}</TableCell>
                     <TableCell className="font-mono text-sm">{conteneur.camion_plaque || "-"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {conteneur.created_at && isValid(parseISO(conteneur.created_at)) ? (
+                        <time dateTime={conteneur.created_at}>
+                          {format(parseISO(conteneur.created_at), "dd/MM/yyyy", { locale: fr })}
+                          <span className="block text-xs text-muted-foreground">
+                            {format(parseISO(conteneur.created_at), "HH:mm", { locale: fr })}
+                          </span>
+                        </time>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell>{getStatutBadge(conteneur.statut)}</TableCell>
                     <TableCell>
                       {conteneur.statut !== 'facture' ? (

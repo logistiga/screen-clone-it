@@ -1,5 +1,9 @@
 # Correction description des notes de débit
 
+## Date d’arrivée des conteneurs
+- [x] Ajouter une colonne affichant la date et l’heure de première présence dans l’application, depuis `created_at`, sans modifier les données.
+- [ ] Vérifier l’affichage de la colonne sur ordinateur et téléphone.
+
 - [x] Afficher les désignations des frais sur la fiche et le PDF, sans modifier les données.
 - [x] Vérifier le rendu simulé sur ordinateur et téléphone ; compilation sans erreur.
 - [ ] Vérifier une note réelle et son PDF : session de production et environnement PHP indisponibles ici.
