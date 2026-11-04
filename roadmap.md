@@ -1,5 +1,10 @@
 # Correction description des notes de débit
 
+## Actualisation des totaux de caisse
+- [ ] Identifier pourquoi les entrées, décaissements et paiements ne mettent pas à jour les soldes affichés.
+- [ ] Corriger les parcours concernés sans modifier les anciennes données.
+- [ ] Ajouter et exécuter des tests de régression ; vérifier les parcours disponibles.
+
 ## Date d’arrivée des conteneurs
 - [x] Ajouter une colonne affichant la date et l’heure de première présence dans l’application, depuis `created_at`, sans modifier les données.
 - [x] Vérifier l’affichage simulé sur ordinateur et téléphone ; date absente affichée « — », compilation OK.
