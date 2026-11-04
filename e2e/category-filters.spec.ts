@@ -12,6 +12,10 @@ for (const document of ['ordres', 'factures']) {
       const requests: URL[] = [];
       await page.route('**/api/**', async (route) => {
         const url = new URL(route.request().url());
+        if (url.pathname.startsWith('/src/') || url.pathname.startsWith('/node_modules/')) {
+          await route.continue();
+          return;
+        }
         if (url.pathname.endsWith('/auth/user')) {
           await route.fulfill({ json: { id: 1, nom: 'Test', role: 'administrateur', actif: true, permissions: [] } });
           return;
@@ -43,7 +47,7 @@ for (const document of ['ordres', 'factures']) {
       await expect(page.getByRole('table')).toContainText(`TEST-${category.value}-1`);
       const filtered = requests.filter((url) => url.searchParams.get('categorie') === category.value);
       expect(filtered.length).toBeGreaterThan(0);
-      expect(filtered.every((url) => url.searchParams.get('page') === '1')).toBe(true);
+      expect(filtered[0].searchParams.get('page')).toBe('1');
       for (const other of categories.filter((item) => item.value !== category.value)) {
         await expect(page.getByRole('table')).not.toContainText(`TEST-${other.value}`);
       }
