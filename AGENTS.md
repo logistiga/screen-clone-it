@@ -11,3 +11,4 @@
 - Expense disbursement forms share `ExpenseBankField` and the API expense-payment helpers to send a bank only for bank-funded modes, matching the existing Laravel guard.
 - Debit-note details load lines explicitly and display saved designations and receipt references through dedicated screen and PDF partials, keeping rendering read-only and files bounded.
 - OT and invoice category filters use DocumentCategory aliases on the server and reset pagination on selection, so historical categories remain searchable without rewriting documents.
+- Successful treasury writes refresh all cash/bank query aliases through the shared API response observer, and cash monthly totals read every API page; this prevents stale balances and pagination undercounts without rewriting history.
