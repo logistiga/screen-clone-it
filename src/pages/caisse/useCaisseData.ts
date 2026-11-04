@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { fetchCaisseMouvements, fetchCaisseSolde, fetchCaisseSoldeJour } from "@/services/api";
+import { fetchAllPaginated } from "@/services/api/pagination.api";
+import { refreshTreasury } from "@/services/api/treasury-cache";
 
 interface MouvementCaisse {
   id: string;
@@ -33,6 +35,7 @@ interface SoldeResponse {
 }
 
 export function useCaisseData() {
+  const queryClient = useQueryClient();
   const now = new Date();
   const dateDebut = format(startOfMonth(now), 'yyyy-MM-dd');
   const dateFin = format(endOfMonth(now), 'yyyy-MM-dd');
@@ -61,9 +64,9 @@ export function useCaisseData() {
   });
 
   const { data: soldeJourData } = useQuery({
-    queryKey: ['caisse-solde-jour'],
+    queryKey: ['caisse-solde-jour', format(now, 'yyyy-MM-dd')],
     queryFn: () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(now, 'yyyy-MM-dd');
       return fetchCaisseSoldeJour<{ entrees: number; sorties: number; solde: number }>(today);
     },
   });
@@ -71,8 +74,8 @@ export function useCaisseData() {
   // Mouvements du mois en cours pour les totaux mensuels
   const { data: mouvementsMoisData } = useQuery({
     queryKey: ['caisse-mouvements-mois', dateDebut, dateFin],
-    queryFn: () => fetchCaisseMouvements<CaisseResponse>({
-      source: 'caisse', date_debut: dateDebut, date_fin: dateFin, per_page: 10000,
+    queryFn: () => fetchAllPaginated<MouvementCaisse>('/caisse', {
+      source: 'caisse', date_debut: dateDebut, date_fin: dateFin,
     }),
   });
 
@@ -83,7 +86,7 @@ export function useCaisseData() {
   const soldeCaisse = soldeData?.solde || 0;
 
   // Totaux du mois en cours
-  const mouvementsMois = mouvementsMoisData?.data || [];
+  const mouvementsMois = mouvementsMoisData || [];
   const totalEntrees = mouvementsMois.filter((m: MouvementCaisse) => m.type === 'entree').reduce((sum: number, m: MouvementCaisse) => sum + (m.montant || 0), 0);
   const totalSorties = mouvementsMois.filter((m: MouvementCaisse) => m.type === 'sortie').reduce((sum: number, m: MouvementCaisse) => sum + (m.montant || 0), 0);
 
@@ -96,7 +99,7 @@ export function useCaisseData() {
 
   const hasFilters = !!searchTerm || typeFilter !== 'all';
   const clearFilters = () => { setSearchTerm(""); setTypeFilter("all"); setCurrentPage(1); };
-  const handleSuccess = () => refetch();
+  const handleSuccess = () => refreshTreasury(queryClient);
 
   return {
     searchTerm, setSearchTerm, typeFilter, setTypeFilter,

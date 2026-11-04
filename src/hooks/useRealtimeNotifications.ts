@@ -3,6 +3,7 @@ import echo from '@/lib/echo';
 import { useAuth } from '@/hooks/use-auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotificationStore, NotificationType } from '@/stores/notificationStore';
+import { refreshTreasury } from '@/services/api/treasury-cache';
 
 const CHANNEL_NAME = 'logistiga-cnv';
 
@@ -65,7 +66,7 @@ export function useRealtimeNotifications() {
           `${type} caisse${montant ? ` : ${montant}` : ''}`,
           e
         );
-        queryClient.invalidateQueries({ queryKey: ['mouvements-caisse'] });
+        void refreshTreasury(queryClient);
       });
 
       channel.listen('.anomalie.detectee', (e: any) => {
