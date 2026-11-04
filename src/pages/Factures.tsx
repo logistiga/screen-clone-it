@@ -40,9 +40,9 @@ export default function FacturesPage() {
         <FacturesStatsCards totalItems={d.totalItems} totalFactures={d.totalFactures} totalPaye={d.totalPaye} facturesEnAttente={d.facturesEnAttente} />
 
         <DocumentFilters
-          searchTerm={d.searchTerm} onSearchChange={d.setSearchTerm} searchPlaceholder="Rechercher par numéro, client, conteneur..."
-          statutFilter={d.statutFilter} onStatutChange={d.setStatutFilter} statutOptions={statutOptions}
-          categorieFilter={d.categorieFilter} onCategorieChange={d.setCategorieFilter} categorieOptions={categorieOptions}
+          searchTerm={d.searchTerm} onSearchChange={(v) => { d.setSearchTerm(v); d.setCurrentPage(1); }} searchPlaceholder="Rechercher par numéro, client, conteneur..."
+          statutFilter={d.statutFilter} onStatutChange={(v) => { d.setStatutFilter(v); d.setCurrentPage(1); }} statutOptions={statutOptions}
+          categorieFilter={d.categorieFilter} onCategorieChange={(v) => { d.setCategorieFilter(v); d.setCurrentPage(1); }} categorieOptions={categorieOptions}
           isSearching={d.isSearching}
         />
 

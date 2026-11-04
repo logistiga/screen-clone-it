@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateFactureRequest;
 use App\Http\Requests\AnnulerFactureRequest;
 use App\Http\Resources\FactureResource;
 use App\Http\Traits\SecureQueryParameters;
+use App\Support\DocumentCategory;
 use App\Models\Annulation;
 use App\Models\Facture;
 use App\Models\Audit;
@@ -51,9 +52,6 @@ class FactureController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        // Auto-créer les annulations manquantes pour les factures annulées sans enregistrement
-        $this->maintenanceService->synchroniserAnnulationsFactures();
-
         $query = Facture::with(['client', 'transitaire', 'ordreTravail', 'lignes', 'conteneurs.operations', 'lots', 'paiements', 'annulation']);
 
         // Recherche sécurisée
@@ -72,8 +70,8 @@ class FactureController extends Controller
             $query->where('statut', $request->get('statut'));
         }
 
-        if ($request->filled('categorie') && in_array($request->get('categorie'), ['Conteneur', 'Lot', 'Independant'])) {
-            $query->where('categorie', $request->get('categorie'));
+        if ($request->filled('categorie')) {
+            $query->whereIn('categorie', DocumentCategory::equivalentValues($request->get('categorie')));
         }
 
         // Client ID validé

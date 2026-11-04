@@ -10,3 +10,4 @@
 - OPS container sync runs only through `App\Services\Ops\ConteneursSyncService` under the global `SyncConteneursLock` (MySQL GET_LOCK), incremental and write-on-change, with sync routes throttled (`ops-sync`) — protects the shared production database from overload.
 - Expense disbursement forms share `ExpenseBankField` and the API expense-payment helpers to send a bank only for bank-funded modes, matching the existing Laravel guard.
 - Debit-note details load lines explicitly and display saved designations and receipt references through dedicated screen and PDF partials, keeping rendering read-only and files bounded.
+- OT and invoice category filters use DocumentCategory aliases on the server and reset pagination on selection, so historical categories remain searchable without rewriting documents.

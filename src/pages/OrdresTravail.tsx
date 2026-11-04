@@ -128,7 +128,7 @@ export default function OrdresTravailPage() {
           <DocumentStatCard title="En cours" value={stats.ordresEnCours} icon={Clock} variant="warning" subtitle="Ce mois" delay={0.3} />
         </div>
 
-        <DocumentFilters searchTerm={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Rechercher par numéro, client, conteneur..." statutFilter={statutFilter} onStatutChange={setStatutFilter} statutOptions={statutOptions} categorieFilter={categorieFilter} onCategorieChange={setCategorieFilter} categorieOptions={categorieOptions} isSearching={searchTerm !== debouncedSearch || (isFetching && !!debouncedSearch)} />
+        <DocumentFilters searchTerm={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Rechercher par numéro, client, conteneur..." statutFilter={statutFilter} onStatutChange={(v) => { setStatutFilter(v); setCurrentPage(1); }} statutOptions={statutOptions} categorieFilter={categorieFilter} onCategorieChange={(v) => { setCategorieFilter(v); setCurrentPage(1); }} categorieOptions={categorieOptions} isSearching={searchTerm !== debouncedSearch || (isFetching && !!debouncedSearch)} />
 
         <div className="flex flex-wrap gap-2 justify-end">
           <Button variant="outline" className="gap-2 transition-all duration-200 hover:scale-105" onClick={() => setPaiementGlobalOpen(true)}><CreditCard className="h-4 w-4" />Paiement global</Button>
