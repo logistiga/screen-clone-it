@@ -23,5 +23,7 @@
 
 ## Infrastructure et limites
 - Aucune migration, aucun changement de données, aucune nouvelle dépendance projet, aucun secret modifié.
-- Pas de déploiement effectué ; les données réelles et la session de production ne sont pas vérifiées.
+- Déployé le 04/11/2026 : contrôleur Facture et frontend publié transférés par SSH ; sauvegarde `backup_category_filters_20261104_135536.tgz`.
+- Contrôleur et entrée frontend identiques aux fichiers envoyés ; syntaxe PHP valide ; site et nouveaux chunks OT/factures HTTP 200 depuis le serveur.
+- Navigateur de production : redirection vers la connexion, deux champs présents, aucune erreur JavaScript ; filtres sur données réelles non vérifiés faute de session.
 - Le backend OT reconnaissait déjà les catégories ; sa pagination côté écran était le défaut identifié.
