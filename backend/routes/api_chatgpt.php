@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ChatGpt\ChatGptController;
+use App\Http\Controllers\Api\Mcp\McpKeyVerifyController;
 use App\Http\Middleware\ChatGptAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,7 @@ Route::prefix('gpt')->middleware(ChatGptAuth::class)->group(function () {
     Route::get('clients/{id}/summary', [ChatGptController::class, 'clientSummary'])->whereNumber('id');
     Route::get('factures/impayees', [ChatGptController::class, 'unpaidInvoices']);
     Route::get('stats/chiffre-affaires', [ChatGptController::class, 'revenue']);
+    Route::post('mcp-keys/verify', McpKeyVerifyController::class)->middleware('throttle:120,1');
     Route::get('resources/{resource}', [ChatGptController::class, 'list'])->where('resource', '[a-z_]+');
     // Toute écriture est interceptée par ChatGptAuth (réponse JSON READ_ONLY 405).
     Route::match(['PUT', 'PATCH', 'DELETE'], '{any}', fn () => abort(405))->where('any', '.*');
