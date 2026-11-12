@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Bot, Settings2 } from "lucide-react";
+import { Bot, KeyRound, Settings2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AiChat } from "@/components/ai/AiChat";
 import { AiSettings } from "@/components/ai/AiSettings";
 import { AiHistory } from "@/components/ai/AiHistory";
+import { McpKeysPanel } from "@/components/ai/mcp/McpKeysPanel";
 
 const AiAssistant = () => {
   const [activeTab, setActiveTab] = useState("chat");
@@ -44,6 +45,10 @@ const AiAssistant = () => {
             <Settings2 className="h-4 w-4" />
             Paramètres
           </TabsTrigger>
+          <TabsTrigger value="mcp" className="gap-1.5">
+            <KeyRound className="h-4 w-4" />
+            Clés MCP
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="chat" className="flex-1 overflow-hidden mt-3">
@@ -56,6 +61,9 @@ const AiAssistant = () => {
 
         <TabsContent value="settings" className="flex-1 overflow-auto mt-3">
           <AiSettings />
+        </TabsContent>
+        <TabsContent value="mcp" className="flex-1 overflow-auto mt-3">
+          <McpKeysPanel />
         </TabsContent>
       </Tabs>
     </div>
