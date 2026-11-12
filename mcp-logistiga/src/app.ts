@@ -33,7 +33,7 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   const handleMcp = async (req: Request, res: Response) => {
-    const caller = deps.auth.authenticate(req);
+    const caller = await deps.auth.authenticate(req);
     if (!caller) {
       log("warn", "mcp_auth_failed", { ip: req.ip });
       return rpcError(res, 401, -32001, "AUTHENTICATION_FAILED");

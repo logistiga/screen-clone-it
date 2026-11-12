@@ -12,3 +12,4 @@
 - Debit-note details load lines explicitly and display saved designations and receipt references through dedicated screen and PDF partials, keeping rendering read-only and files bounded.
 - OT and invoice category filters use DocumentCategory aliases on the server and reset pagination on selection, so historical categories remain searchable without rewriting documents.
 - Successful treasury writes refresh all cash/bank query aliases through the shared API response observer, and cash monthly totals read every API page; this prevents stale balances and pagination undercounts without rewriting history.
+- MCP access keys created in the app (`mcp_access_keys`, SHA-256 hash only, `lgmcp_` prefix) are verified by the MCP server through `POST /api/gpt/mcp-keys/verify` with a 60 s cache, alongside `.env` keys — admins can issue/revoke keys without touching the server.

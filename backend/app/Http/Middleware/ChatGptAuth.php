@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 class ChatGptAuth
 {
     /** Seules routes POST autorisées (requêtes de lecture structurées). */
-    private const READ_POST_PATHS = ['api/gpt/query'];
+    private const READ_POST_PATHS = ['api/gpt/query', 'api/gpt/mcp-keys/verify'];
 
     public function handle(Request $request, Closure $next): Response
     {
