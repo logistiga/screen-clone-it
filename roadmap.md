@@ -20,3 +20,6 @@
 - [x] Tester les trois catégories et le retour à la première page : six parcours navigateur simulés, quatre tests PHP réussis.
 - [x] Déployer les filtres OT et factures en production avec sauvegarde ; fichiers vérifiés, site et nouveaux assets HTTP 200.
 - [ ] Vérifier les filtres sur les données réelles : session utilisateur de production indisponible ; écran de connexion vérifié sans erreur.
+## Clés MCP dans Assistant IA
+- [x] Onglet « Clés MCP » : créer (affichée une fois), lister, révoquer ; serveur MCP accepte ces clés.
+- [x] En production (sauvegardes faites, table créée, MCP redémarré, clé inconnue refusée, clé existante OK).
