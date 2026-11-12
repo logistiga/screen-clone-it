@@ -15,7 +15,16 @@ export interface Caller {
 }
 
 export interface Authenticator {
-  authenticate(req: Request): Caller | null;
+  authenticate(req: Request): Caller | null | Promise<Caller | null>;
+}
+
+/** Extrait la clé candidate (chemin /k/<clé>/mcp ou header Bearer). */
+export function extractKey(req: Request): { key: string; method: Caller["method"] } {
+  const pathKey = typeof req.params?.key === "string" ? req.params.key : "";
+  if (pathKey) return { key: pathKey, method: "path" };
+  const header = req.get("authorization") ?? "";
+  const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
+  return { key: bearer, method: "bearer" };
 }
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
@@ -40,15 +49,9 @@ export class StaticKeyAuthenticator implements Authenticator {
   }
 
   authenticate(req: Request): Caller | null {
-    const pathKey = typeof req.params?.key === "string" ? req.params.key : "";
-    if (pathKey) {
-      const id = this.match(pathKey);
-      return id ? { id, method: "path" } : null;
-    }
-    const header = req.get("authorization") ?? "";
-    const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
-    const id = this.match(bearer);
-    return id ? { id, method: "bearer" } : null;
+    const { key, method } = extractKey(req);
+    const id = this.match(key);
+    return id ? { id, method } : null;
   }
 }
 

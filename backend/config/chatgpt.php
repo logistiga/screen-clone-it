@@ -13,5 +13,6 @@ return [
     'max_limit' => 200,
     'default_limit' => 50,
     'search_limit_per_resource' => 10,
+    'mcp_public_url' => env('MCP_PUBLIC_URL', 'https://facturation.logistiga.pro/mcp-logistiga'),
     'log_channel' => env('CHATGPT_API_LOG_CHANNEL', 'daily'),
 ];

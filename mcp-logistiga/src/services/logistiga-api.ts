@@ -5,7 +5,7 @@ import { log } from "../logger.js";
 /** Chemins Laravel autorisés (aucune URL ne vient des arguments des outils). */
 const ALLOWED_PATHS: RegExp[] = [
   /^\/schema$/, /^\/search$/, /^\/query$/, /^\/resources\/[a-z_]+$/,
-  /^\/clients\/\d+\/summary$/, /^\/factures\/impayees$/, /^\/stats\/chiffre-affaires$/,
+  /^\/clients\/\d+\/summary$/, /^\/mcp-keys\/verify$/, /^\/factures\/impayees$/, /^\/stats\/chiffre-affaires$/,
 ];
 const MAX_BODY_BYTES = 2_000_000;
 
@@ -28,6 +28,13 @@ export class LogistigaApiClient {
   /** Seul POST autorisé : /query, qui est une lecture structurée côté Laravel. */
   postQuery(body: Record<string, unknown>, tool = "logistiga_query"): Promise<ApiResult> {
     return this.request("POST", "/query", {}, body, tool);
+  }
+
+  /** Vérifie une clé MCP créée dans l'application (jamais journalisée). */
+  async verifyKey(key: string): Promise<string | null> {
+    const r = await this.request("POST", "/mcp-keys/verify", {}, { key }, "auth");
+    const d = r.data as { valid?: boolean; id?: string } | null;
+    return d?.valid && typeof d.id === "string" ? d.id : null;
   }
 
   private buildUrl(path: string, query: Query): URL {
