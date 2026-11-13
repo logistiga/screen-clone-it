@@ -7,7 +7,7 @@ import type { ApiResult, LogistigaApiClient } from "../services/logistiga-api.js
 /** Ressources exposées par Laravel (/schema). Toute autre valeur est refusée. */
 export const RESOURCES = [
   "clients", "factures", "ordres", "devis", "paiements", "caisse", "notes_debut",
-  "conteneurs", "annulations", "banques", "transitaires", "representants", "armateurs",
+  "conteneurs", "annulations", "audits", "banques", "transitaires", "representants", "armateurs",
 ] as const;
 
 export const resourceSchema = z.enum(RESOURCES).describe(
