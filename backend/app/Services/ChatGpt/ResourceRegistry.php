@@ -91,7 +91,7 @@ class ResourceRegistry
                 'model' => Audit::class, 'label' => "Journal des actions (lecture seule)",
                 'fields' => ['id', 'created_at', 'user_id', 'action', 'module', 'document_type', 'document_id', 'document_numero', 'details', 'old_values', 'new_values'],
                 'search' => ['document_numero', 'action', 'module', 'details'], 'date' => 'created_at',
-                'relations' => ['user' => ['id', 'nom', 'name']],
+                'relations' => ['user' => ['id', 'nom']],
             ],
             'banques' => [
                 'model' => Banque::class, 'label' => 'Banques (sans IBAN/RIB)',
