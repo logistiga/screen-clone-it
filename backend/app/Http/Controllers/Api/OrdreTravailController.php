@@ -17,6 +17,12 @@ use Illuminate\Http\JsonResponse;
 
 class OrdreTravailController extends Controller
 {
+    private const AUDIT_FIELDS = [
+        'montant_ht', 'montant_ttc', 'montant_tva', 'montant_css', 'tva', 'css', 'remise_type', 'remise_valeur',
+        'remise_montant', 'statut', 'date_echeance', 'navire', 'numero_bl', 'notes', 'categorie',
+        'type_operation', 'type_operation_indep', 'client_id', 'transitaire_id', 'armateur_id',
+    ];
+
     use SecureQueryParameters;
 
     protected OrdreServiceFactory $ordreFactory;
@@ -201,9 +207,10 @@ class OrdreTravailController extends Controller
         }
 
         try {
+            $oldValues = $ordreTravail->only(self::AUDIT_FIELDS);
             $ordreTravail = $this->ordreFactory->modifier($ordreTravail, $request->validated());
 
-            Audit::log('update', 'ordre', "Ordre modifié: {$ordreTravail->numero}", $ordreTravail->id);
+            Audit::log('update', 'ordre', "Ordre modifié: {$ordreTravail->numero}", $ordreTravail, $oldValues, $ordreTravail->only(self::AUDIT_FIELDS));
 
             return response()->json(new OrdreTravailResource($ordreTravail));
 

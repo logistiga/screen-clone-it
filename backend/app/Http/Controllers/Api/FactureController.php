@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\DB;
 
 class FactureController extends Controller
 {
+    private const AUDIT_FIELDS = [
+        'montant_ht', 'montant_ttc', 'montant_tva', 'montant_css', 'tva', 'css', 'remise_type', 'remise_valeur',
+        'remise_montant', 'statut', 'date_echeance', 'navire', 'numero_bl', 'notes', 'categorie',
+        'type_operation', 'type_operation_indep', 'client_id', 'transitaire_id', 'armateur_id',
+    ];
+
     use SecureQueryParameters;
 
     protected FactureServiceFactory $factureFactory;
@@ -163,9 +169,10 @@ class FactureController extends Controller
         }
 
         try {
+            $oldValues = $facture->only(self::AUDIT_FIELDS);
             $facture = $this->factureFactory->modifier($facture, $request->validated());
 
-            Audit::log('update', 'facture', "Facture modifiée: {$facture->numero}", $facture->id);
+            Audit::log('update', 'facture', "Facture modifiée: {$facture->numero}", $facture, $oldValues, $facture->only(self::AUDIT_FIELDS));
 
             return response()->json(
                 new FactureResource($facture),

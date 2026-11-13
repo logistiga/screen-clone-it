@@ -4,6 +4,7 @@ namespace App\Services\ChatGpt;
 
 use App\Models\Annulation;
 use App\Models\Armateur;
+use App\Models\Audit;
 use App\Models\Banque;
 use App\Models\Client;
 use App\Models\ConteneurOrdre;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class ResourceRegistry
 {
-    private const DOC = ['id', 'numero', 'client_id', 'date_creation', 'categorie', 'type_operation',
+    private const DOC = ['id', 'numero', 'client_id', 'date_creation', 'categorie', 'type_operation', 'type_operation_indep',
         'navire', 'numero_bl', 'montant_ht', 'tva', 'css', 'montant_ttc', 'statut', 'created_at'];
 
     private static array $columnCache = [];
@@ -85,6 +86,12 @@ class ResourceRegistry
                 'fields' => ['id', 'numero', 'type', 'client_id', 'facture_id', 'ordre_id', 'montant', 'motif', 'statut', 'date', 'created_at'],
                 'search' => ['numero', 'motif'], 'date' => 'created_at',
                 'relations' => [],
+            ],
+            'audits' => [
+                'model' => Audit::class, 'label' => "Journal des actions (lecture seule)",
+                'fields' => ['id', 'created_at', 'user_id', 'action', 'module', 'document_type', 'document_id', 'document_numero', 'details', 'old_values', 'new_values'],
+                'search' => ['document_numero', 'action', 'module', 'details'], 'date' => 'created_at',
+                'relations' => ['user' => ['id', 'nom']],
             ],
             'banques' => [
                 'model' => Banque::class, 'label' => 'Banques (sans IBAN/RIB)',
