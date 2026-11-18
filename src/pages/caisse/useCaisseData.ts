@@ -18,6 +18,7 @@ interface MouvementCaisse {
   document_type: 'ordre' | 'facture' | null;
   client_nom: string | null;
   beneficiaire: string | null;
+  reference?: string | null;
   banque_id: number | null;
 }
 

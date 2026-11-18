@@ -44,6 +44,8 @@ class MouvementCaisseResource extends JsonResource
             'montant' => round((float) $this->montant, 2),
             'description' => $this->description,
             'beneficiaire' => $this->beneficiaire,
+            'reference' => $this->reference,
+            'mode_paiement' => $this->mode_paiement,
             'source' => $this->source,
             'date' => $this->date?->toDateString(),
             'date_mouvement' => $this->date?->toDateString(),

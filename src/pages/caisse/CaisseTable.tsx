@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpCircle, ArrowDownCircle, FileText, Receipt, ClipboardList } from "lucide-react";
+import { descriptionSansReference } from "./caisse-reference";
 import { MouvementCaisseActions } from "@/components/caisse/MouvementCaisseActions";
 import { formatMontant, formatDate } from "@/data/mockData";
 
@@ -30,7 +31,7 @@ export function CaisseTable({ mouvements, hasFilters, onClearFilters, onRefetch 
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-muted/50">
-                <TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead>
+                <TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Référence</TableHead><TableHead>Description</TableHead>
                 <TableHead>N° Ordre</TableHead><TableHead>Client</TableHead>
                 <TableHead className="text-right">Montant</TableHead><TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -38,7 +39,7 @@ export function CaisseTable({ mouvements, hasFilters, onClearFilters, onRefetch 
             <TableBody>
               {mouvements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-16 text-center text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
                       <Receipt className="h-8 w-8 opacity-50" />
                       <p>Aucun mouvement trouvé</p>
@@ -57,7 +58,8 @@ export function CaisseTable({ mouvements, hasFilters, onClearFilters, onRefetch 
                         <Badge className="bg-destructive/20 text-destructive gap-1"><ArrowUpCircle className="h-3 w-3" />Sortie</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate">{mouvement.description}</TableCell>
+                    <TableCell className="font-mono text-xs whitespace-nowrap">{mouvement.reference || <span className="text-muted-foreground">-</span>}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{descriptionSansReference(mouvement.description, mouvement.reference)}</TableCell>
                     <TableCell>
                       {mouvement.document_numero ? (
                         <Badge variant="outline" className="gap-1">
